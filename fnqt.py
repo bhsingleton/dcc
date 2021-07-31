@@ -11,12 +11,12 @@ __application__ = platform.getApplication()
 
 if __application__ == 'maya':
 
-    from .maya.fnscene import *
+    from .maya.fnqt import *
 
 elif __application__ == '3dsmax':
 
-    from .max.fnscene import *
+    from .max.fnqt import *
 
 else:
 
-    raise ImportError('Unable to import dcc scene-helpers for: %s application!' % __application__)
+    raise ImportError('Unable to import dcc qt-helpers for: %s application!' % __application__)
