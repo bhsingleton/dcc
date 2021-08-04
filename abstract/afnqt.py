@@ -1,4 +1,6 @@
 from abc import ABCMeta, abstractmethod
+from six import with_metaclass
+
 from . import afnbase
 
 import logging
@@ -7,7 +9,7 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-class AFnQt(afnbase.AFnBase, metaclass=ABCMeta):
+class AFnQt(with_metaclass(ABCMeta, afnbase.AFnBase)):
     """
     Overload of AFnBase that outlines function set behaviour for DCC qt objects.
     """
