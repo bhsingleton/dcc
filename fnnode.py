@@ -19,4 +19,4 @@ elif __application__ == '3dsmax':
 
 else:
 
-    raise ImportError('Unable to import dcc qt-helpers for: %s application!' % __application__)
+    raise ImportError('Unable to import dcc node-helpers for: %s application!' % __application__)

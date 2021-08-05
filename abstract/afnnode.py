@@ -156,6 +156,11 @@ class AFnNode(with_metaclass(ABCMeta, afnbase.AFnBase)):
         pass
 
     def descendants(self):
+        """
+        Returns a list of all the descendants for this node.
+
+        :rtype: list[Any]
+        """
 
         return list(self.iterDescendants())
 

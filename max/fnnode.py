@@ -1,6 +1,6 @@
 import pymxs
 
-from six import string_types
+from six import string_types, integer_types
 from collections import deque
 
 from ..abstract import afnnode
@@ -40,7 +40,7 @@ class FnNode(afnnode.AFnNode):
 
         # Inspect object type
         #
-        if isinstance(handle, int):
+        if isinstance(handle, integer_types):
 
             return self.getNodeByHandle(handle)
 
@@ -58,13 +58,13 @@ class FnNode(afnnode.AFnNode):
 
         # Check object type
         #
-        if isinstance(obj, int):
+        if isinstance(obj, integer_types):
 
-            return self.setObject(obj)
+            super(FnNode, self).setObject(obj)
 
         elif isinstance(obj, pymxs.MXSWrapperBase):
 
-            self.setObject(int(pymxs.runtime.getHandleByAnim(obj)))
+            return self.setObject(pymxs.runtime.getHandleByAnim(obj))
 
         elif isinstance(obj, string_types):
 

@@ -1,7 +1,7 @@
 import maya.cmds as mc
 import maya.api.OpenMaya as om
 
-from six import string_types
+from six import string_types, integer_types
 from collections import deque
 
 from ..abstract import afnnode
@@ -20,15 +20,6 @@ class FnNode(afnnode.AFnNode):
     __slots__ = ()
     __handles__ = {}
 
-    def __init__(self, *args, **kwargs):
-        """
-        Private method called after a new instance is created.
-        """
-
-        # Call parent method
-        #
-        super(FnNode, self).__init__(*args, **kwargs)
-
     def object(self):
         """
         Returns the object assigned to this function set.
@@ -42,7 +33,7 @@ class FnNode(afnnode.AFnNode):
 
         # Inspect object type
         #
-        if isinstance(handle, int):
+        if isinstance(handle, integer_types):
 
             return self.getNodeByHandle(handle)
 
@@ -62,7 +53,7 @@ class FnNode(afnnode.AFnNode):
         #
         if isinstance(obj, om.MObjectHandle):
 
-            hashCode = int(obj.hashCode())
+            hashCode = obj.hashCode()
             self.__handles__[hashCode] = obj
 
             super(FnNode, self).setObject(hashCode)
@@ -79,7 +70,7 @@ class FnNode(afnnode.AFnNode):
 
             return self.setObject(self.getNodeByName(obj))
 
-        elif isinstance(obj, int):
+        elif isinstance(obj, integer_types):
 
             return self.setObject(self.getNodeByHandle(obj))
 
@@ -277,10 +268,17 @@ class FnNode(afnnode.AFnNode):
         :rtype: om.MObject
         """
 
-        selection = om.MSelectionList()
-        selection.add(name)
+        try:
 
-        return selection.getDependNode(0)
+            selection = om.MSelectionList()
+            selection.add(name)
+
+            return selection.getDependNode(0)
+
+        except RuntimeError as exception:
+
+            log.debug(exception)
+            return None
 
     @classmethod
     def getNodeByHandle(cls, handle):
@@ -292,7 +290,15 @@ class FnNode(afnnode.AFnNode):
         :rtype: Any
         """
 
-        return cls.__handles__.get(handle, None)
+        handle = cls.__handles__.get(handle, None)
+
+        if isinstance(handle, om.MObjectHandle):
+
+            return handle.object()
+
+        else:
+
+            return None
 
     @classmethod
     def getActiveSelection(cls):
