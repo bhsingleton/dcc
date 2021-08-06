@@ -1,5 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from six import with_metaclass
+from collections import deque
 
 from . import afnbase
 
@@ -23,7 +24,7 @@ class AFnNode(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
         Returns the handle for this node.
 
-        :rtype: Union[str, int]
+        :rtype: int
         """
 
         pass
@@ -68,7 +69,6 @@ class AFnNode(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         pass
 
-    @abstractmethod
     def iterParents(self):
         """
         Returns a generator that yields all of the parents for this node.
@@ -76,7 +76,21 @@ class AFnNode(with_metaclass(ABCMeta, afnbase.AFnBase)):
         :rtype: iter
         """
 
-        pass
+        # Initialize function set
+        #
+        fnNode = self.__class__()
+        fnNode.setObject(self.object())
+
+        # Iterate through parents
+        #
+        parent = fnNode.parent()
+
+        while parent is not None:
+
+            yield parent
+
+            fnNode.setObject(parent)
+            parent = fnNode.parent()
 
     def parents(self):
         """
@@ -145,7 +159,6 @@ class AFnNode(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         return list(self.iterChildren())
 
-    @abstractmethod
     def iterDescendants(self):
         """
         Returns a generator that yields all of the descendants for this node.
@@ -153,7 +166,16 @@ class AFnNode(with_metaclass(ABCMeta, afnbase.AFnBase)):
         :rtype: iter
         """
 
-        pass
+        queue = deque(self.children())
+        fnNode = self.__class__()
+
+        while len(queue) > 0:
+
+            node = queue.popleft()
+            yield node
+
+            fnNode.setObject(node)
+            queue.extend(fnNode.children())
 
     def descendants(self):
         """

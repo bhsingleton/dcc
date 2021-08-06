@@ -2,7 +2,6 @@ import maya.cmds as mc
 import maya.api.OpenMaya as om
 
 from six import string_types, integer_types
-from collections import deque
 
 from ..abstract import afnnode
 
@@ -49,34 +48,15 @@ class FnNode(afnnode.AFnNode):
         :rtype: None
         """
 
-        # Check object type
-        #
-        if isinstance(obj, om.MObjectHandle):
+        try:
 
-            hashCode = obj.hashCode()
-            self.__handles__[hashCode] = obj
+            obj = self.getMObject(obj)
+            super(FnNode, self).setObject(om.MObjectHandle(obj).hashCode())
 
-            super(FnNode, self).setObject(hashCode)
+        except TypeError as exception:
 
-        elif isinstance(obj, om.MObject):
-
-            return self.setObject(om.MObjectHandle(obj))
-
-        elif isinstance(obj, om.MDagPath):
-
-            return self.setObject(obj.node())
-
-        elif isinstance(obj, string_types):
-
-            return self.setObject(self.getNodeByName(obj))
-
-        elif isinstance(obj, integer_types):
-
-            return self.setObject(self.getNodeByHandle(obj))
-
-        else:
-
-            raise TypeError('setObject() expects an MObject (%s given)!' % type(obj).__name__)
+            log.error(exception)
+            return
 
     def handle(self):
         """
@@ -131,38 +111,6 @@ class FnNode(afnnode.AFnNode):
 
             return None
 
-    def iterParents(self):
-        """
-        Returns a generator that yields all of the parents for this node.
-
-        :rtype: iter
-        """
-
-        # Check if node is valid
-        #
-        if not self.isValid():
-
-            return
-
-        # Check if this is a dag node
-        #
-        obj = self.object()
-
-        if not obj.hasFn(om.MFn.kDagNode):
-
-            return
-
-        # Iterate through parents
-        #
-        fnDagNode = om.MFnDagNode(self.object())
-
-        while fnDagNode.hasParent():
-
-            parent = fnDagNode.parent(0)
-            yield parent
-
-            fnDagNode.setObject(parent)
-
     def setParent(self, parent):
         """
         Updates the parent of this node.
@@ -179,10 +127,11 @@ class FnNode(afnnode.AFnNode):
             dagModifer.reparentNode(obj, parent)
             dagModifer.doIt()
 
-    def iterChildren(self):
+    def iterChildren(self, apiType=om.MFn.kTransform):
         """
         Returns a generator that yields all of the children belonging to this node.
 
+        :type apiType: int
         :rtype: iter
         """
 
@@ -201,51 +150,197 @@ class FnNode(afnnode.AFnNode):
             return
 
         # Iterate through children
+        # We purposely exclude shape nodes since these are DCC agnostic
         #
         fnDagNode = om.MFnDagNode(obj)
         childCount = fnDagNode.childCount()
 
         for i in range(childCount):
 
-            yield fnDagNode.child(i)
+            child = fnDagNode.child(i)
 
-    def iterDescendants(self):
+            if child.hasFn(apiType):
+
+                yield fnDagNode.child(i)
+
+            else:
+
+                continue
+
+    def iterShapes(self):
         """
-        Returns a generator that yields all of the descendants for this node.
+        Returns an iterator that yields all shapes from this node.
 
         :rtype: iter
         """
 
-        # Check if node is valid
+        fnDagNode = om.MFnDagNode()
+
+        for obj in self.iterChildren(apiType=om.MFn.kShape):
+
+            fnDagNode.setObject(obj)
+
+            if not fnDagNode.isIntermediateObject:
+
+                yield obj
+
+            else:
+
+                continue
+
+    def shapes(self):
+        """
+        Returns a list of shapes from this node.
+
+        :rtype: list[om.MObject]
+        """
+
+        return list(self.iterShapes())
+
+    @property
+    def isIntermediateObject(self):
+        """
+        Evaluates whether this is an intermediate object.
+
+        :rtype: bool
+        """
+
+        # Check if object is valid
         #
         if not self.isValid():
 
-            return
+            return False
 
         # Check if this is a dag node
         #
         obj = self.object()
 
-        if not obj.hasFn(om.MFn.kDagNode):
+        if obj.hasFn(om.MFn.kDagNode):
 
-            return
+            return om.MFnDagNode(self.object()).isIntermediateObject
 
-        # Iterate through children
+        else:
+
+            return False
+
+    def iterIntermediateObjects(self):
+        """
+        Returns an iterator that yields all intermediate objects from this node.
+
+        :rtype: iter
+        """
+
+        fnDagNode = om.MFnDagNode()
+
+        for obj in self.iterChildren(apiType=om.MFn.kShape):
+
+            fnDagNode.setObject(obj)
+
+            if fnDagNode.isIntermediateObject:
+
+                yield obj
+
+            else:
+
+                continue
+
+    def intermediateObjects(self):
+        """
+        Returns a list of intermediate objects from this node.
+
+        :rtype: list[om.MObject]
+        """
+
+        return list(self.iterIntermediateObjects())
+
+    @classmethod
+    def iterDependencies(cls, dependNode, apiType, direction=om.MItDependencyGraph.kDownstream, traversal=om.MItDependencyGraph.kDepthFirst):
+        """
+        Returns a generator that yields dependencies based on the supplied arguments.
+
+        :type dependNode: om.MObject
+        :type apiType: int
+        :type direction: int
+        :type traversal: int
+        :rtype: iter
+        """
+
+        # Initialize dependency graph iterator
         #
-        fnDagNode = om.MFnDagNode(obj)
-        queue = deque([fnDagNode.child(i) for i in range(fnDagNode.childCount())])
+        iterDepGraph = om.MItDependencyGraph(
+            dependNode,
+            filter=apiType,
+            direction=direction,
+            traversal=traversal,
+            level=om.MItDependencyGraph.kNodeLevel
+        )
 
-        while len(queue):
+        while not iterDepGraph.isDone():
 
-            # Pop item from queue
+            # Get current node
             #
-            currentNode = queue.popleft()
+            currentNode = iterDepGraph.currentNode()
             yield currentNode
 
-            # Get children from item
+            # Increment iterator
             #
-            fnDagNode.setObject(currentNode)
-            queue.extend([fnDagNode.child(i) for i in range(fnDagNode.childCount())])
+            iterDepGraph.next()
+
+    def dependsOn(self, apiType=om.MFn.kDependencyNode):
+        """
+        Returns a list of nodes that this object is dependent on.
+
+        :rtype: list[om.MObject]
+        """
+
+        return list(self.iterDependencies(self.object(), apiType, direction=om.MItDependencyGraph.kUpstream))
+
+    def dependents(self, apiType=om.MFn.kDependencyNode):
+        """
+        Returns a list of nodes that are dependent on this object.
+
+        :return: list[om.MObject]
+        """
+
+        return list(self.iterDependencies(self.object(), apiType, direction=om.MItDependencyGraph.kDownstream))
+
+    @classmethod
+    def getMObject(cls, value):
+        """
+        Returns an MObject from any given value.
+
+        :type value: Union[str, int, om.MObject, om.MDagPath, om.MObjectHandle]
+        :rtype: om.MObject
+        """
+
+        # Check value type
+        #
+        if isinstance(value, om.MObject):
+
+            handle = om.MObjectHandle(value)
+            cls.__handles__[handle.hashCode()] = handle
+
+            return value
+
+        elif isinstance(value, om.MObjectHandle):
+
+            return value.object()
+
+        elif isinstance(value, om.MDagPath):
+
+            return value.node()
+
+        elif isinstance(value, string_types):
+
+            return cls.getNodeByName(value)
+
+        elif isinstance(value, integer_types):
+
+            return cls.getNodeByHandle(value)
+
+        else:
+
+            raise TypeError('getMObject() expects a str or int (%s given)!' % type(value).__name__)
 
     @classmethod
     def doesNodeExist(cls, name):

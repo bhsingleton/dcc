@@ -11,12 +11,12 @@ __application__ = platform.getApplication()
 
 if __application__ == 'maya':
 
-    from .maya.fnfbx import *
+    from .maya.fnskin import *
 
 elif __application__ == '3dsmax':
 
-    from .max.fnfbx import *
+    from .max.fnskin import *
 
 else:
 
-    raise ImportError('Unable to import dcc fbx-helpers for: %s application!' % __application__)
+    raise ImportError('Unable to import dcc skin-helpers for: %s application!' % __application__)

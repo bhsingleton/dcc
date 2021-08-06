@@ -1,9 +1,9 @@
 import pymxs
 
 from six import string_types, integer_types
-from collections import deque
 
 from ..abstract import afnnode
+from ..decorators.validator import validator
 
 import logging
 logging.basicConfig()
@@ -52,28 +52,23 @@ class FnNode(afnnode.AFnNode):
         """
         Assigns an object to this function set for manipulation.
 
-        :type obj: Union[str, pymxs.MXSWrapperBase]
+        :type obj: Union[str, int, pymxs.MXSWrapperBase]
         :rtype: None
         """
 
-        # Check object type
-        #
-        if isinstance(obj, integer_types):
+        try:
 
-            super(FnNode, self).setObject(obj)
+            obj = self.getMXSWrapper(obj)
+            handle = pymxs.runtime.getHandleByAnim(obj)
 
-        elif isinstance(obj, pymxs.MXSWrapperBase):
+            super(FnNode, self).setObject(handle)
 
-            return self.setObject(pymxs.runtime.getHandleByAnim(obj))
+        except TypeError as exception:
 
-        elif isinstance(obj, string_types):
+            log.error(exception)
+            return
 
-            return self.setObject(self.getNodeByName(obj))
-
-        else:
-
-            raise TypeError('setObject() expects an MObject (%s given)!' % type(obj).__name__)
-
+    @validator
     def handle(self):
         """
         Returns the handle for this node.
@@ -83,6 +78,7 @@ class FnNode(afnnode.AFnNode):
 
         return int(pymxs.runtime.getHandleByAnim(self.object()))
 
+    @validator
     def name(self):
         """
         Returns the name of this node.
@@ -90,10 +86,9 @@ class FnNode(afnnode.AFnNode):
         :rtype: str
         """
 
-        if self.isValid():
+        return self.object().name
 
-            return self.object().name
-
+    @validator
     def setName(self, name):
         """
         Updates the name of this node.
@@ -102,10 +97,9 @@ class FnNode(afnnode.AFnNode):
         :rtype: None
         """
 
-        if self.isValid():
+        self.object().name = name
 
-            self.object().name = name
-
+    @validator
     def parent(self):
         """
         Returns the parent of this node.
@@ -113,24 +107,19 @@ class FnNode(afnnode.AFnNode):
         :rtype: om.MObject
         """
 
-        if self.isValid():
+        # Check if object has property
+        #
+        obj = self.object()
 
-            return self.object().parent
+        if pymxs.runtime.isProperty(obj, 'parent'):
 
-    def iterParents(self):
-        """
-        Returns a generator that yields all of the parents for this node.
+            return obj.parent
 
-        :rtype: iter
-        """
+        else:
 
-        parent = self.object().parent
+            return None
 
-        while parent is not None:
-
-            yield parent
-            parent = parent.parent
-
+    @validator
     def setParent(self, parent):
         """
         Updates the parent of this node.
@@ -139,8 +128,15 @@ class FnNode(afnnode.AFnNode):
         :rtype: None
         """
 
-        self.object().parent = parent
+        # Check if object has property
+        #
+        obj = self.object()
 
+        if pymxs.runtime.isProperty(obj, 'parent'):
+
+            obj.parent = parent
+
+    @validator
     def iterChildren(self):
         """
         Returns a generator that yields all of the children for this node.
@@ -148,50 +144,59 @@ class FnNode(afnnode.AFnNode):
         :rtype: iter
         """
 
-        # Check if node is valid
+        # Check if object has property
         #
-        if not self.isValid():
+        obj = self.object()
+
+        if not pymxs.runtime.isProperty(obj, 'children'):
 
             return
 
         # Iterate through children
         #
-        children = self.object().children
+        children = obj.children
 
-        for i in range(1, children.count + 1, 1):
+        for i in range(children.count):
 
             yield children[i]
 
-    def iterDescendants(self):
+    @validator
+    def getModifiersByType(self, T):
         """
-        Returns a generator that yields all of the descendants for this node.
+        Returns a list of modifiers from the specified type.
 
-        :rtype: iter
+        :type T: class
+        :rtype: list
         """
 
-        # Iterate through children
+        return [x for x in self.object().modifiers if pymxs.runtime.classOf(x) == T]
+
+    @classmethod
+    def getMXSWrapper(cls, value):
+        """
+        Returns an MXSWrapper from any given value.
+
+        :type value: Union[str, int, pymxs.MXSWrapperBase]
+        :rtype: pymxs.MXSWrapperBase
+        """
+
+        # Check object type
         #
-        queue = deque(self.children())
+        if isinstance(value, pymxs.MXSWrapperBase):
 
-        while len(queue):
+            return value
 
-            # Pop item from queue
-            #
-            currentNode = queue.popleft()
-            yield currentNode
+        elif isinstance(value, integer_types):
 
-            # Get children from item
-            #
-            children = currentNode.children
-            childCount = children.count
+            return cls.getNodeByHandle(value)
 
-            if childCount > 0:
+        elif isinstance(value, string_types):
 
-                queue.extend([children[i] for i in range(1, childCount + 1, 1)])
+            return cls.getNodeByName(value)
 
-            else:
+        else:
 
-                continue
+            raise TypeError('setObject() expects a str or int (%s given)!' % type(value).__name__)
 
     @classmethod
     def doesNodeExist(cls, name):
