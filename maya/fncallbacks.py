@@ -1,5 +1,6 @@
 import maya.api.OpenMaya as om
 
+from six import integer_types
 from ..abstract import afncallbacks
 
 import logging
@@ -53,4 +54,6 @@ class FnCallbacks(afncallbacks.AFnCallbacks):
         :rtype: None
         """
 
-        om.MMessage.removeCallback(callbackId)
+        if isinstance(callbackId, integer_types):
+
+            om.MMessage.removeCallback(callbackId)
