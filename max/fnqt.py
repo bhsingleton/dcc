@@ -14,7 +14,7 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-class AFnQt(afnqt.AFnQt):
+class FnQt(afnqt.AFnQt):
     """
     Overload of AFnQt that interfaces with Qt objects in 3DS Max.
     """
