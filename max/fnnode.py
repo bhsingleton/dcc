@@ -242,4 +242,25 @@ class FnNode(afnnode.AFnNode):
         """
 
         selection = pymxs.runtime.selection
-        return [selection[x] for x in range(1, selection.count + 1, 1)]
+        return [selection[x] for x in range(selection.count)]
+
+    @classmethod
+    def setActiveSelection(cls, selection):
+        """
+        Updates the active selection.
+
+        :type selection: list
+        :rtype: None
+        """
+
+        pymxs.runtime.selection = selection
+
+    @classmethod
+    def clearActiveSelection(cls):
+        """
+        Clears the active selection.
+
+        :rtype: None
+        """
+
+        pymxs.runtime.clearSelection()

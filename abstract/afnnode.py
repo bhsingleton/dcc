@@ -234,3 +234,26 @@ class AFnNode(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
 
         pass
+
+    @classmethod
+    @abstractmethod
+    def setActiveSelection(cls, selection):
+        """
+        Updates the active selection.
+
+        :type selection: list
+        :rtype: None
+        """
+
+        pass
+
+    @classmethod
+    @abstractmethod
+    def clearActiveSelection(cls):
+        """
+        Clears the active selection.
+
+        :rtype: None
+        """
+
+        pass

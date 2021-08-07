@@ -407,3 +407,25 @@ class FnNode(afnnode.AFnNode):
         selectionCount = selection.length()
 
         return [selection.getDependNode(i) for i in range(selectionCount)]
+
+    @classmethod
+    def setActiveSelection(cls, selection):
+        """
+        Updates the active selection.
+
+        :type selection: list
+        :rtype: None
+        """
+
+        om.MGlobal.setActiveSelectionList(selection)
+
+    @classmethod
+    def clearActiveSelection(cls):
+        """
+        Clears the active selection.
+
+        :rtype: None
+        """
+
+        om.MGlobal.clearSelectionList()
+
