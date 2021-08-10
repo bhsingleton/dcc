@@ -54,7 +54,7 @@ class FnCallbacks(afncallbacks.AFnCallbacks):
         :rtype: Union[int, str]
         """
 
-        return om.MEventMessage.addEventCallback('selectionChanged', func)
+        return om.MEventMessage.addEventCallback('SelectionChanged', func)
 
     def addComponentSelectionChangedCallback(self, func):
         """
