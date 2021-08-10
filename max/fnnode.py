@@ -68,6 +68,16 @@ class FnNode(afnnode.AFnNode):
             log.error(exception)
             return
 
+    def acceptsObject(self, obj):
+        """
+        Evaluates whether the supplied object is supported by this function set.
+
+        :type obj: Any
+        :rtype: bool
+        """
+
+        return isinstance(obj, (str, pymxs.MXSWrapperBase))
+
     @validator
     def handle(self):
         """
@@ -100,11 +110,22 @@ class FnNode(afnnode.AFnNode):
         self.object().name = name
 
     @validator
+    def isJoint(self):
+        """
+        Evaluates if this node represents a skinnable influence.
+
+        :rtype: bool
+        """
+
+        obj = self.object()
+        return obj.boneEnable or pymxs.runtime.superClassOf(obj) == pymxs.runtime.BoneGeometry
+
+    @validator
     def parent(self):
         """
         Returns the parent of this node.
 
-        :rtype: om.MObject
+        :rtype: pymxs.MXSWrapperBase
         """
 
         # Check if object has property
@@ -124,7 +145,7 @@ class FnNode(afnnode.AFnNode):
         """
         Updates the parent of this node.
 
-        :type parent: om.MObject
+        :type parent: pymxs.MXSWrapperBase
         :rtype: None
         """
 

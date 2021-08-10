@@ -54,3 +54,50 @@ class AFnBase(with_metaclass(ABCMeta, object)):
         """
 
         self._object = obj
+
+    def trySetObject(self, obj):
+        """
+        Attempts to assign an object to this function set for manipulation.
+        A boolean will be returned that dictates if the operation was a success.
+
+        :type obj: Any
+        :rtype: bool
+        """
+
+        try:
+
+            self.setObject(obj)
+            return True
+
+        except TypeError as exception:
+
+            log.warning(exception)
+            return False
+
+    def resetObject(self):
+        """
+        Resets the object back to its default value.
+
+        :rtype: None
+        """
+
+        self._object = None
+
+    def hasObject(self):
+        """
+        Evaluates whether or not this function set has an assigned object.
+
+        :rtype: bool
+        """
+
+        return self._object is not None
+
+    def acceptsObject(self, obj):
+        """
+        Evaluates whether the supplied object is supported by this function set.
+
+        :type obj: Any
+        :rtype: bool
+        """
+
+        return True

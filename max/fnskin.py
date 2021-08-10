@@ -15,7 +15,8 @@ log.setLevel(logging.INFO)
 class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
     """
     Overload of AFnSkin that outlines function set behaviour for skin weighting in 3ds Max.
-    This class does not inherit from FnNode since modifiers are not node based.
+    This class also inherits from FnNode but be aware not all functions will be compatible.
+    Because of the UI dependency in 3ds Max we have to actively make sure we're in the modify panel.
     """
 
     __slots__ = ('_shape',)
@@ -162,6 +163,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
         return pymxs.runtime.skinOps.getNumberVertices(self.object())
 
+    @CommandPanelOverride('modify')
     def iterInfluences(self):
         """
         Returns a generator that yields all of the influence object from this deformer.
@@ -181,7 +183,38 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
             yield boneId, boneName
 
-    @property
+    @CommandPanelOverride('modify')
+    def addInfluence(self, influence):
+        """
+        Adds an influence to this deformer.
+
+        :type influence: pymxs.MXSWrapperBase
+        :rtype: bool
+        """
+
+        pymxs.runtime.skinOps.addBone(self.object(), influence, 0)
+
+    @CommandPanelOverride('modify')
+    def removeInfluence(self, influenceId):
+        """
+        Removes an influence from this deformer.
+
+        :type influenceId: int
+        :rtype: bool
+        """
+
+        pymxs.runtime.skinOps.removeBone(self.object(), influenceId)
+
+    @CommandPanelOverride('modify')
+    def numInfluences(self):
+        """
+        Returns the number of influences being use by this deformer.
+
+        :rtype: int
+        """
+
+        return pymxs.runtime.getNumberBones(self.object())
+
     def maxInfluences(self):
         """
         Getter method that returns the max number of influences for this deformer.
@@ -190,6 +223,15 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         """
 
         return self.object().bone_limit
+
+    def findRoot(self):
+        """
+        Returns the skeleton root associated with this deformer.
+
+        :rtype: pymxs.MXSWrapperBase
+        """
+
+        pass
 
     @CommandPanelOverride('modify')
     def iterWeights(self, *args):

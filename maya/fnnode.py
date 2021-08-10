@@ -4,6 +4,7 @@ import maya.api.OpenMaya as om
 from six import string_types, integer_types
 
 from ..abstract import afnnode
+from ..decorators.validator import validator
 
 import logging
 logging.basicConfig()
@@ -58,6 +59,17 @@ class FnNode(afnnode.AFnNode):
             log.error(exception)
             return
 
+    def acceptsObject(self, obj):
+        """
+        Evaluates whether the supplied object is supported by this function set.
+
+        :type obj: Any
+        :rtype: bool
+        """
+
+        return isinstance(obj, (str, om.MObject, om.MDagPath, om.MObjectHandle))
+
+    @validator
     def handle(self):
         """
         Returns the handle for this node.
@@ -67,6 +79,7 @@ class FnNode(afnnode.AFnNode):
 
         return om.MObjectHandle(self.object()).hashCode()
 
+    @validator
     def name(self):
         """
         Returns the name of this node.
@@ -76,6 +89,7 @@ class FnNode(afnnode.AFnNode):
 
         return om.MFnDependencyNode(self.object()).name()
 
+    @validator
     def setName(self, name):
         """
         Updates the name of this node.
@@ -86,6 +100,17 @@ class FnNode(afnnode.AFnNode):
 
         om.MFnDependencyNode(self.object()).setName(name)
 
+    @validator
+    def isJoint(self):
+        """
+        Evaluates if this node represents a skinnable influence.
+
+        :rtype: bool
+        """
+
+        return self.object().hasFn(om.MFn.kJoint)
+
+    @validator
     def parent(self):
         """
         Returns the parent of this node.
@@ -111,6 +136,7 @@ class FnNode(afnnode.AFnNode):
 
             return None
 
+    @validator
     def setParent(self, parent):
         """
         Updates the parent of this node.
@@ -127,6 +153,7 @@ class FnNode(afnnode.AFnNode):
             dagModifer.reparentNode(obj, parent)
             dagModifer.doIt()
 
+    @validator
     def iterChildren(self, apiType=om.MFn.kTransform):
         """
         Returns a generator that yields all of the children belonging to this node.
@@ -341,6 +368,38 @@ class FnNode(afnnode.AFnNode):
         else:
 
             raise TypeError('getMObject() expects a str or int (%s given)!' % type(value).__name__)
+
+    @classmethod
+    def getNextAvailableElement(cls, plug):
+        """
+        Returns the next available plug element.
+
+        :type plug: om.MPlug
+        :rtype: int
+        """
+
+        # Iterate through elements
+        #
+        numElements = plug.evaluateNumElements()
+
+        for physicalIndex in range(numElements):
+
+            # Check if physical index matches logical
+            #
+            element = plug.elementByPhysicalIndex(physicalIndex)  # type: om.MPlug
+            logicalIndex = element.logicalIndex()
+
+            if physicalIndex != logicalIndex:
+
+                return physicalIndex
+
+            else:
+
+                continue
+
+        # Return last element
+        #
+        return numElements
 
     @classmethod
     def doesNodeExist(cls, name):

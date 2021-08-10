@@ -290,7 +290,18 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
                 log.debug('Null object found on .matrix[%s]!' % index)
 
-    @property
+    def numInfluences(self):
+        """
+        Returns the number of influences being use by this deformer.
+
+        :rtype: int
+        """
+
+        fnDependNode = om.MFnDependencyNode(self.object())
+        plug = fnDependNode.findPlug('matrix', False)  # type: om.MPlug
+
+        return plug.numConnectedElements()
+
     def maxInfluences(self):
         """
         Getter method that returns the max number of influences for this deformer.
@@ -300,6 +311,108 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
         fnDependNode = om.MFnDependencyNode(self.object())
         return fnDependNode.findPlug('maxInfluences').asFloat()
+
+    def addInfluence(self, influence):
+        """
+        Adds an influence to this deformer.
+
+        :type influence: om.MObject
+        :rtype: bool
+        """
+
+        # Check if influence is already in system
+        #
+        influences = self.influences()
+
+        if influence in influences:
+
+            return
+
+        # Get first available index
+        #
+        fnDagNode = om.MFnDagNode(influence)
+
+        plug = fnDagNode.findPlug('matrix')
+        index = self.getNextAvailableElement(plug)
+
+        # Connect joint to skin cluster
+        #
+        fullPathName = fnDagNode.fullPathName()
+
+        mc.connectAttr('%s.worldMatrix[0]' % fullPathName, '%s.matrix[%s]' % (self.name(), index))
+        mc.connectAttr('%s.objectColorRGB' % fullPathName, '%s.influenceColor[%s]' % (self.name(), index))
+
+        # Check if ".lockInfluenceWeights" attribute exists
+        #
+        if not mc.attributeQuery('lockInfluenceWeights', exists=True, node=fullPathName):
+
+            # Add attribute to joint
+            # NOTE: These settings were pulled from an ascii file
+            #
+            mc.addAttr(
+                fullPathName,
+                cachedInternally=True,
+                shortName='liw',
+                longName='lockInfluenceWeights',
+                min=0,
+                max=1,
+                attributeType='bool'
+            )
+
+        else:
+
+            log.debug('%s joint already has required attribute.' % fnDagNode.partialPathName())
+
+        # Connect custom attribute
+        #
+        mc.connectAttr('%s.lockInfluenceWeights' % fullPathName, '%s.lockWeights[%s]' % (self.name(), index))
+
+        # Set pre-bind matrix
+        #
+        matrixList = mc.getAttr('%s.worldInverseMatrix[0]' % fullPathName)
+        mc.setAttr('%s.bindPreMatrix[%s]' % (self.name(), index), matrixList, type='matrix')
+
+        # Add joint to influence list
+        #
+        influences[index] = influence
+
+    def removeInfluence(self, influenceId):
+        """
+        Removes an influence from this deformer.
+
+        :type influenceId: int
+        :rtype: bool
+        """
+
+        # Check value type
+        #
+        if not isinstance(influenceId, int):
+
+            raise TypeError('removeInfluence() expects an int (%s given)!' % type(influenceId).__name__)
+
+        # Check if influence ID is defined
+        #
+        influences = self.influences()
+        influence = influences[influenceId]
+
+        if influence is None:
+
+            log.warning('No influence could be found at ID: %s' % influenceId)
+            return
+
+        # Disconnect joint from skin cluster
+        #
+        fullPathName = influence.fullPathName()
+
+        mc.disconnectAttr('%s.worldMatrix[0]' % fullPathName, '%s.matrix[%s]' % (self.name(), influenceId))
+        mc.disconnectAttr('%s.objectColorRGB' % fullPathName, '%s.influenceColor[%s]' % (self.name(), influenceId))
+        mc.disconnectAttr('%s.lockInfluenceWeights' % fullPathName, '%s.lockWeights[%s]' % (self.name(), influenceId))
+
+        mc.deleteAttr('%s.lockInfluenceWeights' % fullPathName)
+
+        # Remove joint from influence list
+        #
+        del influences[influenceId]
 
     def iterWeights(self, *args):
         """

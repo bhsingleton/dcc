@@ -59,6 +59,26 @@ class AFnNode(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         pass
 
+    def dagPath(self):
+        """
+        Returns a dag path to this node.
+        This uses pipes to delimit a break between two nodes.
+
+        :rtype: str
+        """
+
+        return '|'.join(reversed(self.parents()))
+
+    @abstractmethod
+    def isJoint(self):
+        """
+        Evaluates if this node represents a skinnable influence.
+
+        :rtype: bool
+        """
+
+        pass
+
     @abstractmethod
     def parent(self):
         """
