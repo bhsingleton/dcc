@@ -26,6 +26,26 @@ class FnCallbacks(afncallbacks.AFnCallbacks):
 
         return om.MSceneMessage.addCallback(om.MSceneMessage.kAfterOpen, func)
 
+    def addUndoCallback(self, func):
+        """
+        Adds a callback whenever undo is used.
+
+        :type func: method
+        :rtype: int
+        """
+
+        return om.MEventMessage.addEventCallback('Undo', func)
+
+    def addRedoCallback(self, func):
+        """
+        Adds a callback whenever redo is used.
+
+        :type func: method
+        :rtype: int
+        """
+
+        return om.MEventMessage.addEventCallback('Redo', func)
+
     def addSelectionChangedCallback(self, func):
         """
         Adds a callback whenever the active selection is changed.

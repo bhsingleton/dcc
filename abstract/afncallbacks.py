@@ -28,6 +28,28 @@ class AFnCallbacks(with_metaclass(ABCMeta, afnbase.AFnBase)):
         pass
 
     @abstractmethod
+    def addUndoCallback(self, func):
+        """
+        Adds a callback whenever undo is used.
+
+        :type func: method
+        :rtype: Union[int, str]
+        """
+
+        pass
+
+    @abstractmethod
+    def addRedoCallback(self, func):
+        """
+        Adds a callback whenever redo is used.
+
+        :type func: method
+        :rtype: Union[int, str]
+        """
+
+        pass
+
+    @abstractmethod
     def addSelectionChangedCallback(self, func):
         """
         Adds a callback whenever the active selection is changed.

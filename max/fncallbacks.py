@@ -41,6 +41,32 @@ class FnCallbacks(afncallbacks.AFnCallbacks):
 
         return uuid
 
+    def addUndoCallback(self, func):
+        """
+        Adds a callback whenever undo is used.
+
+        :type func: method
+        :rtype: int
+        """
+
+        uuid = self.generateID()
+        pymxs.runtime.callbacks.addScript('sceneUndo', func, id=uuid)
+
+        return uuid
+
+    def addRedoCallback(self, func):
+        """
+        Adds a callback whenever redo is used.
+
+        :type func: method
+        :rtype: int
+        """
+
+        uuid = self.generateID()
+        pymxs.runtime.callbacks.addScript('sceneRedo', func, id=uuid)
+
+        return uuid
+
     def addSelectionChangedCallback(self, func):
         """
         Adds a callback whenever the active selection is changed.
