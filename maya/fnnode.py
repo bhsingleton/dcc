@@ -444,9 +444,9 @@ class FnNode(afnnode.AFnNode):
         :rtype: Any
         """
 
-        handle = cls.__handles__.get(handle, None)
+        handle = cls.__handles__.get(handle, om.MObjectHandle())
 
-        if isinstance(handle, om.MObjectHandle):
+        if handle.isAlive():
 
             return handle.object()
 

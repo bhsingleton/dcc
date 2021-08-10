@@ -251,6 +251,41 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
         return fnMesh.numVertices
 
+    def iterSelection(self):
+        """
+        Returns the selected vertex elements.
+
+        :rtype: list[int]
+        """
+
+        # Inspect active selection
+        #
+        selection = om.MGlobal.getActiveSelectionList()  # type: om.MSelectionList
+        selectionCount = selection.length()
+
+        shape = self.shape()
+        fnComponent = om.MFnSingleIndexedComponent()
+
+        for i in range(selectionCount):
+
+            # Check if this is self
+            #
+            dagPath, component = selection.getComponent(i)
+
+            if dagPath.node() != shape or not component.hasFn(om.MFn.kMeshVertComponent):
+
+                continue
+
+            # Yield component elements
+            #
+            fnComponent.setObject(component)
+
+            for j in range(fnComponent.elementCount):
+
+                yield fnComponent.element(j)
+
+            break
+
     def iterInfluences(self):
         """
         Returns a generator that yields all of the influence object from this deformer.
@@ -262,7 +297,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         #
         fnDependNode = om.MFnDependencyNode(self.object())
 
-        plug = fnDependNode.findPlug('matrix')  # type: om.MPlug
+        plug = fnDependNode.findPlug('matrix', False)  # type: om.MPlug
         numElements = plug.evaluateNumElements()
 
         for i in range(numElements):
@@ -310,7 +345,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         """
 
         fnDependNode = om.MFnDependencyNode(self.object())
-        return fnDependNode.findPlug('maxInfluences').asFloat()
+        return fnDependNode.findPlug('maxInfluences', False).asFloat()
 
     def addInfluence(self, influence):
         """
@@ -332,7 +367,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         #
         fnDagNode = om.MFnDagNode(influence)
 
-        plug = fnDagNode.findPlug('matrix')
+        plug = fnDagNode.findPlug('matrix', False)
         index = self.getNextAvailableElement(plug)
 
         # Connect joint to skin cluster
@@ -414,44 +449,32 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         #
         del influences[influenceId]
 
-    def iterWeights(self, *args):
+    def iterWeights(self, vertexIndex):
         """
         Returns a generator that yields skin weights.
         If no vertex indices are supplied then all of the skin weights should be yielded.
 
+        :type vertexIndex: int
         :rtype: iter
         """
 
-        # Evaluate arguments
-        #
-        vertexIndices = args
-        numArgs = len(vertexIndices)
-
-        if numArgs == 0:
-
-            vertexIndices = range(self.numControlPoints())
-
-        # Iterate through vertices
+        # Get weight list plug
         #
         fnDependNode = om.MFnDependencyNode(self.object())
-        weightListPlug = fnDependNode.findPlug('weightList')  # type: om.MPlug
 
-        for vertexIndex in vertexIndices:
+        weightListPlug = fnDependNode.findPlug('weightList', False)  # type: om.MPlug
+        weightListPlug.selectAncestorLogicalIndex(vertexIndex)
 
-            # Go to plug element
-            #
-            weightListPlug.selectAncestorLogicalIndex(vertexIndex)
+        # Iterate through weight elements
+        #
+        weightsPlug = weightListPlug.child(0)  # type: om.MPlug
+        numElements = weightsPlug.numElements()
 
-            # Access child element
-            #
-            weightsPlug = weightListPlug.child(0)  # type: om.MPlug
-            numElements = weightsPlug.evaluateNumElements()
+        for physicalIndex in range(numElements):
 
-            vertexWeights = {}
+            element = weightsPlug.elementByPhysicalIndex(physicalIndex)
 
-            for physicalIndex in range(numElements):
+            influenceId = element.logicalIndex()
+            influenceWeight = element.asFloat()
 
-                element = weightsPlug.elementByPhysicalIndex(physicalIndex)
-                vertexWeights[element.logicalIndex()] = element.asFloat()
-
-            yield vertexIndex, vertexWeights
+            yield influenceId, influenceWeight

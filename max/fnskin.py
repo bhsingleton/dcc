@@ -164,6 +164,31 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         return pymxs.runtime.skinOps.getNumberVertices(self.object())
 
     @CommandPanelOverride('modify')
+    def iterSelection(self):
+        """
+        Returns the selected vertex elements.
+        This operation is not super efficient in max...
+
+        :rtype: list[int]
+        """
+
+        # Iterate through vertices
+        #
+        obj = self.object()
+
+        for i in range(1, self.numControlPoints() + 1, 1):
+
+            # Check if vertex is selected
+            #
+            if pymxs.runtime.skinOps.isVertexSelected(obj, i):
+
+                yield i
+
+            else:
+
+                continue
+
+    @CommandPanelOverride('modify')
     def iterInfluences(self):
         """
         Returns a generator that yields all of the influence object from this deformer.
@@ -224,47 +249,24 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
         return self.object().bone_limit
 
-    def findRoot(self):
-        """
-        Returns the skeleton root associated with this deformer.
-
-        :rtype: pymxs.MXSWrapperBase
-        """
-
-        pass
-
     @CommandPanelOverride('modify')
-    def iterWeights(self, *args):
+    def iterWeights(self, vertexIndex):
         """
         Returns a generator that yields skin weights.
         If no vertex indices are supplied then all of the skin weights should be yielded.
 
+        :type vertexIndex: int
         :rtype: iter
         """
 
-        # Evaluate arguments
-        #
-        vertexIndices = args
-        numVertexIndices = len(vertexIndices)
-
-        if numVertexIndices == 0:
-
-            vertexIndices = range(1, self.numControlPoints() + 1, 1)
-
-        # Iterate through vertices
+        # Iterate through bones
         #
         skinModifier = self.object()
+        numBones = pymxs.runtime.skinOps.getVertexWeightCount(skinModifier, vertexIndex)
 
-        for vertexIndex in vertexIndices:
+        for i in range(1, numBones + 1, 1):
 
-            numBones = pymxs.runtime.skinOps.getVertexWeightCount(skinModifier, vertexIndex)
-            vertexWeights = {}
+            boneId = pymxs.runtime.skinOps.getVertexWeightBoneID(skinModifier, vertexIndex, i)
+            boneWeight = pymxs.runtime.skinOps.getVertexWeight(skinModifier, vertexIndex, i)
 
-            for i in range(1, numBones + 1, 1):
-
-                boneId = pymxs.runtime.skinOps.getVertexWeightBoneID(skinModifier, vertexIndex, i)
-                boneWeight = pymxs.runtime.skinOps.getVertexWeight(skinModifier, vertexIndex, i)
-
-                vertexWeights[boneId] = boneWeight
-
-            yield vertexIndex, vertexWeights
+            yield boneId, boneWeight

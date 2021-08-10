@@ -181,6 +181,15 @@ class Influences(collections_abc.MutableMapping):
 
         return {handle: index for (index, handle) in self.items()}.get(fnnode.FnNode(influence).handle(), None)
 
+    def lastIndex(self):
+        """
+        Returns the last influence ID in this collection.
+
+        :rtype: int
+        """
+
+        return list(self.keys())[-1]
+
     def update(self, obj):
         """
         Copies the values from the supplied object to this collection.
@@ -309,6 +318,25 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
         pass
 
     @abstractmethod
+    def iterSelection(self):
+        """
+        Returns a generator that yields the selected vertices.
+
+        :rtype: iter
+        """
+
+        pass
+
+    def selection(self):
+        """
+        Returns the selected vertex elements.
+
+        :rtype: list[int]
+        """
+
+        return list(self.iterSelection())
+
+    @abstractmethod
     def iterInfluences(self):
         """
         Returns a generator that yields all of the influence objects from this deformer.
@@ -332,7 +360,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
         if current != self.numInfluences():
 
             self._influences.clear()
-            self._influences.update(self.iterInfluences())
+            self._influences.update(dict(self.iterInfluences()))
 
         return self._influences
 
@@ -520,15 +548,102 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         pass
 
-    def normalizeWeights(self, vertexWeights):
+    @staticmethod
+    def isClose(a, b, rel_tol=1e-09, abs_tol=0.0):
+        """
+        Evaluates if the two numbers of relatively close.
+        Sadly this function doesn't exist in the math module until Python 3.5
+
+        :type a: float
+        :type b: float
+        :type rel_tol: float
+        :type abs_tol: float
+        :rtype: bool
+        """
+
+        return abs(a - b) <= max(rel_tol * max(abs(a), abs(b)), abs_tol)
+
+    def isNormalized(self, vertexWeights):
+        """
+        Evaluates if the supplied weights have been normalized.
+
+        :type vertexWeights: dict
+        :rtype: bool
+        """
+
+        # Check value type
+        #
+        if not isinstance(vertexWeights, dict):
+
+            raise TypeError('isNormalized() expects a dict (%s given)!' % type(vertexWeights).__name__)
+
+        # Check influence weight total
+        #
+        total = sum([weight for (influenceId, weight) in vertexWeights.items()])
+        log.debug('Supplied influence weights equal %s.' % total)
+
+        return self.isClose(1.0, total)
+
+    def normalizeWeights(self, vertexWeights, maintainMaxInfluences=True):
         """
         Normalizes the supplied vertex weights.
 
+        :type maintainMaxInfluences: bool
         :type vertexWeights: dict[int:float]
         :rtype: dict[int:float]
         """
 
-        pass
+        # Check value type
+        #
+        if not isinstance(vertexWeights, dict):
+
+            raise TypeError('normalizeWeights() expects a dict (%s given)!' % type(vertexWeights).__name__)
+
+        # Check if influences should be pruned
+        #
+        if maintainMaxInfluences:
+
+            vertexWeights = self.pruneWeights(vertexWeights)
+
+        # Check if weights have already been normalized
+        #
+        isNormalized = self.isNormalized(vertexWeights)
+
+        if isNormalized:
+
+            log.debug('Vertex weights have already been normalized.')
+            return vertexWeights
+
+        # Get total weight we can normalize
+        #
+        total = sum(vertexWeights.values())
+
+        if total == 0.0:
+
+            raise TypeError('Cannot normalize influences from zero weights!')
+
+        else:
+
+            # Calculate adjusted scale factor
+            #
+            scale = 1.0 / total
+
+            for (influenceId, weight) in vertexWeights.items():
+
+                normalized = (weight * scale)
+                vertexWeights[influenceId] = normalized
+
+                log.debug(
+                    'Scaling influence ID: {index}, from {weight} to {normalized}'.format(
+                        index=influenceId,
+                        weight=weight,
+                        normalized=normalized
+                    )
+                )
+
+        # Return normalized vertex weights
+        #
+        return vertexWeights
 
     def pruneWeights(self, vertexWeights):
         """
@@ -538,7 +653,89 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
         :rtype: dict[int:float]
         """
 
-        pass
+        # Check value type
+        #
+        if not isinstance(vertexWeights, dict):
+
+            raise TypeError('pruneWeights() expects a dict (%s given)!' % type(vertexWeights).__name__)
+
+        # Check if any influences have dropped below limit
+        #
+        influences = self.influences()
+
+        for (influenceId, weight) in vertexWeights.items():
+
+            # Check if influence weight is below threshold
+            #
+            if self.isClose(0.0, weight) or influences[influenceId] is None:
+
+                vertexWeights[influenceId] = 0.0
+
+            else:
+
+                log.debug('Skipping influence ID: %s' % influenceId)
+
+        # Check if influences have exceeded max allowances
+        #
+        numInfluences = len(vertexWeights)
+        maxInfluences = self.maxInfluences()
+
+        if numInfluences > maxInfluences:
+
+            # Order influences from lowest to highest
+            #
+            orderedInfluences = sorted(vertexWeights, key=vertexWeights.get, reverse=False)
+
+            # Replace surplus influences with zero values
+            #
+            diff = numInfluences - maxInfluences
+
+            for i in range(diff):
+
+                influenceId = orderedInfluences[i]
+                vertexWeights[influenceId] = 0.0
+
+        else:
+
+            log.debug('Vertex weights have not exceeded max influences.')
+
+        # Return dictionary changes
+        #
+        return vertexWeights
+
+    def averageWeights(self, vertices, maintainMaxInfluences=True):
+        """
+        Averages the supplied vertex weights.
+        By default maintain max influences is enabled.
+
+        :type maintainMaxInfluences: bool
+        :type vertices: dict[int:dict[int:float]]
+        :rtype: dict[int:dict[int:float]]
+        """
+
+        # Iterate through vertices
+        #
+        average = {}
+
+        for (vertexIndex, vertexWeights) in vertices.items():
+
+            # Iterate through copied weights
+            #
+            for (influenceId, vertexWeight) in vertexWeights.items():
+
+                # Check if influence key already exists
+                #
+                if influenceId not in average:
+
+                    average[influenceId] = vertexWeights[influenceId]
+
+                else:
+
+                    average[influenceId] += vertexWeights[influenceId]
+
+        # Return normalized result
+        #
+        return self.normalizeWeights(average, maintainMaxInfluences=maintainMaxInfluences)
 
     def applyWeights(self, vertices):
         """
