@@ -56,17 +56,14 @@ class FnNode(afnnode.AFnNode):
         :rtype: None
         """
 
-        try:
+        # Get maxscript wrapper
+        #
+        obj = self.getMXSWrapper(obj)
+        handle = pymxs.runtime.getHandleByAnim(obj)
 
-            obj = self.getMXSWrapper(obj)
-            handle = pymxs.runtime.getHandleByAnim(obj)
-
-            super(FnNode, self).setObject(handle)
-
-        except TypeError as exception:
-
-            log.error(exception)
-            return
+        # Assign anim handle
+        #
+        super(FnNode, self).setObject(handle)
 
     def acceptsObject(self, obj):
         """

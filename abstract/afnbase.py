@@ -71,7 +71,7 @@ class AFnBase(with_metaclass(ABCMeta, object)):
 
         except TypeError as exception:
 
-            log.warning(exception)
+            log.debug(exception)
             return False
 
     def resetObject(self):

@@ -42,26 +42,19 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         :rtype: None
         """
 
-        try:
+        # Locate skin modifier from object
+        #
+        obj = self.getMXSWrapper(obj)
+        skinModifier = self.findSkinModifier(obj)
 
-            # Locate skin modifier
-            #
-            obj = self.getMXSWrapper(obj)
-            skinModifier = self.findSkinModifier(obj)
+        super(FnSkin, self).setObject(skinModifier)
 
-            super(FnSkin, self).setObject(skinModifier)
+        # Store reference to shape node
+        #
+        shape = self.getNodeFromModifier(skinModifier)
+        handle = pymxs.runtime.getHandleByAnim(shape)
 
-            # Store reference to shape node
-            #
-            shape = self.getNodeFromModifier(skinModifier)
-            handle = pymxs.runtime.getHandleByAnim(shape)
-
-            self._shape = handle
-
-        except TypeError as exception:
-
-            log.error(exception)
-            return
+        self._shape = handle
 
     @classmethod
     def findSkinModifier(cls, obj):
@@ -80,6 +73,8 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
             #
             if pymxs.runtime.isValidNode(obj):
 
+                # Collect all skin modifiers
+                #
                 fnNode = fnnode.FnNode(obj)
 
                 skins = fnNode.getModifiersByType(pymxs.runtime.skin)
@@ -93,17 +88,13 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
                     raise TypeError('findSkinModifier() expects 1 skin modifier (%s given)!' % numSkins)
 
-            elif pymxs.runtime.isValidModifier(obj):
-
-                return obj
-
             else:
 
-                raise TypeError('findSkinModifier() expects a node or modifier!')
+                raise TypeError('findSkinModifier() expects a node!')
 
         elif isinstance(obj, string_types):
 
-            return cls.findSkinModifier(fnnode.FnNode.getMXSWrapper(obj))
+            return cls.findSkinModifier(cls.getMXSWrapper(obj))
 
         else:
 
@@ -204,7 +195,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         for i in range(1, numBones + 1, 1):
 
             boneId = pymxs.runtime.skinOps.getBoneIDByListID(skinModifier, i)
-            boneName = pymxs.runtime.skinOps.getBoneName(skinModifier, boneId)
+            boneName = pymxs.runtime.skinOps.getBoneName(skinModifier, boneId, 0)
 
             yield boneId, boneName
 
@@ -238,7 +229,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         :rtype: int
         """
 
-        return pymxs.runtime.getNumberBones(self.object())
+        return pymxs.runtime.skinOps.getNumberBones(self.object())
 
     def maxInfluences(self):
         """

@@ -41,27 +41,20 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         :rtype: None
         """
 
-        try:
+        # Locate skin cluster from object
+        #
+        obj = self.getMObject(obj)
+        skinCluster = self.findSkinCluster(obj)
 
-            # Locate skin cluster
-            #
-            obj = self.getMObject(obj)
-            skinCluster = self.findSkinCluster(obj)
+        super(FnSkin, self).setObject(skinCluster)
 
-            super(FnSkin, self).setObject(skinCluster)
+        # Store references to skin cluster components
+        #
+        transform, shape, intermediateObject = self.decomposeSkinCluster(skinCluster)
 
-            # Store references to skin cluster components
-            #
-            transform, shape, intermediateObject = self.decomposeSkinCluster(skinCluster)
-
-            self._transform = om.MObjectHandle(transform)
-            self._shape = om.MObjectHandle(shape)
-            self._intermediateObject = om.MObjectHandle(intermediateObject)
-
-        except TypeError as exception:
-
-            log.error(exception)
-            return
+        self._transform = om.MObjectHandle(transform)
+        self._shape = om.MObjectHandle(shape)
+        self._intermediateObject = om.MObjectHandle(intermediateObject)
 
     @classmethod
     def findSkinCluster(cls, obj):

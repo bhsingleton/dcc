@@ -49,15 +49,14 @@ class FnNode(afnnode.AFnNode):
         :rtype: None
         """
 
-        try:
+        # Get maya object
+        #
+        obj = self.getMObject(obj)
+        handle = om.MObjectHandle(obj)
 
-            obj = self.getMObject(obj)
-            super(FnNode, self).setObject(om.MObjectHandle(obj).hashCode())
-
-        except TypeError as exception:
-
-            log.error(exception)
-            return
+        # Assign node handle
+        #
+        super(FnNode, self).setObject(handle.hashCode())
 
     def acceptsObject(self, obj):
         """
