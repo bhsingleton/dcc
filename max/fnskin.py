@@ -120,29 +120,44 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
         return pymxs.runtime.getAnimByHandle(self._shape)
 
-    def iterControlPoints(self, *args):
+    def iterVertices(self):
         """
-        Returns a generator that yields control points.
+        Returns a generator that yields all vertex indices.
 
         :rtype: iter
         """
 
-        # Evaluate arguments
-        #
-        vertexIndices = args
-        numVertexIndices = len(vertexIndices)
+        return range(1, self.numControlPoints() + 1, 1)  # Thanks Obama
 
-        if numVertexIndices == 0:
+    def controlPoint(self, vertexIndex):
+        """
+        Returns a generator that yields control points.
 
-            vertexIndices = range(self.numControlPoints())
+        :type vertexIndex: int
+        :rtype: list[float, float, float]
+        """
 
-        # Iterate through elements
-        #
+        shape = self.shape()
+        point = pymxs.runtime.polyOp.getVert(shape, vertexIndex)
+
+        return point.x, point.y, point.z
+
+    def iterControlPoints(self):
+        """
+        Returns a generator that yields all control points.
+        Overloading for performance concerns.
+
+        :rtype: iter
+        """
+
         shape = self.shape()
 
-        for vertexIndex in vertexIndices:
+        points = shape.verts
+        numPoints = points.count
 
-            point = shape.verts[vertexIndex].pos
+        for i in range(numPoints):
+
+            point = points[i]
             yield point.x, point.y, point.z
 
     def numControlPoints(self):
@@ -179,6 +194,54 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
                 continue
 
+    def setSelection(self, vertices):
+        """
+        Updates the active selection with the supplied vertex elements.
+
+        :type vertices: list[int]
+        :rtype: None
+        """
+
+        pymxs.runtime.skinOps.isVertexSelected(self.object(), vertices)
+
+    @CommandPanelOverride('modify')
+    def showColors(self):
+        """
+        Enables color feedback for the associated shape.
+
+        :rtype: None
+        """
+
+        # Enter envelope mode
+        #
+        pymxs.runtime.subObjectLevel = 1
+
+        # Modify display settings
+        #
+        skinModifier = self.object()
+        skinModifier.drawVertices = True
+        skinModifier.shadeWeights = False
+        skinModifier.colorAllWeights = False
+        skinModifier.draw_all_envelopes = False
+        skinModifier.draw_all_vertices = False
+        skinModifier.draw_all_gizmos = False
+        skinModifier.showNoEnvelopes = True
+        skinModifier.showHiddenVertices = False
+        skinModifier.crossSectionsAlwaysOnTop = True
+        skinModifier.envelopeAlwaysOnTop = True
+
+    @CommandPanelOverride('modify')
+    def hideColors(self):
+        """
+        Disable color feedback for the associated shape.
+
+        :rtype: None
+        """
+
+        # Exit envelop mode
+        #
+        pymxs.runtime.subObjectLevel = 0
+
     @CommandPanelOverride('modify')
     def iterInfluences(self):
         """
@@ -194,10 +257,32 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
         for i in range(1, numBones + 1, 1):
 
+            # Get bone properties
+            #
             boneId = pymxs.runtime.skinOps.getBoneIDByListID(skinModifier, i)
             boneName = pymxs.runtime.skinOps.getBoneName(skinModifier, boneId, 0)
 
-            yield boneId, boneName
+            # Get bone from name
+            #
+            nodes = pymxs.runtime.getNodeByName(boneName, exact=True, all=True)
+            numNodes = nodes.count
+
+            bone = None
+
+            if numNodes == 0:
+
+                raise RuntimeError('iterInfluences() cannot locate bone from name: %s' % boneName)
+
+            elif numNodes == 1:
+
+                bone = nodes[0]
+
+            else:
+
+                dependencies = pymxs.runtime.dependsOn(skinModifier)
+                bone = [x for x in nodes if x in dependencies][0]
+
+            yield boneId, bone
 
     @CommandPanelOverride('modify')
     def addInfluence(self, influence):
@@ -241,6 +326,17 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         return self.object().bone_limit
 
     @CommandPanelOverride('modify')
+    def selectInfluence(self, influenceId):
+        """
+        Changes the color display to the specified influence id.
+
+        :type influenceId: int
+        :rtype: None
+        """
+
+        pymxs.runtime.skinOps.selectBone(self.object(), influenceId)
+
+    @CommandPanelOverride('modify')
     def iterWeights(self, vertexIndex):
         """
         Returns a generator that yields skin weights.
@@ -261,3 +357,22 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
             boneWeight = pymxs.runtime.skinOps.getVertexWeight(skinModifier, vertexIndex, i)
 
             yield boneId, boneWeight
+
+    @CommandPanelOverride('modify')
+    def applyWeights(self, vertexIndex, weights):
+        """
+        Assigns the supplied vertex weights to this deformer.
+
+        :type vertexIndex: int
+        :type weights: dict[int:float]
+        :rtype: None
+        """
+
+        # Assign new weights
+        #
+        pymxs.runtime.skinOps.replaceVertexWeights(
+            self.object(),
+            vertexIndex,
+            list(weights.keys()),
+            list(weights.values())
+        )

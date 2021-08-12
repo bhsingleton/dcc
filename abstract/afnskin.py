@@ -217,7 +217,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
     Overload of AFnBase that outlines function set behaviour for DCC skinning.
     """
 
-    __slots__ = ('_influences',)
+    __slots__ = ('_influences', '_clipboard')
 
     def __init__(self, *args, **kwargs):
         """
@@ -227,6 +227,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
         # Declare private variables
         #
         self._influences = Influences()
+        self._clipboard = {}
 
         # Call parent method
         #
@@ -257,14 +258,14 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
         #
         for (influenceId, influence) in self.iterInfluences():
 
-            influences[influenceId] = None
+            influences[influenceId] = fnnode.FnNode(influence).name()
 
         # Commit vertex weights to state object
         #
-        for ((vertexIndex, vertexWeights), point) in zip(self.iterWeights(), self.iterControlPoints()):
+        for vertexIndex in self.iterVertices():
 
-            vertices[vertexIndex] = point
-            points[vertexIndex] = vertexWeights
+            vertices[vertexIndex] = self.controlPoint(vertexIndex)
+            points[vertexIndex] = self.weights(vertexIndex)
 
         return state
 
@@ -289,23 +290,46 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
         pass
 
     @abstractmethod
-    def iterControlPoints(self, *args):
+    def iterVertices(self):
         """
-        Returns a generator that yields control points.
+        Returns a generator that yields all vertex indices.
+        This is here purely to support 1-based arrays in god forsaken programs...
 
         :rtype: iter
         """
 
         pass
 
-    def controlPoints(self, *args):
+    @abstractmethod
+    def controlPoint(self, vertexIndex):
+        """
+        Returns the control point for the specified vertex.
+
+        :type vertexIndex: int
+        :rtype: list[float, float, float]
+        """
+
+        pass
+
+    def iterControlPoints(self):
+        """
+        Returns a generator that yields all control points.
+
+        :rtype: iter
+        """
+
+        for vertexIndex in self.iterVertices():
+
+            yield self.controlPoint(vertexIndex)
+
+    def controlPoints(self):
         """
         Returns the control points from the intermediate object.
 
         :rtype: list
         """
 
-        return list(self.iterControlPoints(*args))
+        return list(self.iterControlPoints())
 
     @abstractmethod
     def numControlPoints(self):
@@ -335,6 +359,37 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
 
         return list(self.iterSelection())
+
+    @abstractmethod
+    def setSelection(self, vertices):
+        """
+        Updates the active selection with the supplied vertex elements.
+
+        :type vertices: list[int]
+        :rtype: None
+        """
+
+        pass
+
+    @abstractmethod
+    def showColors(self):
+        """
+        Enables color feedback for the associated shape.
+
+        :rtype: None
+        """
+
+        pass
+
+    @abstractmethod
+    def hideColors(self):
+        """
+        Disable color feedback for the associated shape.
+
+        :rtype: None
+        """
+
+        pass
 
     @abstractmethod
     def iterInfluences(self):
@@ -430,6 +485,45 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         pass
 
+    @abstractmethod
+    def selectInfluence(self, influenceId):
+        """
+        Changes the color display to the specified influence id.
+
+        :type influenceId: int
+        :rtype: None
+        """
+
+        pass
+
+    def getVerticesByInfluenceId(self, *args):
+        """
+        Returns a list of vertices associated with the supplied influence ids.
+        This can be an expensive operation so use sparingly.
+
+        :rtype: list[int]
+        """
+
+        # Iterate through vertices
+        #
+        vertexIndices = []
+
+        for vertexIndex in self.iterVertices():
+
+            # Check if weights contain influence ID
+            #
+            vertexWeights = dict(self.iterWeights(vertexIndex))
+
+            if any([x in vertexWeights for x in args]):
+
+                vertexIndices.append(vertexIndex)
+
+            else:
+
+                continue
+
+        return vertexIndices
+
     def findRoot(self):
         """
         Returns the skeleton root associated with this deformer.
@@ -486,70 +580,213 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
                 joint = parent
 
     @abstractmethod
-    def iterWeights(self, *args):
+    def iterWeights(self, vertexIndex):
         """
-        Returns a generator that yields skin weights.
-        If no vertex indices are supplied then all of the skin weights should be yielded.
+        Returns a generator that yields the weights for the given vertex.
 
         :rtype: iter
         """
 
         pass
 
-    def weights(self, *args):
+    def weights(self, vertexIndex):
         """
-        Returns a dictionary with skin weights.
-        Each key represents a vertex index for each set of vertex weights.
+        Returns the weights for the given vertex.
 
-        :rtype: dict[int:dict[int:float]]
+        :rtype: dict[int:float]
         """
 
-        return dict(self.iterWeights(*args))
+        return dict(self.iterWeights(vertexIndex))
 
-    def setWeights(self, vertexIndices, target, source, amount, falloff=None):
+    def setWeights(self, weights, target, source, amount, falloff=1.0):
         """
         Sets the supplied target ID to the specified amount while preserving normalization.
 
-        :type vertexIndices: list[int]
+        :type weights: dict[int:float]
         :type target: int
         :type source: list[int]
         :type amount: float
-        :type falloff: dict[int:float]
-        :rtype: dict[int:dict[int:float]]
+        :type falloff: float
+        :rtype: dict[int:float]
         """
 
-        pass
+        # Check weights type
+        #
+        if not isinstance(weights, dict):
 
-    def scaleWeights(self, vertexIndices, target, source, percent, falloff=None):
+            raise TypeError('setWeights() expects a dict (%s given)!' % type(weights).__name__)
+
+        # Check source and target influences
+        #
+        if not isinstance(target, int) or not isinstance(source, list):
+
+            raise TypeError('setWeights() expects a valid target and source influences!')
+
+        # Check amount type
+        #
+        if not isinstance(amount, float):
+
+            raise TypeError('setWeights() expects a valid amount (%s given)!' % type(amount).__name__)
+
+        # Copy weights to manipulate
+        #
+        newWeights = deepcopy(weights)
+
+        softAmount = amount * falloff
+        total = sum([weights.get(x, 0.0) for x in source])
+
+        log.debug('%s weights available to redistribute.' % total)
+
+        # Check if influence exists on vertex
+        #
+        influenceIds = newWeights.keys()
+        numInfluences = len(influenceIds)
+
+        maxInfluences = self.maxInfluences()
+
+        if target in influenceIds or (target not in influenceIds and numInfluences < maxInfluences):
+
+            # Determine redistribution method:
+            # If amount is less than current then give those weights back to the source list
+            # If amount is greater than current then take weights from the source list
+            #
+            current = newWeights.get(target, 0.0)
+
+            if softAmount < current and 0.0 < total:
+
+                # Redistribute target weight to source influences
+                #
+                diff = current - softAmount
+
+                for (influenceId, weight) in newWeights.items():
+
+                    # Check if influence is from source
+                    #
+                    if influenceId in source:
+
+                        # Apply percentage of difference to influence
+                        #
+                        percent = weight / total
+                        newWeight = weight + (diff * percent)
+
+                        newWeights[influenceId] = newWeight
+
+                    else:
+
+                        continue
+
+                # Set target to amount
+                #
+                newWeights[target] = current - diff
+
+            elif softAmount > current and 0.0 < total:
+
+                # Make sure amount has not exceeded total
+                #
+                diff = softAmount - current
+
+                if diff >= total:
+
+                    log.debug('Insufficient weights to pull from, clamping amount to: %s' % total)
+                    diff = total
+
+                # Redistribute source weights to target influences
+                #
+                for (influenceId, weight) in newWeights.items():
+
+                    # Check if influence is from source
+                    #
+                    if influenceId in source:
+
+                        # Reduce influence based on percentage of difference
+                        #
+                        percent = weight / total
+                        newWeight = weight - (diff * percent)
+
+                        newWeights[influenceId] = newWeight
+
+                    else:
+
+                        continue
+
+                # Set target to accumulated amount
+                #
+                newWeights[target] = current + diff
+
+            else:
+
+                pass
+
+        elif target not in influenceIds and numInfluences >= maxInfluences:
+
+            # Check if all influences are being replaced
+            #
+            if self.isClose(amount, total, abs_tol=1e-06):
+
+                newWeights = {target: 1.0}
+
+            elif amount == 0.0:
+
+                log.debug('No weights available to redistribute!')
+
+            else:
+
+                log.warning('Cannot exceed max influences!')
+
+        else:
+
+            raise TypeError('Unable to set vertex weights using supplied arguments!')
+
+        # Return updated vertex weights
+        #
+        return newWeights
+
+    def scaleWeights(self, weights, target, source, percent, falloff=1.0):
         """
         Scales the supplied target ID to the specified amount while preserving normalization.
 
-        :type vertexIndices: list
+        :type weights: dict[int:float]
         :type target: int
         :type source: list[int]
         :type percent: float
-        :type falloff: dict[int:float]
-        :rtype: dict[int:dict[int:float]]
+        :type falloff: float
+        :rtype: dict[int:float]
         """
 
-        pass
+        # Get amount to redistribute
+        #
+        current = weights.get(target, 0.0)
+        amount = current + ((current * percent) * falloff)
 
-    def incrementWeights(self, vertexIndices, target, source, increment, falloff=None):
+        # Set vertex weight
+        #
+        log.debug('Changing influence ID: %s, from %s to %s.' % (target, current, amount))
+        return self.setWeights(weights, target, source, amount)
+
+    def incrementWeights(self, weights, target, source, increment, falloff=1.0):
         """
         Increments the supplied target ID to the specified amount while preserving normalization.
 
-        :type vertexIndices: list
+        :type weights: dict[int:float]
         :type target: int
         :type source: list[int]
         :type increment: float
-        :type falloff: dict[int:float]
-        :rtype: dict[int:dict[int:float]]
+        :type falloff: float
+        :rtype: dict[int:float]
         """
 
-        pass
+        # Get amount to redistribute
+        #
+        current = weights.get(target, 0.0)
+        amount = current + (increment * falloff)
+
+        # Set vertex weight
+        #
+        log.debug('Changing influence ID: %s, from %s to %s.' % (target, current, amount))
+        return self.setWeights(weights, target, source, amount)
 
     @staticmethod
-    def isClose(a, b, rel_tol=1e-09, abs_tol=0.0):
+    def isClose(a, b, rel_tol=1e-03, abs_tol=0.0):
         """
         Evaluates if the two numbers of relatively close.
         Sadly this function doesn't exist in the math module until Python 3.5
@@ -737,11 +974,101 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
         #
         return self.normalizeWeights(average, maintainMaxInfluences=maintainMaxInfluences)
 
-    def applyWeights(self, vertices):
+    @abstractmethod
+    def applyWeights(self, vertexIndex, weights):
         """
         Assigns the supplied vertex weights to this deformer.
 
-        :type vertices: dict[int:dict[int:float]]
+        :type vertexIndex: int
+        :type weights: dict[int:float]
+        :rtype: None
+        """
+
+        pass
+
+    def copyWeights(self):
+        """
+        Copies the selected vertices to the clipboard.
+
+        :rtype: None
+        """
+
+        self._clipboard = {x: self.weights(x) for x in self.selection()}
+
+    def pasteWeights(self):
+        """
+        Pastes the clipboard to the selected vertices.
+
+        :rtype: None
+        """
+
+        # Get active selection
+        #
+        selection = self.selection()
+        numSelected = len(selection)
+
+        numClipboard = len(self._clipboard)
+
+        if numSelected == 0 or numClipboard == 0:
+
+            return
+
+        # Check which operation to perform:
+        #
+        vertices = {}
+
+        if numSelected == numClipboard:
+
+            # Reallocate clipboard values to updates
+            #
+            vertices = {target: self.weights(source) for (source, target) in zip(self._clipboard.keys(), selection)}
+
+        else:
+
+            # Iterate through vertices
+            #
+            source = self._clipboard.keys()[-1]
+            vertices = {vertexIndex: deepcopy(self._clipboard[source]) for vertexIndex in selection}
+
+        # Apply weights
+        #
+        for (vertexIndex, vertexWeights) in vertices.items():
+
+            self.applyWeights(vertexIndex, vertexWeights)
+
+    def pasteAveragedWeights(self):
+        """
+        Pastes the average of the weights from the clipboard.
+
+        :rtype: None
+        """
+
+        pass
+
+    def blendVertices(self):
+        """
+        Blends the selected vertices.
+
+        :rtype: None
+        """
+
+        pass
+
+    def blendBetweenVertices(self, blendByDistance=False):
+        """
+        Blends along a loop of connected vertices.
+
+        :type blendByDistance: bool
+        :rtype: None
+        """
+
+        pass
+
+    def blendBetweenTwoVertices(self, blendByDistance=False):
+        """
+        Blends along the shortest path between two vertices.
+
+        :type blendByDistance: bool
         :rtype: None
         """
 

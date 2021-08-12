@@ -204,33 +204,47 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
         return self._intermediateObject.object()
 
-    def iterControlPoints(self, *args):
+    def iterVertices(self):
+        """
+        Returns a generator that yields all vertex indices.
+
+        :rtype: iter
+        """
+
+        return range(self.numControlPoints())
+
+    def controlPoint(self, vertexIndex):
         """
         Returns the control points from the intermediate object.
 
-        :rtype: list
+        :type vertexIndex: int
+        :rtype: list[float, float, float]
         """
 
-        # Evaluate arguments
-        #
-        vertexIndices = args
-        numVertexIndices = len(vertexIndices)
+        intermediateObject = self.intermediateObject()
 
-        if numVertexIndices == 1:
+        fnMesh = om.MFnMesh(intermediateObject)
+        point = fnMesh.getPoint(vertexIndex)
 
-            vertexIndices = range(self.numControlPoints())
+        return point.x, point.y, point.z
 
-        # Initialize vertex iterator
-        #
+    def iterControlPoints(self):
+        """
+        Returns a generator that yields all control points.
+        Overloading for performance concerns.
+
+        :rtype: iter
+        """
+
         intermediateObject = self.intermediateObject()
         iterVertices = om.MItMeshVertex(intermediateObject)
 
-        for vertexIndex in vertexIndices:
+        while not iterVertices.isDone():
 
-            iterVertices.setIndex(vertexIndex)
             point = iterVertices.position()
-
             yield point.x, point.y, point.z
+
+            iterVertices.next()
 
     def numControlPoints(self):
         """
@@ -279,6 +293,34 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
             break
 
+    def setSelection(self, vertices):
+        """
+        Updates the active selection with the supplied vertex elements.
+
+        :type vertices: list[int]
+        :rtype: None
+        """
+
+        pass
+
+    def showColors(self):
+        """
+        Enables color feedback for the associated shape.
+
+        :rtype: None
+        """
+
+        pass
+
+    def hideColors(self):
+        """
+        Disable color feedback for the associated shape.
+
+        :rtype: None
+        """
+
+        pass
+
     def iterInfluences(self):
         """
         Returns a generator that yields all of the influence object from this deformer.
@@ -317,6 +359,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
             else:
 
                 log.debug('Null object found on .matrix[%s]!' % index)
+                continue
 
     def numInfluences(self):
         """
@@ -325,10 +368,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         :rtype: int
         """
 
-        fnDependNode = om.MFnDependencyNode(self.object())
-        plug = fnDependNode.findPlug('matrix', False)  # type: om.MPlug
-
-        return plug.numConnectedElements()
+        return om.MFnDependencyNode(self.object()).findPlug('matrix', False).numConnectedElements()
 
     def maxInfluences(self):
         """
@@ -337,8 +377,17 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         :rtype: int
         """
 
-        fnDependNode = om.MFnDependencyNode(self.object())
-        return fnDependNode.findPlug('maxInfluences', False).asFloat()
+        return om.MFnDependencyNode(self.object()).findPlug('maxInfluences', False).asFloat()
+
+    def selectInfluence(self, influenceId):
+        """
+        Changes the color display to the specified influence id.
+
+        :type influenceId: int
+        :rtype: None
+        """
+
+        pass
 
     def addInfluence(self, influence):
         """
@@ -471,3 +520,56 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
             influenceWeight = element.asFloat()
 
             yield influenceId, influenceWeight
+
+    def applyWeights(self, vertexIndex, weights):
+        """
+        Assigns the supplied vertex weights to this deformer.
+
+        :type vertexIndex: int
+        :type weights: dict[int:float]
+        :rtype: None
+        """
+
+        # Initialize function set
+        #
+        fnDependNode = om.MFnDependencyNode(self.object())
+
+        # Disable normalize weights
+        #
+        normalizePlug = fnDependNode.findPlug('normalizeWeights', False)  # type: om.MPlug
+        normalizePlug.setBool(False)
+
+        # Get weight list plug
+        #
+        weightListPlug = fnDependNode.findPlug('weightList', False)  # type: om.MPlug
+        weightListPlug.selectAncestorLogicalIndex(vertexIndex)
+
+        # Get pre-existing influences
+        #
+        weightsPlug = weightListPlug.child(0)  # type: om.MPlug
+        influenceIds = weightsPlug.getExistingArrayAttributeIndices()
+
+        # Remove unused influences
+        #
+        diff = list(set(influenceIds) - set(weights.keys()))
+
+        for influenceId in diff:
+
+            mc.removeMultiInstance(
+                '{nodeName}.weightList[vertexIndex].weights[{influenceId}]'.format(
+                    nodeName=fnDependNode.absoluteName(),
+                    vertexIndex=vertexIndex,
+                    influenceId=influenceId
+                )
+            )
+
+        # Assign new weights
+        #
+        for (influenceId, weight) in weights.items():
+
+            element = weightsPlug.elementByLogicalIndex(influenceId)  # type: om.MPlug
+            element.setFloat(weight)
+
+        # Enable normalize weights
+        #
+        normalizePlug.setBool(True)
