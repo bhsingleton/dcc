@@ -1,4 +1,4 @@
-from Qt import QtCore, QtWidgets, QtGui
+from PySide2 import QtCore, QtWidgets, QtGui
 from abc import ABCMeta, abstractmethod
 
 from .. import fnqt
@@ -24,6 +24,7 @@ class QProxyWindow(QtWidgets.QMainWindow):
 
         :keyword parent: QtWidgets.QWidget
         :keyword flags: QtCore.Qt.WindowFlags
+        :rtype: None
         """
 
         # Call parent method
@@ -90,7 +91,53 @@ class QProxyWindow(QtWidgets.QMainWindow):
 
         # Remove reference to instance
         #
-        self.__class__.__instances__.pop(self.className)
+        try:
+
+            self.__class__.__instances__.pop(self.className)
+
+        except KeyError as exception:
+
+            log.debug(exception)
+
+    @staticmethod
+    def getTextWidth(item, text, offset=12):
+        """
+        Static method used to calculate the pixel units from the supplied string value.
+
+        :type item: QtGui.QStandardItem
+        :type text: str
+        :type offset: int
+        :rtype: int
+        """
+
+        # Get font from item and calculate width
+        #
+        font = item.font()
+        fontMetric = QtGui.QFontMetrics(font)
+
+        width = fontMetric.width(text) + offset
+
+        return width
+
+    @classmethod
+    def createStandardItem(cls, text, height=16):
+        """
+        Class method used to create a QStandardItem from the given string value.
+
+        :type text: str
+        :type height: int
+        :rtype: QtGui.QStandardItem
+        """
+
+        # Create item and resize based on text width
+        #
+        item = QtGui.QStandardItem(text)
+        textWidth = cls.getTextWidth(item, text)
+
+        item.setSizeHint(QtCore.QSize(textWidth, height))
+        item.setTextAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
+
+        return item
 
     @classmethod
     def isInitialized(cls):

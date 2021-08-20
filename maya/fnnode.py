@@ -487,3 +487,37 @@ class FnNode(afnnode.AFnNode):
 
         om.MGlobal.clearSelectionList()
 
+    @classmethod
+    def iterActiveComponentSelection(cls):
+        """
+        Returns a generator that yields all selected components
+
+        :rtype: iter
+        """
+
+        # Access the Maya global selection list
+        #
+        selection = om.MGlobal.getActiveSelectionList()
+        numSelected = selection.length()
+
+        if numSelected == 0:
+
+            return
+
+        # Iterate through selection
+        #
+        iterSelection = om.MItSelectionList(selection, om.MFn.kComponent)
+
+        while not iterSelection.isDone():
+
+            # Check if items are valid
+            #
+            dagPath, component = iterSelection.getComponent()
+
+            if dagPath.isValid() and not component.isNull():
+
+                yield dagPath, component
+
+            # Go to next selection
+            #
+            iterSelection.next()

@@ -88,6 +88,10 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
                     raise TypeError('findSkinModifier() expects 1 skin modifier (%s given)!' % numSkins)
 
+            elif pymxs.runtime.classOf(obj) == pymxs.runtime.skin:
+
+                return obj
+
             else:
 
                 raise TypeError('findSkinModifier() expects a node!')
@@ -120,14 +124,31 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
         return pymxs.runtime.getAnimByHandle(self._shape)
 
-    def iterVertices(self):
+    def range(self, *args):
         """
-        Returns a generator that yields all vertex indices.
+        Returns a generator for yielding a range of numbers.
 
         :rtype: iter
         """
 
-        return range(1, self.numControlPoints() + 1, 1)  # Thanks Obama
+        # Inspect arguments
+        #
+        numArgs = len(args)
+
+        if numArgs == 1:
+
+            args = 1, args[0]
+
+        return super(FnSkin, self).range(*args)
+
+    def enumerate(self, items):
+        """
+        Returns a generator for enumerating a list of items.
+
+        :rtype: iter
+        """
+
+        return zip(self.range(1, len(items) + 1, 1), items)
 
     def controlPoint(self, vertexIndex):
         """
@@ -137,28 +158,8 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         :rtype: list[float, float, float]
         """
 
-        shape = self.shape()
-        point = pymxs.runtime.polyOp.getVert(shape, vertexIndex)
-
+        point = pymxs.runtime.polyOp.getVert(self.shape().baseObject, vertexIndex)
         return point.x, point.y, point.z
-
-    def iterControlPoints(self):
-        """
-        Returns a generator that yields all control points.
-        Overloading for performance concerns.
-
-        :rtype: iter
-        """
-
-        shape = self.shape()
-
-        points = shape.verts
-        numPoints = points.count
-
-        for i in range(numPoints):
-
-            point = points[i]
-            yield point.x, point.y, point.z
 
     def numControlPoints(self):
         """
@@ -167,7 +168,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         :rtype: int
         """
 
-        return pymxs.runtime.skinOps.getNumberVertices(self.object())
+        return pymxs.runtime.polyOp.getNumVerts(self.shape().baseObject)
 
     @CommandPanelOverride('modify')
     def iterSelection(self):
@@ -180,13 +181,13 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
         # Iterate through vertices
         #
-        obj = self.object()
+        skinModifier = self.object()
 
         for i in range(1, self.numControlPoints() + 1, 1):
 
             # Check if vertex is selected
             #
-            if pymxs.runtime.skinOps.isVertexSelected(obj, i):
+            if pymxs.runtime.skinOps.isVertexSelected(skinModifier, i):
 
                 yield i
 
@@ -203,6 +204,15 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         """
 
         pymxs.runtime.skinOps.isVertexSelected(self.object(), vertices)
+
+    def iterSoftSelection(self):
+        """
+        Returns a generator that yields selected vertex and soft value pairs.
+
+        :rtype iter
+        """
+
+        return {x: 1.0 for x in self.iterSelection()}
 
     @CommandPanelOverride('modify')
     def showColors(self):
@@ -337,42 +347,62 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         pymxs.runtime.skinOps.selectBone(self.object(), influenceId)
 
     @CommandPanelOverride('modify')
-    def iterWeights(self, vertexIndex):
+    def iterWeights(self, *args):
         """
-        Returns a generator that yields skin weights.
-        If no vertex indices are supplied then all of the skin weights should be yielded.
+        Returns a generator that yields weights for the supplied vertex indices.
+        If no vertex indices are supplied then all weights are yielded instead.
 
-        :type vertexIndex: int
         :rtype: iter
         """
 
-        # Iterate through bones
+        # Inspect arguments
         #
-        skinModifier = self.object()
-        numBones = pymxs.runtime.skinOps.getVertexWeightCount(skinModifier, vertexIndex)
+        numArgs = len(args)
 
-        for i in range(1, numBones + 1, 1):
+        if numArgs == 0:
 
-            boneId = pymxs.runtime.skinOps.getVertexWeightBoneID(skinModifier, vertexIndex, i)
-            boneWeight = pymxs.runtime.skinOps.getVertexWeight(skinModifier, vertexIndex, i)
+            args = self.range(self.numControlPoints())
 
-            yield boneId, boneWeight
+        # Iterate through arguments
+        #
+        for arg in args:
+
+            # Iterate through bones
+            #
+            skinModifier = self.object()
+            numBones = pymxs.runtime.skinOps.getVertexWeightCount(skinModifier, arg)
+
+            vertexWeights = {}
+
+            for i in range(1, numBones + 1, 1):
+
+                boneId = pymxs.runtime.skinOps.getVertexWeightBoneID(skinModifier, arg, i)
+                boneWeight = pymxs.runtime.skinOps.getVertexWeight(skinModifier, arg, i)
+
+                vertexWeights[boneId] = boneWeight
+
+            # Yield vertex weights
+            #
+            yield arg, vertexWeights
 
     @CommandPanelOverride('modify')
-    def applyWeights(self, vertexIndex, weights):
+    def applyWeights(self, vertices):
         """
         Assigns the supplied vertex weights to this deformer.
 
-        :type vertexIndex: int
-        :type weights: dict[int:float]
+        :type vertices: dict[int:dict[int:float]]
         :rtype: None
         """
 
-        # Assign new weights
+        # Iterate through vertices
         #
-        pymxs.runtime.skinOps.replaceVertexWeights(
-            self.object(),
-            vertexIndex,
-            list(weights.keys()),
-            list(weights.values())
-        )
+        skinModifier = self.object()
+
+        for (vertexIndex, vertexWeights) in vertices.items():
+
+            pymxs.runtime.skinOps.replaceVertexWeights(
+                skinModifier,
+                vertexIndex,
+                list(vertexWeights.keys()),
+                list(vertexWeights.values())
+            )

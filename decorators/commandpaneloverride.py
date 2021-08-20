@@ -43,6 +43,14 @@ class CommandPanelOverride(object):
 
                 pymxs.runtime.setCommandPanelTaskMode(self.mode)
 
+            # Inspect selected node
+            #
+            shape = args[0].shape()
+
+            if not shape.isSelected:
+
+                pymxs.runtime.select(shape)
+
             return func(*args, **kwargs)
 
         return wrapper

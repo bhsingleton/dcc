@@ -204,15 +204,6 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
         return self._intermediateObject.object()
 
-    def iterVertices(self):
-        """
-        Returns a generator that yields all vertex indices.
-
-        :rtype: iter
-        """
-
-        return range(self.numControlPoints())
-
     def controlPoint(self, vertexIndex):
         """
         Returns the control points from the intermediate object.
@@ -228,7 +219,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
         return point.x, point.y, point.z
 
-    def iterControlPoints(self):
+    def iterControlPoints(self, *args):
         """
         Returns a generator that yields all control points.
         Overloading for performance concerns.
@@ -236,8 +227,27 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         :rtype: iter
         """
 
+        # Inspect arguments
+        #
+        numArgs = len(args)
+
+        if numArgs == 0:
+
+            args = list(self.range(self.numControlPoints()))
+
+        # Create component
+        #
+        fnComponent = om.MFnSingleIndexedComponent()
+        component = fnComponent.create(om.MFn.kMeshVertComponent)
+
+        fnComponent.addElements(args)
+
+        # Initialize iterator
+        #
         intermediateObject = self.intermediateObject()
-        iterVertices = om.MItMeshVertex(intermediateObject)
+        dagPath = om.MDagPath.getAPathTo(intermediateObject)
+
+        iterVertices = om.MItMeshVertex(dagPath, component)
 
         while not iterVertices.isDone():
 
@@ -258,40 +268,51 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
         return fnMesh.numVertices
 
-    def iterSelection(self):
+    def componentSelection(self):
+        """
+        Returns the component selection for the associated shape.
+
+        :rtype: om.MObject
+        """
+
+        # Collect components
+        #
+        shape = self.shape()
+
+        components = [component for (dagPath, component) in self.iterActiveComponentSelection() if dagPath.node() == shape]
+        numComponents = len(components)
+
+        if numComponents == 1:
+
+            return components[0]
+
+        else:
+
+            return om.MObject.kNullObj
+
+    def iterSelection(self, includeWeight=False):
         """
         Returns the selected vertex elements.
 
+        :type includeWeight: bool
         :rtype: list[int]
         """
 
-        # Inspect active selection
+        # Inspect component selection
         #
-        selection = om.MGlobal.getActiveSelectionList()  # type: om.MSelectionList
-        selectionCount = selection.length()
+        component = self.componentSelection()
 
-        shape = self.shape()
-        fnComponent = om.MFnSingleIndexedComponent()
+        if not component.hasFn(om.MFn.kMeshVertComponent):
 
-        for i in range(selectionCount):
+            return
 
-            # Check if this is self
-            #
-            dagPath, component = selection.getComponent(i)
+        # Iterate through component
+        #
+        fnComponent = om.MFnSingleIndexedComponent(component)
 
-            if dagPath.node() != shape or not component.hasFn(om.MFn.kMeshVertComponent):
+        for i in range(fnComponent.elementCount):
 
-                continue
-
-            # Yield component elements
-            #
-            fnComponent.setObject(component)
-
-            for j in range(fnComponent.elementCount):
-
-                yield fnComponent.element(j)
-
-            break
+            yield fnComponent.element(i)
 
     def setSelection(self, vertices):
         """
@@ -301,7 +322,55 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         :rtype: None
         """
 
-        pass
+        # Get dag path to object
+        #
+        dagPath = om.MDagPath.getAPathTo(self.shape())
+
+        # Create mesh component
+        #
+        fnComponent = om.MFnSingleIndexedComponent()
+        component = fnComponent.create(om.MFn.kMeshVertComponent)
+
+        fnComponent.addElements(vertices)
+
+        # Update selection list
+        #
+        selection = om.MSelectionList()
+        selection.add((dagPath, component))
+
+        om.MGlobal.setActiveSelectionList(selection)
+
+    def iterSoftSelection(self):
+        """
+        Returns a generator that yields selected vertex and soft value pairs.
+
+        :rtype iter
+        """
+
+        # Inspect component selection
+        #
+        component = self.componentSelection()
+
+        if not component.hasFn(om.MFn.kMeshVertComponent):
+
+            return
+
+        # Iterate through component
+        #
+        fnComponent = om.MFnSingleIndexedComponent(component)
+
+        for i in range(fnComponent.elementCount):
+
+            element = fnComponent.element(i)
+            hasWeight = fnComponent.hasWeights(i)
+
+            if hasWeight:
+
+                yield element, fnComponent.weight(i)
+
+            else:
+
+                yield element, 1.0
 
     def showColors(self):
         """
@@ -491,42 +560,58 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         #
         del influences[influenceId]
 
-    def iterWeights(self, vertexIndex):
+    def iterWeights(self, *args):
         """
-        Returns a generator that yields skin weights.
-        If no vertex indices are supplied then all of the skin weights should be yielded.
+        Returns a generator that yields weights for the supplied vertex indices.
+        If no vertex indices are supplied then all weights are yielded instead.
 
-        :type vertexIndex: int
         :rtype: iter
         """
 
-        # Get weight list plug
+        # Inspect arguments
+        #
+        numArgs = len(args)
+
+        if numArgs == 0:
+
+            args = self.range(self.numControlPoints())
+
+        # Iterate through arguments
         #
         fnDependNode = om.MFnDependencyNode(self.object())
-
         weightListPlug = fnDependNode.findPlug('weightList', False)  # type: om.MPlug
-        weightListPlug.selectAncestorLogicalIndex(vertexIndex)
 
-        # Iterate through weight elements
-        #
-        weightsPlug = weightListPlug.child(0)  # type: om.MPlug
-        numElements = weightsPlug.numElements()
+        for arg in args:
 
-        for physicalIndex in range(numElements):
+            # Go to weight list element
+            #
+            weightListPlug.selectAncestorLogicalIndex(arg)
 
-            element = weightsPlug.elementByPhysicalIndex(physicalIndex)
+            # Iterate through weight elements
+            #
+            weightsPlug = weightListPlug.child(0)  # type: om.MPlug
+            numElements = weightsPlug.numElements()
 
-            influenceId = element.logicalIndex()
-            influenceWeight = element.asFloat()
+            vertexWeights = {}
 
-            yield influenceId, influenceWeight
+            for physicalIndex in range(numElements):
 
-    def applyWeights(self, vertexIndex, weights):
+                element = weightsPlug.elementByPhysicalIndex(physicalIndex)
+
+                influenceId = element.logicalIndex()
+                influenceWeight = element.asFloat()
+
+                vertexWeights[influenceId] = influenceWeight
+
+            # Yield vertex weights
+            #
+            yield arg, vertexWeights
+
+    def applyWeights(self, vertices):
         """
         Assigns the supplied vertex weights to this deformer.
 
-        :type vertexIndex: int
-        :type weights: dict[int:float]
+        :type vertices: dict[int:dict[int:float]]
         :rtype: None
         """
 
@@ -539,36 +624,39 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         normalizePlug = fnDependNode.findPlug('normalizeWeights', False)  # type: om.MPlug
         normalizePlug.setBool(False)
 
-        # Get weight list plug
+        # Iterate through vertices
         #
         weightListPlug = fnDependNode.findPlug('weightList', False)  # type: om.MPlug
-        weightListPlug.selectAncestorLogicalIndex(vertexIndex)
 
-        # Get pre-existing influences
-        #
-        weightsPlug = weightListPlug.child(0)  # type: om.MPlug
-        influenceIds = weightsPlug.getExistingArrayAttributeIndices()
+        for (vertexIndex, vertexWeights) in vertices.items():
 
-        # Remove unused influences
-        #
-        diff = list(set(influenceIds) - set(weights.keys()))
+            # Get pre-existing influences
+            #
+            weightListPlug.selectAncestorLogicalIndex(vertexIndex)
 
-        for influenceId in diff:
+            weightsPlug = weightListPlug.child(0)  # type: om.MPlug
+            influenceIds = weightsPlug.getExistingArrayAttributeIndices()
 
-            mc.removeMultiInstance(
-                '{nodeName}.weightList[vertexIndex].weights[{influenceId}]'.format(
-                    nodeName=fnDependNode.absoluteName(),
-                    vertexIndex=vertexIndex,
-                    influenceId=influenceId
+            # Remove unused influences
+            #
+            diff = list(set(influenceIds) - set(vertexWeights.keys()))
+
+            for influenceId in diff:
+
+                mc.removeMultiInstance(
+                    '{nodeName}.weightList[vertexIndex].weights[{influenceId}]'.format(
+                        nodeName=fnDependNode.absoluteName(),
+                        vertexIndex=vertexIndex,
+                        influenceId=influenceId
+                    )
                 )
-            )
 
-        # Assign new weights
-        #
-        for (influenceId, weight) in weights.items():
+            # Assign new weights
+            #
+            for (influenceId, weight) in vertexWeights.items():
 
-            element = weightsPlug.elementByLogicalIndex(influenceId)  # type: om.MPlug
-            element.setFloat(weight)
+                element = weightsPlug.elementByLogicalIndex(influenceId)  # type: om.MPlug
+                element.setFloat(weight)
 
         # Enable normalize weights
         #
