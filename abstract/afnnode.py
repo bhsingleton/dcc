@@ -3,7 +3,7 @@ from six import with_metaclass
 from collections import deque
 
 from . import afnbase
-from ..decorators import classproperty
+from ..decorators.classproperty import classproperty
 
 import logging
 logging.basicConfig()
