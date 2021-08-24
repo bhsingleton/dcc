@@ -17,6 +17,7 @@ class FnNode(afnnode.AFnNode):
     """
 
     __slots__ = ()
+    __arrayoffset__ = 1
 
     def __init__(self, *args, **kwargs):
         """
@@ -107,6 +108,16 @@ class FnNode(afnnode.AFnNode):
         self.object().name = name
 
     @validator
+    def isMesh(self):
+        """
+        Evaluates if this node represents a mesh.
+
+        :rtype: bool
+        """
+
+        return pymxs.runtime.classOf(self.object()) in (pymxs.runtime.PolyMeshObject, pymxs.runtime.Editable_Poly, pymxs.runtime.Editable_Mesh)
+
+    @validator
     def isJoint(self):
         """
         Evaluates if this node represents a skinnable influence.
@@ -114,8 +125,7 @@ class FnNode(afnnode.AFnNode):
         :rtype: bool
         """
 
-        obj = self.object()
-        return obj.boneEnable or pymxs.runtime.superClassOf(obj) == pymxs.runtime.BoneGeometry
+        return True
 
     @validator
     def parent(self):

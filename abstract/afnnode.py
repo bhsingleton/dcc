@@ -3,6 +3,7 @@ from six import with_metaclass
 from collections import deque
 
 from . import afnbase
+from ..decorators import classproperty
 
 import logging
 logging.basicConfig()
@@ -18,6 +19,17 @@ class AFnNode(with_metaclass(ABCMeta, afnbase.AFnBase)):
     """
 
     __slots__ = ()
+    __arrayoffset__ = 0
+
+    @classproperty
+    def arrayOffset(cls):
+        """
+        Getter method that returns the array offset for this dcc.
+
+        :rtype: int
+        """
+
+        return cls.__arrayoffset__
 
     @abstractmethod
     def handle(self):
@@ -67,7 +79,17 @@ class AFnNode(with_metaclass(ABCMeta, afnbase.AFnBase)):
         :rtype: str
         """
 
-        return '|'.join(reversed(self.parents()))
+        return '|'.join(reversed([self.__class__(x).name() for x in self.iterParents()]))
+
+    @abstractmethod
+    def isMesh(self):
+        """
+        Evaluates if this node represents a mesh.
+
+        :rtype: bool
+        """
+
+        pass
 
     @abstractmethod
     def isJoint(self):

@@ -372,6 +372,37 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
                 yield element, 1.0
 
+    def getConnectedVertices(self, *args):
+        """
+        Returns a list of vertices connected to the supplied verts.
+
+        :rtype: list[int]
+        """
+
+        # Get dag path to intermediate object
+        #
+        intermediateObject = self.intermediateObject()
+        dagPath = om.MDagPath.getAPathTo(intermediateObject)
+
+        # Create mesh vertex component
+        #
+        fnComponent = om.MFnSingleIndexedComponent()
+        component = fnComponent.create(om.MFn.kMeshVertComponent)
+
+        fnComponent.addElements(args)
+
+        # Initialize mesh vertex iterator
+        #
+        iterVertices = om.MItMeshVertex(dagPath, component)
+        connectedVertices = set()
+
+        while not iterVertices.isDone():
+
+            connectedVertices.update(set(iterVertices.getConnectedVertices()))
+            iterVertices.next()
+
+        return list(connectedVertices)
+
     def showColors(self):
         """
         Enables color feedback for the associated shape.

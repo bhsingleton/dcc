@@ -115,6 +115,17 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
         return pymxs.runtime.refs.dependentNodes(modifier)[0]
 
+    @classmethod
+    def convertBitArray(cls, bitArray):
+        """
+        Converts the supplied bit array to a list of indices.
+
+        :type bitArray: pymxs.MXSWrapperBase
+        :rtype: list[int]
+        """
+
+        return [x + 1 for x in range(bitArray.count) if bitArray[x]]
+
     def shape(self):
         """
         Returns the shape node associated with the deformer.
@@ -213,6 +224,27 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         """
 
         return {x: 1.0 for x in self.iterSelection()}
+
+    def getConnectedVertices(self, *args):
+        """
+        Returns a list of vertices connected to the supplied vertices.
+        This should not include the original arguments!
+
+        :rtype: list[int]
+        """
+
+        # Convert connected faces back to vertices
+        #
+        mesh = self.shape()
+        edgeIndices = self.convertBitArray(pymxs.runtime.polyOp.getEdgesUsingVert(mesh, args))
+
+        connectedVertices = set()
+
+        for edgeIndex in edgeIndices:
+
+            connectedVertices.update(set(pymxs.runtime.polyOp.getEdgeVerts(mesh, edgeIndex)))
+
+        return list(connectedVertices - set(args))
 
     @CommandPanelOverride('modify')
     def showColors(self):
@@ -406,3 +438,5 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
                 list(vertexWeights.keys()),
                 list(vertexWeights.values())
             )
+
+        pymxs.runtime.completeRedraw()  # This is mandatory to avoid zero weights within the same loop!

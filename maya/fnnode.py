@@ -100,6 +100,16 @@ class FnNode(afnnode.AFnNode):
         om.MFnDependencyNode(self.object()).setName(name)
 
     @validator
+    def isMesh(self):
+        """
+        Evaluates if this node represents a mesh.
+
+        :rtype: bool
+        """
+
+        return self.object().hasFn(om.MFn.kMesh)
+
+    @validator
     def isJoint(self):
         """
         Evaluates if this node represents a skinnable influence.

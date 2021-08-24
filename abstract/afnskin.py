@@ -241,64 +241,13 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
         :rtype: dict
         """
 
-        # Define state object
-        #
-        influences = {}
-        vertices = {}
-        points = {}
-
-        state = {
+        return {
             'name': self.name(),
-            'influences': influences,
-            'maxInfluences': self.maxInfluences,
-            'vertices': vertices,
-            'points': points
+            'influences': self.influenceNames(),
+            'maxInfluences': self.maxInfluences(),
+            'vertices': self.weights(),
+            'points': self.controlPoints()
         }
-
-        # Commit influence binder to state object
-        #
-        for (influenceId, influence) in self.iterInfluences():
-
-            influences[influenceId] = fnnode.FnNode(influence).name()
-
-        # Commit vertex weights to state object
-        #
-        for vertexIndex in self.iterVertices():
-
-            vertices[vertexIndex] = self.controlPoint(vertexIndex)
-            points[vertexIndex] = self.weights(vertexIndex)
-
-        return state
-
-    def __setstate__(self, state):
-        """
-        Private method that copies the weights from the supplied state object.
-
-        :type state: dict
-        :rtype: None
-        """
-
-        pass
-
-    @property
-    def clipboard(self):
-        """
-        Getter method that returns the clipboard.
-
-        :rtype: dict[int:dict[int:float]]
-        """
-
-        return self._clipboard
-
-    @abstractmethod
-    def shape(self):
-        """
-        Returns the shape node associated with the deformer.
-
-        :rtype: Any
-        """
-
-        pass
 
     def range(self, *args):
         """
@@ -319,6 +268,26 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
 
         return enumerate(items)
+
+    @abstractmethod
+    def shape(self):
+        """
+        Returns the shape node associated with the deformer.
+
+        :rtype: Any
+        """
+
+        pass
+
+    @property
+    def clipboard(self):
+        """
+        Getter method that returns the clipboard.
+
+        :rtype: dict[int:dict[int:float]]
+        """
+
+        return self._clipboard
 
     @abstractmethod
     def controlPoint(self, vertexIndex):
@@ -423,6 +392,17 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
         return dict(self.iterSoftSelection())
 
     @abstractmethod
+    def getConnectedVertices(self, *args):
+        """
+        Returns a list of vertices connected to the supplied vertices.
+        This should not include the original arguments!
+
+        :rtype: list[int]
+        """
+
+        pass
+
+    @abstractmethod
     def showColors(self):
         """
         Enables color feedback for the associated shape.
@@ -469,6 +449,17 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
             self._influences.update(dict(self.iterInfluences()))
 
         return self._influences
+
+    def influenceNames(self):
+        """
+        Returns all of the influence names from this deformer.
+
+        :rtype: dict[int:str]
+        """
+
+        for (influenceId, influence) in self.influences().items():
+
+            yield influenceId, fnnode.FnNode(influence).name()
 
     @abstractmethod
     def numInfluences(self):
@@ -712,14 +703,14 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
         strings = [x for x in commonPrefix.split('|') if len(x) > 0]
         numStrings = len(strings)
 
-        fnNode = fnnode.FnNode(commonPrefix)
-        joint = fnNode.object()
+        fnNode = fnnode.FnNode(strings[-1])
+        root = fnNode.object()
 
         # Check number of strings
         #
         if numStrings == 0:
 
-            return joint
+            return root
 
         # Walk up hierarchy until we find the root joint
         #
@@ -729,7 +720,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
             #
             if not fnNode.hasParent():
 
-                return joint
+                return root
 
             # Check if parent is still a joint
             #
@@ -738,11 +729,11 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
             if not fnNode.isJoint():
 
-                return joint
+                return root
 
             else:
 
-                joint = parent
+                root = parent
 
     @abstractmethod
     def iterWeights(self, *args):
@@ -1241,7 +1232,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
         :rtype: None
         """
 
-        self._clipboard = {x: self.weights(x) for x in self.selection()}
+        self._clipboard = self.weights(*self.selection())
 
     def pasteWeights(self):
         """
@@ -1269,14 +1260,14 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
             # Reallocate clipboard values to updates
             #
-            vertices = {target: self.weights(source) for (source, target) in zip(self._clipboard.keys(), selection)}
+            vertices = {vertexIndex: deepcopy(vertexWeights) for (vertexIndex, vertexWeights) in zip(selection, self._clipboard.values())}
 
         else:
 
             # Iterate through vertices
             #
-            source = self._clipboard.keys()[-1]
-            vertices = {vertexIndex: deepcopy(self._clipboard[source]) for vertexIndex in selection}
+            vertexWeights = self._clipboard.values()[-1]
+            vertices = {vertexIndex: deepcopy(vertexWeights) for vertexIndex in selection}
 
         # Apply weights
         #
@@ -1314,7 +1305,38 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
         :rtype: None
         """
 
-        pass
+        # Get selected vertices
+        #
+        selection = self.selection()
+        numSelected = len(selection)
+
+        if numSelected == 0:
+
+            return
+
+        # Iterate through selected vertices
+        #
+        updates = {}
+
+        for vertexIndex in selection:
+
+            # Get connected vertices
+            #
+            connectedVertices = self.getConnectedVertices(vertexIndex)
+            log.debug('Averaging vertex weights from %s.' % connectedVertices)
+
+            # Average vertex weights
+            #
+            vertices = self.weights(*connectedVertices)
+
+            vertexWeights = self.averageWeights(*list(vertices.values()))
+            log.debug('%s averaged from connected vertices.' % vertexWeights)
+
+            updates[vertexIndex] = vertexWeights
+
+        # Apply averaged result to skin cluster
+        #
+        return self.applyWeights(updates)
 
     def blendBetweenVertices(self, blendByDistance=False):
         """
@@ -1346,16 +1368,16 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         with open(filePath, 'w') as jsonFile:
 
-            json.dump(self.__getstate__(), jsonFile)
+            json.dump(self.__getstate__(), jsonFile, indent=4, sort_keys=True)
 
     def loadWeights(self, filePath):
         """
         Loads the skin weights from the specified file path.
 
         :type filePath: str
-        :rtype: None
+        :rtype: dict
         """
 
         with open(filePath, 'r') as jsonFile:
 
-            self.__setstate__(json.load(jsonFile))
+            return json.load(jsonFile)
