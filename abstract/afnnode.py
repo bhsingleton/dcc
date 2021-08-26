@@ -81,6 +81,16 @@ class AFnNode(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         return '|'.join(reversed([self.__class__(x).name() for x in self.iterParents()]))
 
+    def select(self, replace=True):
+        """
+        Selects the node associated with this function set.
+
+        :type replace: bool
+        :rtype: None
+        """
+
+        self.setActiveSelection([self.object()], replace=replace)
+
     @abstractmethod
     def isMesh(self):
         """
@@ -279,11 +289,12 @@ class AFnNode(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
     @classmethod
     @abstractmethod
-    def setActiveSelection(cls, selection):
+    def setActiveSelection(cls, selection, replace=True):
         """
         Updates the active selection.
 
         :type selection: list
+        :type replace: bool
         :rtype: None
         """
 

@@ -249,26 +249,6 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
             'points': self.controlPoints()
         }
 
-    def range(self, *args):
-        """
-        Returns a generator for yielding a range of numbers.
-        Overload this if your DCC uses one-based arrays.
-
-        :rtype: iter
-        """
-
-        return range(*args)
-
-    def enumerate(self, items):
-        """
-        Returns a generator for enumerating a list of items.
-        Overload this if your DCC uses one-based arrays.
-
-        :rtype: iter
-        """
-
-        return enumerate(items)
-
     @abstractmethod
     def shape(self):
         """
@@ -288,6 +268,25 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
 
         return self._clipboard
+
+    @abstractmethod
+    def iterVertices(self):
+        """
+        Returns a generator that yields all vertex indices.
+
+        :rtype: iter
+        """
+
+        pass
+
+    def vertices(self):
+        """
+        Returns a list of vertex indices.
+
+        :rtype: list[int]
+        """
+
+        return list(self.iterVertices())
 
     @abstractmethod
     def controlPoint(self, vertexIndex):

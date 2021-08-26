@@ -25,3 +25,12 @@ class AFnQt(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
 
         pass
+
+    def getMenuBar(self):
+        """
+        Returns the menu bar from the main window.
+
+        :rtype: PySide2.QtWidgets.QMenuBar
+        """
+
+        return self.getMainWindow().menuBar()

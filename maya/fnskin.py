@@ -2,6 +2,7 @@ import maya.cmds as mc
 import maya.api.OpenMaya as om
 
 from . import fnnode
+from .decorators.undo import undo
 from ..abstract import afnskin
 
 import logging
@@ -203,6 +204,15 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         """
 
         return self._intermediateObject.object()
+
+    def iterVertices(self):
+        """
+        Returns a generator that yields all vertex indices.
+
+        :rtype: iter
+        """
+
+        return range(self.numControlPoints())
 
     def controlPoint(self, vertexIndex):
         """
@@ -638,6 +648,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
             #
             yield arg, vertexWeights
 
+    @undo
     def applyWeights(self, vertices):
         """
         Assigns the supplied vertex weights to this deformer.
@@ -646,12 +657,10 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         :rtype: None
         """
 
-        # Initialize function set
+        # Disable normalize weights
         #
         fnDependNode = om.MFnDependencyNode(self.object())
 
-        # Disable normalize weights
-        #
         normalizePlug = fnDependNode.findPlug('normalizeWeights', False)  # type: om.MPlug
         normalizePlug.setBool(False)
 
@@ -689,6 +698,6 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
                 element = weightsPlug.elementByLogicalIndex(influenceId)  # type: om.MPlug
                 element.setFloat(weight)
 
-        # Enable normalize weights
+        # Enable normalize weights and close undo chunk
         #
         normalizePlug.setBool(True)

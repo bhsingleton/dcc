@@ -273,14 +273,23 @@ class FnNode(afnnode.AFnNode):
         return [selection[x] for x in range(selection.count)]
 
     @classmethod
-    def setActiveSelection(cls, selection):
+    def setActiveSelection(cls, selection, replace=True):
         """
         Updates the active selection.
 
         :type selection: list
+        :type replace: bool
         :rtype: None
         """
 
+        # Check if selection should be replaced
+        #
+        if not replace:
+
+            selection.extend(cls.getActiveSelection())
+
+        # Update selection global
+        #
         pymxs.runtime.selection = selection
 
     @classmethod

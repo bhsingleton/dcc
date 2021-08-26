@@ -3,8 +3,8 @@ import pymxs
 from six import string_types
 
 from . import fnnode
+from .decorators.commandpaneloverride import CommandPanelOverride
 from ..abstract import afnskin
-from ..decorators.commandpaneloverride import CommandPanelOverride
 
 import logging
 logging.basicConfig()
@@ -135,31 +135,24 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
         return pymxs.runtime.getAnimByHandle(self._shape)
 
-    def range(self, *args):
+    def select(self, replace=True):
         """
-        Returns a generator for yielding a range of numbers.
+        Selects the node associated with this function set.
+
+        :type replace: bool
+        :rtype: None
+        """
+
+        self.setActiveSelection([self.shape()], replace=replace)
+
+    def iterVertices(self):
+        """
+        Returns a generator that yields all vertex indices.
 
         :rtype: iter
         """
 
-        # Inspect arguments
-        #
-        numArgs = len(args)
-
-        if numArgs == 1:
-
-            args = 1, args[0]
-
-        return super(FnSkin, self).range(*args)
-
-    def enumerate(self, items):
-        """
-        Returns a generator for enumerating a list of items.
-
-        :rtype: iter
-        """
-
-        return zip(self.range(1, len(items) + 1, 1), items)
+        return range(1, self.numControlPoints() + 1, 1)
 
     def controlPoint(self, vertexIndex):
         """
@@ -393,7 +386,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
         if numArgs == 0:
 
-            args = self.range(self.numControlPoints())
+            args = range(1, self.numControlPoints() + 1, 1)
 
         # Iterate through arguments
         #
@@ -426,17 +419,28 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         :rtype: None
         """
 
-        # Iterate through vertices
+        # Define undo chunk
         #
-        skinModifier = self.object()
+        with pymxs.undo(True, 'Apply Weights'):
 
-        for (vertexIndex, vertexWeights) in vertices.items():
+            # Bake selected vertices before applying weights
+            # This allows for undo support
+            #
+            skinModifier = self.object()
+            pymxs.runtime.skinOps.bakeSelectedVerts(skinModifier)
 
-            pymxs.runtime.skinOps.replaceVertexWeights(
-                skinModifier,
-                vertexIndex,
-                list(vertexWeights.keys()),
-                list(vertexWeights.values())
-            )
+            # Iterate and replace vertex weights
+            #
+            for (vertexIndex, vertexWeights) in vertices.items():
 
-        pymxs.runtime.completeRedraw()  # This is mandatory to avoid zero weights within the same loop!
+                pymxs.runtime.skinOps.replaceVertexWeights(
+                    skinModifier,
+                    vertexIndex,
+                    list(vertexWeights.keys()),
+                    list(vertexWeights.values())
+                )
+
+        # Force redraw
+        # This prevents any zero weights being returned in the same execution thread!
+        #
+        pymxs.runtime.completeRedraw()
