@@ -58,7 +58,7 @@ def findPycharm():
     return ''
 
 
-def setupPycharmDebugger():
+def setupDebugger():
     """
     Opens a command port between maya and pycharm.
     Please note at this time the egg file needs to be extracted for this to work!
