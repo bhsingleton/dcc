@@ -4,7 +4,6 @@ By default each command will generate a repository based on the user's perforce 
 Each command is capable of augmenting the environment settings to support clients with different streams.
 """
 import os
-import getpass
 
 from P4 import P4Exception
 from . import createAdapter
@@ -46,7 +45,7 @@ def logErrors(errors):
     """
     Outputs the supplied errors object to the logger.
 
-    :type results: Union[list, dict]
+    :type errors: Union[list, dict]
     :rtype: None
     """
 
@@ -71,9 +70,9 @@ def logErrors(errors):
 
 def files(*args, **kwargs):
     """
-    Method used to list files from the depot tree based on the supplied paths.
-    To perform a depot search use the following syntax: //{depot}/.../Orc_Light.fbx
-    To perform a client search used the following syntax: //{client}/.../Orc_Light.fbx
+    Lists files from the depot tree based on the supplied paths.
+    To perform a depot search use the following syntax: //{depot}/.../*.fbx
+    To perform a client search used the following syntax: //{client}/.../*.fbx
     To limit a get request to a specific directory use: //{depot}/*
 
     :rtype: list[dict]
@@ -98,7 +97,7 @@ def files(*args, **kwargs):
 
 def dirs(*args, **kwargs):
     """
-    Method used to list directories from the depot tree based on the supplied paths.
+    Lists directories from the depot tree based on the supplied paths.
 
     :rtype: list[dict]
     """
@@ -122,8 +121,8 @@ def dirs(*args, **kwargs):
 
 def where(*args, **kwargs):
     """
-    Method used to list all path variations for the supplied list of paths.
-    Each indexed dictionary contains the following keys: 'clientFile', 'depotFile' and 'path'
+    Lists all path variations for the supplied list of paths.
+    Each indexed dictionary contains the following keys: 'clientFile', 'depotFile' and 'path'.
 
     :rtype: list[dict[str:str]]
     """
@@ -147,8 +146,8 @@ def where(*args, **kwargs):
 
 def sync(*args, **kwargs):
     """
-    Method used to sync the supplied depot files from perforce.
-    This method excepts the developer to locate the depot files rather than supplying local files.
+    Syncs the supplied depot files from perforce.
+    This method excepts depot files so be sure to convert local paths using where.
 
     :rtype: dict
     """
@@ -177,7 +176,7 @@ def sync(*args, **kwargs):
 
 def add(*args, **kwargs):
     """
-    Method used to mark a file to add to the server.
+    Marks a local file to add to the server.
     All file paths should be supplied as arguments!
 
     :rtype: dict
@@ -207,7 +206,7 @@ def add(*args, **kwargs):
 
 def edit(*args, **kwargs):
     """
-    Method used to check out a file for editing.
+    Checks out a file for editing.
     All file paths should be supplied as arguments!
 
     :rtype: dict
@@ -237,7 +236,7 @@ def edit(*args, **kwargs):
 
 def delete(*args, **kwargs):
     """
-    Method used to mark a file for delete from the server.
+    Marks a file for delete from the server.
     All file paths should be supplied as arguments!
 
     :rtype: dict
@@ -267,7 +266,7 @@ def delete(*args, **kwargs):
 
 def revert(*args, **kwargs):
     """
-    Method used to revert a list of files that have been checked out.
+    Reverts any changes made to the supplied files.
 
     :rtype: list[dict]
     """
@@ -296,7 +295,7 @@ def revert(*args, **kwargs):
 
 def clients(*args, **kwargs):
     """
-    Method used to collect ALL clients specs associated with the supplied user.
+    Collects ALL clients specs associated with the supplied user.
 
     :rtype: list[dict]
     """
@@ -336,7 +335,7 @@ def clients(*args, **kwargs):
 
 def client(*args, **kwargs):
     """
-    Method used to fetch client specs from the server.
+    Fetches client specs from the server using the supplied name.
 
     :rtype: dict
     """
@@ -360,7 +359,7 @@ def client(*args, **kwargs):
 
 def depots(*args, **kwargs):
     """
-    Method used to collect ALL depot specs from the server.
+    Collects ALL depot specs from the server.
 
     :rtype: list[dict]
     """
@@ -384,7 +383,7 @@ def depots(*args, **kwargs):
 
 def depot(*args, **kwargs):
     """
-    Method used to fetch perforce depot specs from the server.
+    Fetches depot specs from the server using the supplied name.
 
     :rtype: dict
     """
@@ -408,7 +407,7 @@ def depot(*args, **kwargs):
 
 def changes(*args, **kwargs):
     """
-    Method used to retrieve changelist specs from the server associated with the supplied client.
+    Returns a list of changelist specs from the server associated with the supplied client.
     If no client is supplied then the environment variables are used instead.
     An additional status keyword can be supplied to limit the types of changelists returned.
 

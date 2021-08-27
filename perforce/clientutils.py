@@ -455,11 +455,22 @@ def changeClient():
     :rtype: None
     """
 
+    # Collect all clients
+    #
+    fnQt = fnqt.FnQt()
+    parent = fnQt.getMainWindow()
+
+    clients = [x for (x, y) in __clientspecs__.items() if y.host == os.environ['P4HOST']]
+    numClients = len(clients)
+
+    if numClients == 0:
+
+        QtWidgets.QMessageBox.warning(parent, 'Change Client', 'Current host has no perforce workspaces!')
+        return
+
     # Get previous client
     #
     client = os.environ['P4CLIENT']
-    clients = [x for (x, y) in __clientspecs__.items() if y.host == os.environ['P4HOST']]
-
     current = 0
 
     if client in clients:
@@ -468,9 +479,6 @@ def changeClient():
 
     # Prompt user for new client
     #
-    fnQt = fnqt.FnQt()
-    parent = fnQt.getMainWindow()
-
     newClient, response = QtWidgets.QInputDialog.getItem(
         parent,
         'Change Workspace',
