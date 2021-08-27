@@ -1,23 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<MenuBar>
-	<Menu title="Max Test">
-		<Menu title="Modeling"/>
-		<Menu title="Rigging"/>
-		<Menu title="Animation"/>
-		<Menu title="Perforce">
-			<MenuItem title="Change Workspace" action="ChangeWorkspace" category="Perforce"/>
-			<Separator/>
-			<MenuItem title="Checkout Scene" action="CheckoutScene" category="Perforce"/>
-			<MenuItem title="Revert Scene" action="RevertScene" category="Perforce"/>
-		</Menu>
+<Menu title="DCC" tearable="True">
+	<Menu title="Perforce" tearable="True">
+		<Action text="Change Workspace" command="from dcc.perforce import clientutils; clientutils.changeClient();" language="python"/>
 		<Separator/>
-		<Menu title="Debugging">
-			<MenuItem title="Create Logging Menu" action="CreateLoggingMenu" category="Debug"/>
-			<Separator/>
-			<MenuItem title="Start Debugger" action="StartDebugger" category="Debug"/>
-			<MenuItem title="Stop Debugger" action="StopDebugger" category="Debug"/>
-		</Menu>
-		<Separator/>
-		<MenuItem title="Restart" action="Restart" category="Misc"/>
+		<Action text="Checkout Scene" command="from dcc.perforce import p4utils; p4utils.checkoutScene();" language="python"/>
+		<Action text="Revert Scene" command="from dcc.perforce import p4utils; p4utils.revertScene();" language="python"/>
 	</Menu>
-</MenuBar>
+	<Menu title="Debugging" tearable="True">
+		<Action text="Create Logging Menu" command="from dcc import fnmenu; fnmenu.FnMenu().createLoggingMenu();" language="python"/>
+		<Separator/>
+		<Action text="Start Debugger" command="from dcc.pycharm import pycharmutils; pycharmutils.startDebugger();" language="python"/>
+		<Action text="End Debugger" command="from dcc.pycharm import pycharmutils; pycharmutils.stopDebugger();" language="python"/>
+	</Menu>
+	<Separator/>
+	<Action text="Restart" command="import dcc; dcc.restart();" language="python"/>
+</Menu>

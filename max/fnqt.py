@@ -6,6 +6,10 @@ except ImportError:
 
     import MaxPlus as qtmax  # max_version < 2021
 
+import pymxs
+import atexit
+
+from functools import partial
 from ..abstract import afnqt
 
 import logging
@@ -27,3 +31,13 @@ class FnQt(afnqt.AFnQt):
         """
 
         return qtmax.GetQMaxMainWindow()
+
+    def partial(self, command):
+        """
+        Returns a partial object for executing commands in a DCC embedded language.
+
+        :type command: str
+        :rtype: partial
+        """
+
+        return partial(pymxs.runtime.execute, command)

@@ -1,22 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<MenuBar>
-	<Menu label="Maya Test" tearOff="True">
-		<Menu label="Modeling" tearOff="True"/>
-		<Menu label="Rigging" tearOff="True"/>
-		<Menu label="Animation" tearOff="True"/>
-		<Menu label="Perforce" tearOff="True">
-			<MenuItem label="Change Workspace" command="from dcc.perforce import clientutils; clientutils.changeClient();" sourceType="python"/>
-			<Divider/>
-			<MenuItem label="Checkout Scene" command="from dcc.perforce import p4utils; p4utils.checkoutScene();" sourceType="python"/>
-			<MenuItem label="Revert Scene" command="from dcc.perforce import p4utils; p4utils.revertScene();" sourceType="python"/>
-		</Menu>
-		<Menu label="Debugging" tearOff="True">
-			<MenuItem label="Create Logging Menu" command="from dcc import fnmenu; fnmenu.FnMenu().createLoggingMenu();" sourceType="python"/>
-			<Divider/>
-			<MenuItem label="Start Debugger" command="from dcc.pycharm import pycharmutils; pycharmutils.startDebugger();" sourceType="python"/>
-			<MenuItem label="End Debugger" command="from dcc.pycharm import pycharmutils; pycharmutils.stopDebugger();" sourceType="python"/>
-		</Menu>
-		<Divider/>
-		<MenuItem label="Restart" command="import dcc; dcc.restart();" sourceType="python"/>
+<Menu title="DCC" tearable="True">
+	<Menu title="Perforce" tearable="True">
+		<Action text="Change Workspace" command="from dcc.perforce import clientutils; clientutils.changeClient();" language="python"/>
+		<Separator/>
+		<Action text="Checkout Scene" command="from dcc.perforce import p4utils; p4utils.checkoutScene();" language="python"/>
+		<Action text="Revert Scene" command="from dcc.perforce import p4utils; p4utils.revertScene();" language="python"/>
 	</Menu>
-</MenuBar>
+	<Menu title="Debugging" tearable="True">
+		<Action text="Create Logging Menu" command="from dcc import fnmenu; fnmenu.FnMenu().createLoggingMenu();" language="python"/>
+		<Separator/>
+		<Action text="Start Debugger" command="from dcc.pycharm import pycharmutils; pycharmutils.startDebugger();" language="python"/>
+		<Action text="End Debugger" command="from dcc.pycharm import pycharmutils; pycharmutils.stopDebugger();" language="python"/>
+	</Menu>
+	<Separator/>
+	<Action text="Restart" command="import dcc; dcc.restart();" language="python"/>
+</Menu>

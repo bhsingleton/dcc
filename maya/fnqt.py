@@ -1,8 +1,12 @@
+import maya.cmds as mc
+import maya.mel as mel
 import maya.OpenMayaUI as omui
 
-from ..abstract import afnqt
 from PySide2 import QtWidgets
 from shiboken2 import wrapInstance
+from functools import partial
+
+from ..abstract import afnqt
 
 import logging
 logging.basicConfig()
@@ -23,3 +27,13 @@ class FnQt(afnqt.AFnQt):
         """
 
         return wrapInstance(int(omui.MQtUtil.mainWindow()), QtWidgets.QMainWindow)
+
+    def partial(self, command):
+        """
+        Returns a partial object for executing commands in a DCC embedded language.
+
+        :type command: str
+        :rtype: partial
+        """
+
+        return partial(mel.eval, command)
