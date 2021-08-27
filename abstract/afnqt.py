@@ -289,7 +289,11 @@ class AFnQt(with_metaclass(ABCMeta, afnbase.AFnBase)):
         # Unregister top-level menu
         #
         title = xmlElement.get('title', '')
-        self.unregisterMainMenu(title)
+        menu = self.findMainMenuByTitle(title)
+
+        if menu is not None:
+
+            self.getMainMenuBar().removeAction(menu.menuAction())
 
     def createLoggingMenu(self):
         """
