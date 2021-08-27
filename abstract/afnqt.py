@@ -5,6 +5,7 @@ from PySide2 import QtWidgets
 
 from . import afnbase
 from ..xml import xmlutils
+from ..userinterface import qloggingmenu
 
 import logging
 logging.basicConfig()
@@ -28,6 +29,28 @@ class AFnQt(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
 
         pass
+
+    def getMainMenuBar(self):
+        """
+        Returns the menu bar from the main window.
+        This is the safest approach to retrieve the current menu bar.
+
+        :rtype: PySide2.QtWidgets.QMenuBar
+        """
+
+        # Iterate through children
+        #
+        for child in self.getMainWindow().children():
+
+            # Check if this is a menu bar
+            #
+            if isinstance(child, QtWidgets.QMenuBar) and child.isVisible():
+
+                return child
+
+            else:
+
+                continue
 
     @staticmethod
     def objectSafeName(string):
@@ -67,28 +90,6 @@ class AFnQt(with_metaclass(ABCMeta, afnbase.AFnBase)):
         except Exception as exception:
 
             log.error(exception)
-
-    def getMainMenuBar(self):
-        """
-        Returns the menu bar from the main window.
-        This is the safest approach to retrieve the current menu bar.
-
-        :rtype: PySide2.QtWidgets.QMenuBar
-        """
-
-        # Iterate through children
-        #
-        for child in self.getMainWindow().children():
-
-            # Check if this is a menu bar
-            #
-            if isinstance(child, QtWidgets.QMenuBar) and child.isVisible():
-
-                return child
-
-            else:
-
-                continue
 
     def iterMainMenus(self):
         """
@@ -159,12 +160,12 @@ class AFnQt(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
             raise TypeError('findTopLevelMenuByName() expects a unique name!')
 
-    def createMenuItemFromXmlElement(self, xmlElement, parent=None):
+    def createMenuFromXmlElement(self, xmlElement, parent=None):
         """
         Returns a menu item using the supplied xml element.
 
         :type xmlElement: xml.etree.ElementTree.Element
-        :type parent: QtWidgets.QMenu
+        :type parent: Union[QtWidgets.QMenu, QtWidgets.QMenuBar]
         :rtype: Union[QtWidgets.QMenu, QtWidgets.QAction]
         """
 
@@ -175,21 +176,19 @@ class AFnQt(with_metaclass(ABCMeta, afnbase.AFnBase)):
             # Create new menu
             #
             title = xmlElement.get('title', default='')
-            tearable = bool(xmlElement.get('tearable', default=False))
-
             log.info('Creating menu: %s' % title)
 
             menu = QtWidgets.QMenu(title, parent)
             menu.setObjectName(self.objectSafeName(title))
             menu.setSeparatorsCollapsible(False)
-            menu.setTearOffEnabled(tearable)
+            menu.setTearOffEnabled(bool(xmlElement.get('tearOff', default=False)))
             menu.setWindowTitle(title)
 
             # Create child menus
             #
             for child in iter(xmlElement):
 
-                self.createMenuItemFromXmlElement(child, parent=menu)
+                self.createMenuFromXmlElement(child, parent=menu)
 
             # Assign submenu to parent menu
             #
@@ -240,6 +239,20 @@ class AFnQt(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
             raise TypeError('createMenuItem() expects a valid xml tag (%s found)!' % xmlElement.tag)
 
+    def clearMenuActions(self, menu):
+        """
+        Removes all of the actions from the supplied menu.
+
+        :type menu: QtWidgets.QMenu
+        :rtype: None
+        """
+
+        actions = menu.actions()
+
+        for action in actions:
+
+            menu.removeAction(action)
+
     def createMenuFromFile(self, filePath):
         """
         Creates a menu system from the supplied xml file configuration.
@@ -259,13 +272,20 @@ class AFnQt(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         # Create menu from xml element
         #
-        menu = self.createMenuItemFromXmlElement(xmlElement)
-
-        # Insert menu before help action
-        #
         menuBar = self.getMainMenuBar()
-        menuActions = menuBar.actions()
-        menuBar.insertMenu(menuActions[-1], menu)
+
+        title = xmlElement.get('title', '')
+        menu = self.findMainMenuByTitle(title)
+
+        if menu is not None:
+
+            menuBar.removeAction(menu.menuAction())
+            menu.deleteLater()
+
+        # Append new menu to menu bar
+        #
+        menu = self.createMenuFromXmlElement(xmlElement, parent=menuBar)
+        menuBar.insertMenu([x for x in menuBar.actions() if x.isVisible][-2], menu)
 
         return menu
 
@@ -297,9 +317,25 @@ class AFnQt(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
     def createLoggingMenu(self):
         """
-        Creates a logging menu for changing logging modes.
+        Creates a logging menu for modifying logger levels.
+        If the menu already exists the current instance will be refreshed.
 
-        :rtype: Any
+        :rtype: None
         """
 
-        pass
+        # Check if menu already exists
+        #
+        menuBar = self.getMainMenuBar()
+        menu = self.findMainMenuByTitle('Logging Control')
+
+        if menu is not None:
+
+            menuBar.removeAction(menu.menuAction())
+            menu.deleteLater()
+
+        # Create new logging menu
+        #
+        menu = qloggingmenu.QLoggingMenu('Logging Control', parent=menuBar)
+        menuBar.insertMenu([x for x in menuBar.actions() if x.isVisible][-2], menu)
+
+        return menu
