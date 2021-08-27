@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<MenuBar>
+	<Menu label="Maya Test" tearOff="True">
+		<Menu label="Modeling" tearOff="True"/>
+		<Menu label="Rigging" tearOff="True"/>
+		<Menu label="Animation" tearOff="True"/>
+		<Menu label="Perforce" tearOff="True">
+			<MenuItem label="Change Workspace" command="from dcc.perforce import clientutils; clientutils.changeClient();" sourceType="python"/>
+			<Divider/>
+			<MenuItem label="Checkout Scene" command="from dcc.perforce import p4utils; p4utils.checkoutScene();" sourceType="python"/>
+			<MenuItem label="Revert Scene" command="from dcc.perforce import p4utils; p4utils.revertScene();" sourceType="python"/>
+		</Menu>
+		<Menu label="Debugging" tearOff="True">
+			<MenuItem label="Create Logging Menu" command="from dcc import fnmenu; fnmenu.FnMenu().createLoggingMenu();" sourceType="python"/>
+			<Divider/>
+			<MenuItem label="Start Debugger" command="from dcc.pycharm import pycharmutils; pycharmutils.startDebugger();" sourceType="python"/>
+			<MenuItem label="End Debugger" command="from dcc.pycharm import pycharmutils; pycharmutils.stopDebugger();" sourceType="python"/>
+		</Menu>
+		<Divider/>
+		<MenuItem label="Restart" command="import dcc; dcc.restart();" sourceType="python"/>
+	</Menu>
+</MenuBar>

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<MenuBar>
+	<Menu title="Max Test">
+		<Menu title="Modeling"/>
+		<Menu title="Rigging"/>
+		<Menu title="Animation"/>
+		<Menu title="Perforce">
+			<MenuItem title="Change Workspace" action="ChangeWorkspace" category="Perforce"/>
+			<Separator/>
+			<MenuItem title="Checkout Scene" action="CheckoutScene" category="Perforce"/>
+			<MenuItem title="Revert Scene" action="RevertScene" category="Perforce"/>
+		</Menu>
+		<Separator/>
+		<Menu title="Debugging">
+			<MenuItem title="Create Logging Menu" action="CreateLoggingMenu" category="Debug"/>
+			<Separator/>
+			<MenuItem title="Start Debugger" action="StartDebugger" category="Debug"/>
+			<MenuItem title="Stop Debugger" action="StopDebugger" category="Debug"/>
+		</Menu>
+		<Separator/>
+		<MenuItem title="Restart" action="Restart" category="Misc"/>
+	</Menu>
+</MenuBar>
