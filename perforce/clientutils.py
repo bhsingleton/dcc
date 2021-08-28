@@ -23,6 +23,8 @@ class ClientSpec(object):
     """
 
     __slots__ = (
+        'user',
+        'port',
         'access',
         'name',
         'description',
@@ -48,6 +50,8 @@ class ClientSpec(object):
 
         # Declare public variables
         #
+        self.user = args[0]
+        self.port = args[1]
         self.access = kwargs.get('Access', '')
         self.name = kwargs.get('Client', '')
         self.description = kwargs.get('Description', '')
@@ -67,7 +71,7 @@ class ClientSpec(object):
         Extrapolates the branch from the supplied client view.
 
         :type view: str
-        :rtype: tuple[str, str]
+        :rtype: Branch
         """
 
         index = view.rfind('//')
@@ -165,7 +169,7 @@ class ClientSpec(object):
         :rtype: list[dict]
         """
 
-        return cmds.changes(client=self.name, status='pending')
+        return cmds.changes(user=self.user, port=self.port, client=self.name, status='pending')
 
 
 class ClientSpecs(collections_abc.MutableMapping):
@@ -197,7 +201,7 @@ class ClientSpecs(collections_abc.MutableMapping):
 
         if clients is not None:
 
-            self._clients = {x.get('Client', ''): ClientSpec(**x) for x in clients}
+            self._clients = {x.get('Client', ''): ClientSpec(self._user, self._port, **x) for x in clients}
 
     def __getitem__(self, key):
         """
@@ -256,8 +260,8 @@ class ClientSpecs(collections_abc.MutableMapping):
 
     def get(self, key, default=None):
         """
-        Inherited method used to safely retrieve a value from this instance with a default option.
-        This method will attempt to fetch the client if un-successful.
+        Returns an index item from this collection with any exceptions.
+        This method will attempt to fetch the client if there currently is no key-value pair.
 
         :type key: str
         :type default: object

@@ -1,4 +1,6 @@
 import os
+import platform
+import subprocess
 import getpass
 import socket
 
@@ -8,6 +10,10 @@ import logging
 logging.basicConfig()
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
+
+
+CREATION_FLAGS = 0x08000000
+PING_FLAG = '-n' if platform.system().lower() == 'windows' else '-c'
 
 
 def createAdapter(**kwargs):
@@ -76,6 +82,6 @@ def isConnected():
     """
 
     host = os.environ.get('P4PORT', 'localhost:1666').split(':')[0]
-    response = os.system("ping -c 1 " + host)
+    command = 'ping {flag} 1 {host}'.format(flag=PING_FLAG, host=host)
 
-    return response == 0
+    return subprocess.call(command, creationflags=CREATION_FLAGS) == 0
