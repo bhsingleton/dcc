@@ -258,14 +258,16 @@ class AFnQt(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         # Create menu from xml element
         #
-        menuBar = self.getMainMenuBar()
-
         title = xmlElement.get('title', '')
+        tearOff = bool(xmlElement.get('tearOff', True))
+
         menu = self.findMainMenuByTitle(title)
 
         if menu is None:
 
-            menu = qmainmenu.QMainMenu(title, parent=menuBar)
+            menuBar = self.getMainMenuBar()
+
+            menu = qmainmenu.QMainMenu(title, tearOff=tearOff, parent=menuBar)
             menuBar.insertMenu(menuBar.actions()[-1], menu)
 
         # Append new menu to menu bar

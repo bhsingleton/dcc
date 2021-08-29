@@ -11,29 +11,7 @@ class QMainMenu(QtWidgets.QMenu):
     Overload of QMenu used to affix a menu to a DCC's main menubar.
     """
 
-    __instances__ = {}
-
-    def __new__(cls, title, parent=None):
-        """
-        Private method called before a new instance is created.
-
-        :type title: str
-        :keyword parent: QtWidgets.QObject
-        :rtype: None
-        """
-
-        # Check if instance already exists
-        #
-        instance = cls.__instances__.get(title, None)
-
-        if instance is None:
-
-            instance = super(QMainMenu, cls).__new__(cls, title, parent=parent)
-            cls.__instances__[title] = instance
-
-        return instance
-
-    def __init__(self, title, parent=None):
+    def __init__(self, title, **kwargs):
         """
         Private method called after a new instance is created.
 
@@ -44,9 +22,17 @@ class QMainMenu(QtWidgets.QMenu):
 
         # Call parent method
         #
+        parent = kwargs.get('parent', None)
         super(QMainMenu, self).__init__(title, parent)
 
-        # Install event filter on parent
+        # Modify menu properties
+        #
+        self.setObjectName(title.replace(' ', '_'))
+        self.setSeparatorsCollapsible(False)
+        self.setTearOffEnabled(kwargs.get('tearOff', True))
+        self.setWindowTitle(title)
+
+        # Install event filter onto parent
         #
         parent.installEventFilter(self)
 
