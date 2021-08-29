@@ -11,7 +11,7 @@ class QSeparator(QtWidgets.QAction):
     Overload of QAction used to conveniently create a separator with name.
     """
 
-    def __init__(self, name, parent):
+    def __init__(self, name, parent=None):
         """
         Private method called after a new instance is created.
 
@@ -22,7 +22,7 @@ class QSeparator(QtWidgets.QAction):
 
         # Call parent method
         #
-        super(QSeparator, self).__init__(name, parent=parent)
+        super(QSeparator, self).__init__(name, parent)
 
         # Enable separator
         #

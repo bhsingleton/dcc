@@ -5,7 +5,7 @@ from PySide2 import QtWidgets
 
 from . import afnbase
 from ..xml import xmlutils
-from ..userinterface import qloggingmenu
+from ..userinterface import qmainmenu, qloggingmenu
 
 import logging
 logging.basicConfig()
@@ -239,20 +239,6 @@ class AFnQt(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
             raise TypeError('createMenuItem() expects a valid xml tag (%s found)!' % xmlElement.tag)
 
-    def clearMenuActions(self, menu):
-        """
-        Removes all of the actions from the supplied menu.
-
-        :type menu: QtWidgets.QMenu
-        :rtype: None
-        """
-
-        actions = menu.actions()
-
-        for action in actions:
-
-            menu.removeAction(action)
-
     def createMenuFromFile(self, filePath):
         """
         Creates a menu system from the supplied xml file configuration.
@@ -277,15 +263,18 @@ class AFnQt(with_metaclass(ABCMeta, afnbase.AFnBase)):
         title = xmlElement.get('title', '')
         menu = self.findMainMenuByTitle(title)
 
-        if menu is not None:
+        if menu is None:
 
-            menuBar.removeAction(menu.menuAction())
-            menu.deleteLater()
+            menu = qmainmenu.QMainMenu(title, parent=menuBar)
+            menu.moveToEnd()
 
         # Append new menu to menu bar
         #
-        menu = self.createMenuFromXmlElement(xmlElement, parent=menuBar)
-        menuBar.insertMenu([x for x in menuBar.actions() if x.isVisible][-2], menu)
+        menu.clear()
+
+        for child in iter(xmlElement):
+
+            self.createMenuFromXmlElement(child, parent=menu)
 
         return menu
 
@@ -313,7 +302,7 @@ class AFnQt(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         if menu is not None:
 
-            self.getMainMenuBar().removeAction(menu.menuAction())
+            menu.deleteLater()
 
     def createLoggingMenu(self):
         """
@@ -328,14 +317,13 @@ class AFnQt(with_metaclass(ABCMeta, afnbase.AFnBase)):
         menuBar = self.getMainMenuBar()
         menu = self.findMainMenuByTitle('Logging Control')
 
-        if menu is not None:
+        if menu is None:
 
-            menuBar.removeAction(menu.menuAction())
-            menu.deleteLater()
+            menu = qloggingmenu.QLoggingMenu('Logging Control', parent=menuBar)
+            menu.moveToEnd()
 
-        # Create new logging menu
-        #
-        menu = qloggingmenu.QLoggingMenu('Logging Control', parent=menuBar)
-        menuBar.insertMenu([x for x in menuBar.actions() if x.isVisible][-2], menu)
+        else:
+
+            menu.refresh()
 
         return menu

@@ -7,7 +7,6 @@ except ImportError:
     import MaxPlus as qtmax  # max_version < 2021
 
 import pymxs
-import atexit
 
 from functools import partial
 from ..abstract import afnqt

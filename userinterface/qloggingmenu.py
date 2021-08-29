@@ -1,5 +1,6 @@
 from PySide2 import QtWidgets
 
+from .qmainmenu import QMainMenu
 from .qseparator import QSeparator
 
 import logging
@@ -12,12 +13,10 @@ LOG_LEVELS = list(range(0, logging.CRITICAL + 1, 10))
 LEVEL_NAMES = [logging.getLevelName(n) for n in range(0, logging.CRITICAL + 1, 10)]
 
 
-class QLoggingMenu(QtWidgets.QMenu):
+class QLoggingMenu(QMainMenu):
     """
-    Overload of QMenu used to create a logging interface for modifying levels.
+    Overload of QMainMenu used to create a logging interface for modifying logger levels.
     """
-
-    __instance__ = None
 
     def __init__(self, name, parent=None):
         """
@@ -112,19 +111,6 @@ class QLoggingMenu(QtWidgets.QMenu):
 
         actions[index].setChecked(True)
 
-    def clear(self):
-        """
-        Removes all of the actions from this menu.
-
-        :rtype: None
-        """
-
-        actions = self.actions()
-
-        for action in actions:
-
-            self.removeAction(action)
-
     def refresh(self, *args, **kwargs):
         """
         Forces the logging menu to refresh all of it's child actions.
@@ -155,7 +141,7 @@ class QLoggingMenu(QtWidgets.QMenu):
 
             # Create sub menu
             #
-            subMenu = QtWidgets.QMenu(value.name, parent=self)
+            subMenu = QtWidgets.QMenu(value.name, self)
             subMenu.aboutToShow.connect(self.syncLevel)
 
             self.addMenu(subMenu)
@@ -168,7 +154,7 @@ class QLoggingMenu(QtWidgets.QMenu):
 
         # Add refresh action
         #
-        action = QtWidgets.QAction('Refresh', parent=self)
+        action = QtWidgets.QAction('Refresh', self)
         action.triggered.connect(self.refresh)
 
         self.addAction(action)
