@@ -266,7 +266,7 @@ class AFnQt(with_metaclass(ABCMeta, afnbase.AFnBase)):
         if menu is None:
 
             menu = qmainmenu.QMainMenu(title, parent=menuBar)
-            menu.moveToEnd()
+            menuBar.insertMenu(menuBar.actions()[-1], menu)
 
         # Append new menu to menu bar
         #
@@ -320,7 +320,7 @@ class AFnQt(with_metaclass(ABCMeta, afnbase.AFnBase)):
         if menu is None:
 
             menu = qloggingmenu.QLoggingMenu('Logging Control', parent=menuBar)
-            menu.moveToEnd()
+            menuBar.insertMenu(menuBar.actions()[-1], menu)
 
         else:
 
