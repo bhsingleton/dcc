@@ -11,12 +11,12 @@ __application__ = platform.getApplication()
 
 if __application__ == 'maya':
 
-    from .maya.fncallbacks import *
+    from .maya.fnnotify import *
 
 elif __application__ == '3dsmax':
 
-    from .max.fncallbacks import *
+    from .max.fnnotify import *
 
 else:
 
-    raise ImportError('Unable to import dcc callback-helpers for: %s application!' % __application__)
+    raise ImportError('Unable to import dcc notify-helpers for: %s application!' % __application__)

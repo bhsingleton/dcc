@@ -65,10 +65,19 @@ class Undo(object):
         #
         if not callable(self.func):
 
-            # Store reference to function
+            # Store reference to unbound method
             #
             self.func = args[0]
-            return self.__call__
+
+            def wrapper(*args, **kwargs):
+
+                self.__enter__()
+                results = self.func(*args, **kwargs)
+                self.__exit__(None, None, None)
+
+                return results
+
+            return wrapper
 
         else:
 

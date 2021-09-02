@@ -65,22 +65,31 @@ class CommandPanelOverride(object):
         #
         if not callable(self.func):
 
-            # Store reference to function
+            # Store reference to unbound method
             #
             self.func = args[0]
-            return self.__call__
+
+            def wrapper(*args, **kwargs):
+
+                self.__enter__()
+                results = self.func(*args, **kwargs)
+                self.__exit__(None, None, None)
+
+                return results
+
+            return wrapper
 
         else:
 
             # Wrap internal function
             #
-            self.__enter__()
+            self.__enter__(*args)
             results = self.func(*args, **kwargs)
             self.__exit__(None, None, None)
 
             return results
 
-    def __enter__(self):
+    def __enter__(self, *args, **kwargs):
         """
         Private method that is called when this instance is entered using a with statement.
 
@@ -97,11 +106,11 @@ class CommandPanelOverride(object):
 
         # Check if auto select is enabled
         #
-        obj = self.func.im_self
+        instance = args[0] if len(args) > 0 else None
 
-        if self.autoSelect and isinstance(obj, fnnode.FnNode):
+        if self.autoSelect and isinstance(instance, fnnode.FnNode):
 
-            obj.select()
+            instance.select()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """

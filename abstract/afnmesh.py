@@ -127,11 +127,61 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         return list(self.iterFaceNormals(*args))
 
+    def mirrorVertices(self, vertexIndices, axis=0, tolerance=1e-3):
+        """
+        Mirrors the supplied list of vertex indices.
+        If no match is found then no key-value pair is created!
+
+        :type vertexIndices: list[int]
+        :type axis: int
+        :type tolerance: float
+        :rtype: dict[int:int]
+        """
+
+        # Check value type
+        #
+        if not isinstance(vertexIndices, (list, set, tuple)):
+
+            raise TypeError('mirrorVertices() expects a list (%s given)!' % type(vertexIndices).__name__)
+
+        # Define inverse map
+        # This will be used to inverse out input data
+        #
+        inverse = {x: -1 if x == axis else 1 for x in range(3)}
+
+        # Initialize point tree
+        #
+        points = [[value * inverse[index] for (index, value) in enumerate(x)] for x in self.iterVertices(*vertexIndices)]
+        vertexMap = {localIndex: globalIndex for (localIndex, globalIndex) in enumerate(vertexIndices)}
+
+        tree = cKDTree(self.vertices())
+
+        # Query closest points
+        #
+        distances, indices = tree.query(points, distance_upper_bound=tolerance)
+        numVertices = self.numVertices()
+
+        return {vertexIndex: vertexMap[index] for (vertexIndex, index) in zip(vertexIndices, indices) if index != numVertices}
+
     def nearestNeighbours(self, vertexIndices):
+        """
+        Returns a list of the closest connected vertex indices.
+
+        :type vertexIndices: list[int]
+        :rtype: dict[int:int]
+        """
 
         pass
 
     def projectPointOnPlane(self, vertices, normal, point):
+        """
+        Projects a point onto the specified plane.
+
+        :type vertices: list[list[float, float, float]]
+        :type normal: list[float, float, float]
+        :type point: list[float, float, float]
+        :rtype: list[float, float, float]
+        """
 
         pass
 

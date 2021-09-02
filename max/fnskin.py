@@ -199,6 +199,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
                 continue
 
+    @CommandPanelOverride('modify')
     def setSelection(self, vertices):
         """
         Updates the active selection with the supplied vertex elements.
@@ -207,7 +208,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         :rtype: None
         """
 
-        pymxs.runtime.skinOps.isVertexSelected(self.object(), vertices)
+        pymxs.runtime.skinOps.selectVertices(self.object(), vertices)
 
     def iterSoftSelection(self):
         """
@@ -372,7 +373,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         pymxs.runtime.skinOps.selectBone(self.object(), influenceId)
 
     @CommandPanelOverride('modify')
-    def iterWeights(self, *args):
+    def iterVertexWeights(self, *args):
         """
         Returns a generator that yields weights for the supplied vertex indices.
         If no vertex indices are supplied then all weights are yielded instead.
@@ -411,7 +412,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
             yield arg, vertexWeights
 
     @CommandPanelOverride('modify')
-    def applyWeights(self, vertices):
+    def applyVertexWeights(self, vertices):
         """
         Assigns the supplied vertex weights to this deformer.
 

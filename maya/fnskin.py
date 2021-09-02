@@ -601,7 +601,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         #
         del influences[influenceId]
 
-    def iterWeights(self, *args):
+    def iterVertexWeights(self, *args):
         """
         Returns a generator that yields weights for the supplied vertex indices.
         If no vertex indices are supplied then all weights are yielded instead.
@@ -649,7 +649,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
             yield arg, vertexWeights
 
     @undo
-    def applyWeights(self, vertices):
+    def applyVertexWeights(self, vertices):
         """
         Assigns the supplied vertex weights to this deformer.
 

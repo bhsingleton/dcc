@@ -5,9 +5,10 @@ from abc import ABCMeta, abstractmethod
 from six import with_metaclass, integer_types
 from six.moves import collections_abc
 from copy import deepcopy
+from dcc.naming import namingutils
 
 from . import afnbase
-from .. import fnnode
+from .. import fnnode, fnmesh
 
 import logging
 logging.basicConfig()
@@ -111,9 +112,9 @@ class Influences(collections_abc.MutableMapping):
         :rtype: iter
         """
 
-        for (key, value) in self.items():
+        for (index, handle) in self.items():
 
-            yield key, fnnode.FnNode.getNodeByHandle(value)
+            yield index, fnnode.FnNode.getNodeByHandle(handle)
 
     def __len__(self):
         """
@@ -216,6 +217,14 @@ class Influences(collections_abc.MutableMapping):
 class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
     """
     Overload of AFnBase that outlines function set behaviour for DCC skinning.
+    For consistency I've been using the following variable names for specific data structures below.
+
+    :param weights: A series of key-value pairs for influence IDs and their associated weight value.
+    :type weights: dict[int:float]
+    :param vertexWeights: A series of key-value pairs for vertex indices and their associated weights.
+    :type vertexWeights: dict[int:dict[int:float]]
+    :param controlPoint: A series of key-value pairs for vertex indices and their local space position.
+    :type controlPoint: dict[int:list[float, float, float]]
     """
 
     __slots__ = ('_influences', '_clipboard')
@@ -245,7 +254,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
             'name': self.name(),
             'influences': self.influenceNames(),
             'maxInfluences': self.maxInfluences(),
-            'vertices': self.weights(),
+            'vertices': self.vertexWeights(),
             'points': self.controlPoints()
         }
 
@@ -549,7 +558,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
         #
         influenceIds = set()
 
-        for (vertexIndex, vertexWeights) in self.iterWeights(*args):
+        for (vertexIndex, vertexWeights) in self.iterVertexWeights(*args):
 
             influenceIds = influenceIds.union(set(vertexWeights.keys()))
 
@@ -609,32 +618,32 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
         log.debug('Successfully created %s influence binder.' % influenceMap)
         return influenceMap
 
-    def remapWeights(self, vertices, influenceMap):
+    def remapVertexWeights(self, vertexWeights, influenceMap):
         """
         Remaps the supplied vertex weights using the specified influence map.
 
-        :type vertices: dict[int:dict[int:float]]
+        :type vertexWeights: dict[int:dict[int:float]]
         :type influenceMap: dict[int:int]
         :rtype: dict[int:dict[int:float]]
         """
 
         # Check if arguments are valid
         #
-        if not isinstance(vertices, dict) or not isinstance(influenceMap, dict):
+        if not isinstance(vertexWeights, dict) or not isinstance(influenceMap, dict):
 
-            raise TypeError('remapVertexWeights() expects a dict (%s given)!' % type(vertices).__name__)
+            raise TypeError('remapVertexWeights() expects a dict (%s given)!' % type(vertexWeights).__name__)
 
         # Reiterate through vertices
         #
         updates = {}
 
-        for (vertexIndex, vertexWeights) in vertices.items():
+        for (vertexIndex, weights) in vertexWeights.items():
 
             # Iterate through vertex weights
             #
             updates[vertexIndex] = {}
 
-            for (influenceId, weight) in vertexWeights.items():
+            for (influenceId, weight) in weights.items():
 
                 # Get remapped id and check if weights should be merged
                 #
@@ -663,13 +672,11 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
         #
         vertexIndices = []
 
-        for vertexIndex in self.range(self.numControlPoints()):
+        for (vertexIndex, weights) in self.iterVertexWeights():
 
             # Check if weights contain influence ID
             #
-            vertexWeights = dict(self.iterWeights(vertexIndex))
-
-            if any([x in vertexWeights for x in args]):
+            if any([x in weights for x in args]):
 
                 vertexIndices.append(vertexIndex)
 
@@ -735,7 +742,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
                 root = parent
 
     @abstractmethod
-    def iterWeights(self, *args):
+    def iterVertexWeights(self, *args):
         """
         Returns a generator that yields weights for the supplied vertex indices.
         If no vertex indices are supplied then all weights are yielded instead.
@@ -745,7 +752,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         pass
 
-    def weights(self, *args):
+    def vertexWeights(self, *args):
         """
         Returns the weights for the supplied vertex indices.
         If no vertex indices are supplied then all weights are returned instead.
@@ -753,7 +760,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
         :rtype: dict[int:dict[int:float]]
         """
 
-        return dict(self.iterWeights(*args))
+        return dict(self.iterVertexWeights(*args))
 
     def setWeights(self, weights, target, source, amount, falloff=1.0):
         """
@@ -801,7 +808,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         maxInfluences = self.maxInfluences()
 
-        if target in influenceIds or (target not in influenceIds and numInfluences < maxInfluences):
+        if (target in influenceIds) or (target not in influenceIds and numInfluences < maxInfluences):
 
             # Determine redistribution method:
             # If amount is less than current then give those weights back to the source list
@@ -957,60 +964,60 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         return abs(a - b) <= max(rel_tol * max(abs(a), abs(b)), abs_tol)
 
-    def isNormalized(self, vertexWeights):
+    def isNormalized(self, weights):
         """
         Evaluates if the supplied weights have been normalized.
 
-        :type vertexWeights: dict
+        :type weights: dict[int:float]
         :rtype: bool
         """
 
         # Check value type
         #
-        if not isinstance(vertexWeights, dict):
+        if not isinstance(weights, dict):
 
-            raise TypeError('isNormalized() expects a dict (%s given)!' % type(vertexWeights).__name__)
+            raise TypeError('isNormalized() expects a dict (%s given)!' % type(weights).__name__)
 
         # Check influence weight total
         #
-        total = sum([weight for (influenceId, weight) in vertexWeights.items()])
+        total = sum([weight for (influenceId, weight) in weights.items()])
         log.debug('Supplied influence weights equal %s.' % total)
 
         return self.isClose(1.0, total)
 
-    def normalizeWeights(self, vertexWeights, maintainMaxInfluences=True):
+    def normalizeWeights(self, weights, maintainMaxInfluences=True):
         """
         Normalizes the supplied vertex weights.
 
         :type maintainMaxInfluences: bool
-        :type vertexWeights: dict[int:float]
+        :type weights: dict[int:float]
         :rtype: dict[int:float]
         """
 
         # Check value type
         #
-        if not isinstance(vertexWeights, dict):
+        if not isinstance(weights, dict):
 
-            raise TypeError('normalizeWeights() expects a dict (%s given)!' % type(vertexWeights).__name__)
+            raise TypeError('normalizeWeights() expects a dict (%s given)!' % type(weights).__name__)
 
         # Check if influences should be pruned
         #
         if maintainMaxInfluences:
 
-            vertexWeights = self.pruneWeights(vertexWeights)
+            weights = self.pruneWeights(weights)
 
         # Check if weights have already been normalized
         #
-        isNormalized = self.isNormalized(vertexWeights)
+        isNormalized = self.isNormalized(weights)
 
         if isNormalized:
 
             log.debug('Vertex weights have already been normalized.')
-            return vertexWeights
+            return weights
 
         # Get total weight we can normalize
         #
-        total = sum(vertexWeights.values())
+        total = sum(weights.values())
 
         if total == 0.0:
 
@@ -1022,10 +1029,10 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
             #
             scale = 1.0 / total
 
-            for (influenceId, weight) in vertexWeights.items():
+            for (influenceId, weight) in weights.items():
 
                 normalized = (weight * scale)
-                vertexWeights[influenceId] = normalized
+                weights[influenceId] = normalized
 
                 log.debug(
                     'Scaling influence ID: {index}, from {weight} to {normalized}'.format(
@@ -1035,35 +1042,33 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
                     )
                 )
 
-        # Return normalized vertex weights
-        #
-        return vertexWeights
+        return weights
 
-    def pruneWeights(self, vertexWeights):
+    def pruneWeights(self, weights):
         """
         Prunes the supplied vertex weights to meet the maximum number of weighted influences.
 
-        :type vertexWeights: dict[int:float]
+        :type weights: dict[int:float]
         :rtype: dict[int:float]
         """
 
         # Check value type
         #
-        if not isinstance(vertexWeights, dict):
+        if not isinstance(weights, dict):
 
-            raise TypeError('pruneWeights() expects a dict (%s given)!' % type(vertexWeights).__name__)
+            raise TypeError('pruneWeights() expects a dict (%s given)!' % type(weights).__name__)
 
         # Check if any influences have dropped below limit
         #
         influences = self.influences()
 
-        for (influenceId, weight) in vertexWeights.items():
+        for (influenceId, weight) in weights.items():
 
             # Check if influence weight is below threshold
             #
             if self.isClose(0.0, weight) or influences[influenceId] is None:
 
-                vertexWeights[influenceId] = 0.0
+                weights[influenceId] = 0.0
 
             else:
 
@@ -1071,14 +1076,14 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         # Check if influences have exceeded max allowances
         #
-        numInfluences = len(vertexWeights)
+        numInfluences = len(weights)
         maxInfluences = self.maxInfluences()
 
         if numInfluences > maxInfluences:
 
             # Order influences from lowest to highest
             #
-            orderedInfluences = sorted(vertexWeights, key=vertexWeights.get, reverse=False)
+            orderedInfluences = sorted(weights, key=weights.get, reverse=False)
 
             # Replace surplus influences with zero values
             #
@@ -1087,7 +1092,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
             for i in range(diff):
 
                 influenceId = orderedInfluences[i]
-                vertexWeights[influenceId] = 0.0
+                weights[influenceId] = 0.0
 
         else:
 
@@ -1095,7 +1100,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         # Return dictionary changes
         #
-        return vertexWeights
+        return weights
 
     def averageWeights(self, *args, **kwargs):
         """
@@ -1137,7 +1142,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
         return self.normalizeWeights(average, **kwargs)
 
     @abstractmethod
-    def applyWeights(self, vertices):
+    def applyVertexWeights(self, vertices):
         """
         Assigns the supplied vertex weights to this deformer.
 
@@ -1231,7 +1236,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
         :rtype: None
         """
 
-        self._clipboard = self.weights(*self.selection())
+        self._clipboard = self.vertexWeights(*self.selection())
 
     def pasteWeights(self):
         """
@@ -1270,7 +1275,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         # Apply weights
         #
-        self.applyWeights(vertices)
+        self.applyVertexWeights(vertices)
 
     def pasteAveragedWeights(self):
         """
@@ -1295,7 +1300,107 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
         average = self.averageWeights(*list(self._clipboard.values()), maintainMaxInfluences=True)
         updates = {vertexIndex: deepcopy(average) for vertexIndex in selection}
 
-        return self.applyWeights(updates)
+        return self.applyVertexWeights(updates)
+
+    def mirrorVertexWeights(self, vertexIndices, pull=False, axis=0):
+        """
+        Returns a series of mirrored weights for the supplied vertex weights.
+
+        :type vertexIndices: list[int]
+        :type pull: bool
+        :type axis: int
+        :rtype: dict[int:dict[int:float]]
+        """
+
+        # Mirror the supplied vertex indices
+        #
+        fnMesh = fnmesh.FnMesh(self.shape())
+        mirrorIndices = fnMesh.mirrorVertices(vertexIndices, axis=axis)
+
+        # Mirror the found vertex pairs
+        #
+        vertexWeights = self.vertexWeights(*list(set.union(mirrorIndices.keys(), mirrorIndices.values())))
+        mirrorVertexWeights = {}
+
+        for (vertexIndex, mirrorIndex) in mirrorIndices.items():
+
+            isCenterSeam = vertexIndex == mirrorIndex
+
+            if pull:
+
+                mirrorVertexWeights[vertexIndex] = self.mirrorWeights(vertexWeights[mirrorIndex], isCenterSeam=isCenterSeam)
+
+            else:
+
+                mirrorVertexWeights[mirrorIndex] = self.mirrorWeights(vertexWeights[vertexIndex], isCenterSeam=isCenterSeam)
+
+        return mirrorVertexWeights
+
+    def mirrorWeights(self, weights, isCenterSeam=False):
+        """
+        Mirrors the influence IDs in the supplied vertex weight dictionary.
+
+        :type weights: dict[int: float]
+        :type isCenterSeam: bool
+        :rtype: dict[int: float]
+        """
+
+        # Check value type
+        #
+        if not isinstance(weights, dict):
+
+            raise TypeError('mirrorWeights() expects a dict (%s given)!' % type(weights).__name__)
+
+        # Iterate through influences
+        #
+        influences = self.influences()
+        mirrorWeights = {}
+
+        for influenceId in weights.keys():
+
+            # Concatenate mirror name
+            # Be sure to check for redundancy
+            #
+            influenceName = influences(influenceId).name()
+            mirrorName = namingutils.mirrorName(influenceName)
+
+            if influenceName == mirrorName:
+
+                log.debug('No mirrored influence name found for %s.' % influenceName)
+
+                mirrorWeights[influenceId] = weights[influenceId]
+                continue
+
+            # Check if mirror name is in list
+            #
+            log.debug('Checking if %s exists in influence list...' % mirrorName)
+            mirrorId = influences.index(mirrorName)
+
+            if mirrorId is not None:
+
+                # Check if this is for a center seam
+                #
+                if isCenterSeam:
+
+                    log.debug('Splitting %s vertex weights with %s influence.' % (mirrorName, influenceName))
+
+                    weight = (weights.get(influenceId, 0.0) + weights.get(mirrorId, 0.0)) / 2.0
+                    mirrorWeights[influenceId] = weight
+                    mirrorWeights[mirrorId] = weight
+
+                else:
+
+                    log.debug('Trading %s vertex weights for %s influence.' % (mirrorName, influenceName))
+                    mirrorWeights[mirrorId] = weights[influenceId]
+
+            else:
+
+                log.warning('Unable to find a matching mirrored influence for %s.' % influenceName)
+                mirrorWeights[influenceId] = weights[influenceId]
+
+        # Return mirrored vertex weights
+        #
+        return mirrorWeights
 
     def blendVertices(self):
         """
@@ -1326,7 +1431,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
             # Average vertex weights
             #
-            vertices = self.weights(*connectedVertices)
+            vertices = self.vertexWeights(*connectedVertices)
 
             vertexWeights = self.averageWeights(*list(vertices.values()))
             log.debug('%s averaged from connected vertices.' % vertexWeights)
@@ -1335,7 +1440,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         # Apply averaged result to skin cluster
         #
-        return self.applyWeights(updates)
+        return self.applyVertexWeights(updates)
 
     def blendBetweenVertices(self, blendByDistance=False):
         """
