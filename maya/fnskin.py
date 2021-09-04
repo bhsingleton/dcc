@@ -18,6 +18,9 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
     """
 
     __slots__ = ('_transform', '_shape', '_intermediateObject')
+    __loaded__ = mc.pluginInfo('TransferPaintWeightsCmd', query=True, loaded=True)
+    __colorsetname__ = 'paintWeightsColorSet1'
+    __colorramp__ = '1,0,0,1,1,1,0.5,0,0.8,1,1,1,0,0.6,1,0,1,0,0.4,1,0,0,1,0,1'
 
     def __init__(self, *args, **kwargs):
         """
@@ -243,7 +246,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
         if numArgs == 0:
 
-            args = list(self.range(self.numControlPoints()))
+            args = list(range(self.numControlPoints()))
 
         # Create component
         #
@@ -372,9 +375,8 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         for i in range(fnComponent.elementCount):
 
             element = fnComponent.element(i)
-            hasWeight = fnComponent.hasWeights(i)
 
-            if hasWeight:
+            if fnComponent.hasWeights:
 
                 yield element, fnComponent.weight(i)
 
@@ -413,6 +415,16 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
         return list(connectedVertices)
 
+    @classmethod
+    def isPluginLoaded(cls):
+        """
+        Evaluates if the plugin for color display is loaded.
+
+        :rtype: bool
+        """
+
+        return cls.__loaded__
+
     def showColors(self):
         """
         Enables color feedback for the associated shape.
@@ -420,7 +432,54 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         :rtype: None
         """
 
-        pass
+        # Check if plugin is loaded
+        #
+        if not self.isPluginLoaded():
+
+            log.debug('showColors() requires the TransferPaintWeightsCmd.mll plugin!')
+            return
+
+        # Check if this instance supports vertex colours
+        #
+        shape = self.shape()
+
+        if not shape.hasFn(om.MFn.kMesh):
+
+            log.debug('showColors() expects a mesh (%s given)!' % shape.apiTypeStr)
+            return
+
+        # Check if intermediate object has colour set
+        #
+        intermediateObject = self.intermediateObject()
+
+        fnMesh = om.MFnMesh(intermediateObject)
+        colorSetNames = fnMesh.getColorSetNames()
+
+        if self.__colorsetname__ not in colorSetNames:
+
+            fnMesh.createColorSet(self.__colorsetname__, False)
+            fnMesh.setCurrentColorSetName(self.__colorsetname__)
+
+        # Set shape attributes
+        #
+        fnMesh.setObject(shape)
+        fullPathName = fnMesh.fullPathName()
+
+        mc.setAttr('%s.displayImmediate' % fullPathName, 0)
+        mc.setAttr('%s.displayVertices' % fullPathName, 0)
+        mc.setAttr('%s.displayEdges' % fullPathName, 0)
+        mc.setAttr('%s.displayBorders' % fullPathName, 0)
+        mc.setAttr('%s.displayCenter' % fullPathName, 0)
+        mc.setAttr('%s.displayTriangles' % fullPathName, 0)
+        mc.setAttr('%s.displayUVs' % fullPathName, 0)
+        mc.setAttr('%s.displayNonPlanar' % fullPathName, 0)
+        mc.setAttr('%s.displayInvisibleFaces' % fullPathName, 0)
+        mc.setAttr('%s.displayColors' % fullPathName, 1)
+        mc.setAttr('%s.vertexColorSource' % fullPathName, 1)
+        mc.setAttr('%s.materialBlend' % fullPathName, 0)
+        mc.setAttr('%s.displayNormal' % fullPathName, 0)
+        mc.setAttr('%s.displayTangent' % fullPathName, 0)
+        mc.setAttr('%s.currentColorSet' % fullPathName, '', type='string')
 
     def hideColors(self):
         """
@@ -429,7 +488,77 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         :rtype: None
         """
 
-        pass
+        # Check if plugin is loaded
+        #
+        if not self.isPluginLoaded():
+
+            log.debug('hideColors() requires the TransferPaintWeightsCmd.mll plugin!')
+            return
+
+        # Check if this instance supports vertex colours
+        #
+        shape = self.shape()
+
+        if not shape.hasFn(om.MFn.kMesh):
+
+            log.debug('hideColors() expects a mesh (%s given)!' % shape.apiTypeStr)
+            return
+
+        # Reset shape attributes
+        #
+        fnMesh = om.MFnMesh(shape)
+        fullPathName = fnMesh.fullPathName()
+
+        mc.setAttr('%s.displayColors' % fullPathName, 0)
+        mc.setAttr('%s.vertexColorSource' % fullPathName, 1)
+
+        # Delete color set
+        #
+        intermediateObject = self.intermediateObject()
+
+        fnMesh.setObject(intermediateObject)
+        colorSetNames = fnMesh.getColorSetNames()
+
+        if self.__colorsetname__ in colorSetNames:
+
+            fnMesh.deleteColorSet(self.__colorsetname__)
+
+    def invalidateColors(self):
+        """
+        Forces the vertex colour display to redraw.
+
+        :rtype: None
+        """
+
+        # Check if plugin is loaded
+        #
+        if not self.isPluginLoaded():
+
+            log.debug('invalidateColors() requires the TransferPaintWeightsCmd.mll plugin!')
+            return
+
+        # Check if this instance belongs to a mesh
+        #
+        intermediateObject = self.intermediateObject()
+
+        if not intermediateObject.hasFn(om.MFn.kMesh):
+
+            log.debug('invalidateColors() expects a mesh (%s given)!' % intermediateObject.apiTypeStr)
+            return
+
+        # Check if colour set is active
+        #
+        fnMesh = om.MFnMesh(intermediateObject)
+
+        if fnMesh.currentColorSetName() == self.__colorsetname__:
+
+            mc.dgdirty('%s.paintTrans' % self.name())
+
+            mc.transferPaintWeights(
+                '%s.paintWeights' % self.name(),
+                fnMesh.fullPathName(),
+                colorRamp=self.__colorramp__
+            )
 
     def iterInfluences(self):
         """
@@ -497,7 +626,16 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         :rtype: None
         """
 
-        pass
+        influences = self.influences()
+        influence = influences(influenceId)
+
+        if influence is not None:
+
+            mc.connectAttr(
+                '{influenceName}.message'.format(influenceName=influence.dagPath()),
+                '{deformerName}.paintTrans'.format(deformerName=self.name()),
+                force=True
+            )
 
     def addInfluence(self, influence):
         """
@@ -615,7 +753,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
         if numArgs == 0:
 
-            args = self.range(self.numControlPoints())
+            args = range(self.numControlPoints())
 
         # Iterate through arguments
         #
@@ -684,19 +822,34 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
             for influenceId in diff:
 
                 mc.removeMultiInstance(
-                    '{nodeName}.weightList[vertexIndex].weights[{influenceId}]'.format(
+                    '{nodeName}.weightList[{vertexIndex}].weights[{influenceId}]'.format(
                         nodeName=fnDependNode.absoluteName(),
                         vertexIndex=vertexIndex,
                         influenceId=influenceId
                     )
                 )
 
-            # Assign new weights
+            # Iterate through new weights
             #
             for (influenceId, weight) in vertexWeights.items():
 
-                element = weightsPlug.elementByLogicalIndex(influenceId)  # type: om.MPlug
-                element.setFloat(weight)
+                # Check for zero weights
+                # Be sure to remove these if encountered!
+                #
+                if self.isClose(0.0, weight):
+
+                    mc.removeMultiInstance(
+                        '{nodeName}.weightList[{vertexIndex}].weights[{influenceId}]'.format(
+                            nodeName=fnDependNode.absoluteName(),
+                            vertexIndex=vertexIndex,
+                            influenceId=influenceId
+                        )
+                    )
+
+                else:
+
+                    element = weightsPlug.elementByLogicalIndex(influenceId)  # type: om.MPlug
+                    element.setFloat(weight)
 
         # Enable normalize weights and close undo chunk
         #

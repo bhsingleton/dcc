@@ -79,7 +79,7 @@ class AFnNode(with_metaclass(ABCMeta, afnbase.AFnBase)):
         :rtype: str
         """
 
-        return '|'.join(reversed([self.__class__(x).name() for x in self.iterParents()]))
+        return '|'.join([self.__class__(x).name() for x in self.trace()])
 
     def select(self, replace=True):
         """
@@ -191,6 +191,19 @@ class AFnNode(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
 
         pass
+
+    def trace(self):
+        """
+        Returns a generator that yields all of the nodes up to and including this node.
+
+        :rtype: iter
+        """
+
+        for parent in reversed(list(self.iterParents())):
+
+            yield parent
+
+        yield self.object()
 
     @abstractmethod
     def iterChildren(self):

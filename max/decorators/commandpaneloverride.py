@@ -1,5 +1,8 @@
 import pymxs
 
+from six import string_types
+from functools import partial
+
 from .. import fnnode
 
 import logging
@@ -13,7 +16,7 @@ class CommandPanelOverride(object):
     Class decorator used to override the command panel task mode at runtime.
     """
 
-    __slots__ = ('func', 'mode', 'autoSelect')
+    __slots__ = ('_mode', '_autoSelect', '_instance', '_owner', '_func')
 
     def __init__(self, *args, **kwargs):
         """
@@ -26,9 +29,11 @@ class CommandPanelOverride(object):
 
         # Declare public variables
         #
-        self.func = None
-        self.mode = None
-        self.autoSelect = kwargs.get('autoSelect', True)
+        self._mode = kwargs.get('mode', 'create')
+        self._autoSelect = kwargs.get('autoSelect', True)
+        self._instance = None
+        self._owner = None
+        self._func = None
 
         # Inspect arguments
         #
@@ -36,60 +41,39 @@ class CommandPanelOverride(object):
 
         if numArgs == 1:
 
-            # Inspect argument type
-            #
-            arg = args[0]
+            self._func = args[0]
 
-            if callable(arg):
+    def __get__(self, instance, owner):
+        """
+        Private method called whenever this object is accessed via attribute lookup.
 
-                self.func = arg
-                self.mode = pymxs.runtime.getCommandPanelTaskMode()
+        :type instance: object
+        :type owner: type
+        :rtype: Undo
+        """
 
-            else:
+        self._instance = instance
+        self._owner = owner
 
-                self.mode = pymxs.runtime.name(arg)
-
-        else:
-
-            raise TypeError('Undo() expects 1 argument (%s given)!' % numArgs)
+        return self
 
     def __call__(self, *args, **kwargs):
         """
         Private method that is called whenever this instance is evoked.
 
-        :type func: method
-        :rtype: Any
+        :type func: function
+        :rtype: function
         """
 
-        # Check if function is callable
+        # Execute order of operations
         #
-        if not callable(self.func):
+        self.__enter__(*args)
+        results = self.func(*args, **kwargs)
+        self.__exit__(None, None, None)
 
-            # Store reference to unbound method
-            #
-            self.func = args[0]
+        return results
 
-            def wrapper(*args, **kwargs):
-
-                self.__enter__()
-                results = self.func(*args, **kwargs)
-                self.__exit__(None, None, None)
-
-                return results
-
-            return wrapper
-
-        else:
-
-            # Wrap internal function
-            #
-            self.__enter__(*args)
-            results = self.func(*args, **kwargs)
-            self.__exit__(None, None, None)
-
-            return results
-
-    def __enter__(self, *args, **kwargs):
+    def __enter__(self, *args):
         """
         Private method that is called when this instance is entered using a with statement.
 
@@ -124,6 +108,43 @@ class CommandPanelOverride(object):
 
         pass
 
+    @property
+    def mode(self):
+        """
+        Getter method that returns the override mode.
+
+        :rtype: str
+        """
+
+        return self._mode
+
+    @property
+    def autoSelect(self):
+        """
+        Getter method that returns the auto select state.
+
+        :rtype: str
+        """
+
+        return self._mode
+
+    @property
+    def func(self):
+        """
+        Getter method used to return the wrapped function.
+        If this is a descriptor then the function will be bound.
+
+        :rtype: function
+        """
+
+        if self._instance is not None:
+
+            return self._func.__get__(self._instance, self._owner)
+
+        else:
+
+            return self._func
+
 
 def commandpaneloverride(*args, **kwargs):
     """
@@ -132,4 +153,18 @@ def commandpaneloverride(*args, **kwargs):
     :rtype: method
     """
 
-    return CommandPanelOverride(*args, **kwargs).__call__
+    # Check number of arguments
+    #
+    numArgs = len(args)
+
+    if numArgs == 0:
+
+        return partial(commandpaneloverride, **kwargs)
+
+    elif numArgs == 1:
+
+        return CommandPanelOverride(*args, **kwargs)
+
+    else:
+
+        raise TypeError('commandpaneloverride() expects at most 1 argument (%s given)!' % numArgs)

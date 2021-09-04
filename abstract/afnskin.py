@@ -430,6 +430,15 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         pass
 
+    def invalidateColors(self):
+        """
+        Forces the vertex colour display to redraw.
+
+        :rtype: None
+        """
+
+        pass
+
     @abstractmethod
     def iterInfluences(self):
         """
@@ -1301,6 +1310,17 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
         updates = {vertexIndex: deepcopy(average) for vertexIndex in selection}
 
         return self.applyVertexWeights(updates)
+
+    def slabPasteWeights(self, vertexIndices, mode=0):
+        """
+        Copies the supplied vertex indices to the nearest neighbour.
+
+        :type vertexIndices: list[int]
+        :type mode: int
+        :rtype: None
+        """
+
+        pass
 
     def mirrorVertexWeights(self, vertexIndices, pull=False, axis=0):
         """

@@ -1,5 +1,8 @@
 import maya.cmds as mc
 
+from six import string_types
+from functools import partial
+
 import logging
 logging.basicConfig()
 log = logging.getLogger(__name__)
@@ -11,13 +14,12 @@ class Undo(object):
     Base class used to manage undo chunks either as a decorator or with statement.
     """
 
-    __slots__ = ('func', 'wrapper', 'name')
+    __slots__ = ('_name', '_instance', '_owner', '_func')
 
     def __init__(self, *args, **kwargs):
         """
         Private method called after a new instance has been created.
 
-        :type enabled: bool
         :type name: str
         :rtype: None
         """
@@ -28,8 +30,10 @@ class Undo(object):
 
         # Declare public variables
         #
-        self.func = None
-        self.name = ''
+        self._name = kwargs.get('name')
+        self._instance = None
+        self._owner = None
+        self._func = None
 
         # Inspect arguments
         #
@@ -37,59 +41,39 @@ class Undo(object):
 
         if numArgs == 1:
 
-            # Inspect argument type
-            #
-            arg = args[0]
+            self._func = args[0]
 
-            if callable(arg):
+    def __get__(self, instance, owner):
+        """
+        Private method called whenever this object is accessed via attribute lookup.
 
-                self.func = arg
-                self.name = self.func.__name__
+        :type instance: object
+        :type owner: type
+        :rtype: Undo
+        """
 
-            else:
+        self._instance = instance
+        self._owner = owner
 
-                self.name = arg
-
-        else:
-
-            raise TypeError('Undo() expects 1 argument (%s given)!' % numArgs)
+        return self
 
     def __call__(self, *args, **kwargs):
         """
         Private method that is called whenever this instance is evoked.
 
-        :rtype: Any
+        :type func: function
+        :rtype: function
         """
 
-        # Check if function is callable
+        # Execute order of operations
         #
-        if not callable(self.func):
+        self.__enter__()
+        results = self.func(*args, **kwargs)
+        self.__exit__(None, None, None)
 
-            # Store reference to unbound method
-            #
-            self.func = args[0]
+        return results
 
-            def wrapper(*args, **kwargs):
-
-                self.__enter__()
-                results = self.func(*args, **kwargs)
-                self.__exit__(None, None, None)
-
-                return results
-
-            return wrapper
-
-        else:
-
-            # Wrap internal function
-            #
-            self.__enter__()
-            results = self.func(*args, **kwargs)
-            self.__exit__(None, None, None)
-
-            return results
-
-    def __enter__(self):
+    def __enter__(self, *args):
         """
         Private method that is called when this instance is entered using a with statement.
 
@@ -110,12 +94,56 @@ class Undo(object):
 
         mc.undoInfo(closeChunk=True)
 
+    @property
+    def name(self):
+        """
+        Getter method that returns the name of this undo.
+
+        :rtype: str
+        """
+
+        return self._name
+
+    @property
+    def func(self):
+        """
+        Getter method used to return the wrapped function.
+        If this is a descriptor then the function will be bound.
+
+        :rtype: function
+        """
+
+        if self._instance is not None:
+
+            return self._func.__get__(self._instance, self._owner)
+
+        else:
+
+            return self._func
+
 
 def undo(*args, **kwargs):
     """
     Returns an undo wrapper for the supplied function.
 
-    :rtype: method
+    :keyword name: str
+    :rtype: function
     """
 
-    return Undo(*args, **kwargs).__call__
+    # Check number of arguments
+    #
+    numArgs = len(args)
+
+    if numArgs == 0:
+
+        return partial(undo, **kwargs)
+
+    elif numArgs == 1:
+
+        return Undo(*args, **kwargs)
+
+    else:
+
+        raise TypeError('undo() expects at most 1 argument (%s given)!' % numArgs)
+
+

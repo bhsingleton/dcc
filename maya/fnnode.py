@@ -131,15 +131,24 @@ class FnNode(afnnode.AFnNode):
         #
         if not self.isValid():
 
-            return
+            return None
 
         # Check if this is a dag node
         #
         obj = self.object()
 
-        if obj.hasFn(om.MFn.kDagNode):
+        if not obj.hasFn(om.MFn.kDagNode):
 
-            return om.MFnDagNode(obj).parent(0)
+            return None
+
+        # Check if this node has a parent
+        #
+        fnDagNode = om.MFnDagNode(obj)
+        parent = fnDagNode.parent(0)
+
+        if not parent.hasFn(om.MFn.kWorld):
+
+            return parent
 
         else:
 
