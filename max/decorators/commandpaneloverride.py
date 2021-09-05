@@ -94,7 +94,7 @@ class CommandPanelOverride(object):
 
         if self.autoSelect and isinstance(instance, fnnode.FnNode):
 
-            instance.select()
+            instance.select(replace=True)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """
@@ -116,7 +116,7 @@ class CommandPanelOverride(object):
         :rtype: str
         """
 
-        return self._mode
+        return pymxs.runtime.name(self._mode)
 
     @property
     def autoSelect(self):
@@ -126,7 +126,7 @@ class CommandPanelOverride(object):
         :rtype: str
         """
 
-        return self._mode
+        return self._autoSelect
 
     @property
     def func(self):

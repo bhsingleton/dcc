@@ -2,7 +2,8 @@ import maya.cmds as mc
 import maya.api.OpenMaya as om
 
 from . import fnnode
-from .decorators.undo import undo
+from .libs import dagutils, plugutils
+from .decorators import undo
 from ..abstract import afnskin
 
 import logging
@@ -45,141 +46,18 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         :rtype: None
         """
 
-        # Locate skin cluster from object
+        # Call parent method
         #
-        obj = self.getMObject(obj)
-        skinCluster = self.findSkinCluster(obj)
-
+        skinCluster = dagutils.findDeformerByType(obj, om.MFn.kSkinClusterFilter)
         super(FnSkin, self).setObject(skinCluster)
 
         # Store references to skin cluster components
         #
-        transform, shape, intermediateObject = self.decomposeSkinCluster(skinCluster)
+        transform, shape, intermediateObject = dagutils.decomposeDeformer(skinCluster)
 
         self._transform = om.MObjectHandle(transform)
         self._shape = om.MObjectHandle(shape)
         self._intermediateObject = om.MObjectHandle(intermediateObject)
-
-    @classmethod
-    def findSkinCluster(cls, obj):
-        """
-        Finds the skin cluster from the given object.
-
-        :type obj: om.MObject
-        :rtype: om.MObject
-        """
-
-        # Check for null object
-        #
-        if obj.isNull():
-
-            return
-
-        # Check object type
-        #
-        if obj.hasFn(om.MFn.kSkinClusterFilter):
-
-            return obj
-
-        elif obj.hasFn(om.MFn.kTransform):
-
-            # Evaluate the shapes derived from this transform
-            #
-            fnNode = fnnode.FnNode(obj)
-
-            shapes = fnNode.shapes()
-            numShapes = len(shapes)
-
-            if numShapes == 0:
-
-                return None
-
-            elif numShapes == 1:
-
-                return cls.findSkinCluster(shapes[0])
-
-            else:
-
-                raise TypeError('findSkinCluster() expects 1 shape node (%s given)!' % numShapes)
-
-        elif obj.hasFn(om.MFn.kMesh):
-
-            # Evaluate if this is an intermediate object
-            #
-            fnNode = fnnode.FnNode(obj)
-            skinClusters = None
-
-            if fnNode.isIntermediateObject:
-
-                skinClusters = fnNode.dependents(om.MFn.kSkinClusterFilter)
-
-            else:
-
-                skinClusters = fnNode.dependsOn(om.MFn.kSkinClusterFilter)
-
-            # Evaluate found skin clusters
-            #
-            numSkinClusters = len(skinClusters)
-
-            if numSkinClusters == 0:
-
-                return None
-
-            elif numSkinClusters == 1:
-
-                return skinClusters[0]
-
-            else:
-
-                raise TypeError('findSkinCluster() expects 1 skin cluster (%s given)!' % numSkinClusters)
-
-        else:
-
-            raise TypeError('findSkinCluster() expects a transform or shape (%s given)!' % obj.apiTypeStr)
-
-    @classmethod
-    def decomposeSkinCluster(cls, skinCluster):
-        """
-        Returns the transform, shape and intermediate object components that make up a skin cluster.
-
-        :type skinCluster: om.MObject
-        :rtype: om.MObject, om.MObject, om.MObject
-        """
-
-        # Locate shape nodes downstream
-        #
-        fnNode = fnnode.FnNode(skinCluster)
-        transform, shape, intermediateObject = None, None, None
-
-        shapes = fnNode.dependents(om.MFn.kShape)
-        numShapes = len(shapes)
-
-        if numShapes == 1:
-
-            shape = shapes[0]
-
-        else:
-
-            raise TypeError('decomposeSkinCluster() expects 1 shape node (%s found)!' % numShapes)
-
-        # Locate transform from shape node
-        #
-        transform = om.MFnDagNode(shape).parent(0)
-
-        # Locate intermediate objects upstream
-        #
-        intermediateObjects = fnNode.dependsOn(om.MFn.kShape)
-        numIntermediateObjects = len(intermediateObjects)
-
-        if numIntermediateObjects == 1:
-
-            intermediateObject = intermediateObjects[0]
-
-        else:
-
-            raise TypeError('decomposeSkinCluster() expects 1 intermediate object (%s found)!' % numIntermediateObjects)
-
-        return transform, shape, intermediateObject
 
     def transform(self):
         """
@@ -562,7 +440,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
     def iterInfluences(self):
         """
-        Returns a generator that yields all of the influence object from this deformer.
+        Returns a generator that yields all of the influence objects from this skin.
 
         :rtype: iter
         """
@@ -602,7 +480,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
     def numInfluences(self):
         """
-        Returns the number of influences being use by this deformer.
+        Returns the number of influences being use by this skin.
 
         :rtype: int
         """
@@ -611,7 +489,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
     def maxInfluences(self):
         """
-        Getter method that returns the max number of influences for this deformer.
+        Getter method that returns the max number of influences for this skin.
 
         :rtype: int
         """
@@ -626,16 +504,21 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         :rtype: None
         """
 
+        # Get source plug
+        #
         influences = self.influences()
-        influence = influences(influenceId)
+        influence = influences[influenceId]
 
-        if influence is not None:
+        source = plugutils.findPlug(influence, 'message')
 
-            mc.connectAttr(
-                '{influenceName}.message'.format(influenceName=influence.dagPath()),
-                '{deformerName}.paintTrans'.format(deformerName=self.name()),
-                force=True
-            )
+        # Get destination plug
+        #
+        deformer = self.object()
+        destination = plugutils.findPlug(deformer, 'paintTrans')
+
+        # Connect plugs
+        #
+        plugutils.connectPlugs(source, destination, force=True)
 
     def addInfluence(self, influence):
         """
@@ -658,7 +541,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         fnDagNode = om.MFnDagNode(influence)
 
         plug = fnDagNode.findPlug('matrix', False)
-        index = self.getNextAvailableElement(plug)
+        index = plugutils.getNextAvailableConnection(plug)
 
         # Connect joint to skin cluster
         #
@@ -786,7 +669,6 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
             #
             yield arg, vertexWeights
 
-    @undo
     def applyVertexWeights(self, vertices):
         """
         Assigns the supplied vertex weights to this deformer.
@@ -802,41 +684,28 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         normalizePlug = fnDependNode.findPlug('normalizeWeights', False)  # type: om.MPlug
         normalizePlug.setBool(False)
 
-        # Iterate through vertices
+        # Start undo chunk
         #
-        weightListPlug = fnDependNode.findPlug('weightList', False)  # type: om.MPlug
+        with undo.Undo(name='Apply Vertex Weights') as chunk:
 
-        for (vertexIndex, vertexWeights) in vertices.items():
-
-            # Get pre-existing influences
+            # Iterate through vertices
             #
-            weightListPlug.selectAncestorLogicalIndex(vertexIndex)
+            weightListPlug = fnDependNode.findPlug('weightList', False)  # type: om.MPlug
 
-            weightsPlug = weightListPlug.child(0)  # type: om.MPlug
-            influenceIds = weightsPlug.getExistingArrayAttributeIndices()
+            for (vertexIndex, vertexWeights) in vertices.items():
 
-            # Remove unused influences
-            #
-            diff = list(set(influenceIds) - set(vertexWeights.keys()))
-
-            for influenceId in diff:
-
-                mc.removeMultiInstance(
-                    '{nodeName}.weightList[{vertexIndex}].weights[{influenceId}]'.format(
-                        nodeName=fnDependNode.absoluteName(),
-                        vertexIndex=vertexIndex,
-                        influenceId=influenceId
-                    )
-                )
-
-            # Iterate through new weights
-            #
-            for (influenceId, weight) in vertexWeights.items():
-
-                # Check for zero weights
-                # Be sure to remove these if encountered!
+                # Get pre-existing influences
                 #
-                if self.isClose(0.0, weight):
+                weightListPlug.selectAncestorLogicalIndex(vertexIndex)
+
+                weightsPlug = weightListPlug.child(0)  # type: om.MPlug
+                influenceIds = weightsPlug.getExistingArrayAttributeIndices()
+
+                # Remove unused influences
+                #
+                diff = list(set(influenceIds) - set(vertexWeights.keys()))
+
+                for influenceId in diff:
 
                     mc.removeMultiInstance(
                         '{nodeName}.weightList[{vertexIndex}].weights[{influenceId}]'.format(
@@ -846,11 +715,28 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
                         )
                     )
 
-                else:
+                # Iterate through new weights
+                #
+                for (influenceId, weight) in vertexWeights.items():
 
-                    element = weightsPlug.elementByLogicalIndex(influenceId)  # type: om.MPlug
-                    element.setFloat(weight)
+                    # Check for zero weights
+                    # Be sure to remove these if encountered!
+                    #
+                    if self.isClose(0.0, weight):
 
-        # Enable normalize weights and close undo chunk
+                        mc.removeMultiInstance(
+                            '{nodeName}.weightList[{vertexIndex}].weights[{influenceId}]'.format(
+                                nodeName=fnDependNode.absoluteName(),
+                                vertexIndex=vertexIndex,
+                                influenceId=influenceId
+                            )
+                        )
+
+                    else:
+
+                        element = weightsPlug.elementByLogicalIndex(influenceId)  # type: om.MPlug
+                        element.setFloat(weight)
+
+        # Enable normalize weights
         #
         normalizePlug.setBool(True)

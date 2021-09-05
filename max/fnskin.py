@@ -3,7 +3,7 @@ import pymxs
 from six import string_types
 
 from . import fnnode
-from .decorators.commandpaneloverride import CommandPanelOverride
+from .decorators.commandpaneloverride import commandpaneloverride
 from ..abstract import afnskin
 
 import logging
@@ -174,7 +174,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
         return pymxs.runtime.polyOp.getNumVerts(self.shape().baseObject)
 
-    @CommandPanelOverride('modify')
+    @commandpaneloverride(mode='modify')
     def iterSelection(self):
         """
         Returns the selected vertex elements.
@@ -199,7 +199,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
                 continue
 
-    @CommandPanelOverride('modify')
+    @commandpaneloverride(mode='modify')
     def setSelection(self, vertices):
         """
         Updates the active selection with the supplied vertex elements.
@@ -240,7 +240,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
         return list(connectedVertices - set(args))
 
-    @CommandPanelOverride('modify')
+    @commandpaneloverride(mode='modify')
     def showColors(self):
         """
         Enables color feedback for the associated shape.
@@ -256,7 +256,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         #
         skinModifier = self.object()
         skinModifier.drawVertices = True
-        skinModifier.shadeWeights = False
+        skinModifier.shadeWeights = True
         skinModifier.colorAllWeights = False
         skinModifier.draw_all_envelopes = False
         skinModifier.draw_all_vertices = False
@@ -266,7 +266,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         skinModifier.crossSectionsAlwaysOnTop = True
         skinModifier.envelopeAlwaysOnTop = True
 
-    @CommandPanelOverride('modify')
+    @commandpaneloverride(mode='modify')
     def hideColors(self):
         """
         Disable color feedback for the associated shape.
@@ -278,7 +278,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         #
         pymxs.runtime.subObjectLevel = 0
 
-    @CommandPanelOverride('modify')
+    @commandpaneloverride(mode='modify')
     def iterInfluences(self):
         """
         Returns a generator that yields all of the influence object from this deformer.
@@ -320,7 +320,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
             yield boneId, bone
 
-    @CommandPanelOverride('modify')
+    @commandpaneloverride(mode='modify')
     def addInfluence(self, influence):
         """
         Adds an influence to this deformer.
@@ -331,7 +331,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
         pymxs.runtime.skinOps.addBone(self.object(), influence, 0)
 
-    @CommandPanelOverride('modify')
+    @commandpaneloverride(mode='modify')
     def removeInfluence(self, influenceId):
         """
         Removes an influence from this deformer.
@@ -342,7 +342,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
         pymxs.runtime.skinOps.removeBone(self.object(), influenceId)
 
-    @CommandPanelOverride('modify')
+    @commandpaneloverride(mode='modify')
     def numInfluences(self):
         """
         Returns the number of influences being use by this deformer.
@@ -361,7 +361,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
         return self.object().bone_limit
 
-    @CommandPanelOverride('modify')
+    @commandpaneloverride(mode='modify')
     def selectInfluence(self, influenceId):
         """
         Changes the color display to the specified influence id.
@@ -372,7 +372,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
         pymxs.runtime.skinOps.selectBone(self.object(), influenceId)
 
-    @CommandPanelOverride('modify')
+    @commandpaneloverride(mode='modify')
     def iterVertexWeights(self, *args):
         """
         Returns a generator that yields weights for the supplied vertex indices.
@@ -411,7 +411,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
             #
             yield arg, vertexWeights
 
-    @CommandPanelOverride('modify')
+    @commandpaneloverride(mode='modify')
     def applyVertexWeights(self, vertices):
         """
         Assigns the supplied vertex weights to this deformer.

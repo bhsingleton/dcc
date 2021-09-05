@@ -1,8 +1,9 @@
 import maya.cmds as mc
 import maya.api.OpenMaya as om
 
-from six import string_types, integer_types
+from six import integer_types
 
+from .libs import dagutils
 from ..abstract import afnnode
 from ..decorators.validator import validator
 
@@ -51,8 +52,10 @@ class FnNode(afnnode.AFnNode):
 
         # Get maya object
         #
-        obj = self.getMObject(obj)
+        obj = dagutils.getMObject(obj)
         handle = om.MObjectHandle(obj)
+
+        self.__handles__[handle.hashCode()] = handle
 
         # Assign node handle
         #
@@ -298,39 +301,6 @@ class FnNode(afnnode.AFnNode):
 
         return list(self.iterIntermediateObjects())
 
-    @classmethod
-    def iterDependencies(cls, dependNode, apiType, direction=om.MItDependencyGraph.kDownstream, traversal=om.MItDependencyGraph.kDepthFirst):
-        """
-        Returns a generator that yields dependencies based on the supplied arguments.
-
-        :type dependNode: om.MObject
-        :type apiType: int
-        :type direction: int
-        :type traversal: int
-        :rtype: iter
-        """
-
-        # Initialize dependency graph iterator
-        #
-        iterDepGraph = om.MItDependencyGraph(
-            dependNode,
-            filter=apiType,
-            direction=direction,
-            traversal=traversal,
-            level=om.MItDependencyGraph.kNodeLevel
-        )
-
-        while not iterDepGraph.isDone():
-
-            # Get current node
-            #
-            currentNode = iterDepGraph.currentNode()
-            yield currentNode
-
-            # Increment iterator
-            #
-            iterDepGraph.next()
-
     def dependsOn(self, apiType=om.MFn.kDependencyNode):
         """
         Returns a list of nodes that this object is dependent on.
@@ -338,7 +308,7 @@ class FnNode(afnnode.AFnNode):
         :rtype: list[om.MObject]
         """
 
-        return list(self.iterDependencies(self.object(), apiType, direction=om.MItDependencyGraph.kUpstream))
+        return dagutils.dependsOn(self.object(), apiType=apiType)
 
     def dependents(self, apiType=om.MFn.kDependencyNode):
         """
@@ -347,77 +317,7 @@ class FnNode(afnnode.AFnNode):
         :return: list[om.MObject]
         """
 
-        return list(self.iterDependencies(self.object(), apiType, direction=om.MItDependencyGraph.kDownstream))
-
-    @classmethod
-    def getMObject(cls, value):
-        """
-        Returns an MObject from any given value.
-
-        :type value: Union[str, int, om.MObject, om.MDagPath, om.MObjectHandle]
-        :rtype: om.MObject
-        """
-
-        # Check value type
-        #
-        if isinstance(value, om.MObject):
-
-            handle = om.MObjectHandle(value)
-            cls.__handles__[handle.hashCode()] = handle
-
-            return value
-
-        elif isinstance(value, om.MObjectHandle):
-
-            return value.object()
-
-        elif isinstance(value, om.MDagPath):
-
-            return value.node()
-
-        elif isinstance(value, string_types):
-
-            return cls.getNodeByName(value)
-
-        elif isinstance(value, integer_types):
-
-            return cls.getNodeByHandle(value)
-
-        else:
-
-            raise TypeError('getMObject() expects a str or int (%s given)!' % type(value).__name__)
-
-    @classmethod
-    def getNextAvailableElement(cls, plug):
-        """
-        Returns the next available plug element.
-
-        :type plug: om.MPlug
-        :rtype: int
-        """
-
-        # Iterate through elements
-        #
-        numElements = plug.evaluateNumElements()
-
-        for physicalIndex in range(numElements):
-
-            # Check if physical index matches logical
-            #
-            element = plug.elementByPhysicalIndex(physicalIndex)  # type: om.MPlug
-            logicalIndex = element.logicalIndex()
-
-            if physicalIndex != logicalIndex:
-
-                return physicalIndex
-
-            else:
-
-                continue
-
-        # Return last element
-        #
-        return numElements
+        return dagutils.dependents(self.object(), apiType=apiType)
 
     @classmethod
     def doesNodeExist(cls, name):

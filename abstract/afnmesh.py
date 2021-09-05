@@ -148,20 +148,19 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         # This will be used to inverse out input data
         #
         inverse = {x: -1 if x == axis else 1 for x in range(3)}
-
-        # Initialize point tree
-        #
         points = [[value * inverse[index] for (index, value) in enumerate(x)] for x in self.iterVertices(*vertexIndices)]
-        vertexMap = {localIndex: globalIndex for (localIndex, globalIndex) in enumerate(vertexIndices)}
 
-        tree = cKDTree(self.vertices())
-
-        # Query closest points
+        # Query closest points from point tree
+        # Might be worth trying to optimize this with only opposite points?
         #
+        tree = cKDTree(self.vertices())
         distances, indices = tree.query(points, distance_upper_bound=tolerance)
-        numVertices = self.numVertices()
 
-        return {vertexIndex: vertexMap[index] for (vertexIndex, index) in zip(vertexIndices, indices) if index != numVertices}
+        # Generate mirror map
+        # Be sure to compensate for 1-based arrays!
+        #
+        numVertices = self.numVertices()
+        return {vertexIndex: (index + self.arrayOffset) for (vertexIndex, index) in zip(vertexIndices, indices) if index != numVertices}
 
     def nearestNeighbours(self, vertexIndices):
         """

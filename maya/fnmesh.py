@@ -31,7 +31,7 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
         :rtype: int
         """
 
-        return om.MFnMesh(self.object).numVertices
+        return om.MFnMesh(self.object()).numVertices
 
     def numEdges(self):
         """
@@ -40,7 +40,7 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
         :rtype: int
         """
 
-        return om.MFnMesh(self.object).numEdges
+        return om.MFnMesh(self.object()).numEdges
 
     def numFaces(self):
         """
@@ -49,7 +49,7 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
         :rtype: int
         """
 
-        return om.MFnMesh(self.object).numPolygons
+        return om.MFnMesh(self.object()).numPolygons
 
     def iterVertices(self, *args):
         """

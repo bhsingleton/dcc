@@ -3,7 +3,6 @@ from six import with_metaclass
 from collections import deque
 
 from . import afnbase
-from ..decorators.classproperty import classproperty
 
 import logging
 logging.basicConfig()
@@ -19,17 +18,6 @@ class AFnNode(with_metaclass(ABCMeta, afnbase.AFnBase)):
     """
 
     __slots__ = ()
-    __arrayoffset__ = 0
-
-    @classproperty
-    def arrayOffset(cls):
-        """
-        Getter method that returns the array offset for this dcc.
-
-        :rtype: int
-        """
-
-        return cls.__arrayoffset__
 
     @abstractmethod
     def handle(self):

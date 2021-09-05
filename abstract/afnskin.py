@@ -1339,7 +1339,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         # Mirror the found vertex pairs
         #
-        vertexWeights = self.vertexWeights(*list(set.union(mirrorIndices.keys(), mirrorIndices.values())))
+        vertexWeights = self.vertexWeights(*list(set.union(set(mirrorIndices.keys()), set(mirrorIndices.values()))))
         mirrorVertexWeights = {}
 
         for (vertexIndex, mirrorIndex) in mirrorIndices.items():

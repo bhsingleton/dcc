@@ -1,6 +1,8 @@
 from abc import ABCMeta, abstractmethod
 from six import with_metaclass
 
+from ..decorators.classproperty import classproperty
+
 import logging
 logging.basicConfig()
 log = logging.getLogger(__name__)
@@ -13,6 +15,7 @@ class AFnBase(with_metaclass(ABCMeta, object)):
     """
 
     __slots__ = ('_object',)
+    __arrayoffset__ = 0
 
     def __init__(self, *args, **kwargs):
         """
@@ -34,6 +37,16 @@ class AFnBase(with_metaclass(ABCMeta, object)):
         if numArgs == 1:
 
             self.setObject(args[0])
+
+    @classproperty
+    def arrayOffset(cls):
+        """
+        Getter method that returns the array offset for this dcc.
+
+        :rtype: int
+        """
+
+        return cls.__arrayoffset__
 
     def object(self):
         """
