@@ -112,9 +112,7 @@ class Influences(collections_abc.MutableMapping):
         :rtype: iter
         """
 
-        for (index, handle) in self.items():
-
-            yield index, fnnode.FnNode.getNodeByHandle(handle)
+        return iter(self._influences)
 
     def __len__(self):
         """
@@ -160,7 +158,9 @@ class Influences(collections_abc.MutableMapping):
         :rtype: collections_abc.ValuesView
         """
 
-        return self._influences.values()
+        for handle in self._influences.values():
+
+            yield fnnode.FnNode.getNodeByHandle(handle)
 
     def items(self):
         """
@@ -169,7 +169,9 @@ class Influences(collections_abc.MutableMapping):
         :rtype: collections_abc.ItemsView
         """
 
-        return self._influences.items()
+        for (influenceId, handle) in self._influences.items():
+
+            yield influenceId, fnnode.FnNode.getNodeByHandle(handle)
 
     def index(self, influence):
         """
@@ -322,7 +324,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         if numArgs == 0:
 
-            args = self.range(self.numControlPoints())
+            args = range(self.arrayOffset, self.numControlPoints() + self.arrayOffset, 1)
 
         # Iterate through arguments
         #
@@ -400,17 +402,6 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
         return dict(self.iterSoftSelection())
 
     @abstractmethod
-    def getConnectedVertices(self, *args):
-        """
-        Returns a list of vertices connected to the supplied vertices.
-        This should not include the original arguments!
-
-        :rtype: list[int]
-        """
-
-        pass
-
-    @abstractmethod
     def showColors(self):
         """
         Enables color feedback for the associated shape.
@@ -473,10 +464,9 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         :rtype: dict[int:str]
         """
-
-        for (influenceId, influence) in self.influences().items():
-
-            yield influenceId, fnnode.FnNode(influence).name()
+        
+        influences = self.influences()
+        return {influenceId: influences(influenceId).name() for influenceId in influences}
 
     @abstractmethod
     def numInfluences(self):
@@ -1150,6 +1140,43 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
         #
         return self.normalizeWeights(average, **kwargs)
 
+    def weightedAverageWeights(self, startWeights, endWeights, percent=0.5):
+        """
+        Averages supplied vertex weights based on a normalized percentage.
+
+        :type startWeights: dict
+        :type endWeights: dict
+        :type percent: float
+        :rtype: dict[int:float]
+        """
+
+        # Check percentage type
+        #
+        if not isinstance(percent, (int, float)):
+
+            raise TypeError('weightedAverageWeights() expects a float (%s given)!' % type(percent).__name__)
+
+        # Merge dictionary keys using null values
+        #
+        weights = self.mergeDictionaries(startWeights, endWeights)
+        influenceIds = weights.keys()
+
+        for influenceId in influenceIds:
+
+            # Get weight values
+            #
+            startWeight = startWeights.get(influenceId, 0.0)
+            endWeight = endWeights.get(influenceId, 0.0)
+
+            # Average weights
+            #
+            weight = (startWeight * (1.0 - percent)) + (endWeight * percent)
+            weights[influenceId] = weight
+
+        # Return normalized weights
+        #
+        return self.normalizeWeights(weights)
+
     @abstractmethod
     def applyVertexWeights(self, vertices):
         """
@@ -1164,7 +1191,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
     @staticmethod
     def mergeDictionaries(*args):
         """
-        Combines two dictionaries together with null values.
+        Combines any number of dictionaries together with null values.
 
         :rtype: dict
         """
@@ -1422,31 +1449,32 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
         #
         return mirrorWeights
 
-    def blendVertices(self):
+    def blendVertices(self, vertexIndices):
         """
         Blends the selected vertices.
 
+        :type vertexIndices: list[int]
         :rtype: None
         """
 
-        # Get selected vertices
+        # Check number of vertices
         #
-        selection = self.selection()
-        numSelected = len(selection)
+        numVertices = len(vertexIndices)
 
-        if numSelected == 0:
+        if numVertices == 0:
 
             return
 
-        # Iterate through selected vertices
+        # Iterate through vertices
         #
+        fnMesh = fnmesh.FnMesh(self.shape())
         updates = {}
 
-        for vertexIndex in selection:
+        for vertexIndex in vertexIndices:
 
             # Get connected vertices
             #
-            connectedVertices = self.getConnectedVertices(vertexIndex)
+            connectedVertices = list(fnMesh.iterConnectedVertices(vertexIndex))
             log.debug('Averaging vertex weights from %s.' % connectedVertices)
 
             # Average vertex weights
@@ -1462,25 +1490,96 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
         #
         return self.applyVertexWeights(updates)
 
-    def blendBetweenVertices(self, blendByDistance=False):
+    def blendBetweenVertices(self, vertexIndices, blendByDistance=False):
         """
-        Blends along a loop of connected vertices.
+        Blends between the supplied vertices using the shortest path.
 
+        :type vertexIndices: list[int]
         :type blendByDistance: bool
         :rtype: None
         """
 
-        pass
+        # Get selected vertices
+        #
+        numVertices = len(vertexIndices)
 
-    def blendBetweenTwoVertices(self, blendByDistance=False):
+        if numVertices < 2:
+
+            return
+
+        # Iterate through vertex pairs
+        #
+        for i in range(numVertices - 1):
+
+            # Get start and end weights
+            #
+            startVertex = vertexIndices[i]
+            endVertex = vertexIndices[i+1]
+
+            self.blendBetweenTwoVertices(startVertex, endVertex, blendByDistance=blendByDistance)
+
+    def blendBetweenTwoVertices(self, startVertex, endVertex, blendByDistance=False):
         """
-        Blends along the shortest path between two vertices.
+        Blends between the start and end vertices using the shortest path.
 
+        :type startVertex: int
+        :type endVertex: int
         :type blendByDistance: bool
         :rtype: None
         """
 
-        pass
+        # Evaluate path between vertices
+        #
+        fnMesh = fnmesh.FnMesh(self.shape())
+
+        path = fnMesh.shortestPathBetweenTwoVertices(startVertex, endVertex)
+        pathLength = len(path)
+
+        if pathLength == 2:
+
+            return
+
+        # Evaluate max parameter
+        #
+        maxParam = 0.0
+        param = 0.0
+
+        if blendByDistance:
+
+            maxParam = fnMesh.distanceBetweenVertices(*path)
+
+        else:
+
+            maxParam = float(pathLength - 1)
+
+        # Iterate through elements
+        #
+        fnMesh = fnmesh.FnMesh(self.shape())
+        points = fnMesh.vertices(*path)
+
+        startWeights, endWeights = list(self.vertexWeights(startVertex, endVertex).values())
+        updates = {}
+
+        for (i, vertexIndex) in enumerate(path[1:-1]):
+
+            # Get parameter
+            #
+            if blendByDistance:
+
+                param += fnMesh.distanceBetween(points[i], points[i+1])
+
+            else:
+
+                param = float(i + 1)
+
+            # Weighted average start and end weights
+            #
+            percent = param / maxParam
+            updates[vertexIndex] = self.weightedAverageWeights(startWeights, endWeights, percent=percent)
+
+        # Apply weights
+        #
+        self.applyVertexWeights(updates)
 
     def saveWeights(self, filePath):
         """

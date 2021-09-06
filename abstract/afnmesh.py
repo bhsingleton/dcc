@@ -1,5 +1,9 @@
+import math
+
 from abc import ABCMeta, abstractmethod
 from six import with_metaclass
+from enum import IntEnum
+from collections import deque
 from scipy.spatial import cKDTree
 
 from . import afnbase
@@ -14,13 +18,14 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
     __slots__ = ()
 
+    Components = IntEnum('Components', {'Vertex': 0, 'Edge': 0, 'Face': 0})
+
     @abstractmethod
-    def range(self, numElements):
+    def range(self, *args):
         """
-        Returns a generator for yielding mesh elements.
+        Returns a generator for yielding a range of mesh elements.
         This is useful for programs that don't utilize zero-based arrays.
 
-        :type numElements: int
         :rtype: iter
         """
 
@@ -126,6 +131,134 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
 
         return list(self.iterFaceNormals(*args))
+
+    @abstractmethod
+    def iterConnectedVertices(self, *args, **kwargs):
+        """
+        Returns a generator that yields the connected vertex elements.
+
+        :keyword componentType: int
+        :rtype: iter
+        """
+
+        pass
+
+    @abstractmethod
+    def iterConnectedEdges(self, *args, **kwargs):
+        """
+        Returns a generator that yields the connected edge elements.
+
+        :keyword componentType: int
+        :rtype: iter
+        """
+
+        pass
+
+    @abstractmethod
+    def iterConnectedFaces(self, *args, **kwargs):
+        """
+        Returns a generator that yields the connected face elements.
+
+        :keyword componentType: int
+        :rtype: iter
+        """
+
+        pass
+
+    @staticmethod
+    def distanceBetween(start, end):
+        """
+        Returns the distance between the two points.
+
+        :type start: list[float, float, float]
+        :type end: list[float, float, float]
+        :rtype: float
+        """
+
+        return math.sqrt(sum([math.pow((y - x), 2.0) for (x, y) in zip(start, end)]))
+
+    def distanceBetweenVertices(self, *args):
+        """
+        Evaluates the distance between the supplied vertices.
+
+        :rtype: float
+        """
+
+        numArgs = len(args)
+        points = self.vertices(*args)
+
+        return sum([self.distanceBetween(points[x], points[x+1]) for x in range(numArgs - 1)])
+
+    def shortestPathBetweenVertices(self, *args):
+        """
+        Returns the shortest paths between the supplied vertices.
+
+        :type args: tuple[int]
+        :rtype: list[list[int]]
+        """
+        # Check if we have enough arguments
+        #
+        numArgs = len(args)
+
+        if numArgs < 2:
+
+            raise TypeError('shortestPathBetweenVertices() expects at least 2 vertices (%s given)!' % numArgs)
+
+        # Iterate through vertex pairs
+        #
+        return [self.shortestPathBetweenTwoVertices(args[x], args[x+1]) for x in range(numArgs - 1)]
+
+    def shortestPathBetweenTwoVertices(self, startVertex, endVertex, maxIterations=10):
+        """
+        Returns the shortest path between the two vertices.
+        An optional max iterations can be supplied to improve performance.
+
+        :type startVertex: int
+        :type endVertex: int
+        :type maxIterations: int
+        :rtype: deque[int]
+        """
+
+        # Iterate until we find a complete path
+        #
+        traversed = dict.fromkeys(self.range(self.numVertices()), False)
+        paths = deque([[startVertex]])
+
+        while len(paths) > 0:
+
+            # Check if we've reached our max iterations
+            #
+            path = paths.popleft()
+
+            if len(path) >= maxIterations:
+
+                continue
+
+            # Check if we're at the end
+            #
+            vertexIndex = path[-1]
+
+            if vertexIndex == endVertex:
+
+                return path
+
+            # Iterate through connected vertices
+            #
+            for connectedVertex in self.iterConnectedVertices(vertexIndex):
+
+                # Check if vertex has already been traversed
+                # If not then append new path and mark as traversed
+                #
+                if not traversed[connectedVertex]:
+
+                    paths.append(path + [connectedVertex])
+                    traversed[connectedVertex] = True
+
+                else:
+
+                    continue
+
+        return deque()
 
     def mirrorVertices(self, vertexIndices, axis=0, tolerance=1e-3):
         """

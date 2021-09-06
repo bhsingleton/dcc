@@ -219,27 +219,6 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
         return {x: 1.0 for x in self.iterSelection()}
 
-    def getConnectedVertices(self, *args):
-        """
-        Returns a list of vertices connected to the supplied vertices.
-        This should not include the original arguments!
-
-        :rtype: list[int]
-        """
-
-        # Convert connected faces back to vertices
-        #
-        mesh = self.shape()
-        edgeIndices = self.convertBitArray(pymxs.runtime.polyOp.getEdgesUsingVert(mesh, args))
-
-        connectedVertices = set()
-
-        for edgeIndex in edgeIndices:
-
-            connectedVertices.update(set(pymxs.runtime.polyOp.getEdgeVerts(mesh, edgeIndex)))
-
-        return list(connectedVertices - set(args))
-
     @commandpaneloverride(mode='modify')
     def showColors(self):
         """

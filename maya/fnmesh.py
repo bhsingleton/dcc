@@ -14,15 +14,14 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
 
     __slots__ = ()
 
-    def range(self, numElements):
+    def range(self, *args):
         """
-        Returns a generator for yielding mesh elements.
+        Returns a generator for yielding a range of mesh elements.
 
-        :type numElements: int
         :rtype: iter
         """
 
-        return range(numElements)
+        return range(*args)
 
     def numVertices(self):
         """
@@ -158,3 +157,151 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
             normal = sum(normals) / len(normals)
 
             yield normal.x, normal.y, normal.z
+
+    def iterConnectedVertices(self, *args, **kwargs):
+        """
+        Returns a generator that yields the connected vertex elements.
+
+        :keyword componentType: int
+        :rtype: iter
+        """
+
+        # Inspect component type
+        #
+        componentType = kwargs.get('componentType', self.Components.Vertex)
+
+        if componentType == self.Components.Vertex:
+
+            iterVertices = om.MItMeshVertex(self.object())
+
+            for arg in args:
+
+                iterVertices.setIndex(arg)
+                connectedVertices = iterVertices.getConnectedVertices()
+
+                for connectedVertex in connectedVertices:
+
+                    yield connectedVertex
+
+        elif componentType == self.Components.Edge:
+
+            iterEdges = om.MItMeshEdge(self.object())
+
+            for arg in args:
+
+                iterEdges.setIndex(arg)
+
+                for edgeVertIndex in range(2):
+
+                    yield iterEdges.vertexId(edgeVertIndex)
+
+        elif componentType == self.Components.Face:
+
+            iterFaces = om.MItMeshPolygon(self.object())
+
+            for arg in args:
+
+                iterFaces.setIndex(arg)
+                connectedVertices = iterFaces.getConnectedVertices()
+
+                for connectedVertex in connectedVertices:
+
+                    yield connectedVertex
+
+        else:
+
+            raise TypeError('iterConnectedVertices() expects a valid component type (%s given)' % componentType)
+
+    def iterConnectedEdges(self, *args, **kwargs):
+        """
+        Returns a generator that yields the connected edge elements.
+
+        :keyword componentType: int
+        :rtype: iter
+        """
+
+        # Inspect component type
+        #
+        componentType = kwargs.get('componentType', self.Components.Vertex)
+
+        if componentType == self.Components.Vertex:
+
+            iterVertices = om.MItMeshVertex(self.object())
+
+            for arg in args:
+
+                iterVertices.setIndex(arg)
+                connectedEdges = iterVertices.getConnectedEdges()
+
+                for connectedEdge in connectedEdges:
+
+                    yield connectedEdge
+
+        elif componentType == self.Components.Edge:
+
+            iterEdges = om.MItMeshEdge(self.object())
+
+            for arg in args:
+
+                iterEdges.setIndex(arg)
+                connectedEdges = iterEdges.getConnectedEdges()
+
+                for connectedEdge in connectedEdges:
+
+                    yield connectedEdge
+
+        elif componentType == self.Components.Face:
+
+            iterFaces = om.MItMeshPolygon(self.object())
+            connectedEdges = iterFaces.getConnectedEdges()
+
+            for connectedEdge in connectedEdges:
+
+                yield connectedEdge
+
+        else:
+
+            raise TypeError('iterConnectedEdges() expects a valid component type (%s given)' % componentType)
+
+    def iterConnectedFaces(self, *args, **kwargs):
+        """
+        Returns a generator that yields the connected face elements.
+
+        :keyword componentType: int
+        :rtype: iter
+        """
+
+        # Inspect component type
+        #
+        componentType = kwargs.get('componentType', self.Components.Vertex)
+
+        if componentType == self.Components.Vertex:
+
+            iterVertices = om.MItMeshVertex(self.object())
+            connectedFaces = iterVertices.getConnectedFaces()
+
+            for connectedFace in connectedFaces:
+
+                yield connectedFace
+
+        elif componentType == self.Components.Edge:
+
+            iterEdges = om.MItMeshEdge(self.object())
+            connectedFaces = iterEdges.getConnectedFaces()
+
+            for connectedFace in connectedFaces:
+
+                yield connectedFace
+
+        elif componentType == self.Components.Face:
+
+            iterFaces = om.MItMeshPolygon(self.object())
+            connectedFaces = iterFaces.getConnectedFaces()
+
+            for connectedFace in connectedFaces:
+
+                yield connectedFace
+
+        else:
+
+            raise TypeError('iterConnectedFaces() expects a valid component type (%s given)' % componentType)
