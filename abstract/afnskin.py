@@ -54,24 +54,23 @@ class Influences(collections_abc.MutableMapping):
 
         return fnnode.FnNode(self.__getitem__(index))
 
-    def __getitem__(self, key):
+    def __getitem__(self, index):
         """
         Private method that returns an indexed influence.
 
-        :type key: int
+        :type index: int
         :rtype: Union[om.MObject, pymxs.MXSWrapperBase]
         """
 
         # Check key type
         #
-        if isinstance(key, integer_types):
+        if isinstance(index, integer_types):
 
-            handle = self._influences.get(key, 0)
-            return fnnode.FnNode.getNodeByHandle(handle)
+            return self.get(index)
 
         else:
 
-            raise TypeError('__getitem__() expects an int (%s given)!' % type(key).__name__)
+            raise TypeError('__getitem__() expects an int (%s given)!' % type(index).__name__)
 
     def __setitem__(self, key, value):
         """
@@ -158,9 +157,7 @@ class Influences(collections_abc.MutableMapping):
         :rtype: collections_abc.ValuesView
         """
 
-        for handle in self._influences.values():
-
-            yield fnnode.FnNode.getNodeByHandle(handle)
+        return self._influences.values()
 
     def items(self):
         """
@@ -169,16 +166,26 @@ class Influences(collections_abc.MutableMapping):
         :rtype: collections_abc.ItemsView
         """
 
-        for (influenceId, handle) in self._influences.items():
+        return self._influences.items()
 
-            yield influenceId, fnnode.FnNode.getNodeByHandle(handle)
+    def get(self, index, default=None):
+        """
+        Returns the influence object associated with the given index.
+
+        :type index: int
+        :type default: Any
+        :rtype: Union[om.MObject, pymxs.MXSWrapperBase]
+        """
+
+        handle = self._influences.get(index, 0)
+        return fnnode.FnNode.getNodeByHandle(handle)
 
     def index(self, influence):
         """
         Returns the index for the given influence.
         If no index is found then none is returned!
 
-        :type influence: Union[om.MObject, pymxs.MXSWrapperBase]
+        :type influence: Union[str, om.MObject, pymxs.MXSWrapperBase]
         :rtype: int
         """
 
@@ -464,7 +471,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         :rtype: dict[int:str]
         """
-        
+
         influences = self.influences()
         return {influenceId: influences(influenceId).name() for influenceId in influences}
 

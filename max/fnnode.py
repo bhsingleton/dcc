@@ -284,13 +284,13 @@ class FnNode(afnnode.AFnNode):
 
         # Check if selection should be replaced
         #
-        if not replace:
+        if replace:
 
-            selection.extend(cls.getActiveSelection())
+            pymxs.runtime.select(selection)
 
-        # Update selection global
-        #
-        pymxs.runtime.selection = selection
+        else:
+
+            pymxs.runtime.selectMore(selection)
 
     @classmethod
     def clearActiveSelection(cls):

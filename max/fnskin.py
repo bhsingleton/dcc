@@ -145,6 +145,15 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
         self.setActiveSelection([self.shape()], replace=replace)
 
+    def isSelected(self):
+        """
+        Evaluates if this node is selected.
+
+        :rtype: bool
+        """
+
+        return self.shape() in self.getActiveSelection()
+
     def iterVertices(self):
         """
         Returns a generator that yields all vertex indices.

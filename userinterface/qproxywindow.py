@@ -1,8 +1,8 @@
 from PySide2 import QtCore, QtWidgets, QtGui
 from abc import ABCMeta, abstractmethod
 
-from .. import fnqt
-from ..decorators.classproperty import classproperty
+from dcc import fnqt
+from dcc.decorators.classproperty import classproperty
 
 import logging
 logging.basicConfig()

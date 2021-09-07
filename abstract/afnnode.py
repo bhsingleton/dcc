@@ -79,6 +79,15 @@ class AFnNode(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         self.setActiveSelection([self.object()], replace=replace)
 
+    def isSelected(self):
+        """
+        Evaluates if this node is selected.
+
+        :rtype: bool
+        """
+
+        return self.object() in self.getActiveSelection()
+
     @abstractmethod
     def isMesh(self):
         """

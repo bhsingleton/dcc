@@ -9,7 +9,7 @@ except ImportError:
 import pymxs
 
 from functools import partial
-from ..abstract import afnqt
+from dcc.abstract import afnqt
 
 import logging
 logging.basicConfig()

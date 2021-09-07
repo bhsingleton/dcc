@@ -67,13 +67,13 @@ class CommandPanelOverride(object):
 
         # Execute order of operations
         #
-        self.__enter__(*args)
+        self.__enter__()
         results = self.func(*args, **kwargs)
         self.__exit__(None, None, None)
 
         return results
 
-    def __enter__(self, *args):
+    def __enter__(self):
         """
         Private method that is called when this instance is entered using a with statement.
 
@@ -90,11 +90,14 @@ class CommandPanelOverride(object):
 
         # Check if auto select is enabled
         #
-        instance = args[0] if len(args) > 0 else None
+        if self.autoSelect and isinstance(self._instance, fnnode.FnNode):
 
-        if self.autoSelect and isinstance(instance, fnnode.FnNode):
+            # Check if node is selected
+            # Don't want to incur cycle checks from any selection callbacks!
+            #
+            if not self._instance.isSelected():
 
-            instance.select(replace=True)
+                self._instance.select(replace=True)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """
