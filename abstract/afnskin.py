@@ -1356,20 +1356,21 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         pass
 
-    def mirrorVertexWeights(self, vertexIndices, pull=False, axis=0):
+    def mirrorVertexWeights(self, vertexIndices, pull=False, axis=0, tolerance=1e-3):
         """
         Returns a series of mirrored weights for the supplied vertex weights.
 
         :type vertexIndices: list[int]
         :type pull: bool
         :type axis: int
+        :type tolerance: float
         :rtype: dict[int:dict[int:float]]
         """
 
         # Mirror the supplied vertex indices
         #
         fnMesh = fnmesh.FnMesh(self.shape())
-        mirrorIndices = fnMesh.mirrorVertices(vertexIndices, axis=axis)
+        mirrorIndices = fnMesh.mirrorVertices(vertexIndices, axis=axis, tolerance=tolerance)
 
         # Mirror the found vertex pairs
         #

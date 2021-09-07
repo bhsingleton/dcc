@@ -208,7 +208,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         #
         return [self.shortestPathBetweenTwoVertices(args[x], args[x+1]) for x in range(numArgs - 1)]
 
-    def shortestPathBetweenTwoVertices(self, startVertex, endVertex, maxIterations=10):
+    def shortestPathBetweenTwoVertices(self, startVertex, endVertex, maxIterations=20):
         """
         Returns the shortest path between the two vertices.
         An optional max iterations can be supplied to improve performance.
