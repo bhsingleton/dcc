@@ -11,6 +11,9 @@ log.setLevel(logging.INFO)
 
 
 class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
+    """
+    Overload of AFnMesh used to interface with meshes in 3ds Max.
+    """
 
     __slots__ = ()
 
@@ -96,7 +99,7 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
 
         for arg in args:
 
-            point = pymxs.runtime.polyOp.getVert(obj, arg)
+            point = pymxs.runtime.polyOp.getVert(obj.baseObject, arg)
             yield point.x, point.y, point.z
 
     def iterFaceVertexIndices(self, *args):
@@ -121,7 +124,7 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
 
         for arg in args:
 
-            vertices = pymxs.runtime.polyOp.getFaceVerts(obj, arg)
+            vertices = pymxs.runtime.polyOp.getFaceVerts(obj.baseObject, arg)
             numVertices = vertices.count
 
             yield [vertices[x] for x in range(numVertices)]
@@ -148,7 +151,7 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
 
         for arg in args:
 
-            point = pymxs.runtime.polyOp.getFaceCenter(obj, arg)
+            point = pymxs.runtime.polyOp.getFaceCenter(obj.baseObject, arg)
             yield point.x, point.y, point.z
 
     def iterFaceNormals(self, *args):
@@ -173,7 +176,7 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
 
         for arg in args:
 
-            normal = pymxs.runtime.polyOp.getFaceNormal(obj, arg)
+            normal = pymxs.runtime.polyOp.getFaceNormal(obj.baseObject, arg)
             yield normal.x, normal.y, normal.z
 
     def iterConnectedVertices(self, *args, **kwargs):
