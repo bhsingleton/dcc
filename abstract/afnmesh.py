@@ -293,7 +293,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         # Be sure to compensate for 1-based arrays!
         #
         numVertices = self.numVertices()
-        return {vertexIndex: (index + self.arrayOffset) for (vertexIndex, index) in zip(vertexIndices, indices) if index != numVertices}
+        return {vertexIndex: int(index + self.arrayOffset) for (vertexIndex, index) in zip(vertexIndices, indices) if index != numVertices}
 
     def nearestNeighbours(self, vertexIndices):
         """
