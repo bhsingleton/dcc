@@ -277,6 +277,16 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         pass
 
+    @abstractmethod
+    def intermediateObject(self):
+        """
+        Returns the intermediate object associated with the deformer.
+
+        :rtype: Any
+        """
+
+        pass
+
     @property
     def clipboard(self):
         """
@@ -956,7 +966,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
         return self.setWeights(weights, target, source, amount)
 
     @staticmethod
-    def isClose(a, b, rel_tol=1e-03, abs_tol=0.0):
+    def isClose(a, b, rel_tol=1e-02, abs_tol=0.0):
         """
         Evaluates if the two numbers of relatively close.
         Sadly this function doesn't exist in the math module until Python 3.5
@@ -1213,18 +1223,18 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         return {key: 0.0 for key in keys}
 
-    def inverseDistanceWeights(self, vertices, distances):
+    def inverseDistanceWeights(self, vertexWeights, distances):
         """
         Averages supplied vertex weights based on the inverse distance.
 
-        :type vertices: dict[int:dict[int:float]]
+        :type vertexWeights: dict[int:dict[int:float]]
         :type distances: list[float]
-        :rtype: dict
+        :rtype: dict[int:float]
         """
 
         # Check value types
         #
-        numVertices = len(vertices)
+        numVertices = len(vertexWeights)
         numDistances = len(distances)
 
         if numVertices != numDistances:
@@ -1238,12 +1248,12 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
         if index is not None:
 
             log.debug('Zero distance found in %s' % distances)
-            return vertices[index]
+            return vertexWeights[index]
 
         # Merge dictionary keys using null values
         #
-        vertexWeights = self.mergeDictionaries(*list(vertices.values()))
-        influenceIds = vertexWeights.keys()
+        weights = self.mergeDictionaries(*list(vertexWeights.values()))
+        influenceIds = weights.keys()
 
         # Iterate through influences
         #
@@ -1251,7 +1261,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
             # Collect weight values
             #
-            weights = [vertexWeights.get(influenceId, 0.0) for vertexWeights in vertices.values()]
+            weights = [x.get(influenceId, 0.0) for x in vertexWeights.values()]
 
             # Zip list and evaluate in parallel
             #
@@ -1265,12 +1275,58 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
             # Assign average to updates
             #
-            vertexWeights[influenceId] = float(numerator / denominator)
+            weights[influenceId] = float(numerator / denominator)
 
         # Return normalized weights
         #
-        log.debug('Inverse Distance: %s' % vertexWeights)
-        return vertexWeights
+        log.debug('Inverse Distance: %s' % weights)
+        return weights
+
+    def barycentricWeights(self, vertexIndices, baryCoords):
+        """
+        Returns the barycentric average for the specified vertices.
+
+        :type vertexIndices: list[int]
+        :type baryCoords list[float, float, float]
+        :rtype: dict[int:float]
+        """
+
+        # Check if list size mismatch
+        #
+        numVertices = len(vertexIndices)
+        numBary = len(baryCoords)
+
+        if numVertices != numBary:
+
+            raise TypeError('barycentricWeights() list sizes must be identical!')
+
+        # Merge dictionary keys using null values
+        #
+        vertexWeights = self.vertexWeights(*vertexIndices)
+
+        weights = self.mergeDictionaries(*list(vertexWeights.values()))
+        influenceIds = weights.keys()
+
+        # Iterate through influences
+        #
+        for influenceId in influenceIds:
+
+            # Collect weight values
+            #
+            weight = 0.0
+
+            for (vertexIndex, baryCoord) in zip(vertexIndices, baryCoords):
+
+                weight += vertexWeights[vertexIndex].get(influenceId, 0.0) * baryCoord
+
+            # Assign average to updates
+            #
+            weights[influenceId] = weight
+
+        # Return normalized weights
+        #
+        log.debug('Barycentric Average: %s' % weights)
+        return self.normalizeWeights(weights)
 
     def copyWeights(self):
         """

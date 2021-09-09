@@ -1,9 +1,8 @@
 import pymxs
 
-from six import string_types
-
 from . import fnnode
-from .decorators.commandpaneloverride import commandpaneloverride
+from .libs import modifierutils
+from .decorators import commandpaneloverride
 from ..abstract import afnskin
 
 import logging
@@ -19,7 +18,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
     Because of the UI dependency in 3ds Max we have to actively make sure we're in the modify panel.
     """
 
-    __slots__ = ('_shape',)
+    __slots__ = ('_shape', '_intermediateObject')
 
     def __init__(self, *args, **kwargs):
         """
@@ -29,6 +28,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         # Declare class variables
         #
         self._shape = None
+        self._intermediateObject = None
 
         # Call parent method
         #
@@ -45,86 +45,16 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         # Locate skin modifier from object
         #
         obj = self.getMXSWrapper(obj)
-        skinModifier = self.findSkinModifier(obj)
+        skinModifier = modifierutils.findModifierByType(obj, pymxs.runtime.skin)
 
         super(FnSkin, self).setObject(skinModifier)
 
         # Store reference to shape node
         #
-        shape = self.getNodeFromModifier(skinModifier)
-        handle = pymxs.runtime.getHandleByAnim(shape)
+        shape = modifierutils.getNodeFromModifier(skinModifier)
 
-        self._shape = handle
-
-    @classmethod
-    def findSkinModifier(cls, obj):
-        """
-        Finds the skin modifier from the given object.
-
-        :type obj: Union[str, pymxs.MXSWrapperBase]
-        :rtype: pymxs.MXSWrapperBase
-        """
-
-        # Check object type
-        #
-        if isinstance(obj, pymxs.MXSWrapperBase):
-
-            # Check wrapper type
-            #
-            if pymxs.runtime.isValidNode(obj):
-
-                # Collect all skin modifiers
-                #
-                fnNode = fnnode.FnNode(obj)
-
-                skins = fnNode.getModifiersByType(pymxs.runtime.skin)
-                numSkins = len(skins)
-
-                if numSkins == 1:
-
-                    return skins[0]
-
-                else:
-
-                    raise TypeError('findSkinModifier() expects 1 skin modifier (%s given)!' % numSkins)
-
-            elif pymxs.runtime.classOf(obj) == pymxs.runtime.skin:
-
-                return obj
-
-            else:
-
-                raise TypeError('findSkinModifier() expects a node!')
-
-        elif isinstance(obj, string_types):
-
-            return cls.findSkinModifier(cls.getMXSWrapper(obj))
-
-        else:
-
-            raise TypeError('findSkinModifier() expects a MXSWrapper (%s given)!' % type(obj).__name__)
-
-    @classmethod
-    def getNodeFromModifier(cls, modifier):
-        """
-        Returns the node associated with the given modifier.
-
-        :type modifier: pymxs.MXSWrapperBase
-        :rtype: pymxs.MXSWrapperBase
-        """
-
-        return pymxs.runtime.refs.dependentNodes(modifier)[0]
-
-    @classmethod
-    def convertBitArray(cls, bitArray):
-        """
-        Converts the supplied bit array to a list of indices.
-
-        :type bitArray: pymxs.MXSWrapperBase
-        :rtype: list[int]
-        """
-
-        return [x + 1 for x in range(bitArray.count) if bitArray[x]]
+        self._shape = pymxs.runtime.getHandleByAnim(shape)
+        self._intermediateObject = pymxs.runtime.getHandleByAnim(shape.baseObject)
 
     def shape(self):
         """
@@ -134,6 +64,15 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         """
 
         return pymxs.runtime.getAnimByHandle(self._shape)
+
+    def intermediateObject(self):
+        """
+        Returns the intermediate object associated with the deformer.
+
+        :rtype: Any
+        """
+
+        return pymxs.runtime.getAnimByHandle(self._intermediateObject)
 
     def select(self, replace=True):
         """
@@ -171,7 +110,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         :rtype: list[float, float, float]
         """
 
-        point = pymxs.runtime.polyOp.getVert(self.shape().baseObject, vertexIndex)
+        point = pymxs.runtime.polyOp.getVert(self.intermediateObject(), vertexIndex)
         return point.x, point.y, point.z
 
     def numControlPoints(self):
@@ -181,9 +120,9 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         :rtype: int
         """
 
-        return pymxs.runtime.polyOp.getNumVerts(self.shape().baseObject)
+        return pymxs.runtime.polyOp.getNumVerts(self.intermediateObject())
 
-    @commandpaneloverride(mode='modify')
+    @commandpaneloverride.commandPanelOverride(mode='modify')
     def iterSelection(self):
         """
         Returns the selected vertex elements.
@@ -208,7 +147,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
                 continue
 
-    @commandpaneloverride(mode='modify')
+    @commandpaneloverride.commandPanelOverride(mode='modify')
     def setSelection(self, vertices):
         """
         Updates the active selection with the supplied vertex elements.
@@ -228,7 +167,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
         return {x: 1.0 for x in self.iterSelection()}
 
-    @commandpaneloverride(mode='modify')
+    @commandpaneloverride.commandPanelOverride(mode='modify')
     def showColors(self):
         """
         Enables color feedback for the associated shape.
@@ -254,7 +193,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         skinModifier.crossSectionsAlwaysOnTop = True
         skinModifier.envelopeAlwaysOnTop = True
 
-    @commandpaneloverride(mode='modify')
+    @commandpaneloverride.commandPanelOverride(mode='modify')
     def hideColors(self):
         """
         Disable color feedback for the associated shape.
@@ -266,7 +205,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         #
         pymxs.runtime.subObjectLevel = 0
 
-    @commandpaneloverride(mode='modify')
+    @commandpaneloverride.commandPanelOverride(mode='modify')
     def iterInfluences(self):
         """
         Returns a generator that yields all of the influence object from this deformer.
@@ -308,7 +247,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
             yield boneId, bone
 
-    @commandpaneloverride(mode='modify')
+    @commandpaneloverride.commandPanelOverride(mode='modify')
     def addInfluence(self, influence):
         """
         Adds an influence to this deformer.
@@ -319,7 +258,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
         pymxs.runtime.skinOps.addBone(self.object(), influence, 0)
 
-    @commandpaneloverride(mode='modify')
+    @commandpaneloverride.commandPanelOverride(mode='modify')
     def removeInfluence(self, influenceId):
         """
         Removes an influence from this deformer.
@@ -330,7 +269,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
         pymxs.runtime.skinOps.removeBone(self.object(), influenceId)
 
-    @commandpaneloverride(mode='modify')
+    @commandpaneloverride.commandPanelOverride(mode='modify')
     def numInfluences(self):
         """
         Returns the number of influences being use by this deformer.
@@ -349,7 +288,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
         return self.object().bone_limit
 
-    @commandpaneloverride(mode='modify')
+    @commandpaneloverride.commandPanelOverride(mode='modify')
     def selectInfluence(self, influenceId):
         """
         Changes the color display to the specified influence id.
@@ -360,7 +299,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
         pymxs.runtime.skinOps.selectBone(self.object(), influenceId)
 
-    @commandpaneloverride(mode='modify')
+    @commandpaneloverride.commandPanelOverride(mode='modify')
     def iterVertexWeights(self, *args):
         """
         Returns a generator that yields weights for the supplied vertex indices.
@@ -399,12 +338,12 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
             #
             yield arg, vertexWeights
 
-    @commandpaneloverride(mode='modify')
-    def applyVertexWeights(self, vertices):
+    @commandpaneloverride.commandPanelOverride(mode='modify')
+    def applyVertexWeights(self, vertexWeights):
         """
         Assigns the supplied vertex weights to this deformer.
 
-        :type vertices: dict[int:dict[int:float]]
+        :type vertexWeights: dict[int:dict[int:float]]
         :rtype: None
         """
 
@@ -420,13 +359,13 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
             # Iterate and replace vertex weights
             #
-            for (vertexIndex, vertexWeights) in vertices.items():
+            for (vertexIndex, weights) in vertexWeights.items():
 
                 pymxs.runtime.skinOps.replaceVertexWeights(
                     skinModifier,
                     vertexIndex,
-                    list(vertexWeights.keys()),
-                    list(vertexWeights.values())
+                    list(weights.keys()),
+                    list(weights.values())
                 )
 
         # Force redraw

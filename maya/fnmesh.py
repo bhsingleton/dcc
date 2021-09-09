@@ -1,5 +1,8 @@
 import maya.cmds as mc
 import maya.api.OpenMaya as om
+import numpy
+
+from itertools import chain
 
 from ..abstract import afnmesh
 from . import fnnode
@@ -78,7 +81,7 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
             iterVertices.setIndex(arg)
             point = iterVertices.position()
 
-            yield point.x, point.y, point.z
+            yield arg, [point.x, point.y, point.z]
 
     def iterFaceVertexIndices(self, *args):
         """
@@ -103,7 +106,9 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
         for arg in args:
 
             iterPolygons.setIndex(arg)
-            yield iterPolygons.getVertices()
+            vertexIndices = iterPolygons.getVertices()
+
+            yield arg, tuple(vertexIndices)
 
     def iterFaceCenters(self, *args):
         """
@@ -130,7 +135,7 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
             iterPolygons.setIndex(arg)
             center = iterPolygons.center()
 
-            yield center.x, center.y, center.z
+            yield arg, [center.x, center.y, center.z]
 
     def iterFaceNormals(self, *args):
         """
@@ -159,7 +164,39 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
             normals = iterPolygons.getNormals()
             normal = sum(normals) / len(normals)
 
-            yield normal.x, normal.y, normal.z
+            yield arg, [normal.x, normal.y, normal.z]
+
+    def iterTriangleVertexIndices(self, *args):
+        """
+        Returns a generator that yields face triangle vertex/point pairs.
+
+        :rtype: iter
+        """
+
+        # Evaluate arguments
+        #
+        faceTriangleIndices = self.faceTriangleIndices()
+        triangleFaceIndices = self.triangleFaceIndices()
+
+        numArgs = len(args)
+
+        if numArgs == 0:
+
+            numTriangles = len(triangleFaceIndices)
+            args = self.range(numTriangles)
+
+        # Iterate through triangles
+        #
+        fnMesh = om.MFnMesh(self.object())
+
+        for arg in args:
+
+            faceIndex = triangleFaceIndices[arg]
+            localIndex = faceTriangleIndices[faceIndex].index(arg)
+
+            vertexIndices = fnMesh.getPolygonTriangleVertices(faceIndex, localIndex)
+
+            yield arg, tuple(vertexIndices)
 
     def iterConnectedVertices(self, *args, **kwargs):
         """

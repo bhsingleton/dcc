@@ -149,7 +149,7 @@ class CommandPanelOverride(object):
             return self._func
 
 
-def commandpaneloverride(*args, **kwargs):
+def commandPanelOverride(*args, **kwargs):
     """
     Returns an command panel override wrapper for the supplied function.
 
@@ -162,7 +162,7 @@ def commandpaneloverride(*args, **kwargs):
 
     if numArgs == 0:
 
-        return partial(commandpaneloverride, **kwargs)
+        return partial(commandPanelOverride, **kwargs)
 
     elif numArgs == 1:
 
@@ -170,4 +170,4 @@ def commandpaneloverride(*args, **kwargs):
 
     else:
 
-        raise TypeError('commandpaneloverride() expects at most 1 argument (%s given)!' % numArgs)
+        raise TypeError('commandPanelOverride() expects at most 1 argument (%s given)!' % numArgs)

@@ -1,8 +1,9 @@
 import pymxs
+import numpy
 
 from ..abstract import afnmesh
 from . import fnnode
-from .libs import meshutils
+from .libs import meshutils, arrayutils
 
 import logging
 logging.basicConfig()
@@ -99,8 +100,8 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
 
         for arg in args:
 
-            point = pymxs.runtime.polyOp.getVert(obj.baseObject, arg)
-            yield point.x, point.y, point.z
+            point = pymxs.runtime.polyOp.getVert(obj, arg)
+            yield arg, [point.x, point.y, point.z]
 
     def iterFaceVertexIndices(self, *args):
         """
@@ -116,7 +117,7 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
 
         if numArgs == 0:
 
-            args = range(1, self.numFaces() + 1, 1)
+            args = self.range(self.numFaces())
 
         # Iterate through vertices
         #
@@ -124,10 +125,8 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
 
         for arg in args:
 
-            vertices = pymxs.runtime.polyOp.getFaceVerts(obj.baseObject, arg)
-            numVertices = vertices.count
-
-            yield [vertices[x] for x in range(numVertices)]
+            vertices = pymxs.runtime.polyOp.getFaceVerts(obj, arg)
+            yield arg, tuple(arrayutils.iterElements(vertices))
 
     def iterFaceCenters(self, *args):
         """
@@ -151,8 +150,8 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
 
         for arg in args:
 
-            point = pymxs.runtime.polyOp.getFaceCenter(obj.baseObject, arg)
-            yield point.x, point.y, point.z
+            point = pymxs.runtime.polyOp.getFaceCenter(obj, arg)
+            yield arg, [point.x, point.y, point.z]
 
     def iterFaceNormals(self, *args):
         """
@@ -176,8 +175,34 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
 
         for arg in args:
 
-            normal = pymxs.runtime.polyOp.getFaceNormal(obj.baseObject, arg)
-            yield normal.x, normal.y, normal.z
+            normal = pymxs.runtime.polyOp.getFaceNormal(obj, arg)
+            yield arg, [normal.x, normal.y, normal.z]
+
+    def iterTriangleVertexIndices(self, *args):
+        """
+        Returns a generator that yields face triangle vertex/point pairs.
+
+        :rtype: iter
+        """
+
+        # Evaluate arguments
+        #
+        mesh = self.object()
+        triMesh = mesh.mesh
+
+        numArgs = len(args)
+
+        if numArgs == 0:
+
+            numTriangles = triMesh.numFaces
+            args = self.range(numTriangles)
+
+        # Iterate through triangles
+        #
+        for arg in args:
+
+            indices = pymxs.runtime.getFace(triMesh, arg)
+            yield arg, tuple(arrayutils.iterElements(indices))
 
     def iterConnectedVertices(self, *args, **kwargs):
         """
@@ -198,11 +223,11 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
 
         elif componentType == self.Components.Edge:
 
-            return meshutils.iterBitArray(pymxs.runtime.polyOp.getEdgesUsingVert(mesh, args))
+            return arrayutils.iterBitArray(pymxs.runtime.polyOp.getEdgesUsingVert(mesh, args))
 
         elif componentType == self.Components.Face:
 
-            return meshutils.iterBitArray(pymxs.runtime.polyOp.getFacesUsingVert(mesh, args))
+            return arrayutils.iterBitArray(pymxs.runtime.polyOp.getFacesUsingVert(mesh, args))
 
         else:
 
@@ -223,7 +248,7 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
 
         if componentType == self.Components.Vertex:
 
-            return meshutils.iterBitArray(pymxs.runtime.polyOp.getEdgesUsingVert(mesh, args))
+            return arrayutils.iterBitArray(pymxs.runtime.polyOp.getEdgesUsingVert(mesh, args))
 
         elif componentType == self.Components.Edge:
 
@@ -231,7 +256,7 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
 
         elif componentType == self.Components.Face:
 
-            return iter(pymxs.runtime.polyOp.getFaceEdges(mesh, args))
+            return arrayutils.iterElements(pymxs.runtime.polyOp.getFaceEdges(mesh, args))
 
         else:
 
@@ -252,11 +277,11 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
 
         if componentType == self.Components.Vertex:
 
-            return meshutils.iterBitArray(pymxs.runtime.polyOp.getFacesUsingVert(mesh, args))
+            return arrayutils.iterBitArray(pymxs.runtime.polyOp.getFacesUsingVert(mesh, args))
 
         elif componentType == self.Components.Edge:
 
-            return iter(pymxs.runtime.polyOp.getEdgeFaces(mesh, args))
+            return arrayutils.iterElements(pymxs.runtime.polyOp.getEdgeFaces(mesh, args))
 
         elif componentType == self.Components.Face:
 
@@ -265,5 +290,3 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
         else:
 
             raise TypeError('iterConnectedFaces() expects a valid component type (%s given)' % componentType)
-
-
