@@ -1,4 +1,5 @@
 import os
+import subprocess
 
 from PySide2 import QtWidgets
 
@@ -13,7 +14,7 @@ log.setLevel(logging.INFO)
 
 def checkoutScene():
     """
-    Convenience method used to checkout the open maya scene from perforce.
+    Checks out the open scene file from perforce.
 
     :rtype: None
     """
@@ -34,7 +35,7 @@ def checkoutScene():
 
 def revertScene():
     """
-    Convenience method used to revert the open maya scene on perforce.
+    Reverts the open scene from perforce.
 
     :rtype: None
     """
@@ -51,6 +52,27 @@ def revertScene():
     else:
 
         log.warning('Unable to revert untitled scene file!')
+
+
+def showInExplorer():
+    """
+    Opens an explorer window to where the open scene file is located.
+
+    :rtype: None
+    """
+
+    # Check if scene exists
+    #
+    fnScene = fnscene.FnScene()
+    filePath = fnScene.currentFilePath()
+
+    if os.path.exists(filePath):
+
+        subprocess.Popen(r'explorer /select, "{filePath}"'.format(filePath=filePath))
+
+    else:
+
+        log.warning('Unable to show untitled scene file in explorer!')
 
 
 def isNullOrEmpty(value):
