@@ -101,7 +101,7 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
         for arg in args:
 
             point = pymxs.runtime.polyOp.getVert(obj, arg)
-            yield arg, [point.x, point.y, point.z]
+            yield arg, (point.x, point.y, point.z)
 
     def iterFaceVertexIndices(self, *args):
         """
@@ -151,7 +151,7 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
         for arg in args:
 
             point = pymxs.runtime.polyOp.getFaceCenter(obj, arg)
-            yield arg, [point.x, point.y, point.z]
+            yield arg, (point.x, point.y, point.z)
 
     def iterFaceNormals(self, *args):
         """
@@ -176,7 +176,7 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
         for arg in args:
 
             normal = pymxs.runtime.polyOp.getFaceNormal(obj, arg)
-            yield arg, [normal.x, normal.y, normal.z]
+            yield arg, (normal.x, normal.y, normal.z)
 
     def iterTriangleVertexIndices(self, *args):
         """

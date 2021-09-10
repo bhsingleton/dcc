@@ -441,7 +441,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         :rtype: cKDTree
         """
 
-        return cKDTree(self.vertices(*args).values())
+        return cKDTree(self.vertices(*args))
 
     def mirrorVertices(self, vertexIndices, axis=0, tolerance=1e-3):
         """
@@ -463,14 +463,16 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         # Define inverse map
         # This will be used to inverse out input data
         #
+        points = numpy.array(self.vertices(*vertexIndices))
+
         inverse = {x: -1 if x == axis else 1 for x in range(3)}
-        points = [[value * inverse[index] for (index, value) in enumerate(point)] for (vertexIndex, point) in self.iterVertices(*vertexIndices)]
+        mirrorPoints = [[value * inverse[index] for (index, value) in enumerate(point)] for point in points]
 
         # Query closest points from point tree
         # Might be worth trying to optimize this with only opposite points?
         #
         tree = self.generatePointTree()
-        distances, indices = tree.query(points, distance_upper_bound=tolerance)
+        distances, indices = tree.query(mirrorPoints, distance_upper_bound=tolerance)
 
         # Generate mirror map
         # Be sure to compensate for 1-based arrays!
@@ -506,7 +508,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         # Get control points
         #
-        controlPoints = self.vertices(*vertexIndices)
+        controlPoints = numpy.array(self.vertices(*vertexIndices))
         vertexMap = dict(enumerate(vertexIndices))
 
         # Query point tree
@@ -648,7 +650,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         triangleIndices = list(chain(*list(faceTriangleIndices.values())))
         triangleMap = dict(enumerate(triangleIndices))
 
-        triangleCentroids = self.triangleCentroids(*triangleIndices)
+        triangleCentroids = numpy.array(self.triangleCentroids(*triangleIndices))
 
         # Get closest triangles using point tree
         #

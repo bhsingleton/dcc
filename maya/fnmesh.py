@@ -81,7 +81,7 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
             iterVertices.setIndex(arg)
             point = iterVertices.position()
 
-            yield arg, [point.x, point.y, point.z]
+            yield arg, (point.x, point.y, point.z)
 
     def iterFaceVertexIndices(self, *args):
         """
@@ -135,7 +135,7 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
             iterPolygons.setIndex(arg)
             center = iterPolygons.center()
 
-            yield arg, [center.x, center.y, center.z]
+            yield arg, (center.x, center.y, center.z)
 
     def iterFaceNormals(self, *args):
         """
@@ -164,7 +164,7 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
             normals = iterPolygons.getNormals()
             normal = sum(normals) / len(normals)
 
-            yield arg, [normal.x, normal.y, normal.z]
+            yield arg, (normal.x, normal.y, normal.z)
 
     def iterTriangleVertexIndices(self, *args):
         """

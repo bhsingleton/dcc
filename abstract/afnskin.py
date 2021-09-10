@@ -1425,7 +1425,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         # Mirror the supplied vertex indices
         #
-        fnMesh = fnmesh.FnMesh(self.shape())
+        fnMesh = fnmesh.FnMesh(self.intermediateObject())
         mirrorIndices = fnMesh.mirrorVertices(vertexIndices, axis=axis, tolerance=tolerance)
 
         # Mirror the found vertex pairs
