@@ -361,6 +361,8 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
             #
             for (vertexIndex, weights) in vertexWeights.items():
 
+                weights = self.removeZeroWeights(weights)
+
                 pymxs.runtime.skinOps.replaceVertexWeights(
                     skinModifier,
                     vertexIndex,

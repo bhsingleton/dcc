@@ -965,6 +965,16 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
         log.debug('Changing influence ID: %s, from %s to %s.' % (target, current, amount))
         return self.setWeights(weights, target, source, amount)
 
+    def removeZeroWeights(self, weights):
+        """
+        Removes any zeroes from the supplied weights.
+
+        :type weights: dict[int:float]
+        :rtype: dict[int:float]
+        """
+
+        return {influenceId: weight for (influenceId, weight) in weights.items() if not self.isClose(weight, 0.0)}
+
     @staticmethod
     def isClose(a, b, rel_tol=1e-02, abs_tol=0.0):
         """
