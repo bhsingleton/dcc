@@ -709,3 +709,78 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         # Enable normalize weights
         #
         normalizePlug.setBool(True)
+
+    @undo.undo(name='Reset Pre-Bind Matrices')
+    def resetPreBindMatrices(self):
+        """
+        Resets the pre-bind matrices on the associated joints.
+
+        :rtype: None
+        """
+
+        # Iterate through matrix elements
+        #
+        skinCluster = self.object()
+        fnDependNode = om.MFnDependencyNode(skinCluster)
+
+        plug = fnDependNode.findPlug('bindPreMatrix')
+        numElements = plug.evaluateNumElements()
+
+        for i in range(numElements):
+
+            # Get inverse matrix of influence
+            #
+            element = plug.elementByPhysicalIndex(i)
+            index = element.logicalIndex()
+
+            attributeName = element.name()
+
+            # Check if influence still exists
+            #
+            influence = self._influences[index]
+
+            if influence is None:
+                continue
+
+            # Get inverse matrix from influence-
+            #
+            matrixList = mc.getAttr('%s.worldInverseMatrix[0]' % influence.fullPathName())
+            mc.setAttr(attributeName, matrixList, type='matrix')
+
+    @undo.undo(name='Reset Intermediate Object')
+    def resetIntermediateObject(self):
+        """
+        Resets the control points on the associated intermediate object.
+
+        :rtype: None
+        """
+
+        # Store deformed points
+        #
+        shape = om.MDagPath.getAPathTo(self.shape())
+        iterVertex = om.MItMeshVertex(shape)
+
+        points = []
+
+        while not iterVertex.isDone():
+
+            point = iterVertex.position()
+            points.append([point.x, point.y, point.z])
+
+            iterVertex.next()
+
+        # Reset influences
+        #
+        self.resetPreBindMatrices()
+
+        # Apply deformed values to intermediate object
+        #
+        intermediateObject = om.MDagPath.getAPathTo(self.intermediateObject())
+        iterVertex = om.MItMeshVertex(intermediateObject)
+
+        while not iterVertex.isDone():
+
+            point = points[iterVertex.index()]
+            iterVertex.setPosition(om.MPoint(point))
+
+            iterVertex.next()

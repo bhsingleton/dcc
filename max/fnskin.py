@@ -376,3 +376,48 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         # This prevents any zero weights being returned in the same execution thread!
         #
         pymxs.runtime.completeRedraw()
+
+    @commandpaneloverride.commandPanelOverride(mode='modify')
+    def resetPreBindMatrices(self):
+        """
+        Resets the pre-bind matrices on the associated joints.
+
+        :rtype: None
+        """
+
+        # Toggle always deforms
+        #
+        skinModifier = self.object()
+        skinModifier.always_deforms = False
+        skinModifier.always_deforms = True
+
+    def resetIntermediateObject(self):
+        """
+        Resets the control points on the associated intermediate object.
+
+        :rtype: None
+        """
+
+        # Store deformed points
+        #
+        shape = self.shape()
+
+        numPoints = pymxs.runtime.polyOp.getNumVerts(shape)
+        points = [None] * numPoints
+
+        for i in range(numPoints):
+
+            point = pymxs.runtime.polyOp.getVert(shape, i + 1)
+            points[i] = point.x, point.y, point.z
+
+        # Reset influences
+        #
+        self.resetPreBindMatrices()
+
+        # Apply deformed values to intermediate object
+        #
+        intermediateObject = self.intermediateObject()
+
+        for i in range(numPoints):
+
+            pymxs.runtime.polyOp.setVert(intermediateObject, i + 1, points[i])

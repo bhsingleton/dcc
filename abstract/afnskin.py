@@ -1657,6 +1657,26 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
         #
         self.applyVertexWeights(updates)
 
+    @abstractmethod
+    def resetPreBindMatrices(self):
+        """
+        Resets the pre-bind matrices on the associated joints.
+
+        :rtype: None
+        """
+
+        pass
+
+    @abstractmethod
+    def resetIntermediateObject(self):
+        """
+        Resets the control points on the associated intermediate object.
+
+        :rtype: None
+        """
+
+        pass
+
     def saveWeights(self, filePath):
         """
         Saves the skin weights to the specified file path.
