@@ -165,7 +165,9 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         :rtype iter
         """
 
-        return {x: 1.0 for x in self.iterSelection()}
+        for vertexIndex in self.iterSelection():
+
+            yield vertexIndex, 1.0
 
     @commandpaneloverride.commandPanelOverride(mode='modify')
     def showColors(self):

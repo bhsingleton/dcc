@@ -5,10 +5,11 @@ from abc import ABCMeta, abstractmethod
 from six import with_metaclass, integer_types
 from six.moves import collections_abc
 from copy import deepcopy
-from dcc.naming import namingutils
+from collections import OrderedDict
 
 from . import afnbase
 from .. import fnnode, fnmesh
+from ..naming import namingutils
 
 import logging
 logging.basicConfig()
@@ -416,7 +417,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
         :rtype dict[int:float]
         """
 
-        return dict(self.iterSoftSelection())
+        return OrderedDict(self.iterSoftSelection())
 
     @abstractmethod
     def showColors(self):
@@ -976,7 +977,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
         return {influenceId: weight for (influenceId, weight) in weights.items() if not self.isClose(weight, 0.0)}
 
     @staticmethod
-    def isClose(a, b, rel_tol=1e-02, abs_tol=0.0):
+    def isClose(a, b, rel_tol=1e-03, abs_tol=0.0):
         """
         Evaluates if the two numbers of relatively close.
         Sadly this function doesn't exist in the math module until Python 3.5
@@ -1445,7 +1446,8 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         for (vertexIndex, mirrorIndex) in mirrorIndices.items():
 
-            isCenterSeam = vertexIndex == mirrorIndex
+            isCenterSeam = (vertexIndex == mirrorIndex)
+            log.info('.vtx[%s] == .vtx[%s]' % (vertexIndex, mirrorIndex))
 
             if pull:
 

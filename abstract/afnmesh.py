@@ -27,7 +27,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
     __slots__ = ()
     __facetriangles__ = {}  # Lookup optimization
 
-    Components = IntEnum('Components', {'Unknown': 0, 'Vertex': 1, 'Edge': 2, 'Face': 3})
+    Components = IntEnum('Components', {'Unknown': -1, 'Vertex': 0, 'Edge': 1, 'Face': 2})
     Hit = namedtuple('Hit', ['hitIndex', 'hitPoint', 'hitBary'])
 
     @abstractmethod
@@ -463,7 +463,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         # Define inverse map
         # This will be used to inverse out input data
         #
-        points = numpy.array(self.vertices(*vertexIndices))
+        points = self.vertices(*vertexIndices)
 
         inverse = {x: -1 if x == axis else 1 for x in range(3)}
         mirrorPoints = [[value * inverse[index] for (index, value) in enumerate(point)] for point in points]
@@ -508,7 +508,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         # Get control points
         #
-        controlPoints = numpy.array(self.vertices(*vertexIndices))
+        controlPoints = self.vertices(*vertexIndices)
         vertexMap = dict(enumerate(vertexIndices))
 
         # Query point tree
@@ -650,7 +650,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         triangleIndices = list(chain(*list(faceTriangleIndices.values())))
         triangleMap = dict(enumerate(triangleIndices))
 
-        triangleCentroids = numpy.array(self.triangleCentroids(*triangleIndices))
+        triangleCentroids = self.triangleCentroids(*triangleIndices)
 
         # Get closest triangles using point tree
         #
@@ -663,8 +663,8 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         closestTriangles = [triangleMap[index] for index in indices]
         triangleVertexIndices = self.triangleVertexIndices(*closestTriangles)
 
-        vertexIndices = list(chain(*list(triangleVertexIndices.values())))
-        vertexPoints = self.vertices(*set(vertexIndices))
+        vertexIndices = set(chain(*triangleVertexIndices))
+        vertexPoints = self.vertices(*vertexIndices)
 
         numHits = len(indices)
         hits = [None] * numHits
