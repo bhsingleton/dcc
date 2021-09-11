@@ -51,6 +51,20 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
 
         return range(start, stop, step)
 
+    def enumerate(self, elements):
+        """
+        Returns a generator for yielding local indices for global mesh elements.
+
+        :type elements: list[int]
+        :rtype: iter
+        """
+
+        numElements = len(elements)
+
+        for i in range(numElements):
+
+            yield (i + 1), elements[i]
+
     def numVertices(self):
         """
         Returns the number of vertices in this mesh.
@@ -92,7 +106,16 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
 
         if numArgs == 0:
 
-            args = range(1, self.numVertices() + 1, 1)
+            args = self.range(self.numVertices())
+
+        # Get transform matrix
+        #
+        obj = self.object()
+        transform = pymxs.runtime.Matrix3(1)
+
+        if pymxs.runtime.isProperty(obj, 'transform'):
+
+            transform = pymxs.runtime.copy(obj.transform)
 
         # Iterate through vertices
         #
@@ -101,7 +124,9 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
         for arg in args:
 
             point = pymxs.runtime.polyOp.getVert(obj, arg)
-            yield arg, (point.x, point.y, point.z)
+            point *= pymxs.runtime.inverse(transform)
+
+            yield point.x, point.y, point.z
 
     def iterFaceVertexIndices(self, *args):
         """
@@ -126,7 +151,7 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
         for arg in args:
 
             vertices = pymxs.runtime.polyOp.getFaceVerts(obj, arg)
-            yield arg, tuple(arrayutils.iterElements(vertices))
+            yield tuple(arrayutils.iterElements(vertices))
 
     def iterFaceCenters(self, *args):
         """
@@ -142,7 +167,16 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
 
         if numArgs == 0:
 
-            args = range(1, self.numFaces() + 1, 1)
+            args = self.range(self.numFaces())
+
+        # Get transform matrix
+        #
+        obj = self.object()
+        transform = pymxs.runtime.Matrix3(1)
+
+        if pymxs.runtime.isProperty(obj, 'transform'):
+
+            transform = pymxs.runtime.copy(obj.transform)
 
         # Iterate through vertices
         #
@@ -151,7 +185,9 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
         for arg in args:
 
             point = pymxs.runtime.polyOp.getFaceCenter(obj, arg)
-            yield arg, (point.x, point.y, point.z)
+            point *= pymxs.runtime.inverse(transform)
+
+            yield point.x, point.y, point.z
 
     def iterFaceNormals(self, *args):
         """
@@ -167,7 +203,7 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
 
         if numArgs == 0:
 
-            args = range(1, self.numFaces() + 1, 1)
+            args = self.range(self.numFaces())
 
         # Iterate through vertices
         #
@@ -176,7 +212,7 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
         for arg in args:
 
             normal = pymxs.runtime.polyOp.getFaceNormal(obj, arg)
-            yield arg, (normal.x, normal.y, normal.z)
+            yield normal.x, normal.y, normal.z
 
     def iterTriangleVertexIndices(self, *args):
         """
@@ -194,15 +230,14 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
 
         if numArgs == 0:
 
-            numTriangles = triMesh.numFaces
-            args = self.range(numTriangles)
+            args = self.range(triMesh.numFaces)
 
         # Iterate through triangles
         #
         for arg in args:
 
             indices = pymxs.runtime.getFace(triMesh, arg)
-            yield arg, tuple(arrayutils.iterElements(indices))
+            yield tuple(arrayutils.iterElements(indices))
 
     def iterConnectedVertices(self, *args, **kwargs):
         """

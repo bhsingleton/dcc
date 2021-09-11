@@ -102,26 +102,6 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
         return range(1, self.numControlPoints() + 1, 1)
 
-    def controlPoint(self, vertexIndex):
-        """
-        Returns a generator that yields control points.
-
-        :type vertexIndex: int
-        :rtype: list[float, float, float]
-        """
-
-        point = pymxs.runtime.polyOp.getVert(self.intermediateObject(), vertexIndex)
-        return point.x, point.y, point.z
-
-    def numControlPoints(self):
-        """
-        Evaluates the number of control points from the associated shape.
-
-        :rtype: int
-        """
-
-        return pymxs.runtime.polyOp.getNumVerts(self.intermediateObject())
-
     @commandpaneloverride.commandPanelOverride(mode='modify')
     def iterSelection(self):
         """

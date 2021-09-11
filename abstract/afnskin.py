@@ -317,17 +317,6 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         return list(self.iterVertices())
 
-    @abstractmethod
-    def controlPoint(self, vertexIndex):
-        """
-        Returns the control point for the specified vertex.
-
-        :type vertexIndex: int
-        :rtype: list[float, float, float]
-        """
-
-        pass
-
     def iterControlPoints(self, *args):
         """
         Returns a generator that yields control points.
@@ -336,19 +325,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
         :rtype: iter
         """
 
-        # Inspect arguments
-        #
-        numArgs = len(args)
-
-        if numArgs == 0:
-
-            args = range(self.arrayOffset, self.numControlPoints() + self.arrayOffset, 1)
-
-        # Iterate through arguments
-        #
-        for arg in args:
-
-            yield self.controlPoint(arg)
+        return fnmesh.FnMesh(self.intermediateObject()).iterVertices(*args)
 
     def controlPoints(self, *args):
         """
@@ -358,17 +335,16 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
         :rtype: list
         """
 
-        return list(self.iterControlPoints(*args))
+        return fnmesh.FnMesh(self.intermediateObject()).vertices(*args)
 
-    @abstractmethod
     def numControlPoints(self):
         """
-        Evaluates the number of control points from this deformer.
+        Evaluates the number of control points from this skin.
 
         :rtype: int
         """
 
-        pass
+        return fnmesh.FnMesh(self.intermediateObject()).numVertices()
 
     @abstractmethod
     def iterSelection(self):

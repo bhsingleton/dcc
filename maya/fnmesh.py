@@ -29,6 +29,16 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
 
         return range(*args)
 
+    def enumerate(self, elements):
+        """
+        Returns a generator for yielding local indices for global mesh elements.
+
+        :type elements: list[int]
+        :rtype: iter
+        """
+
+        return enumerate(elements)
+
     def numVertices(self):
         """
         Returns the number of vertices in this mesh.
@@ -81,7 +91,7 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
             iterVertices.setIndex(arg)
             point = iterVertices.position()
 
-            yield arg, (point.x, point.y, point.z)
+            yield point.x, point.y, point.z
 
     def iterFaceVertexIndices(self, *args):
         """
@@ -108,7 +118,7 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
             iterPolygons.setIndex(arg)
             vertexIndices = iterPolygons.getVertices()
 
-            yield arg, tuple(vertexIndices)
+            yield tuple(vertexIndices)
 
     def iterFaceCenters(self, *args):
         """
@@ -135,7 +145,7 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
             iterPolygons.setIndex(arg)
             center = iterPolygons.center()
 
-            yield arg, (center.x, center.y, center.z)
+            yield center.x, center.y, center.z
 
     def iterFaceNormals(self, *args):
         """
@@ -164,7 +174,7 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
             normals = iterPolygons.getNormals()
             normal = sum(normals) / len(normals)
 
-            yield arg, (normal.x, normal.y, normal.z)
+            yield normal.x, normal.y, normal.z
 
     def iterTriangleVertexIndices(self, *args):
         """
@@ -196,7 +206,7 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
 
             vertexIndices = fnMesh.getPolygonTriangleVertices(faceIndex, localIndex)
 
-            yield arg, tuple(vertexIndices)
+            yield tuple(vertexIndices)
 
     def iterConnectedVertices(self, *args, **kwargs):
         """

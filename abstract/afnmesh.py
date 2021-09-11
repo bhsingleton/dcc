@@ -3,6 +3,7 @@ import numpy
 
 from abc import ABCMeta, abstractmethod
 from six import with_metaclass
+from six.moves import collections_abc
 from enum import IntEnum
 from itertools import chain
 from collections import deque, namedtuple
@@ -36,6 +37,18 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         Returns a generator for yielding a range of mesh elements.
         This is useful for programs that don't utilize zero-based arrays.
 
+        :rtype: iter
+        """
+
+        pass
+
+    @abstractmethod
+    def enumerate(self, elements):
+        """
+        Returns a generator for yielding local indices for global mesh elements.
+        This is useful for programs that don't utilize zero-based arrays.
+
+        :type elements: list[int]
         :rtype: iter
         """
 
@@ -93,12 +106,12 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
     def vertices(self, *args):
         """
-        Returns a dictionary of vertex points.
+        Returns a list of vertex points.
 
-        :rtype: dict[int:list[float, float, float]]
+        :rtype: list[tuple[float, float, float]]
         """
 
-        return sparsearray.SparseArray(self.iterVertices(*args))
+        return list(self.iterVertices(*args))
 
     @abstractmethod
     def iterFaceVertexIndices(self, *args):
@@ -113,12 +126,12 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
     def faceVertexIndices(self, *args):
         """
-        Returns a dictionary of face-vertex indices.
+        Returns a list of face-vertex indices.
 
-        :rtype: dict[int:list[int]]
+        :rtype: list[int]
         """
 
-        return sparsearray.SparseArray(self.iterFaceVertexIndices(*args))
+        return list(self.iterFaceVertexIndices(*args))
 
     @abstractmethod
     def iterFaceCenters(self, *args):
@@ -133,12 +146,12 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
     def faceCenters(self, *args):
         """
-        Returns a dictionary of face centers.
+        Returns a list of face centers.
 
-        :rtype: dict[int:list[float, float, float]]
+        :rtype: list[tuple[float, float, float]]
         """
 
-        return sparsearray.SparseArray(self.iterFaceCenters(*args))
+        return list(self.iterFaceCenters(*args))
 
     @abstractmethod
     def iterFaceNormals(self, *args):
@@ -153,12 +166,12 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
     def faceNormals(self, *args):
         """
-        Returns a dictionary of face normals.
+        Returns a list of face normals.
 
-        :rtype: dict[int:list[float, float, float]]
+        :rtype: list[tuple[float, float, float]]
         """
 
-        return sparsearray.SparseArray(self.iterFaceNormals(*args))
+        return list(self.iterFaceNormals(*args))
 
     def generateFaceTriangleIndices(self):
         """
@@ -178,10 +191,12 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         # Iterate through faces
         #
+        faceVertexIndices = self.faceVertexIndices()
         faceTriangleIndices = {}
+
         start = self.arrayOffset
 
-        for (faceIndex, vertexIndices) in self.iterFaceVertexIndices():
+        for (faceIndex, vertexIndices) in self.enumerate(faceVertexIndices):
 
             # Get triangle count
             #
@@ -223,16 +238,16 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         for arg in args:
 
-            yield arg, faceTriangleIndices[arg]
+            yield faceTriangleIndices[arg]
 
     def faceTriangleIndices(self, *args):
         """
-        Returns a dictionary of face-triangle indices.
+        Returns a list of face-triangle indices.
 
-        :rtype: dict[int:list[int]]
+        :rtype: list[list[int]]
         """
 
-        return sparsearray.SparseArray(self.iterFaceTriangleIndices(*args))
+        return list(self.iterFaceTriangleIndices(*args))
 
     def triangleFaceIndices(self):
         """
@@ -241,11 +256,15 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         :rtype: dict[int:int]
         """
 
-        faceTriangleIndices = self.faceTriangleIndices()
+        # Iterate through face-triangle indices
+        #
+        faceTriangleIndices = self.generateFaceTriangleIndices()
         triangleFaceIndices = {}
 
         for (faceIndex, triangleIndices) in faceTriangleIndices.items():
 
+            # Create reverse lookup for triangle
+            #
             for triangleIndex in triangleIndices:
 
                 triangleFaceIndices[triangleIndex] = faceIndex
@@ -264,23 +283,23 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
     def triangleVertexIndices(self, *args):
         """
-        Returns the vertex indices for the supplied triangles.
+        Returns a list of triangle-vertex indices
 
-        :rtype: dict[int:list[int]]
+        :rtype: list[list[int]]
         """
 
-        return sparsearray.SparseArray(self.iterTriangleVertexIndices(*args))
+        return list(self.iterTriangleVertexIndices(*args))
 
     @staticmethod
     def getCentroid(points):
         """
         Returns the centroid of the given triangle.
 
-        :type points: list[list[float, float, float]]
-        :rtype: numpy.array
+        :type points: list[tuple[float, float, float]]
+        :rtype: list[float, float, float]
         """
 
-        return sum(numpy.array(points)) / len(points)
+        return (sum(numpy.array(points)) / len(points)).tolist()
 
     def iterTriangleCentroids(self, *args):
         """
@@ -291,19 +310,19 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         # Iterate through triangle vertices
         #
-        for (triangleIndex, vertexIndices) in self.iterTriangleVertexIndices(*args):
+        for vertexIndices in self.iterTriangleVertexIndices(*args):
 
             points = self.vertices(*vertexIndices)
-            yield triangleIndex, self.getCentroid(points)
+            yield self.getCentroid(points)
 
     def triangleCentroids(self, *args):
         """
         Returns a dictionary of triangle centroids.
 
-        :rtype: dict[int:numpy.array]
+        :rtype: list[tuple[float, float, float]]
         """
 
-        return sparsearray.SparseArray(self.iterTriangleCentroids(*args))
+        return list(self.iterTriangleCentroids(*args))
 
     @abstractmethod
     def iterConnectedVertices(self, *args, **kwargs):
@@ -343,8 +362,8 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
         Returns the distance between the two points.
 
-        :type start: list[float, float, float]
-        :type end: list[float, float, float]
+        :type start: tuple[float, float, float]
+        :type end: tuple[float, float, float]
         :rtype: float
         """
 
@@ -434,15 +453,6 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         return deque()
 
-    def generatePointTree(self, *args):
-        """
-        Returns a cKDTree based on the supplied vertex indices.
-
-        :rtype: cKDTree
-        """
-
-        return cKDTree(self.vertices(*args))
-
     def mirrorVertices(self, vertexIndices, axis=0, tolerance=1e-3):
         """
         Mirrors the supplied list of vertex indices.
@@ -456,7 +466,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         # Check value type
         #
-        if not isinstance(vertexIndices, (list, set, tuple)):
+        if not isinstance(vertexIndices, collections_abc.MutableSequence):
 
             raise TypeError('mirrorVertices() expects a list (%s given)!' % type(vertexIndices).__name__)
 
@@ -471,7 +481,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         # Query closest points from point tree
         # Might be worth trying to optimize this with only opposite points?
         #
-        tree = self.generatePointTree()
+        tree = cKDTree(self.vertices())
         distances, indices = tree.query(mirrorPoints, distance_upper_bound=tolerance)
 
         # Generate mirror map
@@ -647,7 +657,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         # Get control points
         #
         faceTriangleIndices = self.faceTriangleIndices(*faceIndices)
-        triangleIndices = list(chain(*list(faceTriangleIndices.values())))
+        triangleIndices = list(chain(*faceTriangleIndices))
         triangleMap = dict(enumerate(triangleIndices))
 
         triangleCentroids = self.triangleCentroids(*triangleIndices)
@@ -661,10 +671,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         # Remember to use the triangle map to resolve the local indices!
         #
         closestTriangles = [triangleMap[index] for index in indices]
-        triangleVertexIndices = self.triangleVertexIndices(*closestTriangles)
-
-        vertexIndices = set(chain(*triangleVertexIndices))
-        vertexPoints = self.vertices(*vertexIndices)
+        triangleVertexIndices = dict(zip(closestTriangles, self.triangleVertexIndices(*closestTriangles)))
 
         numHits = len(indices)
         hits = [None] * numHits
@@ -672,11 +679,12 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         for (index, (triangleIndex, point)) in enumerate(zip(closestTriangles, points)):
 
             point = numpy.array(point)
-            triangle = numpy.array([vertexPoints[x] for x in triangleVertexIndices[triangleIndex]])
+            triangle = numpy.array(self.vertices(*triangleVertexIndices[triangleIndex]))
 
             baryCoords = self.getBarycentricCoordinates(point, triangle)
             closestPoint = (triangle[0] * baryCoords[0]) + (triangle[1] * baryCoords[1]) + (triangle[2] * baryCoords[2])
 
+            log.debug('Hit: point=%s -> closestPoint=%s, bary=%s' % (point, closestPoint, baryCoords))
             hits[index] = self.Hit(hitIndex=triangleIndex, hitPoint=closestPoint, hitBary=baryCoords)
 
         return hits
