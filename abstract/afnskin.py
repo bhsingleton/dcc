@@ -567,31 +567,36 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         return list(set(self.influences().keys()) - set(self.getUsedInfluenceIds(*args)))
 
-    def createInfluenceMap(self, otherSkin, vertexIndices=None):
+    def createInfluenceMap(self, otherSkin, influenceIds=None):
         """
         Creates an influence map for transferring weights from this instance to the supplied skin.
-        An optional list of vertices can be used to simplify the binder.
+        An optional list of influence IDs can be used to simplify the binder.
 
         :type otherSkin: AFnSkin
-        :type vertexIndices: list[int]
+        :type influenceIds: Union[list, tuple, set]
         :rtype: dict[int:int]
         """
 
-        # Check skin cluster type
+        # Check if skin is valid
         #
         if not otherSkin.isValid():
 
             raise TypeError('createInfluenceMap() expects a valid skin (%s given)!' % type(otherSkin).__name__)
 
-        # Iterate through influences
+        # Check if influence IDs were supplied
         #
         influences = self.influences()
-        otherInfluences = otherSkin.influences()
 
-        usedInfluenceIds = self.getUsedInfluenceIds(*vertexIndices)
+        if influenceIds is None:
+
+            influenceIds = list(influences.keys())
+
+        # Iterate through influences
+        #
+        otherInfluences = otherSkin.influences()
         influenceMap = {}
 
-        for influenceId in usedInfluenceIds:
+        for influenceId in influenceIds:
 
             # Try and find a match for the influence name
             #
@@ -1609,7 +1614,9 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
         fnMesh = fnmesh.FnMesh(self.shape())
         points = fnMesh.vertices(*path)
 
-        startWeights, endWeights = list(self.vertexWeights(startVertex, endVertex).values())
+        vertexWeights = self.vertexWeights(startVertex, endVertex)
+        startWeights, endWeights = vertexWeights[startVertex], vertexWeights[endVertex]
+
         updates = {}
 
         for (i, vertexIndex) in enumerate(path[1:-1]):
