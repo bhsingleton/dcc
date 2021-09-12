@@ -10,7 +10,6 @@ from collections import deque, namedtuple
 from scipy.spatial import cKDTree
 
 from . import afnbase
-from ..collections import sparsearray
 
 import logging
 logging.basicConfig()
@@ -451,7 +450,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
                     continue
 
-        return deque()
+        return []
 
     def mirrorVertices(self, vertexIndices, axis=0, tolerance=1e-3):
         """
