@@ -88,6 +88,18 @@ class AFnNode(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         return self.object() in self.getActiveSelection()
 
+    def isIsolated(self):
+        """
+        Evaluates if this is the only node selected.
+
+        :rtype: bool
+        """
+
+        selection = self.getActiveSelection()
+        selectionCount = len(selection)
+
+        return selectionCount == 1 and self.object() in selection
+
     @abstractmethod
     def isMesh(self):
         """

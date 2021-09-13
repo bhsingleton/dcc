@@ -1428,7 +1428,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
         for (vertexIndex, mirrorIndex) in mirrorIndices.items():
 
             isCenterSeam = (vertexIndex == mirrorIndex)
-            log.info('.vtx[%s] == .vtx[%s]' % (vertexIndex, mirrorIndex))
+            log.debug('.vtx[%s] == .vtx[%s]' % (vertexIndex, mirrorIndex))
 
             if pull:
 
