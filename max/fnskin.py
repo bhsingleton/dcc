@@ -93,6 +93,18 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
         return self.shape() in self.getActiveSelection()
 
+    def isIsolated(self):
+        """
+        Evaluates if this node is selected.
+
+        :rtype: bool
+        """
+
+        selection = self.getActiveSelection()
+        selectionCount = len(selection)
+
+        return selectionCount == 1 and self.shape() in selection
+
     def iterVertices(self):
         """
         Returns a generator that yields all vertex indices.
