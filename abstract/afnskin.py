@@ -955,10 +955,10 @@ class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
         :rtype: dict[int:float]
         """
 
-        return {influenceId: weight for (influenceId, weight) in weights.items() if not self.isClose(weight, 0.0)}
+        return {influenceId: weight for (influenceId, weight) in weights.items() if not self.isClose(0.0, weight)}
 
     @staticmethod
-    def isClose(a, b, rel_tol=1e-03, abs_tol=0.0):
+    def isClose(a, b, rel_tol=1e-03, abs_tol=1e-03):
         """
         Evaluates if the two numbers of relatively close.
         Sadly this function doesn't exist in the math module until Python 3.5
