@@ -182,9 +182,9 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         # Check if map has already been generated
         #
         handle = self.handle()
-        faceTriangleIndices = self.__facetriangles__.get(handle, None)
+        faceTriangleIndices = self.__facetriangles__.get(handle, {})
 
-        if faceTriangleIndices is not None:
+        if len(faceTriangleIndices) == self.numFaces():
 
             return faceTriangleIndices
 
