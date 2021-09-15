@@ -83,6 +83,30 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         """
 
         self.setActiveSelection([self.shape()], replace=replace)
+        self.selectModifier()
+
+    def selectModifier(self):
+        """
+        Selects this modifier from the modify panel.
+
+        :rtype: None
+        """
+
+        # Check if modify panel is open
+        #
+        if self.isModifyPanelOpen():
+
+            pymxs.runtime.modPanel.setCurrentObject(self.object(), node=self.shape())
+
+    @staticmethod
+    def isModifyPanelOpen():
+        """
+        Evaluates if the modify panel is open.
+
+        :rtype: bool
+        """
+
+        return pymxs.runtime.getCommandPanelTaskMode() == pymxs.runtime.Name('modify')
 
     def isSelected(self):
         """
