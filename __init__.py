@@ -58,7 +58,7 @@ def resetNotifies():
     fnnotify.FnNotify.clear()
 
 
-def closeAllWindows():
+def closeWindows():
     """
     Closes all of the windows derived from QProxyWindow.
 
@@ -66,7 +66,7 @@ def closeAllWindows():
     """
 
     from dcc.userinterface import qproxywindow
-    qproxywindow.QProxyWindow.closeAllWindows()
+    qproxywindow.QProxyWindow.closeWindows()
 
 
 def restart():
@@ -78,5 +78,5 @@ def restart():
     """
 
     resetNotifies()
-    closeAllWindows()
+    closeWindows()
     rollback()

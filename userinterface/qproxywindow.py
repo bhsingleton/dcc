@@ -1,6 +1,6 @@
 from PySide2 import QtCore, QtWidgets, QtGui
 from abc import ABCMeta, abstractmethod
-
+from six import string_types
 from dcc import fnqt
 from dcc.decorators.classproperty import classproperty
 
@@ -17,6 +17,7 @@ class QProxyWindow(QtWidgets.QMainWindow):
     """
 
     __instances__ = {}
+    __icon__ = QtGui.QIcon()
 
     def __init__(self, *args, **kwargs):
         """
@@ -27,6 +28,12 @@ class QProxyWindow(QtWidgets.QMainWindow):
         :rtype: None
         """
 
+        # Check if instance has been initialized
+        #
+        if self.isInitialized():
+
+            return
+
         # Call parent method
         #
         parent = kwargs.get('parent', fnqt.FnQt().getMainWindow())
@@ -34,11 +41,9 @@ class QProxyWindow(QtWidgets.QMainWindow):
 
         super(QProxyWindow, self).__init__(parent=parent, flags=flags)
 
-        # Call build method
+        # Build user interface
         #
-        if not self.isInitialized():
-
-            self.__build__()
+        self.__build__()
 
     @abstractmethod
     def __build__(self):
@@ -48,18 +53,15 @@ class QProxyWindow(QtWidgets.QMainWindow):
         :rtype: None
         """
 
-        self.setObjectName(self.__class__.__name__)
+        # Modify window properties
+        #
+        self.setObjectName(self.className)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setWindowIcon(self.__class__.__icon__)
 
-    @classproperty
-    def className(cls):
-        """
-        Getter method that returns the name of this class.
-
-        :rtype: str
-        """
-
-        return cls.__name__
+        # Store reference to instance
+        #
+        self.__class__.__instances__[self.className] = self
 
     def showEvent(self, event):
         """
@@ -73,10 +75,6 @@ class QProxyWindow(QtWidgets.QMainWindow):
         #
         super(QProxyWindow, self).showEvent(event)
 
-        # Store reference to instance
-        #
-        self.__class__.__instances__[self.className] = self
-
     def closeEvent(self, event):
         """
         Event method called after the window has been closed.
@@ -89,15 +87,41 @@ class QProxyWindow(QtWidgets.QMainWindow):
         #
         super(QProxyWindow, self).closeEvent(event)
 
-        # Remove reference to instance
+        # Perform cleanup steps
         #
-        try:
+        self.hideTearOffMenus()
+        self.removeInstance()
 
-            self.__class__.__instances__.pop(self.className)
+    @classproperty
+    def className(cls):
+        """
+        Getter method that returns the name of this class.
 
-        except KeyError as exception:
+        :rtype: str
+        """
 
-            log.debug(exception)
+        return cls.__name__
+
+    @classmethod
+    def creator(cls, *args, **kwargs):
+        """
+        Returns a new instance of this class.
+
+        :rtype: QProxyWindow
+        """
+
+        return cls(*args, **kwargs)
+
+    @classmethod
+    def overrideWindowIcon(cls, icon):
+        """
+        Registers a custom icon for all derived classes.
+
+        :type icon: str
+        :rtype: None
+        """
+
+        cls.__icon__ = QtGui.QIcon(icon)
 
     @staticmethod
     def getTextWidth(item, text, offset=12):
@@ -118,26 +142,6 @@ class QProxyWindow(QtWidgets.QMainWindow):
         width = fontMetric.width(text) + offset
 
         return width
-
-    @classmethod
-    def createStandardItem(cls, text, height=16):
-        """
-        Class method used to create a QStandardItem from the given string value.
-
-        :type text: str
-        :type height: int
-        :rtype: QtGui.QStandardItem
-        """
-
-        # Create item and resize based on text width
-        #
-        item = QtGui.QStandardItem(text)
-        textWidth = cls.getTextWidth(item, text)
-
-        item.setSizeHint(QtCore.QSize(textWidth, height))
-        item.setTextAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
-
-        return item
 
     @classmethod
     def isInitialized(cls):
@@ -162,20 +166,71 @@ class QProxyWindow(QtWidgets.QMainWindow):
     @classmethod
     def getInstance(cls):
         """
-        Returns the singleton instance for this class.
+        Returns the instance for this class.
         If no window is found then a new instance is returned.
 
         :rtype: QProxyWindow
         """
 
+        # Check if instance already exists
+        #
         if not cls.hasInstance():
 
-            cls.__instances__[cls.__name__] = cls()
+            cls.__instances__[cls.__name__] = cls.creator()
 
         return cls.__instances__[cls.__name__]
 
     @classmethod
-    def closeAllWindows(cls):
+    def removeInstance(cls):
+        """
+        Removes the supplied instance from the internal array.
+
+        :rtype: bool
+        """
+
+        # Check if instance exists
+        #
+        if cls.className in cls.__instances__:
+
+            del cls.__instances__[cls.className]
+            return True
+
+        else:
+
+            log.debug('Unable to locate window: %s' % cls.className)
+            return False
+
+    def hideTearOffMenus(self):
+        """
+        Closes all of the separated menus from the menu bar.
+
+        :rtype: None
+        """
+
+        # Check if menu bar exists
+        #
+        menuBar = self.menuBar()  # type: QtWidgets.QMenuBar
+
+        if menuBar is None:
+
+            return
+
+        # Iterate through menu actions
+        #
+        for action in menuBar.actions():
+
+            menu = action.menu()  # type: QtWidgets.QMenu
+
+            if menu.isTearOffMenuVisible():
+
+                menu.hideTearOffMenu()
+
+            else:
+
+                continue
+
+    @classmethod
+    def closeWindows(cls):
         """
         Closes all of the open windows.
         Only the windows that inherit from this class will be closed!
@@ -185,6 +240,7 @@ class QProxyWindow(QtWidgets.QMainWindow):
 
         # Iterate through windows
         #
-        for window in list(cls.__instances__.values()):
+        for (name, window) in cls.__instances__.items():
 
+            log.info('Closing window: %s' % name)
             window.close()
