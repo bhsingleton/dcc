@@ -1,6 +1,8 @@
 import pymxs
 import math
 
+from dcc.max.libs import controllerutils
+
 import logging
 logging.basicConfig()
 log = logging.getLogger(__name__)
@@ -14,22 +16,13 @@ def copyTransform(copyFrom, copyTo, **kwargs):
     :rtype: None
     """
 
-    # Multiply transform into parent space
-    #
     worldMatrix = pymxs.runtime.copy(copyFrom.transform)
-    parentMatrix = getParentMatrix(copyTo)
-    frozenMatrix = getFrozenMatrix(copyTo)
-
-    matrix = worldMatrix * pymxs.runtime.inverse(frozenMatrix * parentMatrix)
-
-    # Apply matrix to node
-    #
-    applyTransformMatrix(copyTo, matrix)
+    applyWorldMatrix(copyTo, worldMatrix, **kwargs)
 
 
 def applyTransformMatrix(node, matrix, **kwargs):
     """
-    Applies the transform matrix to the supplied node.
+    Applies the transformation matrix to the supplied node.
 
     :type node: pymxs.runtime.Node
     :type matrix: pymxs.runtime.Matrix3
@@ -41,6 +34,267 @@ def applyTransformMatrix(node, matrix, **kwargs):
     setTranslation(node, translation, **kwargs)
     setEulerRotation(node, rotation, **kwargs)
     setScale(node, scale, **kwargs)
+
+
+def applyWorldMatrix(node, worldMatrix, **kwargs):
+    """
+    Applies the world matrix to the supplied node.
+    Frozen transforms have a bizarre behaviour.
+    The position channel transforms in parent space whereas the rotation channel is in local space?
+
+    :type node: pymxs.runtime.Node
+    :type worldMatrix: pymxs.runtime.Matrix3
+    :rtype: None
+    """
+
+    # Multiply world matrix into parent space
+    #
+    offsetMatrix = kwargs.get('offsetMatrix', pymxs.runtime.Matrix3(1))
+    parentMatrix = getParentMatrix(node)
+    frozenPositionMatrix = getFrozenPositionMatrix(node)
+    frozenRotationMatrix = getFrozenRotationMatrix(node)
+
+    position = ((offsetMatrix * worldMatrix) * pymxs.runtime.inverse(frozenPositionMatrix * parentMatrix)).translationPart
+    rotation = ((offsetMatrix * worldMatrix) * pymxs.runtime.inverse(frozenRotationMatrix * parentMatrix)).rotationPart
+
+    matrix = quatToMatrix3(rotation) * pymxs.runtime.transMatrix(position)
+
+    # Apply matrix to node
+    #
+    applyTransformMatrix(node, matrix, **kwargs)
+
+
+def freezeTranslation(node):
+    """
+    Freezes the translation on the supplied node.
+    If no position list is found then a new one is created.
+
+    :type node: pymxs.runtime.Node
+    :rtype: None
+    """
+
+    # Copy transform matrix
+    #
+    transformController = pymxs.runtime.getTMController(node)
+    matrix = pymxs.runtime.copy(transformController.value) * pymxs.runtime.inverse(getParentMatrix(node))
+
+    position = pymxs.runtime.copy(matrix.translationPart)
+
+    if sum(position) == 0.0:
+
+        return
+
+    # Check if position list exists
+    #
+    positionController = pymxs.runtime.getPropertyController(transformController, 'Position')
+
+    if not controllerutils.isListController(positionController):
+
+        positionController = pymxs.runtime.Position_List()
+        pymxs.runtime.setPropertyController(transformController, 'Position', positionController)
+
+        pymxs.runtime.setPropertyController(positionController, 'Available', pymxs.runtime.Bezier_Position())
+        pymxs.runtime.setPropertyController(positionController, 'Available', pymxs.runtime.Position_XYZ())
+
+        positionController.delete(1)  # Delete the previous controller from the list!
+        positionController.setName(1, 'Frozen Position')
+        positionController.setName(2, 'Zero Pos XYZ')
+        positionController.setActive(2)
+
+    # Update frozen position subanim
+    #
+    frozenController = pymxs.runtime.getPropertyController(positionController, 'Frozen Position')
+    activeController = pymxs.runtime.getPropertyController(positionController, 'Zero Pos XYZ')
+
+    frozenController.value = position
+    activeController.value = pymxs.runtime.Point3(0.0, 0.0, 0.0)
+
+
+def freezeRotation(node):
+    """
+    Freezes the rotation on the supplied node.
+    If no rotation list is found then a new one is created.
+
+    :type node: pymxs.runtime.Node
+    :rtype: None
+    """
+
+    # Copy transform matrix
+    #
+    transformController = pymxs.runtime.getTMController(node)
+    matrix = pymxs.runtime.copy(transformController.value) * pymxs.runtime.inverse(getParentMatrix(node))
+
+    rotation = pymxs.runtime.copy(matrix.rotationPart)
+
+    if pymxs.runtime.isIdentity(rotation):
+
+        return
+
+    # Check if rotation list exists
+    #
+    rotationController = pymxs.runtime.getPropertyController(transformController, 'Rotation')
+
+    if not controllerutils.isListController(rotationController):
+
+        rotationController = pymxs.runtime.Rotation_List()
+        pymxs.runtime.setPropertyController(transformController, 'Rotation', rotationController)
+
+        pymxs.runtime.setPropertyController(rotationController, 'Available', pymxs.runtime.Bezier_Rotation())
+        pymxs.runtime.setPropertyController(rotationController, 'Available', pymxs.runtime.Euler_XYZ())
+
+        rotationController.delete(1)  # Delete the previous controller from the list!
+        rotationController.setName(1, 'Frozen Rotation')
+        rotationController.setName(2, 'Zero Euler XYZ')
+        rotationController.setActive(2)
+
+    # Update frozen rotation subanim
+    #
+    frozenController = pymxs.runtime.getPropertyController(rotationController, 'Frozen Rotation')
+    activeController = pymxs.runtime.getPropertyController(rotationController, 'Zero Euler XYZ')
+
+    frozenController.value = rotation
+    activeController.value = pymxs.runtime.Quat(0.0, 0.0, 0.0, 1.0)
+
+
+def freezeScale(node):
+    """
+    Freezes the scale on the supplied node.
+    If no scale list is found then a new one is created.
+
+    :type node: pymxs.runtime.Node
+    :rtype: None
+    """
+
+    # Copy transform matrix
+    #
+    transformController = pymxs.runtime.getTMController(node)
+    matrix = pymxs.runtime.copy(transformController.value) * pymxs.runtime.inverse(getParentMatrix(node))
+
+    scale = pymxs.runtime.copy(matrix.scalePart)
+
+    if sum(scale) == 3.0:
+
+        return
+
+    # Freeze scale controller
+    #
+    scaleController = pymxs.runtime.getPropertyController(transformController, 'Scale')
+
+    if not controllerutils.isListController(scaleController):
+
+        scaleController = pymxs.runtime.Scale_List()
+        pymxs.runtime.setPropertyController(transformController, 'Scale', scaleController)
+
+        pymxs.runtime.setPropertyController(scaleController, 'Available', pymxs.runtime.Bezier_Scale())
+        pymxs.runtime.setPropertyController(scaleController, 'Available', pymxs.runtime.ScaleXYZ())
+
+        scaleController.delete(1)  # Delete the previous controller from the list!
+        scaleController.setName(1, 'Frozen Scale')
+        scaleController.setName(2, 'Zero Scale XYZ')
+        scaleController.setActive(2)
+
+    # Update frozen scale subanim
+    #
+    frozenController = pymxs.runtime.getPropertyController(scaleController, 'Frozen Scale')
+    activeController = pymxs.runtime.getPropertyController(scaleController, 'Zero Scale XYZ')
+
+    frozenController.value = scale
+    activeController.value = [1.0, 1.0, 1.0]
+
+
+def freezeTransform(node):
+    """
+    Freezes the transform on the supplied node.
+
+    :type node: pymxs.runtime.Node
+    :rtype: None
+    """
+
+    freezeTranslation(node)
+    freezeRotation(node)
+    #freezeScale(node)
+
+
+def getFrozenPositionMatrix(node):
+    """
+    Returns the frozen position matrix from the supplied node.
+
+    :type node: pymxs.runtime.Node
+    :rtype: pymxs.runtime.Matrix3
+    """
+
+    # Check if controller has position list
+    #
+    transformController = pymxs.runtime.getTMController(node)
+    positionController = transformController[pymxs.runtime.Name('position')].controller
+
+    if controllerutils.isListController(positionController):
+
+        controller = positionController[pymxs.runtime.Name('frozen_position')].controller
+        return pymxs.runtime.transMatrix(controller.value)
+
+    else:
+
+        return pymxs.runtime.Matrix3(1)
+
+
+def getFrozenRotationMatrix(node):
+    """
+    Returns the frozen rotation matrix from the supplied node.
+
+    :type node: pymxs.runtime.Node
+    :rtype: pymxs.runtime.Matrix3
+    """
+
+    # Check if controller has rotation list
+    #
+    transformController = pymxs.runtime.getTMController(node)
+    rotationController = transformController[pymxs.runtime.Name('rotation')].controller
+
+    if controllerutils.isListController(rotationController):
+
+        controller = rotationController[pymxs.runtime.Name('frozen_rotation')].controller
+        return quatToMatrix3(controller.value)
+
+    else:
+
+        return pymxs.runtime.Matrix3(1)
+
+
+def getParentMatrix(node):
+    """
+    Returns the parent matrix for the given node.
+
+    :type node: pymxs.runtime.Node
+    :rtype: pymxs.runtime.Matrix3
+    """
+
+    parent = node.parent
+
+    if parent is not None:
+
+        return pymxs.runtime.copy(parent.transform)
+
+    else:
+
+        return pymxs.runtime.Matrix3(1)
+
+
+def decomposeMatrix(matrix, rotateOrder=1):
+    """
+    Breaks apart the matrix into its individual translate, rotate and scale components.
+    A rotation order must be supplied in order to be resolved correctly.
+
+    :type matrix: pymxs.runtime.Matrix3
+    :type rotateOrder: int
+    :rtype: pymxs.runtime.Point3, pymxs.runtime.EulerAngles, list[float, float, float]
+    """
+
+    translation = pymxs.runtime.copy(matrix.row4)
+    eulerRotation = pymxs.runtime.quatToEuler(matrix.rotationPart, order=rotateOrder)
+    scale = [pymxs.runtime.length(matrix.row1), pymxs.runtime.length(matrix.row2), pymxs.runtime.length(matrix.row3)]
+
+    return translation, eulerRotation, scale
 
 
 def quatToMatrix3(quat):
@@ -85,84 +339,16 @@ def quatToMatrix3(quat):
     )
 
 
-def getFrozenMatrix(node):
+def eulerAnglesToMatrix3(eulerAngles):
     """
-    Returns the frozen matrix for the supplied node.
-    If the node has not been frozen then an identity matrix is returned instead.
+    Converts the supplied euler angles to a rotation matrix.
+    Yaw = Y, Pitch = X, Roll = Z
 
-    :type node: pymxs.runtime.Node
+    :type eulerAngles: pymxs.runtime.EulerAngles
     :rtype: pymxs.runtime.Matrix3
     """
 
-    # Get transform controller
-    #
-    transformController = pymxs.runtime.getTMController(node)
-    matrix = pymxs.runtime.Matrix3(1)
-
-    # Check if controller has scale list
-    #
-    scaleController = transformController[pymxs.runtime.Name('scale')].controller
-
-    if pymxs.runtime.classOf(scaleController) == pymxs.runtime.Scale_list:
-
-        controller = scaleController[pymxs.runtime.Name('frozen_scale')].controller
-        matrix *= pymxs.runtime.scaleMatrix(controller.value)
-
-    # Check if controller has rotation list
-    #
-    rotationController = transformController[pymxs.runtime.Name('rotation')].controller
-
-    if pymxs.runtime.classOf(rotationController) == pymxs.runtime.Rotation_list:
-
-        controller = rotationController[pymxs.runtime.Name('frozen_rotation')].controller
-        matrix *= quatToMatrix3(controller.value)
-
-    # Check if controller has position list
-    #
-    positionController = transformController[pymxs.runtime.Name('position')].controller
-
-    if pymxs.runtime.classOf(positionController) == pymxs.runtime.Position_list:
-
-        controller = positionController[pymxs.runtime.Name('frozen_position')].controller
-        matrix *= pymxs.runtime.transMatrix(controller.value)
-
-    return matrix
-
-
-def getParentMatrix(node):
-    """
-    Returns the parent matrix for the given node.
-
-    :type node: pymxs.runtime.Node
-    :rtype: pymxs.runtime.Matrix3
-    """
-
-    parent = node.parent
-
-    if parent is not None:
-
-        return pymxs.runtime.copy(parent.transform)
-
-    else:
-
-        return pymxs.runtime.Matrix3(1)
-
-
-def decomposeMatrix(matrix, rotateOrder=1):
-    """
-    Breaks apart the matrix into its individual translate, rotate and scale components.
-    A rotation order must be supplied in order to be resolved correctly.
-
-    :type matrix: pymxs.runtime.Matrix3
-    :type rotateOrder: int
-    :rtype: pymxs.runtime.Point3, pymxs.runtime.EulerAngles, list[float, float, float]
-    """
-
-    translation = pymxs.runtime.copy(matrix.row4)
-    eulerRotation = pymxs.runtime.quatToEuler(matrix.rotationPart, order=rotateOrder)
-    scale = [pymxs.runtime.length(matrix.row1), pymxs.runtime.length(matrix.row2), pymxs.runtime.length(matrix.row3)]
-
-    return translation, eulerRotation, scale
+    return pymxs.runtime.rotateYPRMatrix(eulerAngles.y, eulerAngles.x, eulerAngles.z)
 
 
 def getTranslation(node):
@@ -173,7 +359,7 @@ def getTranslation(node):
     :rtype: pymxs.runtime.Point3
     """
 
-    pass
+    return pymxs.runtime.getTMController(node)[pymxs.runtime.Name('Position')].controller.value
 
 
 def setTranslation(node, translation, **kwargs):
@@ -188,39 +374,52 @@ def setTranslation(node, translation, **kwargs):
     # Get position controller
     #
     transformController = pymxs.runtime.getTMController(node)
-    positionController = transformController[pymxs.runtime.Name('position')].controller
+    positionController = pymxs.runtime.getPropertyController(transformController, 'Position')
 
     # Check if this is a position list
     #
-    if pymxs.runtime.classOf(positionController) == pymxs.runtime.Position_List:
+    if controllerutils.isListController(positionController):
 
         currentIndex = positionController.getActive() - 1
         positionController = positionController[currentIndex].controller
 
-    # Check if translateX can be set
+    # Check controller type
     #
     skipTranslate = kwargs.get('skipTranslate', False)
-    skipTranslateX = kwargs.get('skipTranslateX', skipTranslate)
 
-    if not skipTranslateX:
+    if controllerutils.isXYZController(positionController):
 
-        positionController[pymxs.runtime.Name('position_x')].controller.value = translation.x
+        # Check if x-value can be set
+        #
+        skipTranslateX = kwargs.get('skipTranslateX', skipTranslate)
 
-    # Check if translateY can be set
-    #
-    skipTranslateY = kwargs.get('skipTranslateY', skipTranslate)
+        if not skipTranslateX:
 
-    if not skipTranslateY:
+            positionController[pymxs.runtime.Name('X_Position')].controller.value = translation.x
 
-        positionController[pymxs.runtime.Name('position_y')].controller.value = translation.y
+        # Check if y-value can be set
+        #
+        skipTranslateY = kwargs.get('skipTranslateY', skipTranslate)
 
-    # Check if translateZ can be set
-    #
-    skipTranslateZ = kwargs.get('skipTranslateZ', skipTranslate)
+        if not skipTranslateY:
 
-    if not skipTranslateZ:
+            positionController[pymxs.runtime.Name('Y_Position')].controller.value = translation.y
 
-        positionController[pymxs.runtime.Name('position_z')].controller.value = translation.z
+        # Check if z-value can be set
+        #
+        skipTranslateZ = kwargs.get('skipTranslateZ', skipTranslate)
+
+        if not skipTranslateZ:
+
+            positionController[pymxs.runtime.Name('Z_Position')].controller.value = translation.z
+
+    elif controllerutils.isBezierController(positionController):
+
+        positionController.value = translation
+
+    else:
+
+        raise TypeError('setTranslation() expects a XYZ controller!')
 
 
 def getEulerRotation(node):
@@ -231,7 +430,7 @@ def getEulerRotation(node):
     :rtype: pymxs.runtime.EulerAngles
     """
 
-    pass
+    return pymxs.runtime.getTMController(node)[pymxs.runtime.Name('Rotation')].controller.value
 
 
 def setEulerRotation(node, eulerAngles, **kwargs):
@@ -246,39 +445,52 @@ def setEulerRotation(node, eulerAngles, **kwargs):
     # Get rotation controller
     #
     transformController = pymxs.runtime.getTMController(node)
-    rotationController = transformController[pymxs.runtime.Name('rotation')].controller
+    rotationController = pymxs.runtime.getPropertyController(transformController, 'Rotation')
 
     # Check if this is a rotation list
     #
-    if pymxs.runtime.classOf(rotationController) == pymxs.runtime.Rotation_List:
+    if controllerutils.isListController(rotationController):
 
         currentIndex = rotationController.getActive() - 1
         rotationController = rotationController[currentIndex].controller
 
-    # Check if translateX can be set
+    # Check controller type
     #
     skipRotate = kwargs.get('skipRotate', False)
-    skipRotateX = kwargs.get('skipRotateX', skipRotate)
 
-    if not skipRotateX:
+    if controllerutils.isXYZController(rotationController):
 
-        rotationController[pymxs.runtime.Name('position_x')].controller.value = eulerAngles.x
+        # Check if x-value can be set
+        #
+        skipRotateX = kwargs.get('skipRotateX', skipRotate)
 
-    # Check if translateY can be set
-    #
-    skipRotateY = kwargs.get('skipRotateY', skipRotate)
+        if not skipRotateX:
 
-    if not skipRotateY:
+            rotationController[pymxs.runtime.Name('X_Rotation')].controller.value = eulerAngles.x
 
-        rotationController[pymxs.runtime.Name('position_y')].controller.value = eulerAngles.y
+        # Check if y-value can be set
+        #
+        skipRotateY = kwargs.get('skipRotateY', skipRotate)
 
-    # Check if translateZ can be set
-    #
-    skipRotateZ = kwargs.get('skipRotateZ', skipRotate)
+        if not skipRotateY:
 
-    if not skipRotateZ:
+            rotationController[pymxs.runtime.Name('Y_Rotation')].controller.value = eulerAngles.y
 
-        rotationController[pymxs.runtime.Name('position_z')].controller.value = eulerAngles.z
+        # Check if z-value can be set
+        #
+        skipRotateZ = kwargs.get('skipRotateZ', skipRotate)
+
+        if not skipRotateZ:
+
+            rotationController[pymxs.runtime.Name('Z_Rotation')].controller.value = eulerAngles.z
+
+    elif controllerutils.isBezierController(rotationController):
+
+        rotationController.value = eulerAngles
+
+    else:
+
+        raise TypeError('setRotation() expects a XYZ controller!')
 
 
 def getScale(node):
@@ -289,7 +501,7 @@ def getScale(node):
     :rtype: list[float, float, float]
     """
 
-    pass
+    return pymxs.runtime.getTMController(node)[pymxs.runtime.Name('scale')].controller.value
 
 
 def setScale(node, scale, **kwargs):
@@ -304,36 +516,49 @@ def setScale(node, scale, **kwargs):
     # Get rotation controller
     #
     transformController = pymxs.runtime.getTMController(node)
-    scaleController = transformController[pymxs.runtime.Name('scale')].controller
+    scaleController = pymxs.runtime.getPropertyController(transformController, 'Scale')
 
     # Check if this is a rotation list
     #
-    if pymxs.runtime.classOf(scaleController) == pymxs.runtime.Scale_List:
+    if controllerutils.isListController(scaleController):
 
         currentIndex = scaleController.getActive() - 1
         scaleController = scaleController[currentIndex].controller
 
-    # Check if translateX can be set
+    # Check controller type
     #
     skipScale = kwargs.get('skipScale', False)
-    skipScaleX = kwargs.get('skipScaleX', skipScale)
 
-    if not skipScaleX:
+    if controllerutils.isXYZController(scaleController):
 
-        scaleController[pymxs.runtime.Name('scale_x')].controller.value = scale[0]
+        # Check if x-value can be set
+        #
+        skipScaleX = kwargs.get('skipScaleX', skipScale)
 
-    # Check if translateY can be set
-    #
-    skipScaleY = kwargs.get('skipScaleY', skipScale)
+        if not skipScaleX:
 
-    if not skipScaleY:
+            scaleController[pymxs.runtime.Name('X_Scale')].controller.value = scale[0]
 
-        scaleController[pymxs.runtime.Name('scale_y')].controller.value = scale[1]
+        # Check if y-value can be set
+        #
+        skipScaleY = kwargs.get('skipScaleY', skipScale)
 
-    # Check if translateZ can be set
-    #
-    skipScaleZ = kwargs.get('skipScaleZ', skipScale)
+        if not skipScaleY:
 
-    if not skipScaleZ:
+            scaleController[pymxs.runtime.Name('Y_Scale')].controller.value = scale[1]
 
-        scaleController[pymxs.runtime.Name('scale_z')].controller.value = scale[2]
+        # Check if z-value can be set
+        #
+        skipScaleZ = kwargs.get('skipScaleZ', skipScale)
+
+        if not skipScaleZ:
+
+            scaleController[pymxs.runtime.Name('Z_Scale')].controller.value = scale[2]
+
+    elif controllerutils.isBezierController(scaleController):
+
+        scaleController.value = scale
+
+    else:
+
+        raise TypeError('setScale() expects a XYZ controller!')
