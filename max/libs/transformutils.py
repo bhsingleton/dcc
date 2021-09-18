@@ -29,11 +29,21 @@ def applyTransformMatrix(node, matrix, **kwargs):
     :rtype: None
     """
 
+    # Decompose transform and apply to controllers
+    #
     translation, rotation, scale = decomposeMatrix(matrix)
 
     setTranslation(node, translation, **kwargs)
     setEulerRotation(node, rotation, **kwargs)
     setScale(node, scale, **kwargs)
+
+    # Check if node should be frozen
+    #
+    freeze = kwargs.get('freezeTransform', False)
+
+    if freeze:
+
+        freezeTransform(node)
 
 
 def applyWorldMatrix(node, worldMatrix, **kwargs):
@@ -76,7 +86,9 @@ def freezeTranslation(node):
     # Copy transform matrix
     #
     transformController = pymxs.runtime.getTMController(node)
-    matrix = pymxs.runtime.copy(transformController.value) * pymxs.runtime.inverse(getParentMatrix(node))
+    worldMatrix = pymxs.runtime.copy(transformController.value)
+    parentMatrix = getParentMatrix(node)
+    matrix = worldMatrix * pymxs.runtime.inverse(parentMatrix)
 
     position = pymxs.runtime.copy(matrix.translationPart)
 
@@ -101,7 +113,7 @@ def freezeTranslation(node):
         positionController.setName(2, 'Zero Pos XYZ')
         positionController.setActive(2)
 
-    # Update frozen position subanim
+    # Update frozen position
     #
     frozenController = pymxs.runtime.getPropertyController(positionController, 'Frozen Position')
     activeController = pymxs.runtime.getPropertyController(positionController, 'Zero Pos XYZ')
@@ -122,7 +134,9 @@ def freezeRotation(node):
     # Copy transform matrix
     #
     transformController = pymxs.runtime.getTMController(node)
-    matrix = pymxs.runtime.copy(transformController.value) * pymxs.runtime.inverse(getParentMatrix(node))
+    worldMatrix = pymxs.runtime.copy(transformController.value)
+    parentMatrix = getParentMatrix(node)
+    matrix = worldMatrix * pymxs.runtime.inverse(parentMatrix)
 
     rotation = pymxs.runtime.copy(matrix.rotationPart)
 
@@ -147,7 +161,7 @@ def freezeRotation(node):
         rotationController.setName(2, 'Zero Euler XYZ')
         rotationController.setActive(2)
 
-    # Update frozen rotation subanim
+    # Update frozen rotation
     #
     frozenController = pymxs.runtime.getPropertyController(rotationController, 'Frozen Rotation')
     activeController = pymxs.runtime.getPropertyController(rotationController, 'Zero Euler XYZ')
@@ -168,7 +182,9 @@ def freezeScale(node):
     # Copy transform matrix
     #
     transformController = pymxs.runtime.getTMController(node)
-    matrix = pymxs.runtime.copy(transformController.value) * pymxs.runtime.inverse(getParentMatrix(node))
+    worldMatrix = pymxs.runtime.copy(transformController.value)
+    parentMatrix = getParentMatrix(node)
+    matrix = worldMatrix * pymxs.runtime.inverse(parentMatrix)
 
     scale = pymxs.runtime.copy(matrix.scalePart)
 
@@ -193,7 +209,7 @@ def freezeScale(node):
         scaleController.setName(2, 'Zero Scale XYZ')
         scaleController.setActive(2)
 
-    # Update frozen scale subanim
+    # Update frozen scale
     #
     frozenController = pymxs.runtime.getPropertyController(scaleController, 'Frozen Scale')
     activeController = pymxs.runtime.getPropertyController(scaleController, 'Zero Scale XYZ')
@@ -212,7 +228,7 @@ def freezeTransform(node):
 
     freezeTranslation(node)
     freezeRotation(node)
-    #freezeScale(node)
+    freezeScale(node)
 
 
 def getFrozenPositionMatrix(node):
