@@ -95,7 +95,7 @@ class CommandPanelOverride(object):
             # Check if node is selected
             # Don't want to incur cycle checks from any selection callbacks!
             #
-            if not self._instance.isIsolated():
+            if not self._instance.isIsolated() and self._instance.isValid():
 
                 self._instance.select(replace=True)
 
