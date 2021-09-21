@@ -1,7 +1,7 @@
 import pymxs
 import os
 
-from ..abstract import afnbase
+from dcc.abstract import afnscene
 
 import logging
 logging.basicConfig()
@@ -9,7 +9,7 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-class FnScene(afnbase.AFnBase):
+class FnScene(afnscene.AFnScene):
     """
     Overload of AFnBase used to interface with 3DS Max scenes.
     """
@@ -84,8 +84,7 @@ class FnScene(afnbase.AFnBase):
 
     def getStartTime(self):
         """
-        Method used to retrieve the current start time.
-        Be sure to compensate for number of ticks per frame!
+        Returns the current start time.
 
         :rtype: int
         """
@@ -94,7 +93,7 @@ class FnScene(afnbase.AFnBase):
 
     def setStartTime(self, startTime):
         """
-        Method used to update the start time.
+        Updates the start time.
 
         :type startTime: int
         :rtype: None
@@ -104,8 +103,7 @@ class FnScene(afnbase.AFnBase):
 
     def getEndTime(self):
         """
-        Method used to retrieve the current end time.
-        Be sure to compensate for number of ticks per frame!
+        Returns the current end time.
 
         :rtype: int
         """
@@ -114,7 +112,7 @@ class FnScene(afnbase.AFnBase):
 
     def setEndTime(self, endTime):
         """
-        Method used to update the end time.
+        Updates the end time.
 
         :type endTime: int
         :rtype: None
@@ -124,8 +122,7 @@ class FnScene(afnbase.AFnBase):
 
     def getTime(self):
         """
-        Method used to get the current time.
-        Be sure to compensate for number of ticks per frame!
+        Returns the current time.
 
         :rtype: int
         """
@@ -134,14 +131,37 @@ class FnScene(afnbase.AFnBase):
 
     def setTime(self, time):
         """
-        Method used to set the current time.
-        Be sure to compensate for number of ticks per frame!
+        Updates the current time.
 
         :type time: int
         :rtype: int
         """
 
         pymxs.runtime.sliderTime = time
+
+    def iterTextures(self):
+        """
+        Returns a generator that yields all texture paths inside the scene.
+        All textures must be yielded as fully qualified file paths!
+
+        :rtype: iter
+        """
+
+        # Iterate through bitmaps
+        #
+        bitmaps = pymxs.runtime.getClassInstances(pymxs.runtime.BitmapTexture)
+
+        for bitmap in bitmaps:
+
+            texturePath = bitmap.filename
+
+            if not self.isNullOrEmpty(texturePath):
+
+                yield self.expandFilePath(texturePath)
+
+            else:
+
+                continue
 
     def iterFileProperties(self):
         """
@@ -151,16 +171,17 @@ class FnScene(afnbase.AFnBase):
         :rtype: iter
         """
 
-        pass
+        # Iterate through properties
+        #
+        category = pymxs.runtime.name('custom')
+        numProperties = pymxs.runtime.fileProperties.getNumProperties(category)
 
-    def getFileProperties(self):
-        """
-        Method used to retrieve the file properties as key-value pairs.
+        for i in range(numProperties):
 
-        :rtype: dict
-        """
+            key = pymxs.runtime.fileProperties.getPropertyName(category, i + 1)
+            value = pymxs.runtime.fileProperties.getPropertyValue(category, i + 1)
 
-        pass
+            yield key, value
 
     def getFileProperty(self, key, default=None):
         """
@@ -172,7 +193,7 @@ class FnScene(afnbase.AFnBase):
         :rtype: Union[str, int, float, bool]
         """
 
-        pass
+        return self.fileProperties().get(key, default)
 
     def setFileProperty(self, key, value):
         """
@@ -184,18 +205,7 @@ class FnScene(afnbase.AFnBase):
         :rtype: None
         """
 
-        pass
-
-    def setFileProperties(self, properties):
-        """
-        Updates the file properties using a dictionary.
-        This method will not erase any pre-existing items but overwrite any duplicate keys.
-
-        :type properties: dict
-        :rtype: None
-        """
-
-        pass
+        pymxs.runtime.fileProperties.addProperty(pymxs.runtime.name('custom'), key, value)
 
     def getUpAxis(self):
         """

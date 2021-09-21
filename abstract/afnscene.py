@@ -1,7 +1,9 @@
-from abc import ABCMeta, abstractmethod
-from six import with_metaclass
+import os
 
-from . import afnbase
+from abc import ABCMeta, abstractmethod
+from six import with_metaclass, string_types
+from six.moves import collections_abc
+from dcc.abstract import afnbase
 
 import logging
 logging.basicConfig()
@@ -79,8 +81,7 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
     @abstractmethod
     def getStartTime(self):
         """
-        Method used to retrieve the current start time.
-        Be sure to compensate for number of ticks per frame!
+        Returns the current start time.
 
         :rtype: int
         """
@@ -90,7 +91,7 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
     @abstractmethod
     def setStartTime(self, startTime):
         """
-        Method used to update the start time.
+        Updates the start time.
 
         :type startTime: int
         :rtype: None
@@ -101,8 +102,7 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
     @abstractmethod
     def getEndTime(self):
         """
-        Method used to retrieve the current end time.
-        Be sure to compensate for number of ticks per frame!
+        Returns the current end time.
 
         :rtype: int
         """
@@ -112,7 +112,7 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
     @abstractmethod
     def setEndTime(self, endTime):
         """
-        Method used to update the end time.
+        Updates the end time.
 
         :type endTime: int
         :rtype: None
@@ -121,10 +121,9 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
         pass
 
     @abstractmethod
-    def getTime(self, ):
+    def getTime(self):
         """
-        Method used to get the current time.
-        Be sure to compensate for number of ticks per frame!
+        Returns the current time.
 
         :rtype: int
         """
@@ -134,35 +133,125 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
     @abstractmethod
     def setTime(self, time):
         """
-        Method used to set the current time.
-        Be sure to compensate for number of ticks per frame!
+        Updates the current time.
 
         :type time: int
-        :rtype: int
+        :rtype: None
         """
 
         pass
 
-    @abstractmethod
-    def iterFileProperties(self):
+    @staticmethod
+    def isNullOrEmpty(value):
         """
-        Generator method used to iterate through the file properties.
-        For the love of christ don't forget...max arrays start at 1...
+        Evaluates if the supplied value is null or empty.
+
+        :type value: Any
+        :rtype: bool
+        """
+
+        if hasattr(value, '__len__'):
+
+            return len(value) == 0
+
+        elif value is None:
+
+            return True
+
+        else:
+
+            raise TypeError('isNullOrEmpty() expects a sequence (%s given)!' % type(value).__name__)
+
+    def expandFilePath(self, filePath):
+        """
+        Expands any file path that may contain an environment variable or relative syntax.
+
+        :type filePath: str
+        :rtype: str
+        """
+
+        # Check for empty strings
+        #
+        if self.isNullOrEmpty(filePath):
+
+            return filePath
+
+        # Evaluate any environment variables
+        #
+        filePath = os.path.expandvars(filePath)
+
+        if os.path.isabs(filePath):
+
+            return os.path.normpath(filePath)
+
+        else:
+
+            return os.path.normpath(os.path.join(self.currentProjectDirectory(), filePath))
+
+    @abstractmethod
+    def iterTextures(self):
+        """
+        Returns a generator that yields all texture paths inside the scene.
+        All textures must be yielded as fully qualified file paths!
 
         :rtype: iter
         """
 
         pass
 
-    @abstractmethod
-    def getFileProperties(self):
+    def textures(self):
         """
-        Method used to retrieve the file properties as key-value pairs.
+        Returns a list of texture paths from the scene.
+
+        :rtype: list[str]
+        """
+
+        return list(self.iterTextures())
+
+    def iterMissingTextures(self):
+        """
+        Returns a generator that yields all missing texture paths from the scene.
+
+        :rtype: iter
+        """
+
+        for texturePath in self.iterTextures():
+
+            if not os.path.exists(texturePath):
+
+                yield texturePath
+
+            else:
+
+                continue
+
+    def missingTextures(self):
+        """
+        Returns a list of missing texture paths from the scene.
+
+        :rtype: list[str]
+        """
+
+        return list(self.iterMissingTextures())
+
+    @abstractmethod
+    def iterFileProperties(self):
+        """
+        Returns a generator that yields file properties as key-value pairs.
+
+        :rtype: iter
+        """
+
+        pass
+
+    def fileProperties(self):
+        """
+        Returns a dictionary of file properties.
 
         :rtype: dict
         """
 
-        pass
+        return dict(self.iterFileProperties())
 
     @abstractmethod
     def getFileProperty(self, key, default=None):
@@ -171,8 +260,8 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
         An optional default value can be provided if no key is found.
 
         :type key: str
-        :type default: object
-        :rtype: Union[str, int, float, bool]
+        :type default: Any
+        :rtype: Any
         """
 
         pass
@@ -190,8 +279,7 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         pass
 
-    @abstractmethod
-    def setFileProperties(self, properties):
+    def updateFileProperties(self, properties):
         """
         Updates the file properties using a dictionary.
         This method will not erase any pre-existing items but overwrite any duplicate keys.
@@ -200,7 +288,9 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
         :rtype: None
         """
 
-        pass
+        for (key, value) in properties.items():
+
+            self.setFileProperty(key, value)
 
     @abstractmethod
     def getUpAxis(self):

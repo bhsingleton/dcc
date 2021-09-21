@@ -1,7 +1,7 @@
-import maya.cmds as mc
 import os
 
-from ..abstract import afnbase
+from maya import cmds as mc
+from dcc.abstract import afnscene
 
 import logging
 logging.basicConfig()
@@ -9,7 +9,7 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-class FnScene(afnbase.AFnBase):
+class FnScene(afnscene.AFnScene):
     """
     Overload of AFnBase used to interface with Maya scenes.
     """
@@ -78,8 +78,7 @@ class FnScene(afnbase.AFnBase):
 
     def getStartTime(self):
         """
-        Method used to retrieve the current start time.
-        Be sure to compensate for number of ticks per frame!
+        Returns the current start time.
 
         :rtype: int
         """
@@ -88,7 +87,7 @@ class FnScene(afnbase.AFnBase):
 
     def setStartTime(self, startTime):
         """
-        Method used to update the start time.
+        Updates the start time.
 
         :type startTime: int
         :rtype: None
@@ -98,8 +97,7 @@ class FnScene(afnbase.AFnBase):
 
     def getEndTime(self):
         """
-        Method used to retrieve the current end time.
-        Be sure to compensate for number of ticks per frame!
+        Returns the current end time.
 
         :rtype: int
         """
@@ -108,7 +106,7 @@ class FnScene(afnbase.AFnBase):
 
     def setEndTime(self, endTime):
         """
-        Method used to update the end time.
+        Updates the end time.
 
         :type endTime: int
         :rtype: None
@@ -118,8 +116,7 @@ class FnScene(afnbase.AFnBase):
 
     def getTime(self):
         """
-        Method used to get the current time.
-        Be sure to compensate for number of ticks per frame!
+        Returns the current time.
 
         :rtype: int
         """
@@ -128,8 +125,7 @@ class FnScene(afnbase.AFnBase):
 
     def setTime(self, time):
         """
-        Method used to set the current time.
-        Be sure to compensate for number of ticks per frame!
+        Updates the current time.
 
         :type time: int
         :rtype: int
@@ -137,24 +133,41 @@ class FnScene(afnbase.AFnBase):
 
         mc.currentTime(time, edit=True)
 
-    def iterFileProperties(self):
+    def iterTextures(self):
         """
-        Generator method used to iterate through the file properties.
-        For the love of christ don't forget...max arrays start at 1...
+        Returns a generator that yields all texture paths inside the scene.
+        All textures must be yielded as fully qualified file paths!
 
         :rtype: iter
         """
 
-        pass
+        # Iterate through file nodes
+        #
+        for nodeName in mc.ls(type='file'):
 
-    def getFileProperties(self):
+            texturePath = mc.getAttr('%s.fileTextureName' % nodeName)
+
+            if not self.isNullOrEmpty(texturePath):
+
+                yield self.expandFilePath(texturePath)
+
+            else:
+
+                continue
+
+    def iterFileProperties(self):
         """
-        Method used to retrieve the file properties as key-value pairs.
+        Returns a generator that yields file properties as key-value pairs.
 
-        :rtype: dict
+        :rtype: iter
         """
 
-        pass
+        properties = mc.fileInfo(query=True)
+        numProperties = len(properties)
+
+        for i in range(0, numProperties, 2):
+
+            yield properties[i], properties[i + 1].encode('ascii').decode('unicode-escape')
 
     def getFileProperty(self, key, default=None):
         """
@@ -166,7 +179,7 @@ class FnScene(afnbase.AFnBase):
         :rtype: Union[str, int, float, bool]
         """
 
-        pass
+        return self.fileProperties().get(key, default)
 
     def setFileProperty(self, key, value):
         """
@@ -178,18 +191,7 @@ class FnScene(afnbase.AFnBase):
         :rtype: None
         """
 
-        pass
-
-    def setFileProperties(self, properties):
-        """
-        Updates the file properties using a dictionary.
-        This method will not erase any pre-existing items but overwrite any duplicate keys.
-
-        :type properties: dict
-        :rtype: None
-        """
-
-        pass
+        mc.fileInfo(key, value)
 
     def getUpAxis(self):
         """
