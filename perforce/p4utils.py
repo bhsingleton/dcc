@@ -1,4 +1,5 @@
 import os
+import stat
 import subprocess
 
 from dcc import fnscene
@@ -92,3 +93,24 @@ def showInExplorer():
     else:
 
         log.warning('Unable to show untitled scene file in explorer!')
+
+
+def makeSceneWritable():
+    """
+    Removes the read-only flag from the scene file.
+
+    :rtype: None
+    """
+
+    # Check if scene exists
+    #
+    fnScene = fnscene.FnScene()
+    filePath = fnScene.currentFilePath()
+
+    if os.path.exists(filePath):
+
+        os.chmod(filePath, stat.S_IWRITE)
+
+    else:
+
+        log.warning('Unable to make scene file writable!')
