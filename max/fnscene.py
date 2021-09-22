@@ -139,29 +139,83 @@ class FnScene(afnscene.AFnScene):
 
         pymxs.runtime.sliderTime = time
 
-    def iterTextures(self):
+    def iterTextures(self, absolute=False):
         """
         Returns a generator that yields all texture paths inside the scene.
-        All textures must be yielded as fully qualified file paths!
+        An optional keyword argument can be used to convert paths to absolute.
 
+        :type absolute: bool
         :rtype: iter
         """
 
         # Iterate through bitmaps
         #
-        bitmaps = pymxs.runtime.getClassInstances(pymxs.runtime.BitmapTexture)
+        for bitmap in pymxs.runtime.getClassInstances(pymxs.runtime.BitmapTexture):
 
-        for bitmap in bitmaps:
-
+            # Check if path is valid
+            #
             texturePath = bitmap.filename
 
-            if not self.isNullOrEmpty(texturePath):
+            if self.isNullOrEmpty(texturePath):
 
-                yield self.expandFilePath(texturePath)
+                continue
+
+            # Check if absolute path should be yielded
+            #
+            if absolute:
+
+                yield self.expandPath(texturePath)
 
             else:
 
+                yield os.path.normpath(texturePath)
+
+    def updateTextures(self, updates):
+        """
+        Applies all of the texture path updates to the associated file nodes.
+        Each key-value pair should consist of the original and updates texture paths!
+
+        :type updates: dict[str:str]
+        :rtype: None
+        """
+
+        # Iterate through bitmaps
+        #
+        for bitmap in pymxs.runtime.getClassInstances(pymxs.runtime.BitmapTexture):
+
+            # Check if path is valid
+            #
+            texturePath = bitmap.filename
+
+            if self.isNullOrEmpty(texturePath):
+
                 continue
+
+            # Check if bitmap has an update
+            #
+            oldPath = os.path.normpath(texturePath)
+            newPath = updates.get(oldPath)
+
+            if newPath is not None:
+
+                bitmap.filename = newPath
+
+        # Reload textures
+        #
+        self.reloadTextures()
+
+    def reloadTextures(self):
+        """
+        Forces all of the texture nodes to reload.
+
+        :rtype: None
+        """
+
+        # Iterate through bitmaps
+        #
+        for bitmap in pymxs.runtime.getClassInstances(pymxs.runtime.BitmapTexture):
+
+            bitmap.reload()
 
     def iterFileProperties(self):
         """

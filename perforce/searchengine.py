@@ -72,8 +72,11 @@ class SearchEngine(object):
         if fileSpecs is not None:
 
             history[search] = fileSpecs
+            return fileSpecs
 
-        return fileSpecs
+        else:
+
+            return []
 
     def searchClients(self, search):
         """
