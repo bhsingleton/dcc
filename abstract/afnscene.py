@@ -162,28 +162,6 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
             raise TypeError('isNullOrEmpty() expects a sequence (%s given)!' % type(value).__name__)
 
-    def makeRelativePath(self, filePath):
-        """
-        Returns a path that is relative to the current project directory.
-        If the path is not relative then the absolute path is returned instead.
-
-        :type filePath: str
-        :rtype: str
-        """
-
-        # Check if path is relative
-        #
-        filePath = self.expandPath(filePath)
-        directory = self.currentProjectDirectory()
-
-        if filePath.startswith(directory):
-
-            return os.path.relpath(filePath, directory)
-
-        else:
-
-            return filePath
-
     def expandPath(self, filePath):
         """
         Expands any file path that may contain an environment variable or relative syntax.
@@ -213,33 +191,60 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
     def makePathsRelative(self, filePaths, directory):
         """
         Converts all of the texture paths to relative.
-        If a path is not relative to the supplied directory it is ignored.
+        If a path is not relative then no changes are made to the original path.
 
         :type filePaths: list[str]
         :type directory: str
-        :rtype: dict[str:str]
+        :rtype: list[str]
         """
 
+        # Iterate through file paths
+        #
         directory = os.path.normpath(directory)
-        updates = {}
 
-        for filePath in filePaths:
+        numFilePaths = len(filePaths)
+        relativePaths = [None] * numFilePaths
 
+        for (i, filePath) in enumerate(filePaths):
+
+            # Check if path is relative to directory
+            #
             filePath = os.path.normpath(filePath)
             fullFilePath = self.expandPath(filePath)
 
             if fullFilePath.startswith(directory):
 
                 relativePath = os.path.relpath(fullFilePath, directory)
-                log.info('%s > %s' % (filePath, relativePath))
 
-                updates[filePath] = relativePath
+                log.info('%s > %s' % (filePath, relativePath))
+                relativePaths[i] = relativePath
 
             else:
 
-                continue
+                relativePaths[i] = filePath
 
-        return updates
+        return relativePaths
+
+    def makePathsAbsolute(self, filePaths):
+        """
+        Converts all of the texture paths to absolute.
+
+        :type filePaths: list[str]
+        :rtype: list[str]
+        """
+
+        numFilePaths = len(filePaths)
+        absolutePaths = [None] * numFilePaths
+
+        for (i, filePath) in enumerate(filePaths):
+
+            filePath = os.path.normpath(filePath)
+            fullFilePath = self.expandPath(filePath)
+
+            log.info('%s > %s' % (filePath, fullFilePath))
+            absolutePaths[i] = fullFilePath
+
+        return absolutePaths
 
     def makePathsDynamic(self, filePaths, variable):
         """
@@ -248,49 +253,35 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         :type filePaths: list[str]
         :type variable: str
-        :rtype: None
+        :rtype: list[str]
         """
 
+        # Iterate through file paths
+        #
         directory = os.path.normpath(os.path.expandvars(variable))
-        updates = {}
 
-        for filePath in filePaths:
+        numFilePaths = len(filePaths)
+        dynamicPaths = [None] * numFilePaths
 
+        for (i, filePath) in enumerate(filePaths):
+
+            # Check if path is relative to variable
+            #
             filePath = os.path.normpath(filePath)
             fullFilePath = self.expandPath(filePath)
 
             if fullFilePath.startswith(directory):
 
                 dynamicPath = os.path.join(variable, os.path.relpath(fullFilePath, directory))
-                log.info('%s > %s' % (filePath, dynamicPath))
 
-                updates[filePath] = dynamicPath
+                log.info('%s > %s' % (filePath, dynamicPath))
+                dynamicPaths[i] = dynamicPath
 
             else:
 
-                continue
+                dynamicPaths[i] = filePath
 
-        return updates
-
-    def makePathsAbsolute(self, filePaths):
-        """
-        Converts all of the texture paths to absolute.
-
-        :type filePaths: list[str]
-        :rtype: None
-        """
-
-        updates = {}
-
-        for filePath in filePaths:
-
-            filePath = os.path.normpath(filePath)
-            fullFilePath = self.expandPath(filePath)
-            log.info('%s > %s' % (filePath, fullFilePath))
-
-            updates[filePath] = fullFilePath
-
-        return updates
+        return dynamicPaths
 
     @abstractmethod
     def iterTextures(self, absolute=False):
@@ -356,13 +347,15 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
         # Iterate through missing textures
         #
         client = clientutils.getCurrentClient()
-        updates = {}
 
-        for texturePath in self.iterMissingTextures():
+        oldPaths = self.missingTextures()
+        newPaths = [None] * len(oldPaths)
+
+        for (i, oldPath) in enumerate(oldPaths):
 
             # Concatenate search request
             #
-            directory, filename = os.path.split(texturePath)
+            directory, filename = os.path.split(oldPath)
             search = '//{client}/.../{filename}'.format(client=client.name, filename=filename)
 
             # Process search request
@@ -374,24 +367,24 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
             if numFileSpecs == 0:
 
-                log.warning('No results found for: %s' % texturePath)
-                continue
+                log.warning('No results found for: %s' % oldPath)
+                newPaths[i] = oldPaths
 
             elif numFileSpecs == 1:
 
-                filePath = client.mapToView(fileSpecs[0]['depotFile'])
-                log.info('Located texture file @ %s' % filePath)
+                newPath = client.mapToView(fileSpecs[0]['depotFile'])
+                log.info('Located texture file @ %s' % newPath)
 
-                updates[texturePath] = filePath
+                newPaths[i] = newPath
 
             else:
 
-                log.warning('Multiple results found for: %s' % texturePath)
-                continue
+                log.warning('Multiple results found for: %s' % oldPath)
+                newPaths[i] = oldPaths
 
         # Update texture paths
         #
-        self.updateTextures(updates)
+        self.updateTextures(dict(zip(oldPaths, newPaths)))
 
     def syncTextures(self):
         """
@@ -416,11 +409,47 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
         #
         self.reloadTextures()
 
+    def makeTexturesRelative(self):
+        """
+        Converts all of the textures to relative paths.
+
+        :rtype: None
+        """
+
+        oldPaths = self.textures(absolute=True)
+        newPaths = self.makePathsRelative(oldPaths, self.currentProjectDirectory())
+
+        self.updateTextures(dict(zip(oldPaths, newPaths)))
+
+    def makeTexturesAbsolute(self):
+        """
+        Converts all of the textures to absolute paths.
+
+        :rtype: None
+        """
+
+        oldPaths = self.textures(absolute=True)
+        newPaths = self.makePathsAbsolute(oldPaths)
+
+        self.updateTextures(dict(zip(oldPaths, newPaths)))
+
+    def makeTexturesDynamic(self):
+        """
+        Converts all of the textures to dynamic paths.
+
+        :rtype: None
+        """
+
+        oldPaths = self.textures(absolute=True)
+        newPaths = self.makePathsDynamic(oldPaths, '$P4ROOT')
+
+        self.updateTextures(dict(zip(oldPaths, newPaths)))
+
     @abstractmethod
     def updateTextures(self, updates):
         """
         Applies all of the texture path updates to the associated file nodes.
-        Each key-value pair should consist of the original and updates texture paths!
+        Each key-value pair should consist of the old and new texture paths!
 
         :type updates: dict[str:str]
         :rtype: None
