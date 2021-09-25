@@ -1,0 +1,212 @@
+{
+	"$schema": "http://json-schema.org/draft/2019-09/schema#",
+	"description": "A representation of the shapes you can add to a dag node.",
+	"type": "array",
+	"anyOf":
+	[
+		{
+			"type": "object",
+			"$ref": "#/definitions/Locator"
+		},
+		{
+			"type": "object",
+			"$ref": "#/definitions/NurbsCurve"
+		},
+		{
+			"type": "object",
+			"$ref": "#/definitions/NurbsSurface"
+		},
+		{
+			"type": "object",
+			"$ref": "#/definitions/Mesh"
+		}
+	],
+	"definitions":
+	{
+		"MVector":
+		{
+			"type": "array",
+			"minItems": 3,
+			"maxItems": 3,
+			"allOf":
+			[
+				{ "type": "number" }
+			]
+		},
+		"MVectorArray":
+		{
+			"type": "array",
+			"allOf":
+			[
+				{
+					"type": "array",
+					"$ref": "#/definitions/MVector"
+				}
+			]
+		},
+		"MPoint":
+		{
+			"type": "array",
+			"minItems": 4,
+			"maxItems": 4,
+			"allOf":
+			[
+				{ "type": "number" }
+			]
+		},
+		"MPointArray":
+		{
+			"type": "array",
+			"allOf":
+			[
+				{
+					"type": "array",
+					"$ref": "#/definitions/MPoint"
+				}
+			]
+		},
+		"MIntArray":
+		{
+			"type": "array",
+			"allOf":
+			[
+				{ "type": "integer" }
+			]
+		},
+		"MFloatArray":
+		{
+			"type": "array",
+			"allOf":
+			[
+				{ "type": "number" }
+			]
+		},
+		"Locator":
+		{
+			"type": "object",
+			"properties":
+			{
+				"typeName": { "type": "string" },
+				"localPosition":
+				{
+					"type": "array",
+					"$ref": "#/definitions/MVector"
+				},
+				"localScale":
+				{
+					"type": "array",
+					"$ref": "#/definitions/MVector"
+				},
+				"lineWidth": { "type": "number" }
+			}
+		},
+		"NurbsCurve":
+		{
+			"type": "object",
+			"properties":
+			{
+				"typeName": { "type": "string" },
+				"controlPoints":
+				{
+					"type": "array",
+					"$ref": "#/definitions/MPointArray"
+				},
+				"knots":
+				{
+					"type": "array",
+					"$ref": "#/definitions/MFloatArray"
+				},
+				"degree": { "type": "integer" },
+				"form": { "type": "integer" },
+				"lineWidth": { "type": "number" }
+			},
+			"additionalProperties": false
+		},
+		"NurbsTrimSurface":
+		{
+			"type": "object",
+			"properties":
+			{
+
+			},
+			"additionalProperties": false
+		},
+		"NurbsSurface":
+		{
+			"type": "object",
+			"properties":
+			{
+				"typeName": { "type": "string" },
+				"controlPoints":
+				{
+					"type": "array",
+					"$ref": "#/definitions/MPointArray"
+				},
+				"uKnots":
+				{
+					"type": "array",
+					"$ref": "#/definitions/MFloatArray"
+				},
+				"vKnots":
+				{
+					"type": "array",
+					"$ref": "#/definitions/MFloatArray"
+				},
+				"uDegree": { "type": "integer" },
+				"vDegree": { "type": "integer" },
+				"uForm": { "type": "integer" },
+				"vForm": { "type": "integer" },
+				"boundaries":
+				{
+					"type": "array",
+					"allOf":
+					[
+						{
+							"type": "object",
+							"$ref": "#/definitions/NurbsTrimSurface"
+						}
+					]
+				},
+				"precision": { "type": "number" }
+			},
+			"additionalProperties": false
+		},
+		"Mesh":
+		{
+			"type": "object",
+			"properties":
+			{
+				"typeName": { "type": "string" },
+				"controlPoints":
+				{
+					"type": "array",
+					"$ref": "#/definitions/MPointArray"
+				},
+				"polygonConnects":
+				{
+					"type": "array",
+					"$ref": "#/definitions/MIntArray"
+				},
+				"polygonCounts":
+				{
+					"type": "array",
+					"$ref": "#/definitions/MIntArray"
+				},
+				"faceVertexNormals":
+				{
+					"type": "array",
+					"$ref": "#/definitions/MVectorArray"
+				},
+				"edgeSmoothings":
+				{
+					"type": "array",
+					"allOf":
+					[
+						{ "type": "boolean" }
+					]
+				}
+			},
+			"additionalProperties": false
+		}
+	}
+}
