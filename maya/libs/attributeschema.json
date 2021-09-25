@@ -1,0 +1,79 @@
+{
+	"$schema": "http://json-schema.org/draft/2019-09/schema#",
+	"description": "A representation of the attributes to add to a dependency node.",
+	"type": "array",
+	"items": 
+	{
+		"type": "object",
+		"$ref": "#/definitions/Attribute"
+	},
+	"definitions": 
+	{
+		"Attribute":
+		{
+			"type": "object",
+			"properties": 
+			{
+				"longName": { "type": "string" },
+				"shortName": { "type": "string" },
+				"attributeType":
+				{
+					"type": "string",
+					"enum": [
+						"bool", "byte", "char",
+						"float", "float2", "float3",
+						"double", "double2", "double3", "double4",
+						"long", "long2", "long3",
+						"short", "short2", "short3",
+						"int", "int2", "int3",
+						"doubleArray", "floatArray", "vectorArray", "pointArray", "matrixArray",
+						"angle", "doubleAngle", "distance", "doubleLinear", "time",
+						"string", "stringArray",
+						"nurbsCurve", "nurbsSurface", "mesh", "lattice",
+						"enum",
+						"matrix", "doubleMatrix", 
+						"fltMatrix", "floatMatrix",
+						"message",
+						"compound"
+					]
+				},
+				"readable": { "type": "boolean" },
+				"writable": { "type": "boolean" },
+				"connectable": { "type": "boolean" },
+				"storable": { "type": "boolean" },
+				"cached": { "type": "boolean" },
+				"array": { "type": "boolean" },
+				"indexMatters": { "type": "boolean" },
+				"keyable": { "type": "boolean" },
+				"channelBox": { "type": "boolean" },
+				"hidden": { "type": "boolean" },
+				"usedAsColor": { "type": "boolean" },
+				"usedAsFilename": { "type": "boolean" },
+				"disconnectBehavior": { "type": "integer" },
+				"default": {},
+				"min": { "type": "number" },
+				"max": { "type": "number" },
+				"softMin": { "type": "number" },
+				"softMax": { "type": "number" },
+				"fields": { "type": ["array", "object", "string"] },
+				"children": 
+				{
+					"type": "array",
+					"items": 
+					{
+						"allOf":
+						[
+							{
+								"type": "object",
+								"$ref": "#/definitions/Attribute"
+							}
+						]
+					}
+				},
+				"category": { "type": "string" },
+				"additionalProperties": false
+			},
+			"required": ["longName", "attributeType"]
+		}
+	}
+}
