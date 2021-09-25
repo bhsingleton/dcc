@@ -1,6 +1,6 @@
 {
 	"$schema": "http://json-schema.org/draft/2019-09/schema#",
-	"description": "A representation of the attributes to add to a dependency node.",
+	"description": "A representation of the attributes you can add to a dependency node.",
 	"type": "array",
 	"items": 
 	{
