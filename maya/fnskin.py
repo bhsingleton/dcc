@@ -1,10 +1,10 @@
 import maya.cmds as mc
 import maya.api.OpenMaya as om
 
-from . import fnnode
-from .libs import dagutils, plugutils
-from .decorators import undo
-from ..abstract import afnskin
+from dcc.abstract import afnskin
+from dcc.maya import fnnode
+from dcc.maya.libs import dagutils, skinutils
+from dcc.maya.decorators import undo
 
 import logging
 logging.basicConfig()
@@ -350,38 +350,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         :rtype: iter
         """
 
-        # Iterate through matrix elements
-        #
-        fnDependNode = om.MFnDependencyNode(self.object())
-
-        plug = fnDependNode.findPlug('matrix', False)  # type: om.MPlug
-        numElements = plug.evaluateNumElements()
-
-        for i in range(numElements):
-
-            # Get element by index
-            #
-            element = plug.elementByPhysicalIndex(i)
-            index = element.logicalIndex()
-
-            if not element.isConnected:
-
-                log.debug('No connected joint found on .matrix[%s]!' % index)
-                continue
-
-            # Get connected plug
-            #
-            otherPlug = element.source()
-            otherNode = otherPlug.node()
-
-            if not otherNode.isNull():
-
-                yield index, otherNode
-
-            else:
-
-                log.debug('Null object found on .matrix[%s]!' % index)
-                continue
+        return skinutils.iterInfluences(self.object())
 
     def numInfluences(self):
         """
@@ -409,21 +378,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         :rtype: None
         """
 
-        # Get source plug
-        #
-        influences = self.influences()
-        influence = influences[influenceId]
-
-        source = plugutils.findPlug(influence, 'message')
-
-        # Get destination plug
-        #
-        deformer = self.object()
-        destination = plugutils.findPlug(deformer, 'paintTrans')
-
-        # Connect plugs
-        #
-        plugutils.connectPlugs(source, destination, force=True)
+        skinutils.selectInfluence(self.object(), influenceId)
 
     def addInfluence(self, influence):
         """
@@ -433,61 +388,8 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         :rtype: bool
         """
 
-        # Check if influence is already in system
-        #
-        influences = self.influences()
-
-        if influence in influences:
-
-            return
-
-        # Get first available index
-        #
-        fnDagNode = om.MFnDagNode(influence)
-
-        plug = fnDagNode.findPlug('matrix', False)
-        index = plugutils.getNextAvailableConnection(plug)
-
-        # Connect joint to skin cluster
-        #
-        fullPathName = fnDagNode.fullPathName()
-
-        mc.connectAttr('%s.worldMatrix[0]' % fullPathName, '%s.matrix[%s]' % (self.name(), index))
-        mc.connectAttr('%s.objectColorRGB' % fullPathName, '%s.influenceColor[%s]' % (self.name(), index))
-
-        # Check if ".lockInfluenceWeights" attribute exists
-        #
-        if not mc.attributeQuery('lockInfluenceWeights', exists=True, node=fullPathName):
-
-            # Add attribute to joint
-            # NOTE: These settings were pulled from an ascii file
-            #
-            mc.addAttr(
-                fullPathName,
-                cachedInternally=True,
-                shortName='liw',
-                longName='lockInfluenceWeights',
-                min=0,
-                max=1,
-                attributeType='bool'
-            )
-
-        else:
-
-            log.debug('%s joint already has required attribute.' % fnDagNode.partialPathName())
-
-        # Connect custom attribute
-        #
-        mc.connectAttr('%s.lockInfluenceWeights' % fullPathName, '%s.lockWeights[%s]' % (self.name(), index))
-
-        # Set pre-bind matrix
-        #
-        matrixList = mc.getAttr('%s.worldInverseMatrix[0]' % fullPathName)
-        mc.setAttr('%s.bindPreMatrix[%s]' % (self.name(), index), matrixList, type='matrix')
-
-        # Add joint to influence list
-        #
-        influences[index] = influence
+        index = skinutils.addInfluence(self.object(), influence)
+        self.influences()[index] = influence
 
     def removeInfluence(self, influenceId):
         """
@@ -497,35 +399,8 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         :rtype: bool
         """
 
-        # Check value type
-        #
-        if not isinstance(influenceId, int):
-
-            raise TypeError('removeInfluence() expects an int (%s given)!' % type(influenceId).__name__)
-
-        # Check if influence ID is defined
-        #
-        influences = self.influences()
-        influence = influences[influenceId]
-
-        if influence is None:
-
-            log.warning('No influence could be found at ID: %s' % influenceId)
-            return
-
-        # Disconnect joint from skin cluster
-        #
-        fullPathName = influence.fullPathName()
-
-        mc.disconnectAttr('%s.worldMatrix[0]' % fullPathName, '%s.matrix[%s]' % (self.name(), influenceId))
-        mc.disconnectAttr('%s.objectColorRGB' % fullPathName, '%s.influenceColor[%s]' % (self.name(), influenceId))
-        mc.disconnectAttr('%s.lockInfluenceWeights' % fullPathName, '%s.lockWeights[%s]' % (self.name(), influenceId))
-
-        mc.deleteAttr('%s.lockInfluenceWeights' % fullPathName)
-
-        # Remove joint from influence list
-        #
-        del influences[influenceId]
+        skinutils.removeInfluence(self.object(), influenceId)
+        del self.influences()[influenceId]
 
     def iterVertexWeights(self, *args):
         """
@@ -535,45 +410,9 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         :rtype: iter
         """
 
-        # Inspect arguments
-        #
-        numArgs = len(args)
+        return skinutils.iterWeightList(self.object(), vertexIndices=args)
 
-        if numArgs == 0:
-
-            args = range(self.numControlPoints())
-
-        # Iterate through arguments
-        #
-        fnDependNode = om.MFnDependencyNode(self.object())
-        weightListPlug = fnDependNode.findPlug('weightList', False)  # type: om.MPlug
-
-        for arg in args:
-
-            # Go to weight list element
-            #
-            weightListPlug.selectAncestorLogicalIndex(arg)
-
-            # Iterate through weight elements
-            #
-            weightsPlug = weightListPlug.child(0)  # type: om.MPlug
-            numElements = weightsPlug.numElements()
-
-            vertexWeights = {}
-
-            for physicalIndex in range(numElements):
-
-                element = weightsPlug.elementByPhysicalIndex(physicalIndex)
-
-                influenceId = element.logicalIndex()
-                influenceWeight = element.asFloat()
-
-                vertexWeights[influenceId] = influenceWeight
-
-            # Yield vertex weights
-            #
-            yield arg, vertexWeights
-
+    @undo.undo(name='Apply Vertex Weights')
     def applyVertexWeights(self, vertices):
         """
         Assigns the supplied vertex weights to this deformer.
@@ -582,69 +421,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         :rtype: None
         """
 
-        # Disable normalize weights
-        #
-        fnDependNode = om.MFnDependencyNode(self.object())
-
-        normalizePlug = fnDependNode.findPlug('normalizeWeights', False)  # type: om.MPlug
-        normalizePlug.setBool(False)
-
-        # Start undo chunk
-        #
-        with undo.Undo(name='Apply Vertex Weights') as chunk:
-
-            # Iterate through vertices
-            #
-            weightListPlug = fnDependNode.findPlug('weightList', False)  # type: om.MPlug
-
-            for (vertexIndex, vertexWeights) in vertices.items():
-
-                # Get pre-existing influences
-                #
-                weightListPlug.selectAncestorLogicalIndex(vertexIndex)
-
-                weightsPlug = weightListPlug.child(0)  # type: om.MPlug
-                influenceIds = weightsPlug.getExistingArrayAttributeIndices()
-
-                # Remove unused influences
-                #
-                diff = list(set(influenceIds) - set(vertexWeights.keys()))
-
-                for influenceId in diff:
-
-                    mc.removeMultiInstance(
-                        '{nodeName}.weightList[{vertexIndex}].weights[{influenceId}]'.format(
-                            nodeName=fnDependNode.absoluteName(),
-                            vertexIndex=vertexIndex,
-                            influenceId=influenceId
-                        )
-                    )
-
-                # Iterate through new weights
-                #
-                for (influenceId, weight) in vertexWeights.items():
-
-                    # Check for zero weights
-                    # Be sure to remove these if encountered!
-                    #
-                    if self.isClose(0.0, weight):
-
-                        mc.removeMultiInstance(
-                            '{nodeName}.weightList[{vertexIndex}].weights[{influenceId}]'.format(
-                                nodeName=fnDependNode.absoluteName(),
-                                vertexIndex=vertexIndex,
-                                influenceId=influenceId
-                            )
-                        )
-
-                    else:
-
-                        element = weightsPlug.elementByLogicalIndex(influenceId)  # type: om.MPlug
-                        element.setFloat(weight)
-
-        # Enable normalize weights
-        #
-        normalizePlug.setBool(True)
+        skinutils.setWeightList(self.object(), vertices)
 
     @undo.undo(name='Reset Pre-Bind Matrices')
     def resetPreBindMatrices(self):
@@ -654,34 +431,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         :rtype: None
         """
 
-        # Iterate through matrix elements
-        #
-        skinCluster = self.object()
-        fnDependNode = om.MFnDependencyNode(skinCluster)
-
-        plug = fnDependNode.findPlug('bindPreMatrix')
-        numElements = plug.evaluateNumElements()
-
-        for i in range(numElements):
-
-            # Get inverse matrix of influence
-            #
-            element = plug.elementByPhysicalIndex(i)
-            index = element.logicalIndex()
-
-            attributeName = element.name()
-
-            # Check if influence still exists
-            #
-            influence = self._influences[index]
-
-            if influence is None:
-                continue
-
-            # Get inverse matrix from influence-
-            #
-            matrixList = mc.getAttr('%s.worldInverseMatrix[0]' % influence.fullPathName())
-            mc.setAttr(attributeName, matrixList, type='matrix')
+        skinutils.resetPreBindMatrices(self.object())
 
     @undo.undo(name='Reset Intermediate Object')
     def resetIntermediateObject(self):
@@ -691,32 +441,4 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         :rtype: None
         """
 
-        # Store deformed points
-        #
-        shape = om.MDagPath.getAPathTo(self.shape())
-        iterVertex = om.MItMeshVertex(shape)
-
-        points = []
-
-        while not iterVertex.isDone():
-
-            point = iterVertex.position()
-            points.append([point.x, point.y, point.z])
-
-            iterVertex.next()
-
-        # Reset influences
-        #
-        self.resetPreBindMatrices()
-
-        # Apply deformed values to intermediate object
-        #
-        intermediateObject = om.MDagPath.getAPathTo(self.intermediateObject())
-        iterVertex = om.MItMeshVertex(intermediateObject)
-
-        while not iterVertex.isDone():
-
-            point = points[iterVertex.index()]
-            iterVertex.setPosition(om.MPoint(point))
-
-            iterVertex.next()
+        skinutils.resetIntermediateObject(self.object())
