@@ -1,6 +1,5 @@
 import os
 import json
-import jsonschema
 
 from maya import cmds as mc
 from maya import OpenMaya as legacy
@@ -48,31 +47,6 @@ class ShapeEncoder(json.JSONEncoder):
         else:
 
             return super(ShapeEncoder, self).default(obj)
-
-    @classmethod
-    def locator(cls, obj):
-        """
-        Dumps the supplied locator into a json compatible object.
-
-        :type obj: om.MObject
-        :rtype: dict
-        """
-
-        # Get locator parameters
-        #
-        dagPath = om.MDagPath.getAPathTo(obj)
-        fnLocator = om.MFnDagNode(dagPath)
-
-        localPosition = plugutils.getValue(fnLocator.findPlug('localPosition', False))
-        localScale = plugutils.getValue(fnLocator.findPlug('localScale', False))
-        lineWidth = plugutils.getValue(fnLocator.findPlug('lineWidth', False))
-
-        return {
-            'typeName': fnLocator.typeName,
-            'localPosition': localPosition,
-            'localScale': localScale,
-            'lineWidth': lineWidth
-        }
 
     @classmethod
     def nurbsCurve(cls, obj):
@@ -158,7 +132,7 @@ class ShapeEncoder(json.JSONEncoder):
                 # Commit curve parameters to dictionary
                 #
                 items[i] = {
-                    'typeName': fnNurbsCurve.typeName(),
+                    'typeName': 'nurbsCurveData',  # Forcing type hint for decoder
                     'controlPoints': controlsPoints,
                     'knots': knots,
                     'degree': fnNurbsCurve.degree(),
@@ -256,18 +230,18 @@ class ShapeDecoder(json.JSONDecoder):
         """
 
         # Inspect type name
-        # We don't want to process nurbs trim surfaces
+        # We don't want to process any nurbs trim surfaces
         #
         typeName = obj['typeName']
 
-        if typeName == 'nurbsTrimSurface':
+        if hasattr(self, typeName):
 
-            return
+            func = getattr(self, typeName)
+            return func(obj, scale=self._scale, parent=self._parent)
 
-        # Create shape from object
-        #
-        func = getattr(self, typeName)
-        return func(obj, scale=self._scale, parent=self._parent)
+        else:
+
+            return obj
 
     @classmethod
     def nurbsCurve(cls, obj, scale=1.0, parent=om.MObject.kNullObj):
