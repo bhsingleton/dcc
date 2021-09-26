@@ -1,6 +1,5 @@
 import os
 import json
-import jsonschema
 
 from maya.api import OpenMaya as om
 from collections import deque
@@ -95,26 +94,18 @@ class AttributeTemplate(object):
     def parse(cls, filePath):
         """
         Reads the supplied json file.
+        Eventually we will integrate the json schema into this method.
 
         :rtype: list[dict]
         """
 
         try:
 
-            # Validate json string
-            #
-            instance = None
-
             with open(filePath, 'r') as jsonFile:
 
-                instance = json.load(jsonFile)
-                jsonschema.validate(instance=instance, schema=cls.schema())
+                return json.load(jsonFile)
 
-            # Return validated data
-            #
-            return instance
-
-        except (ValueError, jsonschema.ValidationError) as exception:
+        except (ValueError, IOError) as exception:
 
             log.error(exception)
             return []
