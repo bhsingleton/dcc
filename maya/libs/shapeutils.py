@@ -6,7 +6,7 @@ from maya import OpenMaya as legacy
 from maya.api import OpenMaya as om
 from itertools import chain
 
-from . import dagutils, plugutils
+from . import dagutils
 
 import logging
 logging.basicConfig()

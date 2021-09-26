@@ -88,7 +88,6 @@ def iterWeights(skinCluster, vertexIndex, plug=None):
     for physicalIndex in range(numElements):
 
         element = plug.elementByPhysicalIndex(physicalIndex)
-
         influenceId = element.logicalIndex()
         influenceWeight = element.asFloat()
 
@@ -141,7 +140,7 @@ def hasInfluence(skinCluster, influence):
     :rtype: bool
     """
 
-    # Get the instance number of influence
+    # Get instance number of influence
     #
     dagPath = om.MDagPath.getAPathTo(influence)  # type: om.MDagPath
     instanceNumber = dagPath.instanceNumber()
@@ -163,7 +162,7 @@ def getInfluenceId(skinCluster, influence):
     :rtype: int
     """
 
-    # Get the instance number of influence
+    # Get instance number of influence
     #
     dagPath = om.MDagPath.getAPathTo(influence)  # type: om.MDagPath
     instanceNumber = dagPath.instanceNumber()
