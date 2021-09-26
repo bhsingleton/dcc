@@ -117,6 +117,16 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
             return om.MObject.kNullObj
 
+    def isPartiallySelected(self):
+        """
+        Evaluates if this node is partially selected.
+        Useful for things like deformers or modifiers.
+
+        :rtype: bool
+        """
+
+        return self.isSelected() or self.shape() in self.getActiveSelection()
+
     def iterSelection(self, includeWeight=False):
         """
         Returns the selected vertex elements.

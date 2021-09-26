@@ -1,6 +1,5 @@
 from maya import cmds as mc
 from maya.api import OpenMaya as om
-
 from dcc.maya.libs import dagutils, plugutils
 
 import logging
@@ -20,7 +19,7 @@ def numControlPoints(skinCluster):
     :rtype: int
     """
 
-    return om.MFnDependencyNode(skinCluster).findPlug('weightList', False).numElements
+    return om.MFnDependencyNode(skinCluster).findPlug('weightList', False).numElements()
 
 
 def iterInfluences(skinCluster):
@@ -142,7 +141,14 @@ def hasInfluence(skinCluster, influence):
     :rtype: bool
     """
 
-    plug = plugutils.findPlug(influence, 'worldMatrix[0]')
+    # Get the instance number of influence
+    #
+    dagPath = om.MDagPath.getAPathTo(influence)  # type: om.MDagPath
+    instanceNumber = dagPath.instanceNumber()
+
+    # Inspect world matrix plug connections
+    #
+    plug = plugutils.findPlug(influence, 'worldMatrix[%s]' % instanceNumber)
     otherPlugs = plug.destinations()
 
     return any([otherPlug.node() == skinCluster for otherPlug in otherPlugs])
@@ -157,7 +163,14 @@ def getInfluenceId(skinCluster, influence):
     :rtype: int
     """
 
-    plug = plugutils.findPlug(influence, 'worldMatrix[0]')
+    # Get the instance number of influence
+    #
+    dagPath = om.MDagPath.getAPathTo(influence)  # type: om.MDagPath
+    instanceNumber = dagPath.instanceNumber()
+
+    # Inspect world matrix plug connections
+    #
+    plug = plugutils.findPlug(influence, 'worldMatrix[%s]' % instanceNumber)
     otherPlugs = plug.destinations()
 
     for otherPlug in otherPlugs:
@@ -187,12 +200,13 @@ def getInfluence(skinCluster, influenceId):
     plug = plugutils.findPlug(skinCluster, 'matrix[%s]' % influenceId)
     otherPlug = plug.source()  # type: om.MPlug
 
-    if not otherPlug.isNull():
+    if not otherPlug.isNull:
 
-        otherPlug.node()
+        return otherPlug.node()
 
     else:
 
+        log.warning('Unable to locate influence at ID: %s' % influenceId)
         return None
 
 
@@ -302,6 +316,7 @@ def selectInfluence(skinCluster, influenceId):
 
     if influence is None:
 
+        log.warning('Unable to select influence ID: %s' % influenceId)
         return
 
     # Connect plugs

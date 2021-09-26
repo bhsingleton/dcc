@@ -88,6 +88,16 @@ class AFnNode(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         return self.object() in self.getActiveSelection()
 
+    def isPartiallySelected(self):
+        """
+        Evaluates if this node is partially selected.
+        Useful for things like deformers or modifiers.
+
+        :rtype: bool
+        """
+
+        return self.isSelected()
+
     def isIsolated(self):
         """
         Evaluates if this is the only node selected.
@@ -98,7 +108,7 @@ class AFnNode(with_metaclass(ABCMeta, afnbase.AFnBase)):
         selection = self.getActiveSelection()
         selectionCount = len(selection)
 
-        return selectionCount == 1 and self.object() in selection
+        return selectionCount == 1 and self.isPartiallySelected()
 
     @abstractmethod
     def isMesh(self):

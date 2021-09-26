@@ -115,19 +115,23 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         :rtype: bool
         """
 
-        return self.shape() in self.getActiveSelection()
+        if self.isModifyPanelOpen():
 
-    def isIsolated(self):
+            return pymxs.runtime.modPanel.getCurrentObject() == self.object()
+
+        else:
+
+            return False
+
+    def isPartiallySelected(self):
         """
-        Evaluates if this node is selected.
+        Evaluates if this node is partially selected.
+        Useful for things like deformers or modifiers.
 
         :rtype: bool
         """
 
-        selection = self.getActiveSelection()
-        selectionCount = len(selection)
-
-        return selectionCount == 1 and self.shape() in selection
+        return self.isSelected() or self.shape() in self.getActiveSelection()
 
     def iterVertices(self):
         """

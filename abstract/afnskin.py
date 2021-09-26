@@ -7,9 +7,9 @@ from six.moves import collections_abc
 from copy import deepcopy
 from collections import OrderedDict
 
-from . import afnbase
-from .. import fnnode, fnmesh
-from ..naming import namingutils
+from dcc.abstract import afnbase, afnnode
+from dcc import fnnode, fnmesh
+from dcc.naming import namingutils
 
 import logging
 logging.basicConfig()
@@ -202,7 +202,7 @@ class Influences(collections_abc.MutableMapping):
 
         return list(self.keys())[-1]
 
-    def update(self, obj):
+    def update(self, obj, **kwargs):
         """
         Copies the values from the supplied object to this collection.
 
@@ -224,17 +224,9 @@ class Influences(collections_abc.MutableMapping):
         self._influences.clear()
 
 
-class AFnSkin(with_metaclass(ABCMeta, afnbase.AFnBase)):
+class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
     """
     Overload of AFnBase that outlines function set behaviour for DCC skinning.
-    For consistency I've been using the following variable names for specific data structures below.
-
-    :param weights: A series of key-value pairs for influence IDs and their associated weight value.
-    :type weights: dict[int:float]
-    :param vertexWeights: A series of key-value pairs for vertex indices and their associated weights.
-    :type vertexWeights: dict[int:dict[int:float]]
-    :param controlPoint: A series of key-value pairs for vertex indices and their local space position.
-    :type controlPoint: dict[int:list[float, float, float]]
     """
 
     __slots__ = ('_influences', '_clipboard')
