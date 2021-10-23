@@ -328,29 +328,41 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
         if componentType == self.Components.Vertex:
 
             iterVertices = om.MItMeshVertex(self.object())
-            connectedFaces = iterVertices.getConnectedFaces()
 
-            for connectedFace in connectedFaces:
+            for arg in args:
 
-                yield connectedFace
+                iterVertices.setIndex(arg)
+                connectedFaces = iterVertices.getConnectedFaces()
+
+                for connectedFace in connectedFaces:
+
+                    yield connectedFace
 
         elif componentType == self.Components.Edge:
 
             iterEdges = om.MItMeshEdge(self.object())
-            connectedFaces = iterEdges.getConnectedFaces()
 
-            for connectedFace in connectedFaces:
+            for arg in args:
 
-                yield connectedFace
+                iterEdges.setIndex(arg)
+                connectedFaces = iterEdges.getConnectedFaces()
+
+                for connectedFace in connectedFaces:
+
+                    yield connectedFace
 
         elif componentType == self.Components.Face:
 
             iterFaces = om.MItMeshPolygon(self.object())
-            connectedFaces = iterFaces.getConnectedFaces()
 
-            for connectedFace in connectedFaces:
+            for arg in args:
 
-                yield connectedFace
+                iterFaces.setIndex(arg)
+                connectedFaces = iterFaces.getConnectedFaces()
+
+                for connectedFace in connectedFaces:
+
+                    yield connectedFace
 
         else:
 
