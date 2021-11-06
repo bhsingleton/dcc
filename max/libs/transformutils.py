@@ -1,7 +1,7 @@
 import pymxs
-import math
 
 from dcc.max.libs import controllerutils
+from dcc.naming import namingutils
 
 import logging
 logging.basicConfig()
@@ -60,12 +60,13 @@ def applyWorldMatrix(node, worldMatrix, **kwargs):
     # Multiply world matrix into parent space
     #
     offsetMatrix = kwargs.get('offsetMatrix', pymxs.runtime.Matrix3(1))
+    offsetWorldMatrix = offsetMatrix * worldMatrix
     parentMatrix = getParentMatrix(node)
     frozenPositionMatrix = getFrozenPositionMatrix(node)
     frozenRotationMatrix = getFrozenRotationMatrix(node)
 
-    position = ((offsetMatrix * worldMatrix) * pymxs.runtime.inverse(frozenPositionMatrix * parentMatrix)).translationPart
-    rotation = ((offsetMatrix * worldMatrix) * pymxs.runtime.inverse(frozenRotationMatrix * parentMatrix)).rotationPart
+    position = (offsetWorldMatrix * pymxs.runtime.inverse(frozenPositionMatrix * parentMatrix)).translationPart
+    rotation = (offsetWorldMatrix * pymxs.runtime.inverse(frozenRotationMatrix * parentMatrix)).rotationPart
 
     matrix = quatToMatrix3(rotation) * pymxs.runtime.transMatrix(position)
 
@@ -120,6 +121,69 @@ def freezeTranslation(node):
 
     frozenController.value = position
     activeController.value = pymxs.runtime.Point3(0.0, 0.0, 0.0)
+
+
+def mirrorVector(vector, normal):
+    """
+    Returns a mirrored vector across the supplied normal.
+
+    :type vector: pymxs.runtime.Point3
+    :type normal: pymxs.runtime.Point3
+    :rtype: pymxs.runtime.Point3
+    """
+
+    return vector - (2.0 * (pymxs.runtime.dot(vector, normal)) * normal)
+
+
+def mirrorMatrix(matrix, normal):
+    """
+    Returns a mirrored matrix across the supplied normal.
+
+    :type matrix: pymxs.runtime.Matrix3
+    :type normal: pymxs.runtime.Point3
+    :rtype: pymxs.runtime.Matrix3
+    """
+
+    row1 = mirrorVector(pymxs.runtime.copy(matrix.row1), normal)
+    row2 = mirrorVector(pymxs.runtime.copy(matrix.row2), normal)
+    row3 = pymxs.runtime.cross(row1, row2)  # Lets keep this matrix orthogonal!
+    row4 = mirrorVector(pymxs.runtime.copy(matrix.row4), normal)
+
+    return pymxs.runtime.Matrix3(row1, row2, row3, row4)
+
+
+def mirrorNode(node, normal, offsetMatrix=None):
+    """
+    Mirrors the node's transform matrix, across the supplied normal, to the opposite node.
+    If no mirror pair is found then nothing happens.
+
+    :type node: pymxs.runtime.Node
+    :type normal: pymxs.runtime.Point3
+    :type offsetMatrix: pymxs.runtime.Matrix3
+    :rtype: None
+    """
+
+    # Mirror world matrix
+    #
+    matrix = getWorldMatrix(node)
+    newMatrix = mirrorMatrix(matrix, normal)
+
+    if offsetMatrix is not None:
+
+        newMatrix = (offsetMatrix * newMatrix)
+
+    # Locate opposite node
+    #
+    otherName = namingutils.mirrorName(node.name)
+    otherNode = pymxs.runtime.getNodeByName(otherName)
+
+    if otherNode is not None:
+
+        applyWorldMatrix(otherNode, newMatrix)
+
+    else:
+
+        log.error('Unable to locate mirror pair: %s => %s' % (node.name, otherName))
 
 
 def freezeRotation(node):
@@ -277,6 +341,20 @@ def getFrozenRotationMatrix(node):
         return pymxs.runtime.Matrix3(1)
 
 
+def getMatrix(node):
+    """
+    Returns the transform matrix for the given node.
+
+    :type node: pymxs.runtime.Node
+    :rtype: pymxs.runtime.Matrix3
+    """
+
+    worldMatrix = pymxs.runtime.copy(node.transform)
+    parentMatrix = getParentMatrix(node)
+
+    return worldMatrix * pymxs.runtime.inverse(parentMatrix)
+
+
 def getParentMatrix(node):
     """
     Returns the parent matrix for the given node.
@@ -294,6 +372,17 @@ def getParentMatrix(node):
     else:
 
         return pymxs.runtime.Matrix3(1)
+
+
+def getWorldMatrix(node):
+    """
+    Returns the world matrix for the given node.
+
+    :type node: pymxs.runtime.Node
+    :rtype: pymxs.runtime.Matrix3
+    """
+
+    return pymxs.runtime.copy(node.transform)
 
 
 def decomposeMatrix(matrix, rotateOrder=1):
