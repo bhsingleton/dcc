@@ -2,6 +2,7 @@ import os
 
 from PySide2 import QtGui
 from six.moves import collections_abc
+from dcc.decorators import classproperty
 
 import logging
 logging.basicConfig()
@@ -9,12 +10,17 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-class Icons(collections_abc.MutableMapping):
+__dir__ = os.path.join(os.path.dirname(__file__))
+
+
+class QIconLibrary(collections_abc.MutableMapping):
     """
     Overload of MutableMapping used to lookup and initialize QIcons for external use.
     """
 
-    __slots__ = ('_directory', '_icons',)
+    __slots__ = ('_icons',)
+    __extensions__ = ('ico', 'bmp', 'png', 'cur')
+    __paths__ = [os.path.join(__dir__, 'icons')]
 
     def __init__(self, *args, **kwargs):
         """
@@ -23,11 +29,10 @@ class Icons(collections_abc.MutableMapping):
 
         # Call parent method
         #
-        super(Icons, self).__init__()
+        super(QIconLibrary, self).__init__()
 
         # Declare private variables
         #
-        self._directory = os.path.join(os.path.dirname(__file__), 'icons')
         self._icons = {}
 
     def __getitem__(self, key):
@@ -69,7 +74,7 @@ class Icons(collections_abc.MutableMapping):
 
     def __len__(self):
         """
-        Private method that evaluates the number of active icons.
+        Private method that evaluates the number of initialized icons.
 
         :rtype: int
         """
@@ -104,7 +109,7 @@ class Icons(collections_abc.MutableMapping):
 
         # Concatenate file path
         #
-        filePath = os.path.join(self._directory, '{key}.png'.format(key=key))
+        filePath = self.findIconByName(key)
 
         if os.path.exists(filePath):
 
@@ -115,7 +120,7 @@ class Icons(collections_abc.MutableMapping):
 
         else:
 
-            log.warning('Unable to locate: %s' % filePath)
+            log.warning('Unable to locate icon: %s' % key)
             return default
 
     def clear(self):
@@ -127,15 +132,54 @@ class Icons(collections_abc.MutableMapping):
 
         return self._icons.clear()
 
-    @property
-    def directory(self):
+    @classproperty
+    def paths(cls):
         """
-        Getter method that returns the icons directory.
+        Getter method that returns the paths utilized by this library.
 
+        :rtype: list[str]
+        """
+
+        return cls.__paths__
+
+    @classproperty
+    def extensions(cls):
+        """
+        Getter method that returns the extensions supported by this library.
+
+        :rtype: tuple[str]
+        """
+
+        return cls.__extensions__
+
+    def findIconByName(self, name):
+        """
+        Locates an icon based on the supplied name.
+
+        :type name: str
         :rtype: str
         """
 
-        return self._directory
+        # Iterate through path
+        #
+        for path in self.paths:
+
+            # Iterate through extensions
+            #
+            for extension in self.extensions:
+
+                filename = '{name}.{extension}'.format(name=name, extension=extension)
+                filePath = os.path.join(path, filename)
+
+                if os.path.exists(filePath):
+
+                    return filePath
+
+                else:
+
+                    continue
+
+        return ''
 
 
 def getIconByName(name):
@@ -149,4 +193,4 @@ def getIconByName(name):
     return ICONS[name]
 
 
-ICONS = Icons()  # Module constant for icon lookups
+ICONS = QIconLibrary()  # Module constant for icon lookups

@@ -1,6 +1,6 @@
 from PySide2 import QtCore, QtWidgets, QtGui
 from abc import ABCMeta, abstractmethod
-from six import string_types
+from collections import defaultdict
 from dcc import fnqt
 from dcc.decorators.classproperty import classproperty
 
@@ -16,8 +16,13 @@ class QProxyWindow(QtWidgets.QMainWindow):
     This provides us the ability to close all windows on restart.
     """
 
-    __instances__ = {}
+    __instances__ = defaultdict(list)
     __icon__ = QtGui.QIcon()
+    __singleton__ = True
+
+    def __new__(cls, *args, **kwargs):
+
+        return cls.getInstance()
 
     def __init__(self, *args, **kwargs):
         """
@@ -43,10 +48,10 @@ class QProxyWindow(QtWidgets.QMainWindow):
 
         # Build user interface
         #
-        self.__build__()
+        self.__build__(**kwargs)
 
     @abstractmethod
-    def __build__(self):
+    def __build__(self, **kwargs):
         """
         Private method used to build the user interface.
 
@@ -61,7 +66,9 @@ class QProxyWindow(QtWidgets.QMainWindow):
 
         # Store reference to instance
         #
-        self.__class__.__instances__[self.className] = self
+        if self.isSingleton:
+
+            self.__class__.__instances__[self.className] = self
 
     def showEvent(self, event):
         """
@@ -102,10 +109,21 @@ class QProxyWindow(QtWidgets.QMainWindow):
 
         return cls.__name__
 
+    @classproperty
+    def isSingleton(cls):
+        """
+        Getter method that evaluates if this class uses a singleton pattern.
+
+        :rtype: bool
+        """
+
+        return cls.__singleton__
+
     @classmethod
     def creator(cls, *args, **kwargs):
         """
         Returns a new instance of this class.
+        Overload this to change the arguments supplied to the class constructor.
 
         :rtype: QProxyWindow
         """
@@ -174,14 +192,14 @@ class QProxyWindow(QtWidgets.QMainWindow):
 
         # Check if instance already exists
         #
-        if not cls.hasInstance():
+        if not cls.hasInstance() and not cls.isSingleton:
 
             cls.__instances__[cls.__name__] = cls.creator()
 
         return cls.__instances__[cls.__name__]
 
     @classmethod
-    def removeInstance(cls):
+    def removeInstance(cls, *args):
         """
         Removes the supplied instance from the internal array.
 
