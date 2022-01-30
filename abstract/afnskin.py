@@ -695,8 +695,9 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
             raise TypeError('Influence objects do not share a common root!')
 
         # Split pipes
+        # It is possible for commonprefix to return an incomplete node name!
         #
-        strings = [x for x in commonPrefix.split('|') if len(x) > 0]
+        strings = [x for x in commonPrefix.split('|') if fnnode.FnNode.doesNodeExist(x)]
         numStrings = len(strings)
 
         fnNode = fnnode.FnNode(strings[-1])
