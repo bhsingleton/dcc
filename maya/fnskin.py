@@ -378,7 +378,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         :rtype: int
         """
 
-        return om.MFnDependencyNode(self.object()).findPlug('maxInfluences', False).asFloat()
+        return om.MFnDependencyNode(self.object()).findPlug('maxInfluences', False).asInt()
 
     def selectInfluence(self, influenceId):
         """
