@@ -54,6 +54,36 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         pass
 
     @abstractmethod
+    def selectedVertices(self):
+        """
+        Returns a list of selected vertex indices.
+
+        :rtype: list[int]
+        """
+
+        pass
+
+    @abstractmethod
+    def selectedEdges(self):
+        """
+        Returns a list of selected vertex indices.
+
+        :rtype: list[int]
+        """
+
+        pass
+
+    @abstractmethod
+    def selectedFaces(self):
+        """
+        Returns a list of selected vertex indices.
+
+        :rtype: list[int]
+        """
+
+        pass
+
+    @abstractmethod
     def numVertices(self):
         """
         Returns the number of vertices in this mesh.
@@ -96,7 +126,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
     def iterVertices(self, *args):
         """
         Returns a generator that yields vertex points.
-        If no arguments are supplied then all vertices will be yielded.
+        If no arguments are supplied then all vertex points will be yielded.
 
         :rtype: iter
         """
@@ -111,6 +141,26 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
 
         return list(self.iterVertices(*args))
+
+    @abstractmethod
+    def iterVertexNormals(self, *args):
+        """
+        Returns a generator that yields vertex normals.
+        If no arguments are supplied then all vertex normals will be yielded.
+
+        :rtype: iter
+        """
+
+        pass
+
+    def vertexNormals(self, *args):
+        """
+        Returns a list of vertex normals.
+
+        :rtype: list[tuple[float, float, float]]
+        """
+
+        return list(self.iterVertexNormals(*args))
 
     @abstractmethod
     def iterFaceVertexIndices(self, *args):

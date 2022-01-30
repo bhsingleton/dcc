@@ -1,9 +1,9 @@
 import pymxs
-import numpy
 
 from ..abstract import afnmesh
 from . import fnnode
 from .libs import meshutils, arrayutils
+from .decorators import coordsysoverride
 
 import logging
 logging.basicConfig()
@@ -13,7 +13,7 @@ log.setLevel(logging.INFO)
 
 class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
     """
-    Overload of AFnMesh used to interface with meshes in 3ds Max.
+    Overload of AFnMesh that outlines the mesh interface for 3ds Max.
     """
 
     __slots__ = ()
@@ -92,10 +92,41 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
 
         return pymxs.runtime.polyOp.getNumFaces(self.object())
 
+    def selectedVertices(self):
+        """
+        Returns a list of selected vertex indices.
+
+        :rtype: list[int]
+        """
+
+        bitArray = self.object().getSelection(pymxs.runtime.Name('vertex'))
+        return list(arrayutils.iterBitArray(bitArray))
+
+    def selectedEdges(self):
+        """
+        Returns a list of selected vertex indices.
+
+        :rtype: list[int]
+        """
+
+        bitArray = self.object().getSelection(pymxs.runtime.Name('edge'))
+        return list(arrayutils.iterBitArray(bitArray))
+
+    def selectedFaces(self):
+        """
+        Returns a list of selected vertex indices.
+
+        :rtype: list[int]
+        """
+
+        bitArray = self.object().getSelection(pymxs.runtime.Name('face'))
+        return list(arrayutils.iterBitArray(bitArray))
+
+    @coordsysoverride.coordSysOverride(mode='local')
     def iterVertices(self, *args):
         """
-        Returns a generator that yield vertex points.
-        If no arguments are supplied then all vertices will be yielded.
+        Returns a generator that yields vertex points.
+        If no arguments are supplied then all vertex points will be yielded.
 
         :rtype: iter
         """
@@ -108,15 +139,6 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
 
             args = self.range(self.numVertices())
 
-        # Get transform matrix
-        #
-        obj = self.object()
-        transform = pymxs.runtime.Matrix3(1)
-
-        if pymxs.runtime.isProperty(obj, 'transform'):
-
-            transform = pymxs.runtime.copy(obj.transform)
-
         # Iterate through vertices
         #
         obj = self.object()
@@ -124,9 +146,37 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
         for arg in args:
 
             point = pymxs.runtime.polyOp.getVert(obj, arg)
-            point *= pymxs.runtime.inverse(transform)
-
             yield point.x, point.y, point.z
+
+    @coordsysoverride.coordSysOverride(mode='local')
+    def iterVertexNormals(self, *args):
+        """
+        Returns a generator that yields vertex normals.
+        If no arguments are supplied then all vertex normals will be yielded.
+
+        :rtype: iter
+        """
+
+        # Evaluate arguments
+        #
+        numArgs = len(args)
+
+        if numArgs == 0:
+
+            args = self.range(self.numVertices())
+
+        # Iterate through vertices
+        #
+        obj = self.object()
+
+        for arg in args:
+
+            bits = pymxs.runtime.polyOp.getFacesUsingVert(obj, arg)
+
+            normals = [pymxs.runtime.polyOp.getFaceNormal(obj, x) for x in arrayutils.iterBitArray(bits)]
+            normal = sum(normals) / len(normals)
+
+            yield normal.x, normal.y, normal.z
 
     def iterFaceVertexIndices(self, *args):
         """
@@ -153,6 +203,7 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
             vertices = pymxs.runtime.polyOp.getFaceVerts(obj, arg)
             yield tuple(arrayutils.iterElements(vertices))
 
+    @coordsysoverride.coordSysOverride(mode='local')
     def iterFaceCenters(self, *args):
         """
         Returns a generator that yields face centers.
@@ -169,15 +220,6 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
 
             args = self.range(self.numFaces())
 
-        # Get transform matrix
-        #
-        obj = self.object()
-        transform = pymxs.runtime.Matrix3(1)
-
-        if pymxs.runtime.isProperty(obj, 'transform'):
-
-            transform = pymxs.runtime.copy(obj.transform)
-
         # Iterate through vertices
         #
         obj = self.object()
@@ -185,8 +227,6 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
         for arg in args:
 
             point = pymxs.runtime.polyOp.getFaceCenter(obj, arg)
-            point *= pymxs.runtime.inverse(transform)
-
             yield point.x, point.y, point.z
 
     def iterFaceNormals(self, *args):
@@ -209,10 +249,12 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
         #
         obj = self.object()
 
-        for arg in args:
+        with pymxs.runtime.toolMode.coordsys(pymxs.runtime.Name("local")):
 
-            normal = pymxs.runtime.polyOp.getFaceNormal(obj, arg)
-            yield normal.x, normal.y, normal.z
+            for arg in args:
+
+                normal = pymxs.runtime.polyOp.getFaceNormal(obj, arg)
+                yield normal.x, normal.y, normal.z
 
     def iterTriangleVertexIndices(self, *args):
         """
