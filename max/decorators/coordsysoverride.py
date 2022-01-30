@@ -3,8 +3,6 @@ import pymxs
 from six import string_types
 from functools import partial
 
-from .. import fnnode
-
 import logging
 logging.basicConfig()
 log = logging.getLogger(__name__)
@@ -31,7 +29,7 @@ class CoordSysOverride(object):
         # Declare public variables
         #
         self._mode = pymxs.runtime.Name(kwargs.get('mode', 'local'))
-        self._previous = pymxs.runtime.getRefCoordSys()
+        self._previous = None
         self._instance = None
         self._owner = None
         self._func = None
@@ -81,6 +79,7 @@ class CoordSysOverride(object):
         :rtype: None
         """
 
+        self.previous = pymxs.runtime.getRefCoordSys()
         pymxs.runtime.toolMode.coordsys(self.mode)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -93,7 +92,7 @@ class CoordSysOverride(object):
         :rtype: None
         """
 
-        pymxs.runtime.toolMode.coordsys(self.previous)
+        pymxs.runtime.setRefCoordSys(self.previous)
 
     @property
     def mode(self):
@@ -114,6 +113,17 @@ class CoordSysOverride(object):
         """
 
         return self._previous
+
+    @previous.setter
+    def previous(self, previous):
+        """
+        Setter method that updates the previous mode.
+
+        :type previous: pymxs.runtime.Name
+        :rtype: None
+        """
+
+        self._previous = previous
 
     @property
     def func(self):
