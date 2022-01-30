@@ -2,10 +2,9 @@ import maya.cmds as mc
 import maya.api.OpenMaya as om
 
 from six import integer_types
-
-from .libs import dagutils
-from ..abstract import afnnode
-from ..decorators.validator import validator
+from dcc.maya.libs import dagutils
+from dcc.abstract import afnnode
+from dcc.decorators.validator import validator
 
 import logging
 logging.basicConfig()
@@ -15,7 +14,7 @@ log.setLevel(logging.INFO)
 
 class FnNode(afnnode.AFnNode):
     """
-    Overload of AFnNode that outlines function set behaviour for interfacing with Maya nodes.
+    Overload of AFnNode that implements the node interface for Maya.
     """
 
     __slots__ = ()
@@ -103,6 +102,26 @@ class FnNode(afnnode.AFnNode):
         om.MFnDependencyNode(self.object()).setName(name)
 
     @validator
+    def isTransform(self):
+        """
+        Evaluates if this node represents a transform.
+
+        :rtype: bool
+        """
+
+        return self.object().hasFn(om.MFn.kTransform)
+
+    @validator
+    def isJoint(self):
+        """
+        Evaluates if this node represents an influence object.
+
+        :rtype: bool
+        """
+
+        return self.object().hasFn(om.MFn.kJoint)
+
+    @validator
     def isMesh(self):
         """
         Evaluates if this node represents a mesh.
@@ -111,16 +130,6 @@ class FnNode(afnnode.AFnNode):
         """
 
         return self.object().hasFn(om.MFn.kMesh)
-
-    @validator
-    def isJoint(self):
-        """
-        Evaluates if this node represents a skinnable influence.
-
-        :rtype: bool
-        """
-
-        return self.object().hasFn(om.MFn.kJoint)
 
     @validator
     def parent(self):

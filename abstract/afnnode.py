@@ -111,9 +111,9 @@ class AFnNode(with_metaclass(ABCMeta, afnbase.AFnBase)):
         return selectionCount == 1 and self.isPartiallySelected()
 
     @abstractmethod
-    def isMesh(self):
+    def isTransform(self):
         """
-        Evaluates if this node represents a mesh.
+        Evaluates if this node represents a transform.
 
         :rtype: bool
         """
@@ -123,7 +123,17 @@ class AFnNode(with_metaclass(ABCMeta, afnbase.AFnBase)):
     @abstractmethod
     def isJoint(self):
         """
-        Evaluates if this node represents a skinnable influence.
+        Evaluates if this node represents an influence object.
+
+        :rtype: bool
+        """
+
+        pass
+
+    @abstractmethod
+    def isMesh(self):
+        """
+        Evaluates if this node represents a mesh.
 
         :rtype: bool
         """

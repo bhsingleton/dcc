@@ -1,9 +1,8 @@
 import pymxs
 
 from six import string_types, integer_types
-
-from ..abstract import afnnode
-from ..decorators.validator import validator
+from dcc.abstract import afnnode
+from dcc.decorators.validator import validator
 
 import logging
 logging.basicConfig()
@@ -13,20 +12,11 @@ log.setLevel(logging.INFO)
 
 class FnNode(afnnode.AFnNode):
     """
-    Overload of AFnNode that outlines function set behaviour for interfacing with 3ds Max nodes.
+    Overload of AFnNode that implements the node interface for 3ds Max.
     """
 
     __slots__ = ()
     __arrayoffset__ = 1
-
-    def __init__(self, *args, **kwargs):
-        """
-        Private method called after a new instance is created.
-        """
-
-        # Call parent method
-        #
-        super(FnNode, self).__init__(*args, **kwargs)
 
     def object(self):
         """
@@ -108,6 +98,27 @@ class FnNode(afnnode.AFnNode):
         self.object().name = name
 
     @validator
+    def isTransform(self):
+        """
+        Evaluates if this node represents a transform.
+
+        :rtype: bool
+        """
+
+        return pymxs.runtime.isProperty(self.object(), 'transform')
+
+    @validator
+    def isJoint(self):
+        """
+        Evaluates if this node represents an influence object.
+        In 3ds Max all transform nodes can be used as joints!
+
+        :rtype: bool
+        """
+
+        return self.isTransform()
+
+    @validator
     def isMesh(self):
         """
         Evaluates if this node represents a mesh.
@@ -116,16 +127,6 @@ class FnNode(afnnode.AFnNode):
         """
 
         return pymxs.runtime.classOf(self.object()) in (pymxs.runtime.PolyMeshObject, pymxs.runtime.Editable_Poly, pymxs.runtime.Editable_Mesh)
-
-    @validator
-    def isJoint(self):
-        """
-        Evaluates if this node represents a skinnable influence.
-
-        :rtype: bool
-        """
-
-        return True
 
     @validator
     def parent(self):
