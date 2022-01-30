@@ -78,7 +78,7 @@ class Callback(Notification):
 
         :rtype: str
         """
-
+        
         return 'python.execute "from dcc import fnnotify; fnnotify.FnNotify.notify({type});"'.format(type=self.type())
 
     def creator(self):
@@ -88,7 +88,13 @@ class Callback(Notification):
         :rtype: Any
         """
 
-        pymxs.runtime.callbacks.addScript(self.callbackName, self.createExecutable(), id=self.callbackIdName)
+        pymxs.runtime.callbacks.addScript(
+            self.callbackName,
+            self.createExecutable(),
+            id=self.callbackIdName,
+            persistent=False
+        )
+
         return self.callbackIdName
 
     def destroy(self):

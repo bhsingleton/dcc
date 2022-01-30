@@ -10,6 +10,7 @@ This way we can create predictable behavior for each DCC and maintain consistent
 """
 import weakref
 import inspect
+import sys
 
 from abc import ABCMeta, abstractmethod
 from six import with_metaclass
@@ -34,7 +35,7 @@ class WeakMethod(object):
         """
         Private method called after a new instance has been created.
 
-        :type func: function
+        :type func: callable
         :rtype: None
         """
 
@@ -46,7 +47,7 @@ class WeakMethod(object):
         #
         if self.isUnboundMethod(func):
 
-            self._function = weakref.ref(func)
+            self._function = weakref.ref(func, )
 
         elif self.isBoundMethod(func):
 
@@ -57,28 +58,6 @@ class WeakMethod(object):
 
             raise TypeError('WeakMethod() expects a valid method!')
 
-    @staticmethod
-    def isUnboundMethod(obj):
-        """
-        Evaluates if the supplied obj is an unbound method.
-
-        :type obj: function
-        :rtype: bool
-        """
-
-        return inspect.isfunction(obj)
-
-    @staticmethod
-    def isBoundMethod(obj):
-        """
-        Evaluates if the supplied object is a bound method.
-
-        :type obj: function
-        :rtype: bool
-        """
-
-        return hasattr(obj, '__self__') and hasattr(obj, '__func__')
-
     def __call__(self, *args, **kwargs):
         """
         Private method that returns the method associated with this reference.
@@ -88,7 +67,7 @@ class WeakMethod(object):
 
         # Check if instance and function are alive
         #
-        if not self.alive:
+        if not self.isAlive():
 
             return None
 
@@ -111,17 +90,53 @@ class WeakMethod(object):
 
             return func
 
-    @property
-    def alive(self):
+    @staticmethod
+    def isUnboundMethod(obj):
+        """
+        Evaluates if the supplied obj is an unbound method.
+
+        :type obj: callable
+        :rtype: bool
+        """
+
+        return inspect.isfunction(obj)
+
+    @staticmethod
+    def isBoundMethod(obj):
+        """
+        Evaluates if the supplied object is a bound method.
+
+        :type obj: callable
+        :rtype: bool
+        """
+
+        return hasattr(obj, '__self__') and hasattr(obj, '__func__')
+
+    def isAlive(self):
         """
         Evaluates if this reference is still alive.
 
         :rtype: bool
         """
 
+        # Inspect method binding
+        #
         if hasattr(self, '_instance'):
 
-            return self._instance() is not None and self._function() is not None
+            # Check if weak refs are alive
+            #
+            instance = self._instance()
+            function = self._function()
+
+            if instance is None or function is None:
+
+                return False
+
+            # Check if the module is derived from the system modules
+            # If not then the module has been reloaded
+            #
+            module = inspect.getmodule(instance)
+            return module == sys.modules[module.__name__]
 
         else:
 
@@ -148,7 +163,7 @@ class Notification(with_metaclass(ABCMeta, object)):
     """
 
     __slots__ = ('_handle', '_ids', '_type')
-    __functions__ = {}  # type: dict[str:function]
+    __functions__ = {}  # type: dict[str:callable]
 
     def __init__(self, *args, **kwargs):
         """
@@ -200,6 +215,12 @@ class Notification(with_metaclass(ABCMeta, object)):
         self.remove(_id)
 
     def __contains__(self, item):
+        """
+        Private method that evaluates if the given item exists.
+
+        :type item: Union[int, function]
+        :rtype: bool
+        """
 
         if isinstance(item, int):
 
@@ -291,10 +312,10 @@ class Notification(with_metaclass(ABCMeta, object)):
         for _id in self._ids:
 
             ref = self.__class__.__functions__[_id]
-            func = ref()
 
-            if callable(func):
+            if ref.isAlive():
 
+                func = ref()
                 func()
 
             else:
