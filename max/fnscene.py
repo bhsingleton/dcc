@@ -198,6 +198,7 @@ class FnScene(afnscene.AFnScene):
 
             if newPath is not None:
 
+                log.info('%s.filename = %s' % (bitmap.name, newPath))
                 bitmap.filename = newPath
 
         # Reload textures
