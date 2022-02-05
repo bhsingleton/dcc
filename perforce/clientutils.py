@@ -120,20 +120,18 @@ class ClientSpec(object):
         :rtype: str
         """
 
-        # Normalize system paths
-        #
-        filePath = os.path.normpath(filePath)
-        clientPath = os.path.normpath(self.root)
-
         # Check if path is mappable
         #
-        if not filePath.startswith(clientPath):
+        if not self.hasAbsoluteFile(filePath):
 
             return filePath
 
         # Concatenate relative path
         #
-        relativePath = os.path.relpath(filePath, self.root)
+        filePath = os.path.normpath(filePath)
+        clientPath = os.path.normpath(self.root)
+        
+        relativePath = os.path.relpath(filePath, clientPath)
         newFilePath = os.path.join('$P4ROOT', relativePath)
 
         return os.path.normpath(newFilePath)
@@ -160,7 +158,7 @@ class ClientSpec(object):
         filePath = os.path.normpath(filePath)
         clientPath = os.path.normpath(self.root)
 
-        return filePath.startswith(clientPath)
+        return filePath.lower().startswith(clientPath.lower())
 
     def getChangelists(self):
         """
