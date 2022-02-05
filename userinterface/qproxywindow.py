@@ -21,8 +21,23 @@ class QProxyWindow(QtWidgets.QMainWindow):
     __singleton__ = True
 
     def __new__(cls, *args, **kwargs):
+        """
+        Private method called before a new instance has been created.
 
-        return cls.getInstance()
+        :keyword parent: QtWidgets.QWidget
+        :keyword flags: QtCore.Qt.WindowFlags
+        :rtype: QProxyWindow
+        """
+
+        # Check if this class uses a singleton pattern
+        #
+        if cls.isSingleton and cls.hasInstance():
+
+            return cls.__instances__[cls.__name__][0]
+
+        else:
+
+            return super(QProxyWindow, cls).__new__(cls, *args, **kwargs)
 
     def __init__(self, *args, **kwargs):
         """
@@ -49,6 +64,7 @@ class QProxyWindow(QtWidgets.QMainWindow):
         # Build user interface
         #
         self.__build__(**kwargs)
+        self.__instances__[self.className].append(self)
 
     @abstractmethod
     def __build__(self, **kwargs):
@@ -63,12 +79,6 @@ class QProxyWindow(QtWidgets.QMainWindow):
         self.setObjectName(self.className)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
         self.setWindowIcon(self.__class__.__icon__)
-
-        # Store reference to instance
-        #
-        if self.isSingleton:
-
-            self.__class__.__instances__[self.className] = self
 
     def showEvent(self, event):
         """
@@ -97,7 +107,7 @@ class QProxyWindow(QtWidgets.QMainWindow):
         # Perform cleanup steps
         #
         self.hideTearOffMenus()
-        self.removeInstance()
+        self.removeInstance(self)
 
     @classproperty
     def className(cls):
@@ -112,23 +122,21 @@ class QProxyWindow(QtWidgets.QMainWindow):
     @classproperty
     def isSingleton(cls):
         """
-        Getter method that evaluates if this class uses a singleton pattern.
+        Getter method that determines if this class uses a singleton pattern.
 
         :rtype: bool
         """
 
         return cls.__singleton__
 
-    @classmethod
-    def creator(cls, *args, **kwargs):
+    @classproperty
+    def instances(cls):
         """
-        Returns a new instance of this class.
-        Overload this to change the arguments supplied to the class constructor.
+        Getter method that returns a dictionary of all existing instances.
 
-        :rtype: QProxyWindow
+        :rtype: dict[str:QProxyWindow]
         """
-
-        return cls(*args, **kwargs)
+        return cls.__instances__
 
     @classmethod
     def overrideWindowIcon(cls, icon):
@@ -169,54 +177,82 @@ class QProxyWindow(QtWidgets.QMainWindow):
         :rtype: bool
         """
 
-        return cls.className in cls.__instances__
+        if cls.isSingleton:
+
+            return len(cls.__instances__[cls.className]) == 1
+
+        else:
+
+            return False
 
     @classmethod
-    def hasInstance(cls):
+    def hasInstance(cls, *args):
         """
         Checks if an instance already exists for this class.
+        Optional names can be supplied as arguments to be evaluated instead.
 
-        :rtype: bool
+        :rtype: Union[bool, list]
         """
 
-        return cls.__instances__.get(cls.__name__, None) is not None
+        if len(args) == 0:
+
+            return len(cls.__instances__[cls.__name__]) > 0
+
+        elif len(args) == 1:
+
+            return len(cls.__instances__[args[0]]) > 0
+
+        else:
+
+            return [cls.hasInstance(x) for x in args]
 
     @classmethod
-    def getInstance(cls):
+    def getInstance(cls, *args):
         """
         Returns the instance for this class.
-        If no window is found then a new instance is returned.
+        An optional name can be supplied to be returned instead.
 
         :rtype: QProxyWindow
         """
 
-        # Check if instance already exists
+        # Check if a class name was supplied
         #
-        if not cls.hasInstance() and not cls.isSingleton:
+        className = cls.__name__
 
-            cls.__instances__[cls.__name__] = cls.creator()
+        if len(args) > 0:
 
-        return cls.__instances__[cls.__name__]
+            className = args[0]
 
-    @classmethod
-    def removeInstance(cls, *args):
-        """
-        Removes the supplied instance from the internal array.
-
-        :rtype: bool
-        """
-
-        # Check if instance exists
+        # Check if this window uses a singleton pattern
+        # If not then a list of all existing instances
         #
-        if cls.className in cls.__instances__:
+        instances = cls.__instances__[className]
 
-            del cls.__instances__[cls.className]
-            return True
+        if cls.isSingleton:
+
+            if len(instances) == 1:
+
+                return instances[0]
+
+            else:
+
+                return None
 
         else:
 
-            log.debug('Unable to locate window: %s' % cls.className)
-            return False
+            return instances
+
+    @classmethod
+    def removeInstance(cls, instance):
+        """
+        Removes the supplied instance from the internal array.
+
+        :type instance: QProxyWindow
+        :rtype: bool
+        """
+
+        index = cls.__instances__[instance.className].index(instance)
+        del cls.__instances__[instance.className][index]
 
     def hideTearOffMenus(self):
         """

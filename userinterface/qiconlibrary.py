@@ -2,7 +2,7 @@ import os
 
 from PySide2 import QtGui
 from six.moves import collections_abc
-from dcc.decorators import classproperty
+from dcc.decorators.classproperty import classproperty
 
 import logging
 logging.basicConfig()

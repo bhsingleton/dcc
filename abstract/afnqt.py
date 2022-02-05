@@ -85,7 +85,7 @@ class AFnQt(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         try:
 
-            exec string
+            exec(string)
 
         except Exception as exception:
 
