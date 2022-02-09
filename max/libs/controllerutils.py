@@ -111,7 +111,18 @@ def isValidController(obj):
     return pymxs.runtime.superClassOf(obj) in BASE_TYPES.values()
 
 
-def iterSubAnims(obj, skipNonAnimated=False, skipNullControllers=False):
+def isSerializableValue(value):
+    """
+    Evaluates if the supplied max value is serializable.
+
+    :type value: Any
+    :rtype: bool
+    """
+
+    return pymxs.runtime.superClassOf(value) in (pymxs.runtime.Value, pymxs.runtime.Number)
+
+
+def iterSubAnims(obj, skipNonAnimated=False, skipNullControllers=False, skipComplexValues=False):
     """
     Returns a generator that yields sub anims from the supplied object.
     Optional keywords can be used to skip particular sub-anims.
@@ -119,6 +130,7 @@ def iterSubAnims(obj, skipNonAnimated=False, skipNullControllers=False):
     :type obj: pymxs.runtime.MXSWrapperBase
     :type skipNonAnimated: bool
     :type skipNullControllers: bool
+    :type skipComplexValues: bool
     :rtype: iter
     """
 
@@ -137,6 +149,12 @@ def iterSubAnims(obj, skipNonAnimated=False, skipNullControllers=False):
         # Check if null controllers should be skipped
         #
         if skipNullControllers and subAnim.controller is None:
+
+            continue
+
+        # Check if compound values should be skipped
+        #
+        if skipComplexValues and not isSerializableValue(subAnim.value):
 
             continue
 
