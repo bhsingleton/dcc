@@ -1,7 +1,7 @@
 import pymxs
 import json
 
-from datetime import date
+from datetime import datetime
 from . import controllerutils, modifierutils, attributeutils
 
 import logging
@@ -39,9 +39,9 @@ class AnimationEncoder(json.JSONEncoder):
         return {
             'name': node.name,
             'type': str(pymxs.runtime.classOf(node)),
-            'baseObject': [self.dumpSubAnim(x) for x in controllerutils.iterSubAnims(node.baseObject)],
+            'baseObject': [self.dumpSubAnim(x) for x in controllerutils.iterSubAnims(node.baseObject, skipComplexValues=True)],
             'modifiers': [self.dumpModifier(x) for x in node.modifiers],
-            'controller': self.dumpController(pymxs.runtime.getTMController(node)),
+            'subAnims': [self.dumpSubAnim(x) for x in controllerutils.iterSubAnims(node, skipComplexValues=True)],
             'customAttributes': [self.dumpCustomAttribute(x) for x in attributeutils.iterDefinitions(node)]
         }
 
@@ -66,7 +66,7 @@ class AnimationEncoder(json.JSONEncoder):
         return {
             'type': str(pymxs.runtime.classOf(controller)),
             'value': self.dumpValue(controller.value),
-            'subAnims': [self.dumpSubAnim(x) for x in controllerutils.iterSubAnims(controller)],
+            'subAnims': [self.dumpSubAnim(x) for x in controllerutils.iterSubAnims(controller, skipComplexValues=True)],
             'keys': [self.dumpMaxKey(x) for x in controllerutils.iterMaxKeys(controller)]
         }
 
@@ -91,7 +91,7 @@ class AnimationEncoder(json.JSONEncoder):
         return {
             'name': modifier.name,
             'type': str(pymxs.runtime.classOf(modifier)),
-            'subAnims': [self.dumpSubAnim(x) for x in controllerutils.iterSubAnims(modifier)],
+            'subAnims': [self.dumpSubAnim(x) for x in controllerutils.iterSubAnims(modifier, skipComplexValues=True)],
             'customAttributes': [self.dumpCustomAttribute(x) for x in attributeutils.iterDefinitions(modifier)]
         }
 
@@ -106,7 +106,7 @@ class AnimationEncoder(json.JSONEncoder):
         return {
             'name': definition.name,
             'type': str(pymxs.runtime.classOf(definition)),
-            'subAnims': [self.dumpSubAnim(x) for x in controllerutils.iterSubAnims(definition)]
+            'subAnims': [self.dumpSubAnim(x) for x in controllerutils.iterSubAnims(definition, skipComplexValues=True)]
         }
 
     def dumpSubAnim(self, subAnim):
@@ -118,7 +118,7 @@ class AnimationEncoder(json.JSONEncoder):
         """
 
         return {
-            'name': subAnim.name,
+            'name': self.dumpName(subAnim.name),
             'type': str(pymxs.runtime.classOf(subAnim)),
             'index': subAnim.index,
             'value': self.dumpValue(subAnim.value),
@@ -138,10 +138,10 @@ class AnimationEncoder(json.JSONEncoder):
             'time': str(maxKey.time),
             'value': self.dumpValue(maxKey.value),
             'inTangent': self.dumpValue(maxKey.inTangent),
-            'inTangentType': '#{name}'.format(name=str(maxKey.inTangentType)),
+            'inTangentType': self.dumpName(maxKey.inTangentType),
             'inTangentLength': self.dumpValue(maxKey.inTangentLength),
             'outTangent': self.dumpValue(maxKey.outTangent),
-            'outTangentType': '#{name}'.format(name=str(maxKey.outTangentType)),
+            'outTangentType': self.dumpName(maxKey.outTangentType),
             'outTangentLength': self.dumpValue(maxKey.outTangentLength),
             'freeHandle': maxKey.freeHandle,
             'x_locked': maxKey.x_locked,
@@ -149,6 +149,16 @@ class AnimationEncoder(json.JSONEncoder):
             'z_locked': maxKey.z_locked,
             'constantVelocity': maxKey.constantVelocity
         }
+
+    def dumpName(self, name):
+        """
+        Returns a name as a string.
+
+        :type name: pymxs.runtime.Name
+        :rtype: str
+        """
+
+        return '#{name}'.format(name=str(name).replace(' ', '_'))
 
     def dumpValue(self, value):
         """
@@ -162,7 +172,7 @@ class AnimationEncoder(json.JSONEncoder):
 
             return str(value)
 
-        elif isinstance(value, self.__builtins__):
+        elif isinstance(value, self.__builtins__) or value is None:
 
             return value
 
@@ -214,12 +224,12 @@ def saveAnimation(filePath, nodes):
     :rtype: None
     """
 
-    today = date.today()
+    now = datetime.now()
 
     document = {
         'filename': pymxs.runtime.maxFilename,
-        'date': today.strftime('%m/%d/%Y'),
-        'time': today.strftime('%H:%M:%S'),
+        'date': now.strftime('%m/%d/%Y'),
+        'time': now.strftime('%H:%M:%S'),
         'frameRate': pymxs.runtime.frameRate,
         'ticksPerFrame': pymxs.runtime.ticksPerFrame,
         'nodes': nodes
