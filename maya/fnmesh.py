@@ -1,11 +1,9 @@
 import maya.cmds as mc
 import maya.api.OpenMaya as om
-import numpy
 
-from itertools import chain
-
-from ..abstract import afnmesh
-from . import fnnode
+from dcc import fnnode
+from dcc.abstract import afnmesh
+from dcc.maya.libs import dagutils
 
 import logging
 logging.basicConfig()
@@ -66,6 +64,57 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
 
         return om.MFnMesh(self.object()).numPolygons
 
+    def selectedVertices(self):
+        """
+        Returns a list of selected vertex indices.
+
+        :rtype: list[int]
+        """
+
+        dagPath, component = dagutils.getComponentSelection()
+
+        if dagPath.object() == self.object() and component.hasFn(om.MFn.kMeshVertComponent):
+
+            return om.MFnSingleIndexedComponent(component).getElements()
+
+        else:
+
+            return []
+
+    def selectedEdges(self):
+        """
+        Returns a list of selected vertex indices.
+
+        :rtype: list[int]
+        """
+
+        dagPath, component = dagutils.getComponentSelection()
+
+        if dagPath.object() == self.object() and component.hasFn(om.MFn.kMeshEdgeComponent):
+
+            return om.MFnSingleIndexedComponent(component).getElements()
+
+        else:
+
+            return []
+
+    def selectedFaces(self):
+        """
+        Returns a list of selected vertex indices.
+
+        :rtype: list[int]
+        """
+
+        dagPath, component = dagutils.getComponentSelection()
+
+        if dagPath.object() == self.object() and component.hasFn(om.MFn.kMeshPolygonComponent):
+
+            return om.MFnSingleIndexedComponent(component).getElements()
+
+        else:
+
+            return []
+
     def iterVertices(self, *args):
         """
         Returns a generator that yield vertex points.
@@ -92,6 +141,33 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
             point = iterVertices.position()
 
             yield point.x, point.y, point.z
+
+    def iterVertexNormals(self, *args):
+        """
+        Returns a generator that yields vertex normals.
+        If no arguments are supplied then all vertex normals will be yielded.
+
+        :rtype: iter
+        """
+
+        # Evaluate arguments
+        #
+        numArgs = len(args)
+
+        if numArgs == 0:
+
+            args = range(self.numVertices())
+
+        # Iterate through vertices
+        #
+        iterVertices = om.MItMeshVertex(self.object())
+
+        for arg in args:
+
+            iterVertices.setIndex(arg)
+            normal = iterVertices.getNormal()
+
+            yield normal.x, normal.y, normal.z
 
     def iterFaceVertexIndices(self, *args):
         """

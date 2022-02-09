@@ -1,9 +1,9 @@
 import pymxs
 
-from ..abstract import afnmesh
-from . import fnnode
-from .libs import meshutils, arrayutils
-from .decorators import coordsysoverride
+from dcc import fnnode
+from dcc.abstract import afnmesh
+from dcc.max.libs import meshutils, arrayutils
+from dcc.max.decorators import coordsysoverride
 
 import logging
 logging.basicConfig()
