@@ -162,6 +162,22 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
             raise TypeError('isNullOrEmpty() expects a sequence (%s given)!' % type(value).__name__)
 
+    @staticmethod
+    def isRelative(path, directory):
+        """
+        Evaluates if the supplied path is relative to the given directory.
+        This method ignores casing!
+
+        :type path: str
+        :type directory: str
+        :rtype: bool
+        """
+
+        path = os.path.normpath(os.path.expandvars(path))
+        directory = os.path.normpath(os.path.expandvars(directory))
+
+        return path.lower().startswith(directory.lower())
+
     def expandPath(self, filePath):
         """
         Expands any file path that may contain an environment variable or relative syntax.
@@ -178,7 +194,7 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         # Evaluate any environment variables
         #
-        filePath = os.path.expandvars(os.path.normpath(filePath))
+        filePath = os.path.normpath(os.path.expandvars(filePath))
 
         if os.path.isabs(filePath):
 
@@ -200,7 +216,7 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         # Iterate through file paths
         #
-        directory = os.path.normpath(directory)
+        directory = os.path.normpath(os.path.expandvars(directory))
 
         numFilePaths = len(filePaths)
         relativePaths = [None] * numFilePaths
@@ -212,7 +228,7 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
             filePath = os.path.normpath(filePath)
             fullFilePath = self.expandPath(filePath)
 
-            if fullFilePath.startswith(directory):
+            if self.isRelative(fullFilePath, directory):
 
                 relativePath = os.path.relpath(fullFilePath, directory)
 
@@ -221,6 +237,7 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
             else:
 
+                log.warning('Cannot make: %s, relative to: %s' % (filePath, directory))
                 relativePaths[i] = filePath
 
         return relativePaths
@@ -270,7 +287,7 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
             filePath = os.path.normpath(filePath)
             fullFilePath = self.expandPath(filePath)
 
-            if fullFilePath.startswith(directory):
+            if self.isRelative(fullFilePath, directory):
 
                 dynamicPath = os.path.join(variable, os.path.relpath(fullFilePath, directory))
 
@@ -368,7 +385,7 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
             if numFileSpecs == 0:
 
                 log.warning('No results found for: %s' % oldPath)
-                newPaths[i] = oldPaths
+                newPaths[i] = oldPaths[i]
 
             elif numFileSpecs == 1:
 
@@ -380,7 +397,7 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
             else:
 
                 log.warning('Multiple results found for: %s' % oldPath)
-                newPaths[i] = oldPaths
+                newPaths[i] = oldPaths[i]
 
         # Update texture paths
         #
