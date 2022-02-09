@@ -1,6 +1,5 @@
 from PySide2 import QtCore, QtWidgets, QtGui
 from abc import ABCMeta, abstractmethod
-from collections import defaultdict
 from dcc import fnqt
 from dcc.decorators.classproperty import classproperty
 
@@ -12,14 +11,15 @@ log.setLevel(logging.INFO)
 
 class QProxyWindow(QtWidgets.QMainWindow):
     """
-    Overload of QMainWindow used to track all derived Robot Entertainment windows.
-    This provides us the ability to close all windows on restart.
+    Overload of QMainWindow used to provide an interface for tracking all derived windows.
     """
 
-    __instances__ = defaultdict(list)
+    __instances__ = {}
     __icon__ = QtGui.QIcon()
-    __singleton__ = True
+    __author__ = 'Ben Singleton'
+    __title__ = ''
 
+    # region Dunderscores
     def __new__(cls, *args, **kwargs):
         """
         Private method called before a new instance has been created.
@@ -31,9 +31,9 @@ class QProxyWindow(QtWidgets.QMainWindow):
 
         # Check if this class uses a singleton pattern
         #
-        if cls.isSingleton and cls.hasInstance():
+        if cls.hasInstance():
 
-            return cls.__instances__[cls.__name__][0]
+            return cls.__instances__[cls.className]
 
         else:
 
@@ -61,10 +61,11 @@ class QProxyWindow(QtWidgets.QMainWindow):
 
         super(QProxyWindow, self).__init__(parent=parent, flags=flags)
 
-        # Build user interface
+        # Initialize user interface
         #
+        self.__settings__ = QtCore.QSettings(self.__author__, self.__title__)
         self.__build__(**kwargs)
-        self.__instances__[self.className].append(self)
+        self.__instances__[self.className] = self
 
     @abstractmethod
     def __build__(self, **kwargs):
@@ -79,36 +80,10 @@ class QProxyWindow(QtWidgets.QMainWindow):
         self.setObjectName(self.className)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
         self.setWindowIcon(self.__class__.__icon__)
+        self.setWindowTitle(self.__class__.__title__)
+    # endregion
 
-    def showEvent(self, event):
-        """
-        Event method called after the window has been shown.
-
-        :type event: QtGui.QShowEvent
-        :rtype: None
-        """
-
-        # Call parent method
-        #
-        super(QProxyWindow, self).showEvent(event)
-
-    def closeEvent(self, event):
-        """
-        Event method called after the window has been closed.
-
-        :type event: QtGui.QCloseEvent
-        :rtype: None
-        """
-
-        # Call parent method
-        #
-        super(QProxyWindow, self).closeEvent(event)
-
-        # Perform cleanup steps
-        #
-        self.hideTearOffMenus()
-        self.removeInstance(self)
-
+    # region Properties
     @classproperty
     def className(cls):
         """
@@ -119,36 +94,18 @@ class QProxyWindow(QtWidgets.QMainWindow):
 
         return cls.__name__
 
-    @classproperty
-    def isSingleton(cls):
+    @property
+    def settings(self):
         """
-        Getter method that determines if this class uses a singleton pattern.
+        Getter method that returns the settings for this window.
 
-        :rtype: bool
-        """
-
-        return cls.__singleton__
-
-    @classproperty
-    def instances(cls):
-        """
-        Getter method that returns a dictionary of all existing instances.
-
-        :rtype: dict[str:QProxyWindow]
-        """
-        return cls.__instances__
-
-    @classmethod
-    def overrideWindowIcon(cls, icon):
-        """
-        Registers a custom icon for all derived classes.
-
-        :type icon: str
-        :rtype: None
+        :rtype: QtCore.QSettings
         """
 
-        cls.__icon__ = QtGui.QIcon(icon)
+        return self.__settings__
+    # endregion
 
+    # region Methods
     @staticmethod
     def getTextWidth(item, text, offset=12):
         """
@@ -170,6 +127,26 @@ class QProxyWindow(QtWidgets.QMainWindow):
         return width
 
     @classmethod
+    def createStandardItem(cls, text, height=16):
+        """
+        Class method used to create a QStandardItem from the given string value.
+
+        :type text: str
+        :type height: int
+        :rtype: QtGui.QStandardItem
+        """
+
+        # Create item and resize based on text width
+        #
+        item = QtGui.QStandardItem(text)
+        textWidth = cls.getTextWidth(item, text)
+
+        item.setSizeHint(QtCore.QSize(textWidth, height))
+        item.setTextAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
+
+        return item
+
+    @classmethod
     def isInitialized(cls):
         """
         Evaluates whether this class has already been initialized.
@@ -177,13 +154,7 @@ class QProxyWindow(QtWidgets.QMainWindow):
         :rtype: bool
         """
 
-        if cls.isSingleton:
-
-            return len(cls.__instances__[cls.className]) == 1
-
-        else:
-
-            return False
+        return cls.hasInstance(cls.className)
 
     @classmethod
     def hasInstance(cls, *args):
@@ -196,11 +167,11 @@ class QProxyWindow(QtWidgets.QMainWindow):
 
         if len(args) == 0:
 
-            return len(cls.__instances__[cls.__name__]) > 0
+            return cls.__instances__.get(cls.className, None) is not None
 
         elif len(args) == 1:
 
-            return len(cls.__instances__[args[0]]) > 0
+            return cls.__instances__.get(args[0], None) is not None
 
         else:
 
@@ -215,32 +186,17 @@ class QProxyWindow(QtWidgets.QMainWindow):
         :rtype: QProxyWindow
         """
 
-        # Check if a class name was supplied
-        #
-        className = cls.__name__
+        if len(args) == 0:
 
-        if len(args) > 0:
+            return cls.__instances__.get(cls.className, None)
 
-            className = args[0]
+        elif len(args) == 1:
 
-        # Check if this window uses a singleton pattern
-        # If not then a list of all existing instances
-        #
-        instances = cls.__instances__[className]
-
-        if cls.isSingleton:
-
-            if len(instances) == 1:
-
-                return instances[0]
-
-            else:
-
-                return None
+            return cls.__instances__.get(args[0], None)
 
         else:
 
-            return instances
+            return [cls.getInstance(arg) for arg in args]
 
     @classmethod
     def removeInstance(cls, instance):
@@ -251,8 +207,34 @@ class QProxyWindow(QtWidgets.QMainWindow):
         :rtype: bool
         """
 
-        index = cls.__instances__[instance.className].index(instance)
-        del cls.__instances__[instance.className][index]
+        del cls.__instances__[instance.className]
+
+    @classmethod
+    def overrideWindowIcon(cls, icon):
+        """
+        Registers a custom icon for all derived classes.
+
+        :type icon: str
+        :rtype: None
+        """
+
+        cls.__icon__ = QtGui.QIcon(icon)
+
+    @classmethod
+    def closeWindows(cls):
+        """
+        Closes all of the open windows.
+        Only the windows that inherit from this class will be closed!
+
+        :rtype: None
+        """
+
+        # Iterate through windows
+        #
+        for (name, window) in cls.__instances__.items():
+
+            log.info('Closing window: %s' % name)
+            window.close()
 
     def hideTearOffMenus(self):
         """
@@ -283,18 +265,74 @@ class QProxyWindow(QtWidgets.QMainWindow):
 
                 continue
 
-    @classmethod
-    def closeWindows(cls):
+    def hasSettings(self):
         """
-        Closes all of the open windows.
-        Only the windows that inherit from this class will be closed!
+        Evaluates if this window has any settings.
+
+        :rtype: bool
+        """
+
+        return len(self.settings.allKeys()) > 0
+
+    def loadSettings(self):
+        """
+        Loads the user settings.
+        The base implementation handles size and location.
 
         :rtype: None
         """
 
-        # Iterate through windows
-        #
-        for (name, window) in cls.__instances__.items():
+        log.info('Loading settings from: %s' % self.settings.fileName())
+        self.resize(self.settings.value('editor/size'))
+        self.move(self.settings.value('editor/pos'))
 
-            log.info('Closing window: %s' % name)
-            window.close()
+    def saveSettings(self):
+        """
+        Saves the user settings.
+        The base implementation handles size and location.
+
+        :rtype: None
+        """
+
+        log.info('Saving settings to: %s' % self.settings.fileName())
+        self.settings.setValue('editor/size', self.size())
+        self.settings.setValue('editor/pos', self.pos())
+    # endregion
+
+    # region Events
+    def showEvent(self, event):
+        """
+        Event method called after the window has been shown.
+
+        :type event: QtGui.QShowEvent
+        :rtype: None
+        """
+
+        # Call parent method
+        #
+        super(QProxyWindow, self).showEvent(event)
+
+        # Perform startup routines
+        #
+        if self.hasSettings():
+
+            self.loadSettings()
+
+    def closeEvent(self, event):
+        """
+        Event method called after the window has been closed.
+
+        :type event: QtGui.QCloseEvent
+        :rtype: None
+        """
+
+        # Call parent method
+        #
+        super(QProxyWindow, self).closeEvent(event)
+
+        # Perform closing routines
+        #
+        self.saveSettings()
+        self.hideTearOffMenus()
+        self.removeInstance(self)
+    # endregion
