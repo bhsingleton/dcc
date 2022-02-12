@@ -1,9 +1,11 @@
 import os
 import stat
+import json
 import subprocess
 
+from P4 import P4Exception
 from dcc import fnscene
-from dcc.perforce import cmds
+from dcc.perforce import createAdapter, cmds
 
 import logging
 logging.basicConfig()
@@ -114,3 +116,38 @@ def makeSceneWritable():
     else:
 
         log.warning('Unable to make scene file writable!')
+
+
+def saveChangelist(changelist, filePath, **kwargs):
+    """
+    Outputs the specified changelist to the designated file path.
+    Each file data object consists of the following: ['rev', 'time', 'action', 'type', 'depotFile', 'change']
+    Optional keywords can be supplied to override the p4 adapter.
+
+    :type changelist: int
+    :type filePath: str
+    :rtype: bool
+    """
+
+    # Try and connect to server
+    #
+    try:
+
+        # Write changelist to file
+        #
+        p4 = createAdapter(**kwargs)
+
+        with open(filePath, 'w') as jsonFile:
+
+            files = p4.run('files', '@={changelist}'.format(changelist=changelist))
+            json.dump(files, jsonFile, indent=4)
+
+        # Disconnect from server
+        #
+        p4.disconnect()
+        return True
+
+    except P4Exception as exception:
+
+        log.error(exception.message)
+        return False
