@@ -36,6 +36,458 @@ TRANSFORM_ROTATE_ORDER = {
 }
 
 
+def getTranslation(dagPath, space=om.MSpace.kTransform, context=om.MDGContext.kNormal):
+    """
+    Returns the translation values from the supplied node.
+
+    :type dagPath: Union[str, om.MObject, om.MDagPath]
+    :type space: int
+    :type context: om.MDGContext
+    :rtype: om.MVector
+    """
+
+    # Inspect dag path
+    #
+    dagPath = dagutils.getMDagPath(dagPath)
+
+    if not dagPath.isValid():
+
+        raise TypeError('getTranslation() expects a valid dag path!')
+
+    # Inspect transform space
+    #
+    if space == om.MSpace.kWorld:
+
+        return decomposeTransformMatrix(dagPath.inclusiveMatrix())[0]
+
+    else:
+
+        # Get translate values from plugs
+        #
+        fnTransform = om.MFnTransform(dagPath)
+
+        translation = om.MVector(
+            fnTransform.findPlug('translateX', False).asFloat(context=context),
+            fnTransform.findPlug('translateY', False).asFloat(context=context),
+            fnTransform.findPlug('translateZ', False).asFloat(context=context)
+        )
+
+        return translation
+
+
+def setTranslation(dagPath, translation, **kwargs):
+    """
+    Updates the translation values on the supplied node.
+
+    :type dagPath: Union[str, om.MObject, om.MDagPath]
+    :type translation: om.MVector
+    :keyword space: int
+    :keyword skipTranslate: bool
+    :keyword skipTranslateX: bool
+    :keyword skipTranslateY: bool
+    :keyword skipTranslateZ: bool
+    :rtype: None
+    """
+
+    # Inspect dag path
+    #
+    dagPath = dagutils.getMDagPath(dagPath)
+
+    if not dagPath.isValid():
+
+        raise TypeError('setTranslation() expects a valid dag path!')
+
+    # Inspect transform space
+    #
+    space = kwargs.get('space', om.MSpace.kTransform)
+
+    if space == om.MSpace.kWorld:
+
+        translation *= dagPath.exclusiveMatrixInverse()
+
+    # Initialize transform function set
+    #
+    fnTransform = om.MFnTransform(dagPath)
+    skipTranslate = kwargs.get('skipTranslate', False)
+
+    # Check if translateX can be set
+    #
+    skipTranslateX = kwargs.get('skipTranslateX', skipTranslate)
+    translateXPlug = fnTransform.findPlug('translateX', True)
+
+    if not skipTranslateX and not translateXPlug.isLocked:
+
+        translateXPlug.setDouble(translation.x)
+
+    # Check if translateY can be set
+    #
+    skipTranslateY = kwargs.get('skipTranslateY', skipTranslate)
+    translateYPlug = fnTransform.findPlug('translateY', True)
+
+    if not skipTranslateY and not translateYPlug.isLocked:
+
+        translateYPlug.setDouble(translation.y)
+
+    # Check if translateZ can be set
+    #
+    skipTranslateZ = kwargs.get('skipTranslateZ', skipTranslate)
+    translateZPlug = fnTransform.findPlug('translateZ', True)
+
+    if not skipTranslateZ and not translateZPlug.isLocked:
+
+        translateZPlug.setDouble(translation.z)
+
+
+def resetTranslation(dagPath):
+    """
+    Resets the translation values on the supplied node.
+
+    :type dagPath: Union[str, om.MObject, om.MDagPath]
+    :rtype: None
+    """
+
+    setTranslation(dagPath, om.MVector.kZeroVector)
+
+
+def getRotationOrder(dagPath, context=om.MDGContext.kNormal):
+    """
+    Returns the rotation order from the supplied node.
+
+    :type dagPath: Union[str, om.MObject, om.MDagPath]
+    :type context: om.MDGContext
+    :rtype: int
+    """
+
+    # Inspect dag path
+    #
+    dagPath = dagutils.getMDagPath(dagPath)
+
+    if not dagPath.isValid():
+
+        raise TypeError('getEulerRotation() expects a valid dag path!')
+
+    # Get euler values from plugs
+    #
+    fnTransform = om.MFnTransform(dagPath)
+    rotateOrder = fnTransform.findPlug('rotateOrder', False).asInt(context=context)
+
+    return rotateOrder
+
+
+def getEulerRotation(dagPath, context=om.MDGContext.kNormal):
+    """
+    Updates the euler angles on the supplied node.
+
+    :type dagPath: Union[str, om.MObject, om.MDagPath]
+    :type context: om.MDGContext
+    :rtype: om.MEulerRotation
+    """
+
+    # Inspect dag path
+    #
+    dagPath = dagutils.getMDagPath(dagPath)
+
+    if not dagPath.isValid():
+
+        raise TypeError('getEulerRotation() expects a valid dag path!')
+
+    # Get euler values from plugs
+    #
+    fnTransform = om.MFnTransform(dagPath)
+    rotateOrder = getRotationOrder(dagPath)
+
+    return om.MEulerRotation(
+        fnTransform.findPlug('rotateX', False).asMAngle(context=context).asRadians(),
+        fnTransform.findPlug('rotateY', False).asMAngle(context=context).asRadians(),
+        fnTransform.findPlug('rotateZ', False).asMAngle(context=context).asRadians(),
+        order=rotateOrder
+    )
+
+
+def setEulerRotation(dagPath, rotation, **kwargs):
+    """
+    Updates the euler angles on the supplied node.
+
+    :type dagPath: om.MDagPath
+    :type rotation: om.MEulerRotation
+    :keyword skipRotate: bool
+    :keyword skipRotateX: bool
+    :keyword skipRotateY: bool
+    :keyword skipRotateZ: bool
+    :rtype: None
+    """
+
+    # Inspect dag path
+    #
+    dagPath = dagutils.getMDagPath(dagPath)
+
+    if not dagPath.isValid():
+
+        raise TypeError('setEulerRotation() expects a valid dag path!')
+
+    # Initialize transform function set
+    #
+    fnTransform = om.MFnTransform(dagPath)
+    skipRotate = kwargs.get('skipRotate', False)
+
+    # Check if rotateX can be set
+    #
+    skipRotateX = kwargs.get('skipRotateX', skipRotate)
+    rotateXPlug = fnTransform.findPlug('rotateX', True)
+
+    if not skipRotateX and not rotateXPlug.isLocked:
+
+        rotateXPlug.setMAngle(om.MAngle(rotation.x, om.MAngle.kRadians))
+
+    # Check if rotateY can be set
+    #
+    skipRotateY = kwargs.get('skipRotateY', skipRotate)
+    rotateYPlug = fnTransform.findPlug('rotateY', True)
+
+    if not skipRotateY and not rotateYPlug.isLocked:
+
+        rotateYPlug.setMAngle(om.MAngle(rotation.y, om.MAngle.kRadians))
+
+    # Check if rotateZ can be set
+    #
+    skipRotateZ = kwargs.get('skipRotateZ', skipRotate)
+    rotateZPlug = fnTransform.findPlug('rotateZ', True)
+
+    if not skipRotateZ and not rotateZPlug.isLocked:
+
+        rotateZPlug.setMAngle(om.MAngle(rotation.z, om.MAngle.kRadians))
+
+
+def resetEulerRotation(dagPath):
+    """
+    Resets the euler angles on the supplied node.
+
+    :type dagPath: Union[str, om.MObject, om.MDagPath]
+    :rtype: None
+    """
+
+    setEulerRotation(dagPath, om.MEulerRotation.kIdentity)
+
+
+def getJointOrient(dagPath, context=om.MDGContext.kNormal):
+    """
+    Returns the joint orient angles from the supplied node.
+    If the node is not derived from a joint then a zero euler rotation is returned.
+
+    :type dagPath: Union[str, om.MObject, om.MDagPath]
+    :type context: om.MDGContext
+    :rtype: om.MEulerRotation
+    """
+
+    # Inspect dag path
+    #
+    dagPath = dagutils.getMDagPath(dagPath)
+
+    if not dagPath.isValid():
+
+        raise TypeError('getJointOrient() expects a valid dag path!')
+
+    # Get euler values from plugs
+    #
+    fnTransform = om.MFnTransform(dagPath)
+    jointOrient = om.MEulerRotation()
+
+    if dagPath.hasFn(om.MFn.kJoint):
+
+        return om.MEulerRotation(
+            fnTransform.findPlug('jointOrientX', False).asMAngle(context=context).asRadians(),
+            fnTransform.findPlug('jointOrientY', False).asMAngle(context=context).asRadians(),
+            fnTransform.findPlug('jointOrientZ', False).asMAngle(context=context).asRadians()
+        )
+
+    return jointOrient
+
+
+def setJointOrient(dagPath, jointOrient):
+    """
+    Updates the joint orient angles on the supplied joint.
+    If the node is not derived from a joint then no changes are made.
+
+    :type dagPath: Union[str, om.MObject, om.MDagPath]
+    :type jointOrient: om.MEulerRotation
+    :rtype: None
+    """
+
+    # Inspect dag path
+    #
+    dagPath = dagutils.getMDagPath(dagPath)
+
+    if not dagPath.isValid():
+
+        raise TypeError('setJointOrient() expects a valid dag path!')
+
+    # Update joint orient plugs
+    #
+    fnTransform = om.MFnTransform(dagPath)
+
+    if dagPath.hasFn(om.MFn.kJoint):
+
+        fnTransform.findPlug('jointOrientX', False).setMAngle(om.MAngle(jointOrient.x, om.MAngle.kRadians))
+        fnTransform.findPlug('jointOrientY', False).setMAngle(om.MAngle(jointOrient.y, om.MAngle.kRadians))
+        fnTransform.findPlug('jointOrientZ', False).setMAngle(om.MAngle(jointOrient.z, om.MAngle.kRadians))
+
+
+def resetJointOrient(dagPath):
+    """
+    Resets the joint orient angles on the supplied joint.
+
+    :type dagPath: Union[str, om.MObject, om.MDagPath]
+    :rtype: None
+    """
+
+    setJointOrient(dagPath, om.MEulerRotation.kIdentity)
+
+
+def getScale(dagPath, context=om.MDGContext.kNormal):
+    """
+    Returns the scale values from the supplied node.
+
+    :type dagPath: Union[str, om.MObject, om.MDagPath]
+    :type context: om.MDGContext
+    :rtype: list[float, float, float]
+    """
+
+    # Inspect dag path
+    #
+    dagPath = dagutils.getMDagPath(dagPath)
+
+    if not dagPath.isValid():
+
+        raise TypeError('getScale() expects a valid dag path!')
+
+    # Get scale values from plugs
+    #
+    fnTransform = om.MFnTransform(dagPath)
+
+    return [
+        fnTransform.findPlug('scaleX', False).asFloat(context=context),
+        fnTransform.findPlug('scaleY', False).asFloat(context=context),
+        fnTransform.findPlug('scaleZ', False).asFloat(context=context)
+    ]
+
+
+def setScale(dagPath, scale, **kwargs):
+    """
+    Updates the scale values on the supplied node.
+
+    :type dagPath: om.MDagPath
+    :type scale: list[float, float, float]
+    :keyword skipScale: bool
+    :keyword skipScaleX: bool
+    :keyword skipScaleY: bool
+    :keyword skipScaleZ: bool
+    :rtype: None
+    """
+
+    # Inspect dag path
+    #
+    dagPath = dagutils.getMDagPath(dagPath)
+
+    if not dagPath.isValid():
+
+        raise TypeError('setScale() expects a valid dag path!')
+
+    # Initialize transform function set
+    #
+    fnTransform = om.MFnTransform(dagPath)
+    skipScale = kwargs.get('skipScale', False)
+
+    # Check if scaleX can be set
+    #
+    skipScaleX = kwargs.get('skipScaleX', skipScale)
+    scaleXPlug = fnTransform.findPlug('scaleX', True)
+
+    if not skipScaleX and not scaleXPlug.isLocked:
+
+        scaleXPlug.setDouble(scale[0])
+
+    # Check if scaleY can be set
+    #
+    skipScaleY = kwargs.get('skipScaleY', skipScale)
+    scaleYPlug = fnTransform.findPlug('scaleY', True)
+
+    if not skipScaleY and not scaleYPlug.isLocked:
+
+        scaleYPlug.setDouble(scale[1])
+
+    # Check if scaleZ can be set
+    #
+    skipScaleZ = kwargs.get('skipScaleZ', skipScale)
+    scaleZPlug = fnTransform.findPlug('scaleZ', True)
+
+    if not skipScaleZ and not scaleZPlug.isLocked:
+
+        scaleZPlug.setDouble(scale[2])
+
+
+def resetScale(dagPath):
+    """
+    Resets the scale values on the supplied node.
+
+    :type dagPath: Union[str, om.MObject, om.MDagPath]
+    :rtype: None
+    """
+
+    setScale(dagPath, [1.0, 1.0, 1.0])
+
+
+def resetPivots(dagPath):
+    """
+    Resets all of the pivot components for the given dag path.
+
+    :type dagPath: om.MDagPath
+    :rtype: None
+    """
+
+    # Inspect dag path
+    #
+    dagPath = dagutils.getMDagPath(dagPath)
+
+    if not dagPath.isValid():
+
+        raise TypeError('resetPivot() expects a valid dag path!')
+
+    # Initialize function set
+    #
+    fnTransform = om.MFnTransform(dagPath)
+
+    # Reset rotation pivot
+    #
+    fnTransform.setRotatePivot(om.MPoint.kOrigin, om.MSpace.kTransform, False)
+    fnTransform.setRotatePivotTranslation(om.MVector.kZeroVector, om.MSpace.kTransform)
+
+    # Reset scale pivot
+    #
+    fnTransform.setScalePivot(om.MPoint.kOrigin, om.MSpace.kTransform, False)
+    fnTransform.setScalePivotTranslation(om.MVector.kZeroVector, om.MSpace.kTransform)
+
+
+def getBoundingBox(dagPath):
+    """
+    Returns the bounding box for the given dag path.
+
+    :type dagPath: Union[str, om.MObject, om.MDagPath]
+    :rtype: om.MBoundingBox
+    """
+
+    # Inspect dag path
+    #
+    dagPath = dagutils.getMDagPath(dagPath)
+
+    if not dagPath.isValid():
+
+        raise TypeError('getBoundingBox() expects a valid dag path!')
+
+    # Return bounding box
+    #
+    return om.MFnDagNode(dagPath).boundingBox
+
+
 def snapshot(dagPath):
     """
     Returns a snapshot for all of the child transform matrices for the given dag path.
@@ -80,7 +532,117 @@ def assumeSnapshot(children):
         applyTransformMatrix(dagPath, matrix * dagPath.exclusiveMatrixInverse())
 
 
-@undo.undo(name='Copy Transform')
+@undo.undo(name='Apply Transform Matrix')
+def applyTransformMatrix(dagPath, matrix, **kwargs):
+    """
+    Applies the transform matrix to the supplied node.
+
+    :type dagPath: Union[str, om.MObject, om.MDagPath]
+    :type matrix: om.MMatrix
+    :keyword skipTranslateX: bool
+    :keyword skipTranslateY: bool
+    :keyword skipTranslateZ: bool
+    :keyword skipRotateX: bool
+    :keyword skipRotateY: bool
+    :keyword skipRotateZ: bool
+    :keyword preserveChildren: bool
+    :rtype: None
+    """
+
+    # Check argument types
+    #
+    dagPath = dagutils.getMDagPath(dagPath)
+
+    if not dagPath.isValid() or not isinstance(matrix, om.MMatrix):
+
+        raise TypeError('applyTransformMatrix() expects a MDagPath and MMatrix!')
+
+    # Check if children should be preserved
+    #
+    partialPathName = dagPath.partialPathName()
+    preserveChildren = kwargs.get('preserveChildren', False)
+
+    children = []
+
+    if preserveChildren:
+
+        children = snapshot(dagPath)
+
+    # Initialize transformation matrix
+    #
+    transformationMatrix = om.MTransformationMatrix(matrix)
+
+    rotateOrder = getRotationOrder(dagPath)
+    transformationMatrix.reorderRotation(rotateOrder + 1)  # MTransformationMatrix rotation orders are off by 1...
+
+    # Set translation
+    #
+    translate = transformationMatrix.translation(om.MSpace.kTransform)
+    setTranslation(dagPath, translate, **kwargs)
+
+    log.debug('%s.translate = [%s, %s, %s]' % (partialPathName, translate.x, translate.y, translate.z))
+
+    # Check if dag path belongs to a joint
+    # If it does then we need to compensate for any joint orientations
+    #
+    if dagPath.hasFn(om.MFn.kJoint):
+
+        jointOrient = getJointOrient(dagPath)
+        transformationMatrix.rotateBy(jointOrient.inverse(), om.MSpace.kTransform)
+
+    # Set euler rotation
+    #
+    rotate = transformationMatrix.rotation(asQuaternion=False)
+    setEulerRotation(dagPath, rotate, **kwargs)
+
+    log.debug('%s.rotate = [%s, %s, %s]' % (partialPathName, rotate.x, rotate.y, rotate.z))
+
+    # Check if scale should be skipped
+    #
+    scale = transformationMatrix.scale(om.MSpace.kTransform)
+    setScale(dagPath, scale, **kwargs)
+
+    log.debug('%s.scale = [%s, %s, %s]' % (partialPathName, scale[0], scale[1], scale[2]))
+
+    # Check if child transforms should be reset
+    #
+    if preserveChildren:
+
+        assumeSnapshot(children)
+
+
+def applyWorldMatrix(dagPath, worldMatrix, **kwargs):
+    """
+    Applies the world transformation matrix to the supplied node.
+
+    :type dagPath: Union[str, om.MObject, om.MDagPath]
+    :type worldMatrix: om.MMatrix
+    :keyword skipTranslateX: bool
+    :keyword skipTranslateY: bool
+    :keyword skipTranslateZ: bool
+    :keyword skipRotateX: bool
+    :keyword skipRotateY: bool
+    :keyword skipRotateZ: bool
+    :keyword preserveChildren: bool
+    :rtype: None
+    """
+
+    # Check argument types
+    #
+    dagPath = dagutils.getMDagPath(dagPath)
+
+    if not dagPath.isValid() or not isinstance(worldMatrix, om.MMatrix):
+
+        raise TypeError('applyWorldMatrix() expects a MDagPath and MMatrix!')
+
+    # Convert world matrix to parent space
+    #
+    parentInverseMatrix = dagPath.exclusiveMatrixInverse()
+    matrix = worldMatrix * parentInverseMatrix
+
+    applyTransformMatrix(dagPath, matrix)
+
+
 def copyTransform(*args, **kwargs):
     """
     Copies the transform matrix from one node to another.
@@ -161,107 +723,159 @@ def copyTransform(*args, **kwargs):
     applyTransformMatrix(copyTo, newMatrix, **kwargs)
 
 
-@undo.undo(name='Apply Transform Matrix')
-def applyTransformMatrix(*args, **kwargs):
+def freezeTransform(dagPath, includeTranslate=True, includeRotate=True, includeScale=False):
     """
-    Applies the transform matrix to the supplied node.
+    Pushes the transform's local matrix into the parent offset matrix.
 
-    :keyword skipTranslateX: bool
-    :keyword skipTranslateY: bool
-    :keyword skipTranslateZ: bool
-    :keyword skipRotateX: bool
-    :keyword skipRotateY: bool
-    :keyword skipRotateZ: bool
-    :keyword preserveChildren: bool
+    :type dagPath: Union[str, om.MObject, om.MDagPath]
+    :type includeTranslate: bool
+    :type includeRotate: bool
+    :type includeScale: bool
     :rtype: None
     """
 
-    # Check number of arguments
+    # Check if translation should be frozen
     #
-    numArgs = len(args)
+    if includeTranslate:
 
-    if numArgs != 2:
+        freezeTranslation(dagPath)
 
-        raise TypeError('applyTransformMatrix() expects 2 arguments (%s given)!' % numArgs)
-
-    # Check argument types
+    # Check if rotation should be frozen
     #
-    dagPath = dagutils.getMDagPath(args[0])
-    matrix = args[1]
+    if includeRotate:
 
-    if not dagPath.isValid() or not isinstance(matrix, om.MMatrix):
+        freezeRotation(dagPath)
 
-        raise TypeError('applyTransformMatrix() expects a dag path and matrix!')
-
-    # Check if children should be preserved
+    # Check if scale should be frozen
     #
-    partialPathName = dagPath.partialPathName()
+    if includeScale:
 
-    preserveChildren = kwargs.get('preserveChildren', False)
-    children = []
+        freezeScale(dagPath)
 
-    if preserveChildren:
 
-        children = snapshot(dagPath)
+def unfreezeTransform(dagPath):
+    """
+    Pushes the transform's parent offset matrix into the local matrix.
 
-    # Initialize transformation matrix
+    :type dagPath: Union[str, om.MObject, om.MDagPath]
+    :rtype: None
+    """
+
+    # Inspect dag path
     #
-    transformationMatrix = om.MTransformationMatrix(matrix)
+    dagPath = dagutils.getMDagPath(dagPath)
 
+    if not dagPath.isValid():
+
+        raise TypeError('unfreezeTransform() expects a valid dag path!')
+
+    # Get the offset parent matrix
+    #
+    fnTransform = om.MFnTransform(dagPath)
+    plug = fnTransform.findPlug('offsetParentMatrix', True)
+
+    offsetParentMatrixData = plug.asMObject()
+    offsetParentMatrix = getMatrixData(offsetParentMatrixData)
+
+    # Check for redundancy
+    #
+    if offsetParentMatrix == om.MMatrix.kIdentity:
+
+        log.debug('Transform has already been unfrozen: %s' % fnTransform.partialPathName())
+        return
+
+    # Get local matrix
+    # If there is transform data then we need to compound it
+    #
+    matrixData = fnTransform.findPlug('matrix', False).asMObject()
+    matrix = getMatrixData(matrixData)
+
+    if matrix != om.MMatrix.kIdentity:
+
+        offsetParentMatrix *= matrix
+
+    # Decompose offset parent matrix
+    #
     rotateOrder = getRotationOrder(dagPath)
-    transformationMatrix.reorderRotation(rotateOrder + 1)  # MTransformationMatrix rotation orders are off by 1...
+    translate, rotate, scale = decomposeTransformMatrix(offsetParentMatrix, rotateOrder=rotateOrder)
 
-    # Set translation
+    # Commit transform components to node
     #
-    translate = transformationMatrix.translation(om.MSpace.kTransform)
-    setTranslation(dagPath, translate, **kwargs)
+    setTranslation(dagPath, translate)
+    setEulerRotation(dagPath, rotate)
+    setScale(dagPath, scale)
 
-    log.debug('%s.translate = [%s, %s, %s]' % (partialPathName, translate.x, translate.y, translate.z))
-
-    # Check if dag path belongs to a joint
-    # If it does then we need to compensate for any joint orientations
+    # Reset offset parent matrix plug
     #
-    if dagPath.hasFn(om.MFn.kJoint):
+    plug.setMObject(identityMatrixData())
 
-        jointOrient = getJointOrient(dagPath)
-        transformationMatrix.rotateBy(jointOrient.inverse(), om.MSpace.kTransform)
 
-    # Set euler rotation
+def freezeTranslation(dagPath):
+    """
+    Freezes the translation values on the supplied node.
+
+    :type dagPath: Union[str, om.MObject, om.MDagPath]
+    :rtype: None
+    """
+
+    # Create translation matrix
     #
-    rotate = transformationMatrix.rotation(asQuaternion=False)
-    setEulerRotation(dagPath, rotate, **kwargs)
+    translateMatrix = createTranslateMatrix(dagPath)
+    resetTranslation(dagPath)
 
-    log.debug('%s.rotate = [%s, %s, %s]' % (partialPathName, rotate.x, rotate.y, rotate.z))
-
-    # Check if scale should be skipped
+    # Check if offset requires compounding
     #
-    scale = transformationMatrix.scale(om.MSpace.kTransform)
-    setScale(dagPath, scale, **kwargs)
-    
-    log.debug('%s.scale = [%s, %s, %s]' % (partialPathName, scale[0], scale[1], scale[2]))
+    offsetParentMatrix = getOffsetParentMatrix(dagPath)
 
-    # Check if child transforms should be reset
+    if offsetParentMatrix != om.MMatrix.kIdentity:
+
+        translateMatrix *= offsetParentMatrix
+
+    # Commit offset parent matrix to plug
     #
-    if preserveChildren:
-
-        assumeSnapshot(children)
+    updateOffsetParentMatrix(dagPath, translateMatrix)
 
 
-def freezeScale(dagPath, scale):
+def freezeRotation(dagPath):
+    """
+    Freezes the rotation values on the supplied node.
+
+    :type dagPath: Union[str, om.MObject, om.MDagPath]
+    :rtype: None
+    """
+
+    # Create rotation matrix
+    #
+    rotateMatrix = createRotationMatrix(dagPath)
+    resetEulerRotation(dagPath)
+
+    # Check if offset requires compounding
+    #
+    offsetParentMatrix = getOffsetParentMatrix(dagPath)
+
+    if offsetParentMatrix != om.MMatrix.kIdentity:
+
+        rotateMatrix *= offsetParentMatrix
+
+    # Commit offset parent matrix to plug
+    #
+    updateOffsetParentMatrix(dagPath, rotateMatrix)
+
+
+def freezeScale(dagPath):
     """
     Bakes the transform's scale matrix into all of the transform's child descendants.
     Unlike translation and rotation, scale cannot be unfrozen.
     Technically we could push the scale into the offsetParentMatrix but scale loves to break shit!
 
     :type dagPath: om.MDagPath
-    :type scale: Union[float, list]
     :rtype: None
     """
 
     # Iterate through all descendants
     #
     dagPath = dagutils.getMDagPath(dagPath)
-    scaleMatrix = createScaleMatrix(scale)
+    scaleMatrix = createScaleMatrix(dagPath)
 
     for child in dagutils.iterDescendants(dagPath):
 
@@ -332,7 +946,6 @@ def freezeScale(dagPath, scale):
             controlPoints = fnMesh.getPoints()
 
             for i in range(fnMesh.numVertices):
-                
                 controlPoints[i] *= scaleMatrix
 
             fnMesh.setPoints(controlPoints)
@@ -345,147 +958,6 @@ def freezeScale(dagPath, scale):
     # Reset scale on transform
     #
     resetScale(dagPath)
-
-
-def freezeTransform(dagPath, includeTranslate=True, includeRotate=True, includeScale=True):
-    """
-    Pushes the transform's local matrix into the parent offset matrix.
-    Scale will not be pushed but instead baked into the child nodes!
-
-    :type dagPath: Union[str, om.MObject, om.MDagPath]
-    :type includeTranslate: bool
-    :type includeRotate: bool
-    :type includeScale: bool
-    :rtype: None
-    """
-
-    # Inspect dag path
-    #
-    dagPath = dagutils.getMDagPath(dagPath)
-
-    if not dagPath.isValid():
-
-        raise TypeError('freezeTransform() expects a valid dag path!')
-
-    # Check if transform has already been frozen
-    #
-    fnTransform = om.MFnTransform(dagPath)
-
-    matrixData = fnTransform.findPlug('matrix', False).asMObject()
-    matrix = getMatrixData(matrixData)
-
-    if matrix == om.MMatrix.kIdentity:
-
-        log.debug('Transform has already been frozen: %s' % fnTransform.partialPathName())
-        return
-
-    # Get translation matrix
-    #
-    translateMatrix = om.MMatrix.kIdentity
-
-    if includeTranslate:
-
-        translation = getTranslation(dagPath)
-        translateMatrix = createTranslateMatrix(translation)
-
-        resetTranslation(dagPath)
-
-    # Get rotation matrix
-    #
-    rotateMatrix = om.MMatrix.kIdentity
-
-    if includeRotate:
-
-        eulerRotation = getEulerRotation(dagPath)
-        rotateMatrix = createRotationMatrix(eulerRotation)
-
-        resetEulerRotation(dagPath)
-
-    # Get scale matrix
-    #
-    if includeScale:
-
-        scale = getScale(dagPath)
-        freezeScale(dagPath, scale)
-
-    # Compose local matrix
-    #
-    matrix = rotateMatrix * translateMatrix
-
-    # Get parent offset matrix
-    #
-    plug = fnTransform.findPlug('offsetParentMatrix', True)
-    offsetParentMatrixData = plug.asMObject()
-
-    # Check if offset requires compounding
-    #
-    offsetParentMatrix = getMatrixData(offsetParentMatrixData)
-
-    if offsetParentMatrix != om.MMatrix.kIdentity:
-
-        matrix *= offsetParentMatrix
-
-    # Commit offset parent matrix to plug
-    #
-    matrixData = createMatrixData(matrix)
-    plug.setMObject(matrixData)
-
-
-def unfreezeTransform(dagPath):
-    """
-    Pushes the transform's parent offset matrix into the local matrix.
-
-    :type dagPath: Union[str, om.MObject, om.MDagPath]
-    :rtype: None
-    """
-
-    # Inspect dag path
-    #
-    dagPath = dagutils.getMDagPath(dagPath)
-
-    if not dagPath.isValid():
-
-        raise TypeError('unfreezeTransform() expects a valid dag path!')
-
-    # Get the offset parent matrix
-    #
-    fnTransform = om.MFnTransform(dagPath)
-    plug = fnTransform.findPlug('offsetParentMatrix', True)
-
-    offsetParentMatrixData = plug.asMObject()
-    offsetParentMatrix = getMatrixData(offsetParentMatrixData)
-
-    # Check for redundancy
-    #
-    if offsetParentMatrix == om.MMatrix.kIdentity:
-
-        log.debug('Transform has already been unfrozen: %s' % fnTransform.partialPathName())
-        return
-
-    # Get local matrix
-    # If there is transform data then we need to compound it
-    #
-    matrixData = fnTransform.findPlug('matrix', False).asMObject()
-    matrix = getMatrixData(matrixData)
-
-    if matrix != om.MMatrix.kIdentity:
-
-        offsetParentMatrix *= matrix
-
-    # Decompose offset parent matrix
-    #
-    rotateOrder = getRotationOrder(dagPath)
-    translate, rotate, scale = decomposeMatrix(offsetParentMatrix, rotateOrder=rotateOrder)
-
-    # Commit transform components to node
-    #
-    setTranslation(dagPath, translate)
-    setEulerRotation(dagPath, rotate)
-    setScale(dagPath, scale)
-
-    # Reset offset parent matrix plug
-    #
-    plug.setMObject(identityMatrixData())
 
 
 def matrixToList(matrix):
@@ -552,528 +1024,89 @@ def listToMatrix(matrixList):
         raise TypeError('listToMatrix() expects either 4 or 16 items (%s given)!' % numItems)
 
 
-def getTranslation(dagPath, space=om.MSpace.kTransform, context=om.MDGContext.kNormal):
+def getMatrix(dagPath, context=om.MDGContext.kNormal):
     """
-    Returns the translation component from the supplied node.
+    Returns the transform matrix for the given node.
 
     :type dagPath: Union[str, om.MObject, om.MDagPath]
-    :type space: int
     :type context: om.MDGContext
-    :rtype: om.MVector
+    :rtype: om.MMatrix
     """
 
-    # Inspect dag path
+    # Get matrix plug
     #
     dagPath = dagutils.getMDagPath(dagPath)
+    fnTransform = om.MFnTransform(dagPath)
 
-    if not dagPath.isValid():
+    plug = fnTransform.findPlug('matrix', True)
+    matrixData = plug.asMObject(context=context)
 
-        raise TypeError('getTranslation() expects a valid dag path!')
-
-    # Inspect transform space
+    # Convert matrix data
     #
-    if space == om.MSpace.kWorld:
+    return getMatrixData(matrixData)
 
-        return decomposeMatrix(dagPath.inclusiveMatrix())[0]
+
+def getOffsetParentMatrix(dagPath, context=om.MDGContext.kNormal):
+    """
+    Returns the offset parent matrix for the supplied node.
+
+    :type dagPath: Union[str, om.MObject, om.MDagPath]
+    :type context: om.MDGContext
+    :rtype: om.MMatrix
+    """
+
+    # Get offset parent matrix plug
+    #
+    dagPath = dagutils.getMDagPath(dagPath)
+    fnTransform = om.MFnTransform(dagPath)
+
+    plug = fnTransform.findPlug('offsetParentMatrix', True)
+    offsetParentMatrixData = plug.asMObject(context=context)
+
+    # Convert matrix data
+    #
+    return getMatrixData(offsetParentMatrixData)
+
+
+def updateOffsetParentMatrix(dagPath, offsetParentMatrix):
+    """
+    Updates the offset parent matrix for the supplied node.
+
+    :type dagPath: Union[str, om.MObject, om.MDagPath]
+    :type offsetParentMatrix: om.MMatrix
+    :rtype: None
+    """
+
+    # Get offset parent matrix plug
+    #
+    dagPath = dagutils.getMDagPath(dagPath)
+    fnTransform = om.MFnTransform(dagPath)
+
+    plug = fnTransform.findPlug('offsetParentMatrix', True)
+    offsetParentMatrixData = createMatrixData(offsetParentMatrix)
+
+    # Assign matrix data to plug
+    #
+    plug.setMObject(offsetParentMatrixData)
+
+
+def getMatrixData(matrixData):
+    """
+    Converts the given MObject to an MMatrix.
+
+    :type matrixData: om.MObject
+    :rtype: om.MMatrix
+    """
+
+    # Check for redundancy
+    #
+    if isinstance(matrixData, om.MMatrix):
+
+        return matrixData
 
     else:
 
-        # Get translate values from plugs
-        #
-        fnTransform = om.MFnTransform(dagPath)
-
-        translation = om.MVector(
-            fnTransform.findPlug('translateX', False).asFloat(context=context),
-            fnTransform.findPlug('translateY', False).asFloat(context=context),
-            fnTransform.findPlug('translateZ', False).asFloat(context=context)
-        )
-
-        return translation
-
-
-def setTranslation(dagPath, translation, **kwargs):
-    """
-    Sets the translation on the supplied transform node.
-
-    :type dagPath: om.MDagPath
-    :type translation: om.MVector
-    :keyword space: int
-    :keyword skipTranslate: bool
-    :keyword skipTranslateX: bool
-    :keyword skipTranslateY: bool
-    :keyword skipTranslateZ: bool
-    :rtype: None
-    """
-
-    # Inspect dag path
-    #
-    dagPath = dagutils.getMDagPath(dagPath)
-
-    if not dagPath.isValid():
-
-        raise TypeError('setTranslation() expects a valid dag path!')
-
-    # Inspect transform space
-    #
-    space = kwargs.get('space', om.MSpace.kTransform)
-
-    if space == om.MSpace.kWorld:
-
-        translation *= dagPath.exclusiveMatrixInverse()
-
-    # Initialize transform function set
-    #
-    fnTransform = om.MFnTransform(dagPath)
-    skipTranslate = kwargs.get('skipTranslate', False)
-
-    # Check if translateX can be set
-    #
-    skipTranslateX = kwargs.get('skipTranslateX', skipTranslate)
-    translateXPlug = fnTransform.findPlug('translateX', True)
-
-    if not skipTranslateX and not translateXPlug.isLocked:
-
-        translateXPlug.setDouble(translation.x)
-
-    # Check if translateY can be set
-    #
-    skipTranslateY = kwargs.get('skipTranslateY', skipTranslate)
-    translateYPlug = fnTransform.findPlug('translateY', True)
-
-    if not skipTranslateY and not translateYPlug.isLocked:
-
-        translateYPlug.setDouble(translation.y)
-
-    # Check if translateZ can be set
-    #
-    skipTranslateZ = kwargs.get('skipTranslateZ', skipTranslate)
-    translateZPlug = fnTransform.findPlug('translateZ', True)
-
-    if not skipTranslateZ and not translateZPlug.isLocked:
-
-        translateZPlug.setDouble(translation.z)
-
-
-def resetTranslation(dagPath):
-    """
-    Resets the transform's translation component.
-
-    :type dagPath: om.MDagPath
-    :rtype: None
-    """
-
-    setTranslation(dagPath, om.MVector.kZeroVector)
-
-
-def getRotationOrder(dagPath, context=om.MDGContext.kNormal):
-    """
-    Retrieves the rotation order from the supplied node.
-
-    :type dagPath: Union[str, om.MObject, om.MDagPath]
-    :type context: om.MDGContext
-    :rtype: int
-    """
-
-    # Inspect dag path
-    #
-    dagPath = dagutils.getMDagPath(dagPath)
-
-    if not dagPath.isValid():
-
-        raise TypeError('getEulerRotation() expects a valid dag path!')
-
-    # Get euler values from plugs
-    #
-    fnTransform = om.MFnTransform(dagPath)
-    rotateOrder = fnTransform.findPlug('rotateOrder', False).asInt(context=context)
-
-    return rotateOrder
-
-
-def getEulerRotation(dagPath, context=om.MDGContext.kNormal):
-    """
-    Returns the euler rotation component from the supplied node.
-
-    :type dagPath: Union[str, om.MObject, om.MDagPath]
-    :type context: om.MDGContext
-    :rtype: om.MEulerRotation
-    """
-
-    # Inspect dag path
-    #
-    dagPath = dagutils.getMDagPath(dagPath)
-
-    if not dagPath.isValid():
-
-        raise TypeError('getEulerRotation() expects a valid dag path!')
-
-    # Get euler values from plugs
-    #
-    fnTransform = om.MFnTransform(dagPath)
-    rotateOrder = getRotationOrder(dagPath)
-
-    return om.MEulerRotation(
-        fnTransform.findPlug('rotateX', False).asMAngle(context=context).asRadians(),
-        fnTransform.findPlug('rotateY', False).asMAngle(context=context).asRadians(),
-        fnTransform.findPlug('rotateZ', False).asMAngle(context=context).asRadians(),
-        order=rotateOrder
-    )
-
-
-def setEulerRotation(dagPath, rotation, **kwargs):
-    """
-    Sets the euler rotation on the supplied transform node.
-
-    :type dagPath: om.MDagPath
-    :type rotation: om.MEulerRotation
-    :keyword skipRotate: bool
-    :keyword skipRotateX: bool
-    :keyword skipRotateY: bool
-    :keyword skipRotateZ: bool
-    :rtype: None
-    """
-
-    # Inspect dag path
-    #
-    dagPath = dagutils.getMDagPath(dagPath)
-
-    if not dagPath.isValid():
-
-        raise TypeError('setEulerRotation() expects a valid dag path!')
-
-    # Initialize transform function set
-    #
-    fnTransform = om.MFnTransform(dagPath)
-    skipRotate = kwargs.get('skipRotate', False)
-
-    # Check if rotateX can be set
-    #
-    skipRotateX = kwargs.get('skipRotateX', skipRotate)
-    rotateXPlug = fnTransform.findPlug('rotateX', True)
-
-    if not skipRotateX and not rotateXPlug.isLocked:
-
-        rotateXPlug.setMAngle(om.MAngle(rotation.x, om.MAngle.kRadians))
-
-    # Check if rotateY can be set
-    #
-    skipRotateY = kwargs.get('skipRotateY', skipRotate)
-    rotateYPlug = fnTransform.findPlug('rotateY', True)
-
-    if not skipRotateY and not rotateYPlug.isLocked:
-
-        rotateYPlug.setMAngle(om.MAngle(rotation.y, om.MAngle.kRadians))
-
-    # Check if rotateZ can be set
-    #
-    skipRotateZ = kwargs.get('skipRotateZ', skipRotate)
-    rotateZPlug = fnTransform.findPlug('rotateZ', True)
-
-    if not skipRotateZ and not rotateZPlug.isLocked:
-
-        rotateZPlug.setMAngle(om.MAngle(rotation.z, om.MAngle.kRadians))
-
-
-def resetEulerRotation(dagPath):
-    """
-    Resets the transform's rotation component.
-
-    :type dagPath: om.MDagPath
-    :rtype: None
-    """
-
-    setEulerRotation(dagPath, om.MEulerRotation.kIdentity)
-
-
-def getJointOrient(dagPath, context=om.MDGContext.kNormal):
-    """
-    Returns the joint orient component from the supplied node.
-    If the node is not derived from a joint then a zero euler rotation is returned.
-
-    :type dagPath: Union[str, om.MObject, om.MDagPath]
-    :type context: om.MDGContext
-    :rtype: om.MEulerRotation
-    """
-
-    # Inspect dag path
-    #
-    dagPath = dagutils.getMDagPath(dagPath)
-
-    if not dagPath.isValid():
-
-        raise TypeError('getJointOrient() expects a valid dag path!')
-
-    # Get euler values from plugs
-    #
-    fnTransform = om.MFnTransform(dagPath)
-    jointOrient = om.MEulerRotation()
-
-    if dagPath.hasFn(om.MFn.kJoint):
-
-        return om.MEulerRotation(
-            fnTransform.findPlug('jointOrientX', False).asMAngle(context=context).asRadians(),
-            fnTransform.findPlug('jointOrientY', False).asMAngle(context=context).asRadians(),
-            fnTransform.findPlug('jointOrientZ', False).asMAngle(context=context).asRadians()
-        )
-
-    return jointOrient
-
-
-def setJointOrient(dagPath, jointOrient):
-    """
-    Updates the joint orient component for the supplied joint.
-    If the node is not derived from a joint then no changes are made.
-
-    :type dagPath: om.MDagPath
-    :type jointOrient: om.MEulerRotation
-    :rtype: None
-    """
-
-    # Inspect dag path
-    #
-    dagPath = dagutils.getMDagPath(dagPath)
-
-    if not dagPath.isValid():
-
-        raise TypeError('setJointOrient() expects a valid dag path!')
-
-    # Update joint orient plugs
-    #
-    fnTransform = om.MFnTransform(dagPath)
-
-    if dagPath.hasFn(om.MFn.kJoint):
-
-        fnTransform.findPlug('jointOrientX', False).setMAngle(om.MAngle(jointOrient.x, om.MAngle.kRadians))
-        fnTransform.findPlug('jointOrientY', False).setMAngle(om.MAngle(jointOrient.y, om.MAngle.kRadians))
-        fnTransform.findPlug('jointOrientZ', False).setMAngle(om.MAngle(jointOrient.z, om.MAngle.kRadians))
-
-
-def resetJointOrient(dagPath):
-    """
-    Resets the joint orient component for the supplied joint.
-
-    :type dagPath: om.MDagPath
-    :rtype: None
-    """
-
-    setJointOrient(dagPath, om.MEulerRotation.kIdentity)
-
-
-def getScale(dagPath, context=om.MDGContext.kNormal):
-    """
-    Method used to retrieve the scale component from the supplied node.
-
-    :type dagPath: Union[str, om.MObject, om.MDagPath]
-    :type context: om.MDGContext
-    :rtype: list[float, float, float]
-    """
-
-    # Inspect dag path
-    #
-    dagPath = dagutils.getMDagPath(dagPath)
-
-    if not dagPath.isValid():
-
-        raise TypeError('getScale() expects a valid dag path!')
-
-    # Get scale values from plugs
-    #
-    fnTransform = om.MFnTransform(dagPath)
-
-    return [
-        fnTransform.findPlug('scaleX', False).asFloat(context=context),
-        fnTransform.findPlug('scaleY', False).asFloat(context=context),
-        fnTransform.findPlug('scaleZ', False).asFloat(context=context)
-    ]
-
-
-def setScale(dagPath, scale, **kwargs):
-    """
-    Sets the scale on the supplied transform node.
-
-    :type dagPath: om.MDagPath
-    :type scale: list[float, float, float]
-    :keyword skipScale: bool
-    :keyword skipScaleX: bool
-    :keyword skipScaleY: bool
-    :keyword skipScaleZ: bool
-    :rtype: None
-    """
-
-    # Inspect dag path
-    #
-    dagPath = dagutils.getMDagPath(dagPath)
-
-    if not dagPath.isValid():
-
-        raise TypeError('setScale() expects a valid dag path!')
-
-    # Initialize transform function set
-    #
-    fnTransform = om.MFnTransform(dagPath)
-    skipScale = kwargs.get('skipScale', False)
-
-    # Check if scaleX can be set
-    #
-    skipScaleX = kwargs.get('skipScaleX', skipScale)
-    scaleXPlug = fnTransform.findPlug('scaleX', True)
-
-    if not skipScaleX and not scaleXPlug.isLocked:
-
-        scaleXPlug.setDouble(scale[0])
-
-    # Check if scaleY can be set
-    #
-    skipScaleY = kwargs.get('skipScaleY', skipScale)
-    scaleYPlug = fnTransform.findPlug('scaleY', True)
-
-    if not skipScaleY and not scaleYPlug.isLocked:
-
-        scaleYPlug.setDouble(scale[1])
-
-    # Check if scaleZ can be set
-    #
-    skipScaleZ = kwargs.get('skipScaleZ', skipScale)
-    scaleZPlug = fnTransform.findPlug('scaleZ', True)
-
-    if not skipScaleZ and not scaleZPlug.isLocked:
-
-        scaleZPlug.setDouble(scale[2])
-
-
-def resetScale(dagPath):
-    """
-    Resets the transform's scale component.
-
-    :type dagPath: om.MDagPath
-    :rtype: None
-    """
-
-    setScale(dagPath, [1.0, 1.0, 1.0])
-
-
-def resetPivots(dagPath):
-    """
-    Resets all of the pivot components for the given dag path.
-
-    :type dagPath: om.MDagPath
-    :rtype: None
-    """
-
-    # Inspect dag path
-    #
-    dagPath = dagutils.getMDagPath(dagPath)
-
-    if not dagPath.isValid():
-
-        raise TypeError('resetPivot() expects a valid dag path!')
-
-    # Initialize function set
-    #
-    fnTransform = om.MFnTransform(dagPath)
-
-    # Reset rotation pivot
-    #
-    fnTransform.setRotatePivot(om.MPoint.kOrigin, om.MSpace.kTransform, False)
-    fnTransform.setRotatePivotTranslation(om.MVector.kZeroVector, om.MSpace.kTransform)
-
-    # Reset scale pivot
-    #
-    fnTransform.setScalePivot(om.MPoint.kOrigin, om.MSpace.kTransform, False)
-    fnTransform.setScalePivotTranslation(om.MVector.kZeroVector, om.MSpace.kTransform)
-
-
-def getBoundingBox(dagPath):
-    """
-    Returns the bounding box for the given dag path.
-
-    :type dagPath: Union[str, om.MObject, om.MDagPath]
-    :rtype: om.MBoundingBox
-    """
-
-    # Inspect dag path
-    #
-    dagPath = dagutils.getMDagPath(dagPath)
-
-    if not dagPath.isValid():
-
-        raise TypeError('getBoundingBox() expects a valid dag path!')
-
-    # Return bounding box
-    #
-    return om.MFnDagNode(dagPath).boundingBox
-
-
-def getMeshComponentCenter(dagPath, component, space=om.MSpace.kTransform):
-    """
-    Returns the averaged center of all of the supplied mesh components.
-    TODO: Implement support for face-vertices!
-
-    :type dagPath: om.MDagPath
-    :type component: om.MObject
-    :type space: int
-    :rtype: om.MPoint
-    """
-
-    # Inspect dag path
-    #
-    dagPath = dagutils.getMDagPath(dagPath)
-
-    if not dagPath.isValid():
-
-        raise TypeError('getMeshComponentCenter() expects a valid dag path!')
-
-    # Inspect component type
-    #
-    center = om.MPoint()
-
-    if component.hasFn(om.MFn.kMeshVertComponent):
-
-        # Iterate through vertices
-        #
-        iterVertices = om.MItMeshVertex(dagPath, component)
-        weight = 1.0 / iterVertices.count()
-
-        while not iterVertices.isDone():
-
-            center += iterVertices.position() * weight
-            iterVertices.next()
-
-    elif component.hasFn(om.MFn.kMeshEdgeComponent):
-
-        # Iterate through edges
-        #
-        iterEdges = om.MItMeshEdge(dagPath, component)
-        weight = 1.0 / iterEdges.count()
-
-        while not iterEdges.isDone():
-
-            center += iterEdges.center() * weight
-            iterEdges.next()
-
-    elif component.hasFn(om.MFn.kMeshPolygonComponent):
-
-        # Iterate through polygons
-        #
-        iterPolygons = om.MItMeshPolygon(dagPath, component)
-        weight = 1.0 / iterPolygons.count()
-
-        while not iterPolygons.isDone():
-
-            center += iterPolygons.center() * weight
-            iterPolygons.next()
-
-    else:
-
-        log.warning('getMeshComponentCenter() expects a valid component type (%s given)' % component.apiTypeStr)
-
-    # Inspect transform space
-    #
-    if space == om.MSpace.kWorld:
-
-        center *= dagPath.exclusiveMatrix()
-
-    return center
+        return om.MFnMatrixData(matrixData).matrix()
 
 
 def createMatrixData(matrix):
@@ -1102,25 +1135,6 @@ def createMatrixData(matrix):
     return matrixData
 
 
-def getMatrixData(matrixData):
-    """
-    Converts the given MObject to an MMatrix.
-
-    :type matrixData: om.MObject
-    :rtype: om.MMatrix
-    """
-
-    # Check for redundancy
-    #
-    if isinstance(matrixData, om.MMatrix):
-
-        return matrixData
-
-    else:
-
-        return om.MFnMatrixData(matrixData).matrix()
-
-
 def identityMatrixData():
     """
     Returns an identity matrix in the form of an MObject.
@@ -1130,113 +1144,6 @@ def identityMatrixData():
     """
 
     return createMatrixData(om.MMatrix.kIdentity)
-
-
-def decomposeNode(node, space=om.MSpace.kTransform):
-    """
-    Decomposes a node's transformation matrix into separate translate, rotate and scale components.
-
-    :type node: Union[str, om.MObject, om.MDagPath]
-    :type space: int
-    :rtype: om.MVector, om.MEulerRotation, list[float, float, float]
-    """
-
-    translation = getTranslation(node, space=space)
-    rotation = getEulerRotation(node)
-    scale = getScale(node)
-
-    return translation, rotation, scale
-
-
-def decomposeMatrix(matrix, rotateOrder=om.MEulerRotation.kXYZ):
-    """
-    Breaks apart the matrix into its individual translate, rotate and scale components.
-    A rotation order must be supplied in order to be resolved correctly.
-
-    :type matrix: Union[str, list, tuple, om.MMatrix, om.MObject]
-    :type rotateOrder: int
-    :rtype: om.MVector, om.MEulerRotation, list[float, float, float]
-    """
-
-    # Check value type
-    #
-    if isinstance(matrix, om.MMatrix):
-
-        # Reorder rotations
-        #
-        transformationMatrix = om.MTransformationMatrix(matrix)
-        transformationMatrix.reorderRotation(TRANSFORM_ROTATE_ORDER[rotateOrder])
-
-        # Get translate, rotate, and scale components
-        #
-        translation = transformationMatrix.translation(om.MSpace.kTransform)
-        rotation = transformationMatrix.rotation(asQuaternion=False)
-        scale = transformationMatrix.scale(om.MSpace.kTransform)
-
-        return translation, rotation, scale
-
-    elif isinstance(matrix, (list, tuple)):
-
-        return decomposeMatrix(listToMatrix(matrix), rotateOrder=rotateOrder)
-
-    elif isinstance(matrix, om.MObject):
-
-        return decomposeMatrix(getMatrixData(matrix), rotateOrder=rotateOrder)
-
-    else:
-
-        raise TypeError('decomposeMatrix() expects an MMatrix (%s given)!' % type(matrix).__name__)
-
-
-def getAxisVectors(value, normalize=False):
-    """
-    Breaks apart value into axis vectors and a position.
-
-    :type value: Union[str, list, tuple, om.MTransformationMatrix, om.MFnMatrixData, om.MMatrix]
-    :type normalize: bool
-    :rtype: om.MVector, om.MVector, om.MVector, om.MPoint
-    """
-
-    # Check value type
-    #
-    if isinstance(value, om.MMatrix):
-
-        # Extract rows
-        #
-        x = om.MVector([value.getElement(0, 0), value.getElement(0, 1), value.getElement(0, 2)])
-        y = om.MVector([value.getElement(1, 0), value.getElement(1, 1), value.getElement(1, 2)])
-        z = om.MVector([value.getElement(2, 0), value.getElement(2, 1), value.getElement(2, 2)])
-        p = om.MPoint([value.getElement(3, 0), value.getElement(3, 1), value.getElement(3, 2), value.getElement(3, 3)])
-
-        # Check if vectors should be normalized
-        #
-        if normalize:
-
-            return x.normal(), y.normal(), z.normal(), p
-
-        else:
-
-            return x, y, z, p
-
-    if isinstance(value, string_types):
-
-        return getAxisVectors(om.MMatrix(mc.getAttr('%s.worldMatrix[0]' % value)))
-
-    elif isinstance(value, (list, tuple)):
-
-        return getAxisVectors(om.MMatrix(value))
-
-    elif isinstance(value, om.MTransformationMatrix):
-
-        return getAxisVectors(value.asMatrix())
-
-    elif isinstance(value, om.MFnMatrixData):
-
-        return getAxisVectors(value.matrix())
-
-    else:
-
-        raise ValueError('getAxisVectors() expects an MMatrix (%s given)!' % type(value).__name__)
 
 
 def createTranslateMatrix(value):
@@ -1274,7 +1181,7 @@ def createTranslateMatrix(value):
 
         return createTranslateMatrix(value.asMatrix())
 
-    elif isinstance(value, string_types):
+    elif isinstance(value, string_types) or isinstance(value, (om.MObject, om.MDagPath)):
 
         return createTranslateMatrix(getTranslation(value))
 
@@ -1386,77 +1293,13 @@ def createRotationMatrix(value):
 
         return createRotationMatrix(om.MEulerRotation([math.radians(x) for x in value], EULER_ROTATE_ORDER[0]))
 
-    elif isinstance(value, string_types):
+    elif isinstance(value, string_types) or isinstance(value, (om.MObject, om.MDagPath)):
 
         return createRotationMatrix(getEulerRotation(value))
 
     else:
 
         raise TypeError('createRotationMatrix() expects an MEulerRotation (%s given)!' % type(value).__name__)
-
-
-def createAxisMatrix(axis):
-    """
-    Creates a rotation matrix to get to the given axis vector.
-
-    :type axis: om.MVector
-    :rtype: om.MMatrix
-    """
-
-    return om.MVector.kXaxisVector.rotateTo(axis).asMatrix()
-
-
-def createScaleMatrix(value):
-    """
-    Creates a scale matrix based on the supplied value.
-
-    :type value: Union[str, list, tuple, om.MMatrix, om.MVector]
-    :rtype: om.MMatrix
-    """
-
-    # Check value type
-    #
-    if isinstance(value, (list, tuple)):
-
-        # Check number of items
-        #
-        numItems = len(value)
-
-        if numItems != 3:
-
-            raise TypeError('createScaleMatrix() expects 3 values (%s given)!' % numItems)
-
-        # Compose scale matrix
-        #
-        return om.MMatrix(
-            [
-                (value[0], 0.0, 0.0, 0.0),
-                (0.0, value[1], 0.0, 0.0),
-                (0.0, 0.0, value[2], 0.0),
-                (0.0, 0.0, 0.0, 1.0)
-            ]
-        )
-
-    elif isinstance(value, om.MMatrix):
-
-        x, y, z, p = getAxisVectors(value)
-        return createScaleMatrix([x.length(), y.length(), z.length()])
-
-    elif isinstance(value, om.MTransformationMatrix):
-
-        return createScaleMatrix(value.asMatrix())
-
-    elif isinstance(value, string_types):
-
-        return createScaleMatrix(getScale(value))
-
-    elif isinstance(value, (int, float)):
-
-        return createScaleMatrix([value, value, value])
-
-    else:
-
-        raise TypeError('createScaleMatrix() expects a list (%s given)!' % type(value).__name__)
 
 
 def createAimMatrix(forwardAxis, forwardVector, upAxis, upVector, startPoint=om.MPoint.kOrigin, forwardAxisSign=1, upAxisSign=1):
@@ -1553,3 +1396,256 @@ def createAimMatrix(forwardAxis, forwardVector, upAxis, upVector, startPoint=om.
             (startPoint.x, startPoint.y, startPoint.z, 1.0)
         ]
     )
+
+
+def createAxisMatrix(axis):
+    """
+    Creates a rotation matrix to get to the given axis vector.
+
+    :type axis: om.MVector
+    :rtype: om.MMatrix
+    """
+
+    return om.MVector.kXaxisVector.rotateTo(axis).asMatrix()
+
+
+def createScaleMatrix(value):
+    """
+    Creates a scale matrix based on the supplied value.
+
+    :type value: Union[str, list, tuple, om.MMatrix, om.MVector]
+    :rtype: om.MMatrix
+    """
+
+    # Check value type
+    #
+    if isinstance(value, (list, tuple)):
+
+        # Check number of items
+        #
+        numItems = len(value)
+
+        if numItems != 3:
+
+            raise TypeError('createScaleMatrix() expects 3 values (%s given)!' % numItems)
+
+        # Compose scale matrix
+        #
+        return om.MMatrix(
+            [
+                (value[0], 0.0, 0.0, 0.0),
+                (0.0, value[1], 0.0, 0.0),
+                (0.0, 0.0, value[2], 0.0),
+                (0.0, 0.0, 0.0, 1.0)
+            ]
+        )
+
+    elif isinstance(value, om.MMatrix):
+
+        x, y, z, p = decomposeMatrix(value)
+        return createScaleMatrix([x.length(), y.length(), z.length()])
+
+    elif isinstance(value, om.MTransformationMatrix):
+
+        return createScaleMatrix(value.asMatrix())
+
+    elif isinstance(value, string_types) or isinstance(value, (om.MObject, om.MDagPath)):
+
+        return createScaleMatrix(getScale(value))
+
+    elif isinstance(value, (int, float)):
+
+        return createScaleMatrix([value, value, value])
+
+    else:
+
+        raise TypeError('createScaleMatrix() expects a list (%s given)!' % type(value).__name__)
+
+
+def decomposeTransformNode(dagPath, space=om.MSpace.kTransform):
+    """
+    Decomposes a node's transformation matrix into separate translate, rotate and scale components.
+
+    :type dagPath: Union[str, om.MObject, om.MDagPath]
+    :type space: int
+    :rtype: om.MVector, om.MEulerRotation, list[float, float, float]
+    """
+
+    dagPath = dagutils.getMDagPath(dagPath)
+    rotateOrder = getRotationOrder(dagPath)
+
+    if space == om.MSpace.kWorld:
+
+        worldMatrix = dagPath.inclusiveMatrix()
+        return decomposeTransformMatrix(worldMatrix, rotateOrder=rotateOrder)
+
+    else:
+
+        translation = getTranslation(dagPath)
+        rotation = getEulerRotation(dagPath)
+        scale = getScale(dagPath)
+
+        return translation, rotation, scale
+
+
+def decomposeTransformMatrix(matrix, rotateOrder=om.MEulerRotation.kXYZ):
+    """
+    Breaks apart the matrix into its individual translate, rotate and scale components.
+    A rotation order must be supplied in order to be resolved correctly.
+
+    :type matrix: Union[str, list, tuple, om.MMatrix, om.MObject]
+    :type rotateOrder: int
+    :rtype: om.MVector, om.MEulerRotation, list[float, float, float]
+    """
+
+    # Check value type
+    #
+    if isinstance(matrix, om.MMatrix):
+
+        # Reorder rotations
+        #
+        transformationMatrix = om.MTransformationMatrix(matrix)
+        transformationMatrix.reorderRotation(TRANSFORM_ROTATE_ORDER[rotateOrder])
+
+        # Get translate, rotate, and scale components
+        #
+        translation = transformationMatrix.translation(om.MSpace.kTransform)
+        rotation = transformationMatrix.rotation(asQuaternion=False)
+        scale = transformationMatrix.scale(om.MSpace.kTransform)
+
+        return translation, rotation, scale
+
+    elif isinstance(matrix, (list, tuple)):
+
+        return decomposeTransformMatrix(listToMatrix(matrix), rotateOrder=rotateOrder)
+
+    elif isinstance(matrix, om.MObject):
+
+        return decomposeTransformMatrix(getMatrixData(matrix), rotateOrder=rotateOrder)
+
+    else:
+
+        raise TypeError('decomposeMatrix() expects an MMatrix (%s given)!' % type(matrix).__name__)
+
+
+def decomposeMatrix(value, normalize=False):
+    """
+    Breaks apart value into axis vectors and a position.
+
+    :type value: Union[str, list, tuple, om.MTransformationMatrix, om.MFnMatrixData, om.MMatrix]
+    :type normalize: bool
+    :rtype: om.MVector, om.MVector, om.MVector, om.MPoint
+    """
+
+    # Check value type
+    #
+    if isinstance(value, om.MMatrix):
+
+        # Extract rows
+        #
+        x = om.MVector([value.getElement(0, 0), value.getElement(0, 1), value.getElement(0, 2)])
+        y = om.MVector([value.getElement(1, 0), value.getElement(1, 1), value.getElement(1, 2)])
+        z = om.MVector([value.getElement(2, 0), value.getElement(2, 1), value.getElement(2, 2)])
+        p = om.MPoint([value.getElement(3, 0), value.getElement(3, 1), value.getElement(3, 2), value.getElement(3, 3)])
+
+        # Check if vectors should be normalized
+        #
+        if normalize:
+
+            return x.normal(), y.normal(), z.normal(), p
+
+        else:
+
+            return x, y, z, p
+
+    if isinstance(value, string_types):
+
+        return decomposeMatrix(om.MMatrix(mc.getAttr('%s.worldMatrix[0]' % value)))
+
+    elif isinstance(value, (list, tuple)):
+
+        return decomposeMatrix(om.MMatrix(value))
+
+    elif isinstance(value, om.MTransformationMatrix):
+
+        return decomposeMatrix(value.asMatrix())
+
+    elif isinstance(value, om.MFnMatrixData):
+
+        return decomposeMatrix(value.matrix())
+
+    else:
+
+        raise ValueError('getAxisVectors() expects an MMatrix (%s given)!' % type(value).__name__)
+
+
+def getMeshComponentCenter(dagPath, component, space=om.MSpace.kTransform):
+    """
+    Returns the averaged center of all of the supplied mesh components.
+    TODO: Implement support for face-vertices!
+
+    :type dagPath: om.MDagPath
+    :type component: om.MObject
+    :type space: int
+    :rtype: om.MPoint
+    """
+
+    # Inspect dag path
+    #
+    dagPath = dagutils.getMDagPath(dagPath)
+
+    if not dagPath.isValid():
+
+        raise TypeError('getMeshComponentCenter() expects a valid dag path!')
+
+    # Inspect component type
+    #
+    center = om.MPoint()
+
+    if component.hasFn(om.MFn.kMeshVertComponent):
+
+        # Iterate through vertices
+        #
+        iterVertices = om.MItMeshVertex(dagPath, component)
+        weight = 1.0 / iterVertices.count()
+
+        while not iterVertices.isDone():
+
+            center += iterVertices.position() * weight
+            iterVertices.next()
+
+    elif component.hasFn(om.MFn.kMeshEdgeComponent):
+
+        # Iterate through edges
+        #
+        iterEdges = om.MItMeshEdge(dagPath, component)
+        weight = 1.0 / iterEdges.count()
+
+        while not iterEdges.isDone():
+
+            center += iterEdges.center() * weight
+            iterEdges.next()
+
+    elif component.hasFn(om.MFn.kMeshPolygonComponent):
+
+        # Iterate through polygons
+        #
+        iterPolygons = om.MItMeshPolygon(dagPath, component)
+        weight = 1.0 / iterPolygons.count()
+
+        while not iterPolygons.isDone():
+
+            center += iterPolygons.center() * weight
+            iterPolygons.next()
+
+    else:
+
+        log.warning('getMeshComponentCenter() expects a valid component type (%s given)' % component.apiTypeStr)
+
+    # Inspect transform space
+    #
+    if space == om.MSpace.kWorld:
+
+        center *= dagPath.exclusiveMatrix()
+
+    return center
