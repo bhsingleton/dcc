@@ -2,7 +2,6 @@ import sys
 import numpy
 
 from PySide2 import QtCore, QtWidgets, QtGui
-from functools import partial
 from dcc.userinterface import qlineeditgroup
 
 import logging
@@ -21,8 +20,6 @@ class QMatrixEdit(QtWidgets.QWidget):
 
     # region Dunderscores
     __decimals__ = 3
-    __rows__ = 4
-    __columns__ = 4
 
     def __init__(self, rows, columns, parent=None):
         """
@@ -41,15 +38,12 @@ class QMatrixEdit(QtWidgets.QWidget):
         self._rowCount = rows
         self._columnCount = columns
         self._rows = [None] * rows
-        self._readOnly = False
         self._validator = self.initializeValidator()
-
-        # Assign grid layout
-        #
-        self.setLayout(QtWidgets.QGridLayout())
 
         # Initialize matrix rows
         #
+        self.setLayout(QtWidgets.QGridLayout())
+
         for row in range(columns):
 
             self._rows[row] = self.initializeRow(self.layout(), row, columns=columns)
