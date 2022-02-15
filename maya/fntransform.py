@@ -1,7 +1,8 @@
-import maya.cmds as mc
-import maya.api.OpenMaya as om
 import numpy
 
+from maya import cmds as mc
+from maya.api import OpenMaya as om
+from enum import IntEnum
 from dcc.maya import fnnode
 from dcc.maya.libs import transformutils
 from dcc.abstract import afntransform
@@ -12,16 +13,27 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
+class RotateOrder(IntEnum):
+
+    xyz = 0
+    yzx = 1
+    zxy = 2
+    xzy = 3
+    yxz = 4
+    zyx = 5
+
+
 class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
     """
     Overload of AFnTransform that implements the transform interface for Maya.
     """
 
     __slots__ = ()
+    __rotateorder__ = RotateOrder
 
     def translation(self, worldSpace=False):
         """
-        Returns the translation component from the local transform matrix.
+        Returns the translation values for this node.
 
         :type worldSpace: bool
         :rtype: list[float, float, float]
@@ -30,21 +42,30 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
         vector = transformutils.getTranslation(self.dagPath())
         return vector.x, vector.y, vector.z
 
-    def setTranslation(self, translation):
+    def setTranslation(self, translation, **kwargs):
         """
-        Returns the translation component from the local transform matrix.
+        Updates the translation values for this node.
 
         :type translation: list[float, float, float]
         :rtype: None
         """
 
         vector = om.MVector(translation[0], translation[1], translation[2])
-        transformutils.setTranslation(self.dagPath(), vector)
+        transformutils.setTranslation(self.dagPath(), vector, **kwargs)
+
+    def rotationOrder(self):
+        """
+        Returns the rotation order for this node.
+
+        :rtype: str
+        """
+
+        rotateOrder = transformutils.getRotationOrder(self.dagPath())
+        return self.__rotateorder__(rotateOrder).name
 
     def rotation(self):
         """
-        Returns the rotation component from the local transform matrix.
-        These values are stored as euler angles!
+        Returns the rotation values, as euler angles, from this node.
 
         :rtype: list[float, float, float]
         """
@@ -52,40 +73,40 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
         eulerRotation = transformutils.getEulerRotation(self.dagPath())
         return eulerRotation.x, eulerRotation.y, eulerRotation.z
 
-    def setRotation(self, rotation):
+    def setRotation(self, rotation, **kwargs):
         """
-        Returns the translation component from the local transform matrix.
+        Updates the rotation values, as euler angles, for this node.
 
         :type rotation: list[float, float, float]
         :rtype: None
         """
 
         eulerRotation = om.MEulerRotation(*rotation)
-        transformutils.setEulerRotation(self.dagPath(), eulerRotation)
+        transformutils.setEulerRotation(self.dagPath(), eulerRotation, **kwargs)
 
     def scale(self):
         """
-        Returns the scale component from the local transform matrix.
+        Returns the scale values for this node.
 
         :rtype: list[float, float, float]
         """
 
         return transformutils.getScale(self.dagPath())
 
-    def setScale(self, scale):
+    def setScale(self, scale, **kwargs):
         """
-        Returns the translation component from the local transform matrix.
+        Updates the scale values for this node.
 
         :type scale: list[float, float, float]
         :rtype: None
         """
 
-        transformutils.setScale(self.dagPath(), scale)
+        transformutils.setScale(self.dagPath(), scale, **kwargs)
 
     def boundingBox(self):
         """
         Returns the bounding box for this node.
-        This consists of minimum/maximum values for each axis in local space.
+        This consists of a minimum and maximum point in world space.
 
         :rtype: list[float, float, float], list[float, float, float]
         """
@@ -139,17 +160,6 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
         matrix = transformutils.getMatrix(self.dagPath())
         return self.mmatrixToMatrix(matrix)
 
-    def setMatrix(self, matrix):
-        """
-        Updates the local transform matrix for this node.
-
-        :type matrix: numpy.matrix
-        :rtype: None
-        """
-
-        mmatrix = self.matrixToMMatrix(matrix)
-        transformutils.setMatrix(self.dagPath(), mmatrix)
-
     def worldMatrix(self):
         """
         Returns the world matrix for this node.
@@ -160,6 +170,17 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
         worldMatrix = self.dagPath().inclusiveMatrix()
         return self.mmatrixToMatrix(worldMatrix)
 
+    def setMatrix(self, matrix, **kwargs):
+        """
+        Updates the local transform matrix for this node.
+
+        :type matrix: numpy.matrix
+        :rtype: None
+        """
+
+        mMatrix = self.matrixToMMatrix(matrix)
+        transformutils.applyTransformMatrix(self.object(), mMatrix)
+
     def parentMatrix(self):
         """
         Returns the world parent matrix for this node.
@@ -169,3 +190,12 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
 
         parentMatrix = self.dagPath().exclusiveMatrix()
         return self.mmatrixToMatrix(parentMatrix)
+
+    def freezeTransform(self):
+        """
+        Freezes this transform node so all values equal zero.
+
+        :rtype: None
+        """
+
+        transformutils.freezeTransform(self.dagPath())

@@ -488,50 +488,6 @@ def getBoundingBox(dagPath):
     return om.MFnDagNode(dagPath).boundingBox
 
 
-def snapshot(dagPath):
-    """
-    Returns a snapshot for all of the child transform matrices for the given dag path.
-    This is useful for preserving child transforms when applying transforms.
-
-    :type dagPath: om.MDagPath
-    :rtype: list[tuple[om.MObjectHandle, om.MMatrix]]
-    """
-
-    # Iterate through descendants
-    #
-    children = []
-
-    for child in dagutils.iterDescendants(dagPath, apiType=om.MFn.kTransform):
-
-        children.append((om.MObjectHandle(child), om.MDagPath.getAPathTo(child).inclusiveMatrix()))
-
-    return children
-
-
-def assumeSnapshot(children):
-    """
-    Re-applies all of the recorded transform matrices to the associated node.
-
-    :type children: list[tuple[om.MObjectHandle, om.MMatrix]]
-    :rtype: None
-    """
-
-    # Iterate through children
-    #
-    for (handle, matrix) in children:
-
-        # Check if handle is still valid
-        #
-        if not handle.isAlive():
-
-            continue
-
-        # Get path to object
-        #
-        dagPath = om.MDagPath.getAPathTo(handle.object())
-        applyTransformMatrix(dagPath, matrix * dagPath.exclusiveMatrixInverse())
-
-
 @undo.undo(name='Apply Transform Matrix')
 def applyTransformMatrix(dagPath, matrix, **kwargs):
     """
@@ -557,19 +513,9 @@ def applyTransformMatrix(dagPath, matrix, **kwargs):
 
         raise TypeError('applyTransformMatrix() expects a MDagPath and MMatrix!')
 
-    # Check if children should be preserved
-    #
-    partialPathName = dagPath.partialPathName()
-    preserveChildren = kwargs.get('preserveChildren', False)
-
-    children = []
-
-    if preserveChildren:
-
-        children = snapshot(dagPath)
-
     # Initialize transformation matrix
     #
+    partialPathName = dagPath.partialPathName()
     transformationMatrix = om.MTransformationMatrix(matrix)
 
     rotateOrder = getRotationOrder(dagPath)
@@ -603,12 +549,6 @@ def applyTransformMatrix(dagPath, matrix, **kwargs):
     setScale(dagPath, scale, **kwargs)
 
     log.debug('%s.scale = [%s, %s, %s]' % (partialPathName, scale[0], scale[1], scale[2]))
-
-    # Check if child transforms should be reset
-    #
-    if preserveChildren:
-
-        assumeSnapshot(children)
 
 
 def applyWorldMatrix(dagPath, worldMatrix, **kwargs):

@@ -3,6 +3,7 @@ import numpy
 from abc import ABCMeta, abstractmethod
 from six import with_metaclass
 from dcc.abstract import afnnode
+from dcc.math import matrixmath
 
 import logging
 logging.basicConfig()
@@ -16,6 +17,7 @@ class AFnTransform(with_metaclass(ABCMeta, afnnode.AFnNode)):
     """
 
     __slots__ = ()
+    __rotateorder__ = None  # Overload this for derived classes!
 
     def __init__(self, *args, **kwargs):
         """
@@ -29,21 +31,40 @@ class AFnTransform(with_metaclass(ABCMeta, afnnode.AFnNode)):
     @abstractmethod
     def translation(self, worldSpace=False):
         """
-        Returns the translation component from the local transform matrix.
+        Returns the translation values for this node.
 
         :type worldSpace: bool
-        :rtype: numpy.array
+        :rtype: list[float, float, float]
         """
 
         pass
 
     @abstractmethod
-    def setTranslation(self, translation):
+    def setTranslation(self, translation, **kwargs):
         """
-        Returns the translation component from the local transform matrix.
+        Updates the translation values for this node.
 
-        :type translation: numpy.array
+        :type translation: list[float, float, float]
         :rtype: None
+        """
+
+        pass
+
+    def resetTranslation(self):
+        """
+        Resets the translation values for this node.
+
+        :rtype: None
+        """
+
+        self.setTranslation([0.0, 0.0, 0.0])
+
+    @abstractmethod
+    def rotationOrder(self):
+        """
+        Returns the rotation order for this node.
+
+        :rtype: str
         """
 
         pass
@@ -51,8 +72,7 @@ class AFnTransform(with_metaclass(ABCMeta, afnnode.AFnNode)):
     @abstractmethod
     def rotation(self):
         """
-        Returns the rotation component from the local transform matrix.
-        These values are stored as euler angles!
+        Returns the rotation values, as euler angles, from this node.
 
         :rtype: list[float, float, float]
         """
@@ -60,9 +80,9 @@ class AFnTransform(with_metaclass(ABCMeta, afnnode.AFnNode)):
         pass
 
     @abstractmethod
-    def setRotation(self, rotation):
+    def setRotation(self, rotation, **kwargs):
         """
-        Returns the translation component from the local transform matrix.
+        Updates the rotation values, as euler angles, for this node.
 
         :type rotation: list[float, float, float]
         :rtype: None
@@ -70,10 +90,19 @@ class AFnTransform(with_metaclass(ABCMeta, afnnode.AFnNode)):
 
         pass
 
+    def resetRotation(self):
+        """
+        Resets the rotation values for this node.
+
+        :rtype: None
+        """
+
+        self.setRotation([0.0, 0.0, 0.0])
+
     @abstractmethod
     def scale(self):
         """
-        Returns the scale component from the local transform matrix.
+        Returns the scale values for this node.
 
         :rtype: list[float, float, float]
         """
@@ -81,9 +110,9 @@ class AFnTransform(with_metaclass(ABCMeta, afnnode.AFnNode)):
         pass
 
     @abstractmethod
-    def setScale(self, scale):
+    def setScale(self, scale, **kwargs):
         """
-        Returns the translation component from the local transform matrix.
+        Updates the scale values for this node.
 
         :type scale: list[float, float, float]
         :rtype: None
@@ -91,11 +120,20 @@ class AFnTransform(with_metaclass(ABCMeta, afnnode.AFnNode)):
 
         pass
 
+    def resetScale(self):
+        """
+        Resets the scale values for this node.
+
+        :rtype: None
+        """
+
+        self.setScale([1.0, 1.0, 1.0])
+
     @abstractmethod
     def boundingBox(self):
         """
         Returns the bounding box for this node.
-        This consists of minimum/maximum values for each axis in local space.
+        This consists of a minimum and maximum point in world space.
 
         :rtype: list[float, float, float], list[float, float, float]
         """
@@ -104,13 +142,13 @@ class AFnTransform(with_metaclass(ABCMeta, afnnode.AFnNode)):
 
     def centerPoint(self):
         """
-        Returns the bounding box center for this transform.
+        Returns the bounding box center for this node.
 
         :rtype: numpy.array
         """
 
-        minPoint, maxPoint = self.boundingBox()
-        return (minPoint * 0.5) + (maxPoint * 0.5)
+        boundingBox = self.boundingBox()
+        return (numpy.array(boundingBox[0]) * 0.5) + (numpy.array(boundingBox[1]) * 0.5)
 
     @abstractmethod
     def matrix(self):
@@ -129,10 +167,10 @@ class AFnTransform(with_metaclass(ABCMeta, afnnode.AFnNode)):
         :rtype: numpy.matrix
         """
 
-        return numpy.linalg.inv(self.matrix())
+        return self.matrix().I
 
     @abstractmethod
-    def setMatrix(self, matrix):
+    def setMatrix(self, matrix, **kwargs):
         """
         Updates the local transform matrix for this node.
 
@@ -159,7 +197,7 @@ class AFnTransform(with_metaclass(ABCMeta, afnnode.AFnNode)):
         :rtype: numpy.matrix
         """
 
-        return numpy.linalg.inv(self.worldMatrix())
+        return self.worldMatrix().I
 
     @abstractmethod
     def parentMatrix(self):
@@ -178,7 +216,17 @@ class AFnTransform(with_metaclass(ABCMeta, afnnode.AFnNode)):
         :rtype: numpy.matrix
         """
 
-        return numpy.linalg.inv(self.parentMatrix())
+        return self.parentMatrix().I
+
+    @abstractmethod
+    def freezeTransform(self):
+        """
+        Freezes this transform node so all values equal zero.
+
+        :rtype: None
+        """
+
+        pass
 
     def snapshot(self):
         """

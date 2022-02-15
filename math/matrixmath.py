@@ -73,25 +73,25 @@ def createRotationMatrix(value, rotateOrder='xyz'):
         rotateXMatrix = numpy.matrix(
             [
                 (1.0, 0.0, 0.0, 0.0),
-                (0.0, math.cos(value.x), math.sin(value.x), 0.0),
-                (0.0, -math.sin(value.x), math.cos(value.x), 0.0),
+                (0.0, math.cos(value[0]), math.sin(value[0]), 0.0),
+                (0.0, -math.sin(value[0]), math.cos(value[0]), 0.0),
                 (0.0, 0.0, 0.0, 1.0)
             ]
         )
 
         rotateYMatrix = numpy.matrix(
             [
-                (math.cos(value.y), 0.0, -math.sin(value.y), 0.0),
+                (math.cos(value[1]), 0.0, -math.sin(value[1]), 0.0),
                 (0.0, 1.0, 0.0, 0.0),
-                (math.sin(value.y), 0.0, math.cos(value.y), 0.0),
+                (math.sin(value[1]), 0.0, math.cos(value[1]), 0.0),
                 (0.0, 0.0, 0.0, 1.0)
             ]
         )
 
         rotateZMatrix = numpy.matrix(
             [
-                (math.cos(value.z), math.sin(value.z), 0.0, 0.0),
-                (-math.sin(value.z), math.cos(value.z), 0.0, 0.0),
+                (math.cos(value[2]), math.sin(value[2]), 0.0, 0.0),
+                (-math.sin(value[2]), math.cos(value[2]), 0.0, 0.0),
                 (0.0, 0.0, 1.0, 0.0),
                 (0.0, 0.0, 0.0, 1.0)
             ]
@@ -152,6 +152,42 @@ def createScaleMatrix(value):
     else:
 
         raise TypeError('createScaleMatrix() expects a list (%s given)!' % type(value).__name__)
+
+
+def breakMatrix(matrix, normalize=False):
+    """
+    Returns the axis vectors from the supplied matrix.
+
+    :type matrix: numpy.matrix
+    :type normalize: bool
+    :rtype: numpy.array, numpy.array, numpy.array, numpy.array
+    """
+
+    # Check value type
+    #
+    if isinstance(matrix, numpy.matrix):
+
+        # Check if vectors should be normalized
+        # Don't forget matrices must be converted to arrays in order to flatten them!
+        #
+        array = numpy.asarray(matrix)
+
+        x = array[0, 0:3]
+        y = array[1, 0:3]
+        z = array[2, 0:3]
+        p = array[3, 0:3]
+
+        if normalize:
+
+            return vectormath.normalizeVector(x), vectormath.normalizeVector(y), vectormath.normalizeVector(z), p
+
+        else:
+
+            return x, y, z, p
+
+    else:
+
+        raise ValueError('getAxisVectors() expects a matrix (%s given)!' % type(matrix).__name__)
 
 
 def decomposeTransform(matrix, rotateOrder='xyz'):
@@ -445,43 +481,7 @@ def decomposeScaleMatrix(matrix):
     return [numpy.linalg.norm(matrix[0]), numpy.linalg.norm(matrix[1]), numpy.linalg.norm(matrix[2])]
 
 
-def getAxisVectors(matrix, normalize=False):
-    """
-    Returns the axis vectors from the supplied matrix.
-
-    :type matrix: numpy.matrix
-    :type normalize: bool
-    :rtype: numpy.array, numpy.array, numpy.array, numpy.array
-    """
-
-    # Check value type
-    #
-    if isinstance(matrix, numpy.matrix):
-
-        # Check if vectors should be normalized
-        # Don't forget matrices must be converted to arrays in order to flatten them!
-        #
-        array = numpy.asarray(matrix)
-
-        x = array[0, 0:3]
-        y = array[1, 0:3]
-        z = array[2, 0:3]
-        p = array[3, 0:3]
-
-        if normalize:
-
-            return vectormath.normalizeVector(x), vectormath.normalizeVector(y), vectormath.normalizeVector(z), p
-
-        else:
-
-            return x, y, z, p
-
-    else:
-
-        raise ValueError('getAxisVectors() expects a matrix (%s given)!' % type(matrix).__name__)
-
-
-def createAimMatrix(forwardAxis, forwardVector, upAxis, upVector, startPoint=None, forwardAxisSign=1, upAxisSign=1):
+def createAimMatrix(forwardAxis, forwardVector, upAxis, upVector, origin=None, forwardAxisSign=1, upAxisSign=1):
     """
     Creates an aim matrix based on the supplied values.
 
@@ -489,7 +489,7 @@ def createAimMatrix(forwardAxis, forwardVector, upAxis, upVector, startPoint=Non
     :type forwardVector: numpy.array
     :type upAxis: int
     :type upVector: numpy.array
-    :type startPoint: numpy.array
+    :type origin: numpy.array
     :type forwardAxisSign: int
     :type upAxisSign: int
     :rtype: numpy.matrix
@@ -497,9 +497,9 @@ def createAimMatrix(forwardAxis, forwardVector, upAxis, upVector, startPoint=Non
 
     # Check if a start point was supplied
     #
-    if startPoint is None:
+    if origin is None:
 
-        startPoint = vectormath.ORIGIN
+        origin = vectormath.ORIGIN
 
     # Check which forward axis is selected
     #
@@ -578,6 +578,6 @@ def createAimMatrix(forwardAxis, forwardVector, upAxis, upVector, startPoint=Non
             (xAxis[0], xAxis[1], xAxis[2], 0.0),
             (yAxis[0], yAxis[1], yAxis[2], 0.0),
             (zAxis[0], zAxis[1], zAxis[2], 0.0),
-            (startPoint[0], startPoint[1], startPoint[2], 1.0)
+            (origin[0], origin[1], origin[2], 1.0)
         ]
     )

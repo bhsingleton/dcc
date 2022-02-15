@@ -36,6 +36,10 @@ def setTranslation(node, translation, **kwargs):
 
     :type node: pymxs.runtime.Node
     :type translation: pymxs.runtime.Point3
+    :keyword skipTranslate: bool
+    :keyword skipTranslateX: bool
+    :keyword skipTranslateY: bool
+    :keyword skipTranslateZ: bool
     :rtype: None
     """
 
@@ -45,6 +49,7 @@ def setTranslation(node, translation, **kwargs):
 
     if pymxs.runtime.classOf(transformController) != pymxs.runtime.PRS:
 
+        log.warning('setTranslation() expects a PRS controller (%s given)!' % pymxs.runtime.classOf(transformController))
         return
 
     # Check if this is a position list
@@ -68,7 +73,7 @@ def setTranslation(node, translation, **kwargs):
 
         if not skipTranslateX:
 
-            positionController[pymxs.runtime.Name('X_Position')].controller.value = translation.x
+            positionController['X_Position'].controller.value = translation.x
 
         # Check if y-value can be set
         #
@@ -92,7 +97,7 @@ def setTranslation(node, translation, **kwargs):
 
     else:
 
-        log.warning('setTranslation() expects a XYZ controller!')
+        log.warning('setTranslation() expects a XYZ controller (%s given)!' % pymxs.runtime.classOf(positionController))
 
 
 def resetTranslation(node, **kwargs):
@@ -170,6 +175,10 @@ def setEulerRotation(node, eulerAngles, **kwargs):
 
     :type node: pymxs.runtime.Node
     :type eulerAngles: pymxs.runtime.EulerAngles
+    :keyword skipRotate: bool
+    :keyword skipRotateX: bool
+    :keyword skipRotateY: bool
+    :keyword skipRotateZ: bool
     :rtype: None
     """
 
@@ -179,6 +188,7 @@ def setEulerRotation(node, eulerAngles, **kwargs):
 
     if pymxs.runtime.classOf(transformController) != pymxs.runtime.PRS:
 
+        log.warning('setEulerRotation() expects a PRS controller (%s given)!' % pymxs.runtime.classOf(transformController))
         return
 
     # Check if this is a rotation list
@@ -226,7 +236,7 @@ def setEulerRotation(node, eulerAngles, **kwargs):
 
     else:
 
-        log.warning('setRotation() expects a XYZ controller!')
+        log.warning('setRotation() expects a XYZ controller (%s given)!' % pymxs.runtime.classOf(rotationController))
 
 
 def resetEulerRotation(node, **kwargs):
@@ -267,16 +277,26 @@ def setScale(node, scale, **kwargs):
 
     :type node: pymxs.runtime.Node
     :type scale: list[float, float, float]
+    :keyword skipScale: bool
+    :keyword skipScaleX: bool
+    :keyword skipScaleY: bool
+    :keyword skipScaleZ: bool
     :rtype: None
     """
 
-    # Get rotation controller
+    # Get transform controller
     #
     transformController = pymxs.runtime.getTMController(node)
+
+    if pymxs.runtime.classOf(transformController) != pymxs.runtime.PRS:
+
+        log.warning('setScale() expects a PRS controller (%s given)!' % pymxs.runtime.classOf(transformController))
+        return
+
+    # Check if this is a scale list
+    #
     scaleController = pymxs.runtime.getPropertyController(transformController, 'Scale')
 
-    # Check if this is a rotation list
-    #
     if controllerutils.isListController(scaleController):
 
         currentIndex = scaleController.getActive() - 1
@@ -318,7 +338,7 @@ def setScale(node, scale, **kwargs):
 
     else:
 
-        log.warning('setScale() expects a XYZ controller!')
+        log.warning('setScale() expects a XYZ controller (%s given)!' % pymxs.runtime.classOf(scaleController))
 
 
 def resetScale(node, **kwargs):
@@ -475,35 +495,31 @@ def applyTransformMatrix(node, matrix, **kwargs):
     :rtype: None
     """
 
-    # Derive translation in frozen space
+    # Define undo chunk
     #
-    frozenPositionMatrix = getFrozenPositionMatrix(node)
-    translateMatrix = matrix * pymxs.runtime.inverse(frozenPositionMatrix)
+    with pymxs.undo(True, 'Apply Transform Matrix'):
 
-    translation = decomposeTransformMatrix(translateMatrix)[0]
+        # Derive translation in frozen space
+        #
+        frozenPositionMatrix = getFrozenPositionMatrix(node)
+        translateMatrix = matrix * pymxs.runtime.inverse(frozenPositionMatrix)
 
-    # Derive rotation in frozen space
-    #
-    frozenRotationMatrix = getFrozenRotationMatrix(node)
-    rotationMatrix = matrix * pymxs.runtime.inverse(frozenRotationMatrix)
+        translation = decomposeTransformMatrix(translateMatrix)[0]
 
-    rotation = decomposeTransformMatrix(rotationMatrix)[1]
+        # Derive rotation in frozen space
+        #
+        frozenRotationMatrix = getFrozenRotationMatrix(node)
+        rotationMatrix = matrix * pymxs.runtime.inverse(frozenRotationMatrix)
 
-    # Decompose transform and apply to controllers
-    #
-    scale = decomposeTransformMatrix(matrix)[2]
+        rotation = decomposeTransformMatrix(rotationMatrix)[1]
 
-    setTranslation(node, translation, **kwargs)
-    setEulerRotation(node, rotation, **kwargs)
-    setScale(node, scale, **kwargs)
+        # Decompose transform and apply to controllers
+        #
+        scale = decomposeTransformMatrix(matrix)[2]
 
-    # Check if node should be frozen
-    #
-    freeze = kwargs.get('freezeTransform', False)
-
-    if freeze:
-
-        freezeTransform(node)
+        setTranslation(node, translation, **kwargs)
+        setEulerRotation(node, rotation, **kwargs)
+        setScale(node, scale, **kwargs)
 
 
 def applyWorldMatrix(node, worldMatrix, **kwargs):
