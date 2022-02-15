@@ -21,6 +21,7 @@ class QRolloutViewport(QtWidgets.QWidget):
 
         :type parent: QtWidgets.QWidget
         :type f: int
+        :rtype: None
         """
 
         # Call parent method
@@ -78,7 +79,7 @@ class QRollout(QtWidgets.QWidget):
         :rtype: None
         """
 
-        # Call inherited method
+        # Call parent method
         #
         super(QRollout, self).__init__(parent=parent, f=f)
 
