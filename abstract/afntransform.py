@@ -3,7 +3,6 @@ import numpy
 from abc import ABCMeta, abstractmethod
 from six import with_metaclass
 from dcc.abstract import afnnode
-from dcc.math import matrixmath
 
 import logging
 logging.basicConfig()
@@ -16,8 +15,7 @@ class AFnTransform(with_metaclass(ABCMeta, afnnode.AFnNode)):
     Overload of AFnNode used to outline a transform node interface.
     """
 
-    __slots__ = ()
-    __rotateorder__ = None  # Overload this for derived classes!
+    __slots__ = ('_snapshot',)
 
     def __init__(self, *args, **kwargs):
         """
@@ -27,6 +25,10 @@ class AFnTransform(with_metaclass(ABCMeta, afnnode.AFnNode)):
         # Call parent method
         #
         super(AFnTransform, self).__init__(*args, **kwargs)
+
+        # Declare private variables
+        #
+        self._snapshot = []
 
     @abstractmethod
     def translation(self, worldSpace=False):
@@ -230,34 +232,31 @@ class AFnTransform(with_metaclass(ABCMeta, afnnode.AFnNode)):
 
     def snapshot(self):
         """
-        Returns a transform snapshot for all of the descendants derived from this node.
+        Stores a transform snapshot for all of the descendants derived from this node.
 
-        :rtype: list[tuple[int, numpy.matrix]]
+        :rtype: None
         """
 
         # Iterate through descendants
         #
-        snapshot = []
+        del self._snapshot[:]
         fnTransform = self.__class__()
 
         for child in self.iterDescendants():
 
             fnTransform.setObject(child)
-            snapshot.append((fnTransform.handle(), fnTransform.worldMatrix()))
+            self._snapshot.append((fnTransform.handle(), fnTransform.worldMatrix()))
 
-        return snapshot
-
-    def assumeSnapshot(self, snapshot):
+    def assumeSnapshot(self):
         """
-        Reassigns the transform matrices from the supplied snapshot.
+        Reassigns the transform matrices from the internal snapshot.
 
-        :type snapshot: list[tuple[int, numpy.matrix]]
         :rtype: None
         """
 
         fnTransform = self.__class__()
 
-        for (handle, worldMatrix) in snapshot:
+        for (handle, worldMatrix) in self._snapshot:
 
             fnTransform.setObject(handle)
             parentInverseMatrix = fnTransform.parentInverseMatrix()

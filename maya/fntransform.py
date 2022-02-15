@@ -61,7 +61,7 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
         """
 
         rotateOrder = transformutils.getRotationOrder(self.dagPath())
-        return self.__rotateorder__(rotateOrder).name
+        return RotateOrder(rotateOrder).name
 
     def rotation(self):
         """

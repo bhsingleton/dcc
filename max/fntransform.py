@@ -31,7 +31,6 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
     """
 
     __slots__ = ()
-    __rotateorder__ = RotateOrder
 
     def translation(self, worldSpace=False):
         """
@@ -70,7 +69,7 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
         """
 
         rotateOrder = transformutils.getRotationOrder(self.object())
-        return self.__rotateorder__(rotateOrder).name
+        return RotateOrder(rotateOrder).name
 
     def rotation(self):
         """
