@@ -230,6 +230,21 @@ class AFnTransform(with_metaclass(ABCMeta, afnnode.AFnNode)):
 
         pass
 
+    def copy(self, otherTransform, **kwargs):
+        """
+        Copies the transform matrix from the supplied node.
+
+        :type otherTransform: Any
+        :rtype: None
+        """
+
+        fnTransform = self.__class__(otherTransform)
+        worldMatrix = fnTransform.worldMatrix()
+        parentInverseMatrix = self.parentInverseMatrix()
+
+        matrix = worldMatrix * parentInverseMatrix
+        self.setMatrix(matrix, **kwargs)
+
     def snapshot(self):
         """
         Stores a transform snapshot for all of the descendants derived from this node.
