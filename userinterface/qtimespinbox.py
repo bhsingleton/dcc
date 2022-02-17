@@ -15,7 +15,7 @@ class DefaultType(IntEnum):
     CurrentTime = 2
 
 
-class QTimeBox(QtWidgets.QSpinBox):
+class QTimeSpinBox(QtWidgets.QSpinBox):
     """
     Overload of QSpinBox used to display time range values.
     """
@@ -31,7 +31,7 @@ class QTimeBox(QtWidgets.QSpinBox):
 
         # Call parent method
         #
-        super(QTimeBox, self).__init__(parent=parent)
+        super(QTimeSpinBox, self).__init__(parent=parent)
 
         # Declare public variables
         #
@@ -148,9 +148,9 @@ class QTimeBox(QtWidgets.QSpinBox):
 
             else:
 
-                super(QTimeBox, self).contextMenuEvent(event)
+                super(QTimeSpinBox, self).contextMenuEvent(event)
 
         else:
 
-            super(QTimeBox, self).contextMenuEvent(event)
+            super(QTimeSpinBox, self).contextMenuEvent(event)
     # endregion
