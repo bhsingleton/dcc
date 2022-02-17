@@ -141,6 +141,26 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         pass
 
+    @abstractmethod
+    def enableAutoKey(self):
+        """
+        Enables the auto key mode.
+
+        :rtype: None
+        """
+
+        pass
+
+    @abstractmethod
+    def disableAutoKey(self):
+        """
+        Disables the auto key mode.
+
+        :rtype: None
+        """
+
+        pass
+
     @staticmethod
     def isNullOrEmpty(value):
         """

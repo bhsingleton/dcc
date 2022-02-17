@@ -133,6 +133,24 @@ class FnScene(afnscene.AFnScene):
 
         mc.currentTime(time, edit=True)
 
+    def enableAutoKey(self):
+        """
+        Enables the auto key mode.
+
+        :rtype: None
+        """
+
+        mc.autoKeyframe(state=True)
+
+    def disableAutoKey(self):
+        """
+        Disables the auto key mode.
+
+        :rtype: None
+        """
+
+        mc.autoKeyframe(state=False)
+
     def iterTextures(self, absolute=False):
         """
         Returns a generator that yields all texture paths inside the scene.

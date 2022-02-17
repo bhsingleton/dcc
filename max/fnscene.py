@@ -139,6 +139,24 @@ class FnScene(afnscene.AFnScene):
 
         pymxs.runtime.sliderTime = time
 
+    def enableAutoKey(self):
+        """
+        Enables the auto key mode.
+
+        :rtype: None
+        """
+
+        pymxs.runtime.animateMode = True
+
+    def disableAutoKey(self):
+        """
+        Disables the auto key mode.
+
+        :rtype: None
+        """
+
+        pymxs.runtime.animateMode = False
+
     def iterTextures(self, absolute=False):
         """
         Returns a generator that yields all texture paths inside the scene.
