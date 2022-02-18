@@ -3,6 +3,7 @@ import numpy
 from abc import ABCMeta, abstractmethod
 from six import with_metaclass
 from dcc.abstract import afnnode
+from dcc.math import matrixmath
 
 import logging
 logging.basicConfig()
@@ -230,7 +231,7 @@ class AFnTransform(with_metaclass(ABCMeta, afnnode.AFnNode)):
 
         pass
 
-    def copy(self, otherTransform, **kwargs):
+    def copyTransform(self, otherTransform, **kwargs):
         """
         Copies the transform matrix from the supplied node.
 
@@ -242,8 +243,40 @@ class AFnTransform(with_metaclass(ABCMeta, afnnode.AFnNode)):
         worldMatrix = fnTransform.worldMatrix()
         parentInverseMatrix = self.parentInverseMatrix()
 
-        matrix = worldMatrix * parentInverseMatrix
+        offsetMatrix = kwargs.get('offsetMatrix', matrixmath.IDENTITY_MATRIX)
+        matrix = (offsetMatrix * worldMatrix) * parentInverseMatrix
+
         self.setMatrix(matrix, **kwargs)
+
+    def offsetMatrix(self, otherTransform, maintainTranslate=True, maintainRotate=True, maintainScale=True):
+        """
+        Returns the offset matrix between the supplied transform.
+        Optional keywords can be used to determine which transform component offsets are preserved.
+        By default all component offsets are maintained.
+
+        :type otherTransform: Any
+        :type maintainTranslate: bool
+        :type maintainRotate: bool
+        :type maintainScale: bool
+        :rtype: numpy.matrix
+        """
+
+        # Calculate offset matrix
+        #
+        fnTransform = self.__class__(otherTransform)
+
+        worldInverseMatrix = fnTransform.worldInverseMatrix()
+        offsetMatrix = self.worldMatrix() * worldInverseMatrix
+
+        # Evaluate which transform components should be maintained
+        #
+        matrices = matrixmath.decomposeMatrix(offsetMatrix)
+
+        translateMatrix = matrices[0] if maintainTranslate else matrixmath.IDENTITY_MATRIX
+        rotateMatrix = matrices[1] if maintainRotate else matrixmath.IDENTITY_MATRIX
+        scaleMatrix = matrices[2] if maintainScale else matrixmath.IDENTITY_MATRIX
+
+        return scaleMatrix * rotateMatrix * translateMatrix
 
     def snapshot(self):
         """
