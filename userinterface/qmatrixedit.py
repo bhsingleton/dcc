@@ -15,16 +15,21 @@ class QMatrixEdit(QtWidgets.QWidget):
     Overload of QWidget used to edit transform matrices.
     """
 
+    readOnlyChanged = QtCore.Signal(bool)
+    validatorChanged = QtCore.Signal(QtGui.QValidator)
     cellEdited = QtCore.Signal(int, int)
     cellChanged = QtCore.Signal(int, int)
+    matrixChanged = QtCore.Signal(numpy.matrix)
 
     # region Dunderscores
     __decimals__ = 3
 
-    def __init__(self, rows, columns, parent=None):
+    def __init__(self, rowCount, columnCount, parent=None):
         """
         Private method called after a new instance has been created.
 
+        :type rowCount: int
+        :type columnCount: int
         :type parent: QtWidgets.QWidget
         :rtype: None
         """
@@ -35,21 +40,48 @@ class QMatrixEdit(QtWidgets.QWidget):
 
         # Declare private variables
         #
-        self._rowCount = rows
-        self._columnCount = columns
-        self._rows = [None] * rows
-        self._validator = self.initializeValidator()
+        self._rowCount = rowCount
+        self._columnCount = columnCount
+        self._readOnly = False
+        self._validator = self.defaultValidator()
+        self._rows = [None] * self._rowCount
 
         # Initialize matrix rows
         #
-        self.setLayout(QtWidgets.QGridLayout())
+        gridLayout = QtWidgets.QGridLayout()
 
-        for row in range(columns):
+        for row in range(self._rowCount):
 
-            self._rows[row] = self.initializeRow(self.layout(), row, columns=columns)
+            self._rows[row] = self.createLineEditGroup(self._columnCount)
+
+            for column in range(self._columnCount):
+
+                gridLayout.addWidget(self._rows[row][column], row, column)
+
+        self.setLayout(gridLayout)
     # endregion
 
     # region Methods
+    def readOnly(self):
+        """
+        Returns the read-only state.
+
+        :rtype: bool
+        """
+
+        return self._readOnly
+
+    def setReadOnly(self, readOnly):
+        """
+        Updates the read-only state.
+
+        :type readOnly: bool
+        :rtype: None
+        """
+
+        self._readOnly = readOnly
+        self.readOnlyChanged.emit(self._readOnly)
+
     def validator(self):
         """
         Returns the validator used by the matrix line edits.
@@ -58,6 +90,28 @@ class QMatrixEdit(QtWidgets.QWidget):
         """
 
         return self._validator
+
+    def defaultValidator(self):
+        """
+        Returns the default line edit validator.
+
+        :rtype: QtGui.QDoubleValidator
+        """
+
+        validator = QtGui.QDoubleValidator(-sys.float_info.max, sys.float_info.max, self.__decimals__, self)
+        validator.setNotation(QtGui.QDoubleValidator.StandardNotation)
+
+        return validator
+
+    def setValidator(self, validator):
+        """
+        Updates the validator used by the matrix line edits.
+
+        :rtype: QtGui.QDoubleValidator
+        """
+
+        self._validator = validator
+        self.validatorChanged.emit(self._validator)
 
     def rowCount(self):
         """
@@ -98,7 +152,7 @@ class QMatrixEdit(QtWidgets.QWidget):
 
     def matrix(self):
         """
-        Returns the displayed matrix.
+        Returns the current matrix.
 
         :rtype: numpy.matrix
         """
@@ -117,7 +171,7 @@ class QMatrixEdit(QtWidgets.QWidget):
 
     def setMatrix(self, matrix):
         """
-        Updates the displayed matrix.
+        Updates the current matrix.
 
         :type matrix: numpy.matrix
         :rtype: None
@@ -132,25 +186,30 @@ class QMatrixEdit(QtWidgets.QWidget):
                 text = str(round(matrix[row, column], self.__decimals__))
                 columns.lineEdit(column).setText(text)
 
-    def initializeValidator(self):
+        self.matrixChanged.emit(self.matrix())
+
+    def createLineEdit(self):
         """
-        Initializes a line edit validator.
+        Returns a line edit with all of the necessary connections.
 
-        :rtype: QtGui.QDoubleValidator
+        :rtype: QtWidgets.QLineEdit
         """
 
-        validator = QtGui.QDoubleValidator(-sys.float_info.max, sys.float_info.max, self.__decimals__, self)
-        validator.setNotation(QtGui.QDoubleValidator.StandardNotation)
+        lineEdit = QtWidgets.QLineEdit('0.0')
+        lineEdit.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+        lineEdit.setFixedHeight(24)
+        lineEdit.setAlignment(QtCore.Qt.AlignCenter)
+        lineEdit.setValidator(self._validator)
+        lineEdit.setReadOnly(self._readOnly)
 
-        return validator
+        self.readOnlyChanged.connect(lineEdit.setReadOnly)
+        self.validatorChanged.connect(lineEdit.setValidator)
 
-    def initializeRow(self, layout, row, columns=4):
+    def createLineEditGroup(self, columnCount):
         """
-        Initializes a matrix row using the supplied layout.
+        Returns a line edit group based on the number of columns.
 
-        :type layout: QtWidgets.QGridLayout
-        :type row: int
-        :type columns: int
+        :type columnCount: int
         :rtype: qlineeditgroup.QLineEditGroup
         """
 
@@ -160,17 +219,10 @@ class QMatrixEdit(QtWidgets.QWidget):
         lineEditGroup.lineEditTextEdited.connect(self.cell_textEdited)
         lineEditGroup.lineEditTextChanged.connect(self.cell_textChanged)
 
-        for column in range(columns):
+        for column in range(columnCount):
 
-            lineEdit = QtWidgets.QLineEdit('0.0', parent=self)
-            lineEdit.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
-            lineEdit.setFixedHeight(24)
-            lineEdit.setAlignment(QtCore.Qt.AlignCenter)
-            lineEdit.setValidator(self._validator)
-            lineEdit.setReadOnly(True)
-
+            lineEdit = self.createLineEdit()
             lineEditGroup.addLineEdit(lineEdit, id=column)
-            layout.addWidget(lineEdit, row, column)
 
         return lineEditGroup
     # endregion
@@ -181,7 +233,6 @@ class QMatrixEdit(QtWidgets.QWidget):
         Text edited slot method responsible for emitting the cell edited signal.
         This does not include calls made to QLineEdit.setText().
 
-        :type row: int
         :type column: int
         :rtype: None
         """
@@ -190,6 +241,7 @@ class QMatrixEdit(QtWidgets.QWidget):
         row = self.rows().index(lineEditGroup)
 
         self.cellEdited.emit(row, column)
+        self.matrixChanged.emit(self.matrix())
 
     def cell_textChanged(self, column):
         """
@@ -204,4 +256,5 @@ class QMatrixEdit(QtWidgets.QWidget):
         row = self.rows().index(lineEditGroup)
 
         self.cellChanged.emit(row, column)
+        self.matrixChanged.emit(self.matrix())
     # endregion
