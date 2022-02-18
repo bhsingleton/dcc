@@ -17,7 +17,7 @@ class QVectorEdit(QtWidgets.QWidget):
 
     readOnlyChanged = QtCore.Signal(bool)
     validatorChanged = QtCore.Signal(QtGui.QValidator)
-    vectorChanged = QtCore.Signal(numpy.array)
+    vectorChanged = QtCore.Signal(object)
 
     # region Dunderscores
     __decimals__ = 3
@@ -36,6 +36,7 @@ class QVectorEdit(QtWidgets.QWidget):
 
         # Declare private variables
         #
+        self._vector = numpy.zeros(3)
         self._readOnly = False
         self._validator = self.defaultValidator()
 
@@ -46,9 +47,10 @@ class QVectorEdit(QtWidgets.QWidget):
         self.vectorZLineEdit = self.createLineEdit()
 
         self.vectorLineEditGroup = qlineeditgroup.QLineEditGroup(parent=self)
-        self.vectorLineEditGroup.addLineEdit(self.vectorXLineEdit)
-        self.vectorLineEditGroup.addLineEdit(self.vectorYLineEdit)
-        self.vectorLineEditGroup.addLineEdit(self.vectorZLineEdit)
+        self.vectorLineEditGroup.addLineEdit(self.vectorXLineEdit, id=0)
+        self.vectorLineEditGroup.addLineEdit(self.vectorYLineEdit, id=1)
+        self.vectorLineEditGroup.addLineEdit(self.vectorZLineEdit, id=2)
+        self.vectorLineEditGroup.idTextEdited.connect(self.vectorLineEditGroup_idTextEdited)
 
         # Add widgets to layout
         #
@@ -56,7 +58,9 @@ class QVectorEdit(QtWidgets.QWidget):
         boxLayout.addWidget(self.vectorXLineEdit)
         boxLayout.addWidget(self.vectorYLineEdit)
         boxLayout.addWidget(self.vectorZLineEdit)
+        boxLayout.setSpacing(8)
 
+        self.setContentsMargins(0, 0, 0, 0)
         self.setLayout(boxLayout)
     # endregion
 
@@ -119,7 +123,7 @@ class QVectorEdit(QtWidgets.QWidget):
         :rtype: numpy.array
         """
 
-        return numpy.array([float(x.text()) for x in self.vectorLineEditGroup.lineEdits()])
+        return self._vector
 
     def setVector(self, vector):
         """
@@ -129,9 +133,20 @@ class QVectorEdit(QtWidgets.QWidget):
         :rtype: None
         """
 
+        self._vector = numpy.array(vector)
+        self.synchronize()
+        self.vectorChanged.emit(self._vector)
+
+    def synchronize(self):
+        """
+        Ensures that the line edits match the internal vector value.
+
+        :rtype: None
+        """
+
         for (i, lineEdit) in enumerate(self.vectorLineEditGroup.lineEdits()):
 
-            lineEdit.setText(str(round(vector[i], self.__decimals__)))
+            lineEdit.setText(str(round(self._vector[i], self.__decimals__)))
 
     def createLineEdit(self):
         """
@@ -140,6 +155,8 @@ class QVectorEdit(QtWidgets.QWidget):
         :rtype: QtWidgets.QLineEdit
         """
 
+        # Initialize line edit
+        #
         lineEdit = QtWidgets.QLineEdit('0.0')
         lineEdit.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
         lineEdit.setFixedHeight(24)
@@ -147,6 +164,25 @@ class QVectorEdit(QtWidgets.QWidget):
         lineEdit.setValidator(self._validator)
         lineEdit.setReadOnly(self._readOnly)
 
+        # Connect signals to slots
+        #
         self.readOnlyChanged.connect(lineEdit.setReadOnly)
         self.validatorChanged.connect(lineEdit.setValidator)
+
+        return lineEdit
+    # endregion
+
+    # region Slots
+    def vectorLineEditGroup_idTextEdited(self, id):
+        """
+        Id text edited slot method responsible for updating the associated internal vector entry.
+
+        :type id: int
+        :rtype: None
+        """
+
+        lineEditGroup = self.sender()
+
+        self._vector[id] = float(lineEditGroup[id].text())
+        self.vectorChanged.emit(self._vector)
     # endregion
