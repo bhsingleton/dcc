@@ -39,6 +39,16 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
         pass
 
     @abstractmethod
+    def isBatchMode(self):
+        """
+        Evaluates if the the scene is running in batch mode.
+
+        :rtype: bool
+        """
+
+        pass
+
+    @abstractmethod
     def currentFilename(self):
         """
         Returns the name of the open scene file.

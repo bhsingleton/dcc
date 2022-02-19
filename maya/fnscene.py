@@ -34,6 +34,15 @@ class FnScene(afnscene.AFnScene):
 
         return mc.file(query=True, modified=True)
 
+    def isBatchMode(self):
+        """
+        Evaluates if the the scene is running in batch mode.
+
+        :rtype: bool
+        """
+
+        return mc.about(query=True, batch=True)
+
     def currentFilename(self):
         """
         Returns the name of the open scene file.

@@ -1,5 +1,6 @@
 import pymxs
 import os
+import sys
 
 from dcc.abstract import afnscene
 
@@ -33,6 +34,15 @@ class FnScene(afnscene.AFnScene):
         """
 
         return pymxs.runtime.getSaveRequired()
+
+    def isBatchMode(self):
+        """
+        Evaluates if the the scene is running in batch mode.
+
+        :rtype: bool
+        """
+
+        return os.path.split(sys.executable)[-1] == '3dsmaxbatch.exe'
 
     def currentFilename(self):
         """
