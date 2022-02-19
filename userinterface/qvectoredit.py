@@ -59,8 +59,8 @@ class QVectorEdit(QtWidgets.QWidget):
         boxLayout.addWidget(self.vectorYLineEdit)
         boxLayout.addWidget(self.vectorZLineEdit)
         boxLayout.setSpacing(8)
+        boxLayout.setContentsMargins(0, 0, 0, 0)
 
-        self.setContentsMargins(0, 0, 0, 0)
         self.setLayout(boxLayout)
     # endregion
 

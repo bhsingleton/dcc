@@ -51,6 +51,7 @@ class QMatrixEdit(QtWidgets.QWidget):
         #
         gridLayout = QtWidgets.QGridLayout()
         gridLayout.setSpacing(8)
+        gridLayout.setContentsMargins(0, 0, 0, 0)
 
         for row in range(self._rowCount):
 
