@@ -1,8 +1,8 @@
 import os
 import inspect
+import shiboken2
 
-from PySide2.QtCore import Slot, QMetaObject
-from PySide2.QtUiTools import QUiLoader
+from PySide2 import QtCore, QtWidgets, QtUiTools
 from abc import abstractmethod
 from dcc.userinterface import qproxywindow
 
@@ -15,13 +15,14 @@ log.setLevel(logging.INFO)
 __dir__ = os.path.dirname(os.path.abspath(__file__))
 
 
-class QUicLoader(QUiLoader):
+class QUicLoader(QtUiTools.QUiLoader):
     """
     Subclass of QUiLoader used to create custom user interfaces in a base instance.
     Unlike QUiLoader this class does not create a new instance of the top-level widget,
     but creates the user interface on an existing instance of the top-level class.
     """
 
+    # region Dunderscores
     def __init__(self, instance, **kwargs):
         """
         Create a UI loader for the supplied instance.
@@ -35,7 +36,7 @@ class QUicLoader(QUiLoader):
 
         # Call parent method
         #
-        super(QUicLoader, self).__init__(instance)
+        super(QUicLoader, self).__init__(parent=instance)
 
         # Declare private variables
         #
@@ -46,7 +47,9 @@ class QUicLoader(QUiLoader):
         #
         workingDirectory = kwargs.get('workingDirectory', __dir__)
         self.setWorkingDirectory(workingDirectory)
+    # endregion
 
+    # region Properties
     @property
     def instance(self):
         """
@@ -66,7 +69,9 @@ class QUicLoader(QUiLoader):
         """
 
         return self._customWidgets
+    # endregion
 
+    # region Methods
     def createWidget(self, className, parent=None, name=''):
         """
         Called for each widget defined in the .ui file.
@@ -89,8 +94,6 @@ class QUicLoader(QUiLoader):
 
         # Try and create widget from ui file
         #
-        widget = None
-
         try:
 
             # Check if this is a builtin type
@@ -98,25 +101,101 @@ class QUicLoader(QUiLoader):
             #
             if className in self.availableWidgets():
 
-                widget = super(QUicLoader, self).createWidget(className, parent, name)
+                return super(QUicLoader, self).createWidget(className, parent, name)
 
             else:
 
-                widget = self.customWidgets[className](parent)
+                return self.customWidgets[className](parent)
 
         except (TypeError, KeyError) as exception:
 
             raise Exception('createWidget() Unable to locate custom widget: %s' % className)
-
-        finally:
-
-            setattr(self.instance, name, widget)  # Provide lookup access to newly created widget
-
-        return widget
+    # endregion
 
 
 class QUicWindow(qproxywindow.QProxyWindow):
+    """
+    Overload of QProxyWindow used to dynamically create widgets via .ui files.
+    """
 
+    # region Dunderscores
+    def __load__(self, **kwargs):
+        """
+        Private method used to load the user interface from the associated .ui file.
+        Be sure to overload the associated class methods to augment the behavior of this method.
+
+        :keyword customWidgets: dict[str, type]
+        :keyword workingDirectory: str
+        :rtype: QtWidgets.QWidget
+        """
+
+        # Create new ui loader
+        #
+        customWidgets = kwargs.get('customWidgets', self.customWidgets())
+        workingDirectory = kwargs.get('workingDirectory', self.workingDirectory())
+        self.loader = QUicLoader(self, customWidgets=customWidgets, workingDirectory=workingDirectory)
+
+        # Load the .ui file
+        #
+        filename = self.filename()
+        filePath = os.path.join(workingDirectory, filename)
+
+        log.info('Loading UI file: %s' % filePath)
+        window = self.loader.load(filePath)
+
+        # Auto signal/slot connections
+        # Qt expects the following method names: on_{objectName}_{signal} complete with QtCore.Slot decorator!
+        #
+        QtCore.QMetaObject.connectSlotsByName(window)
+
+        return window
+
+    def __build__(self, **kwargs):
+        """
+        Private method used to build the user interface.
+
+        :rtype: None
+        """
+
+        # Call parent method
+        #
+        super(QUicWindow, self).__build__(**kwargs)
+
+        # Load the user interface
+        #
+        self.__load__(**kwargs)
+        self.connectSignals()
+
+    def __getattribute__(self, item):
+        """
+        Private method used to lookup an attribute.
+        Sadly all pointers are lost from QUicLoader so we have to rebuild them on demand.
+
+        :type item: str
+        :rtype: QtCore.QObject
+        """
+
+        # Call parent method
+        #
+        obj = super(QUicWindow, self).__getattribute__(item)
+
+        if isinstance(obj, QtWidgets.QWidget):
+
+            # Check if cpp pointer is still valid
+            #
+            if not shiboken2.isValid(obj):
+
+                obj = self.findChild(QtWidgets.QWidget, item)
+                setattr(self, item, obj)
+
+            return obj
+
+        else:
+
+            return obj
+    # endregion
+
+    # region Methods
     @classmethod
     def filename(cls):
         """
@@ -163,46 +242,4 @@ class QUicWindow(qproxywindow.QProxyWindow):
         """
 
         pass
-
-    def __load__(self, **kwargs):
-        """
-        Private method used to load the user interface from the associated .ui file.
-        Be sure to overload the associated class methods to augment the behavior of this method.
-
-        :keyword customWidgets: dict[str, type]
-        :keyword workingDirectory: str
-        :rtype: QtWidgets.QWidget
-        """
-
-        # Create new ui loader
-        #
-        customWidgets = kwargs.get('customWidgets', self.customWidgets())
-        workingDirectory = kwargs.get('workingDirectory', self.workingDirectory())
-        loader = QUicLoader(self, customWidgets=customWidgets, workingDirectory=workingDirectory)
-
-        # Load the .ui file
-        #
-        filename = self.filename()
-        filePath = os.path.join(workingDirectory, filename)
-        log.info('Loading UI file: %s' % filePath)
-
-        widget = loader.load(filePath)
-        QMetaObject.connectSlotsByName(widget)
-
-        return widget
-
-    def __build__(self, **kwargs):
-        """
-        Private method used to build the user interface.
-
-        :rtype: None
-        """
-
-        # Call parent method
-        #
-        super(QUicWindow, self).__build__(**kwargs)
-
-        # Load the user interface
-        #
-        self.__load__(**kwargs)
-        self.connectSignals()
+    # endregion
