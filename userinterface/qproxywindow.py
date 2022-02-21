@@ -17,7 +17,6 @@ class QProxyWindow(QtWidgets.QMainWindow):
     __instances__ = {}
     __icon__ = QtGui.QIcon()
     __author__ = 'Ben Singleton'
-    __title__ = ''
 
     # region Dunderscores
     def __new__(cls, *args, **kwargs):
@@ -63,7 +62,7 @@ class QProxyWindow(QtWidgets.QMainWindow):
 
         # Initialize user interface
         #
-        self.__settings__ = QtCore.QSettings(self.__author__, self.__title__)
+        self.__settings__ = QtCore.QSettings(self.__author__, self.className)
         self.__build__(**kwargs)
         self.__instances__[self.className] = self
 
@@ -80,7 +79,6 @@ class QProxyWindow(QtWidgets.QMainWindow):
         self.setObjectName(self.className)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
         self.setWindowIcon(self.__class__.__icon__)
-        self.setWindowTitle(self.__class__.__title__)
     # endregion
 
     # region Properties
