@@ -1,4 +1,5 @@
 import pymxs
+import re
 
 from collections import deque
 
@@ -10,10 +11,10 @@ log.setLevel(logging.INFO)
 
 BASE_TYPES = {
     'Matrix3Controller': pymxs.runtime.Matrix3Controller,
-    'PositionController': pymxs.runtime.PositionController,
-    'RotationController': pymxs.runtime.RotationController,
-    'ScaleController': pymxs.runtime.ScaleController,
-    'FloatController': pymxs.runtime.FloatController,
+    'positionController': pymxs.runtime.positionController,
+    'rotationController': pymxs.runtime.rotationController,
+    'scaleController': pymxs.runtime.scaleController,
+    'floatController': pymxs.runtime.floatController,
 }
 
 
@@ -37,23 +38,27 @@ XYZ_TYPES = {
 
 
 BEZIER_TYPES = {
-    'Bezier_Color': pymxs.runtime.Bezier_Color,
-    'Bezier_Float': pymxs.runtime.Bezier_Float,
-    'Bezier_Point2': pymxs.runtime.Bezier_Point2,
-    'Bezier_Point3': pymxs.runtime.Bezier_Point3,
-    'Bezier_Position': pymxs.runtime.Bezier_Position,
-    'Bezier_Rotation': pymxs.runtime.Bezier_Rotation,
-    'Bezier_Scale': pymxs.runtime.Bezier_Scale
+    'bezier_color': pymxs.runtime.bezier_color,
+    'bezier_float': pymxs.runtime.bezier_float,
+    'bezier_point2': pymxs.runtime.bezier_point2,
+    'bezier_point3': pymxs.runtime.bezier_point3,
+    'bezier_position': pymxs.runtime.bezier_position,
+    'bezier_rotation': pymxs.runtime.bezier_rotation,
+    'bezier_scale': pymxs.runtime.bezier_scale
 }
 
 
 LIST_TYPES = {
-    'Float_List': pymxs.runtime.Float_List,
-    'Point3_List': pymxs.runtime.Point3_List,
-    'Position_List': pymxs.runtime.Position_List,
-    'Rotation_List': pymxs.runtime.Rotation_List,
-    'Scale_List': pymxs.runtime.Scale_List
+    'float_list': pymxs.runtime.float_list,
+    'point3_list': pymxs.runtime.point3_list,
+    'position_list': pymxs.runtime.position_list,
+    'rotation_list': pymxs.runtime.rotation_list,
+    'scale_list': pymxs.runtime.scale_list
 }
+
+
+PROPERTY_PARSER = re.compile(r'\.{1}([a-zA-Z0-9_]+)')
+CLASS_PROPERTIES = {}
 
 
 def isConstraint(obj):
@@ -222,15 +227,15 @@ def iterControllers(obj):
         yield subAnim.controller
 
 
-def walkControllers(node):
+def walkControllers(obj):
     """
     Returns a generator that yields all of the controllers from the supplied node.
 
-    :type node: pymxs.runtime.Node
+    :type obj: pymxs.runtime.MaxObject
     :rtype: iter
     """
 
-    queue = deque([pymxs.runtime.getTMController(node)])
+    queue = deque([pymxs.runtime.getTMController(obj)])
 
     while len(queue):
 
@@ -240,17 +245,17 @@ def walkControllers(node):
         queue.extend(list(iterControllers(controller)))
 
 
-def iterConstraints(node):
+def iterConstraints(obj):
     """
     Returns a generator that yields all constraint from the supplied node.
     Constraints do not share a common base class in Maxscript.
     So we have to define our own collection of constraint types...
 
-    :type node: pymxs.runtime.Node
+    :type obj: pymxs.runtime.MaxObject
     :rtype: iter
     """
 
-    for controller in walkControllers(node):
+    for controller in walkControllers(obj):
 
         if controller in CONSTRAINT_TYPES:
 
@@ -266,7 +271,7 @@ def findControllerByType(node, controllerType, all=False):
     Finds a controller from the transform stack based on the supplied type.
 
     :type node: pymxs.runtime.Node
-    :type controllerType: pymxs.runtime.Control
+    :type controllerType: type
     :type all: bool
     :rtype: pymxs.runtime.Control
     """
@@ -293,3 +298,141 @@ def findControllerByType(node, controllerType, all=False):
         else:
 
             raise TypeError('findControllerByType() multiple controllers found!')
+
+
+def isPropertyAnimatable(obj, name):
+    """
+    Evaluates if the supplied MXS object wrapper is animatable.
+    Max will throw errors if the object isn't explicitly derived from MaxObject!
+
+    :type obj: pymxs.runtime.MXSWrapperBase
+    :type name: pymxs.runtime.Name
+    :rtype: bool
+    """
+
+    try:
+
+        return pymxs.runtime.isPropertyAnimatable(obj, name)
+
+    except RuntimeError:
+
+        return False
+
+
+def inspectClassProperties(className):
+    """
+    Inspects the supplied class names for writable properties.
+
+    :type className: str
+    :rtype: list[str]
+    """
+
+    # Concatenate class lookup pattern
+    #
+    pattern = '{className}.*'.format(className=className)
+
+    stringStream = pymxs.runtime.StringStream('')
+    pymxs.runtime.showClass(pattern, to=stringStream)
+
+    # Iterate through lines
+    #
+    properties = []
+    CLASS_PROPERTIES[className] = properties
+
+    pymxs.runtime.seek(stringStream, 1)
+
+    while not pymxs.runtime.eof(stringStream):
+
+        line = pymxs.runtime.readLine(stringStream)
+        found = PROPERTY_PARSER.findall(line)
+
+        if len(found) == 1:
+
+            properties.append(found[0])
+
+    return properties
+
+
+def iterDynamicProperties(obj, skipAnimatable=False, skipComplexValues=False):
+    """
+    Returns a generator that yield property name/value pairs from the supplied object.
+    This method yields both static and dynamic properties.
+
+    :type obj: pymxs.runtime.MaxObject
+    :type skipAnimatable: bool
+    :type skipComplexValues: bool
+    :rtype: iter
+    """
+
+    # Iterate through property names
+    #
+    properties = pymxs.runtime.getPropNames(obj)
+
+    for name in properties:
+
+        # Check if animatable properties should be skipped
+        #
+        isAnimatable = isPropertyAnimatable(obj, name)
+
+        if skipAnimatable and isAnimatable:
+
+            continue
+
+        # Check if compound values should be skipped
+        #
+        key = str(name).replace(' ', '_')
+        value = pymxs.runtime.getProperty(obj, name)
+
+        if skipComplexValues and not isSerializableValue(value):
+
+            continue
+
+        else:
+
+            yield key, value
+
+
+def iterProperties(obj, skipAnimatable=False, skipComplexValues=False):
+    """
+    Returns a generator that yield property name/value pairs from the supplied object.
+    This method only yields properties that are on the class definition.
+
+    :type obj: pymxs.runtime.MaxObject
+    :type skipAnimatable: bool
+    :type skipComplexValues: bool
+    :rtype: iter
+    """
+
+    # Check if class has already been inspected
+    #
+    className = str(pymxs.runtime.classOf(obj))
+    properties = CLASS_PROPERTIES.get(className, None)
+
+    if properties is None:
+
+        properties = inspectClassProperties(className)
+
+    # Iterate through property names
+    #
+    for key in properties:
+
+        # Check if animatable properties should be skipped
+        #
+        name = pymxs.runtime.Name(key)
+        isAnimatable = isPropertyAnimatable(obj, name)
+
+        if skipAnimatable and isAnimatable:
+
+            continue
+
+        # Check if compound values should be skipped
+        #
+        value = pymxs.runtime.getProperty(obj, name)
+
+        if skipComplexValues and not isSerializableValue(value):
+
+            continue
+
+        else:
+
+            yield key, value
