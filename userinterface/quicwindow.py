@@ -163,8 +163,9 @@ class QUicWindow(qproxywindow.QProxyWindow):
 
         # Load the user interface
         #
+        self.preLoad()
         self.__load__(**kwargs)
-        self.connectSignals()
+        self.postLoad()
 
     def __getattribute__(self, item):
         """
@@ -233,10 +234,18 @@ class QUicWindow(qproxywindow.QProxyWindow):
 
         return os.path.dirname(inspect.getfile(cls))
 
-    @abstractmethod
-    def connectSignals(self):
+    def preLoad(self):
         """
-        Called after the user interface has been loaded to connect any signals.
+        Called before the user interface has been loaded.
+
+        :rtype: None
+        """
+
+        pass
+
+    def postLoad(self):
+        """
+        Called after the user interface has been loaded.
 
         :rtype: None
         """
