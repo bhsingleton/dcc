@@ -119,6 +119,50 @@ class QUicWindow(qproxywindow.QProxyWindow):
     """
 
     # region Dunderscores
+    def __getattribute__(self, item):
+        """
+        Private method used to lookup an attribute.
+        Sadly all pointers are lost from QUicLoader so we have to rebuild them on demand.
+
+        :type item: str
+        :rtype: QtCore.QObject
+        """
+
+        # Call parent method
+        #
+        obj = super(QUicWindow, self).__getattribute__(item)
+
+        if isinstance(obj, QtWidgets.QWidget):
+
+            # Check if cpp pointer is still valid
+            #
+            if not shiboken2.isValid(obj):
+                obj = self.findChild(QtWidgets.QWidget, item)
+                setattr(self, item, obj)
+
+            return obj
+
+        else:
+
+            return obj
+
+    def __build__(self, **kwargs):
+        """
+        Private method used to build the user interface.
+
+        :rtype: None
+        """
+
+        # Call parent method
+        #
+        super(QUicWindow, self).__build__(**kwargs)
+
+        # Load the user interface
+        #
+        self.preLoad()
+        self.__load__(**kwargs)
+        self.postLoad()
+
     def __load__(self, **kwargs):
         """
         Private method used to load the user interface from the associated .ui file.
@@ -149,51 +193,6 @@ class QUicWindow(qproxywindow.QProxyWindow):
         QtCore.QMetaObject.connectSlotsByName(window)
 
         return window
-
-    def __build__(self, **kwargs):
-        """
-        Private method used to build the user interface.
-
-        :rtype: None
-        """
-
-        # Call parent method
-        #
-        super(QUicWindow, self).__build__(**kwargs)
-
-        # Load the user interface
-        #
-        self.preLoad()
-        self.__load__(**kwargs)
-        self.postLoad()
-
-    def __getattribute__(self, item):
-        """
-        Private method used to lookup an attribute.
-        Sadly all pointers are lost from QUicLoader so we have to rebuild them on demand.
-
-        :type item: str
-        :rtype: QtCore.QObject
-        """
-
-        # Call parent method
-        #
-        obj = super(QUicWindow, self).__getattribute__(item)
-
-        if isinstance(obj, QtWidgets.QWidget):
-
-            # Check if cpp pointer is still valid
-            #
-            if not shiboken2.isValid(obj):
-
-                obj = self.findChild(QtWidgets.QWidget, item)
-                setattr(self, item, obj)
-
-            return obj
-
-        else:
-
-            return obj
     # endregion
 
     # region Methods
