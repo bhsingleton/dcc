@@ -1,9 +1,9 @@
 import pymxs
 
-from . import fnnode
-from .libs import modifierutils
-from .decorators import commandpaneloverride
-from ..abstract import afnskin
+from dcc import fnnode
+from dcc.abstract import afnskin
+from dcc.max.libs import modifierutils
+from dcc.max.decorators import commandpaneloverride
 
 import logging
 logging.basicConfig()
