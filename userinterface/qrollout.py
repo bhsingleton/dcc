@@ -65,14 +65,6 @@ class QRollout(QtWidgets.QWidget):
 
         self.setPalette(palette)
 
-        # Assign default vertical layout
-        #
-        layout = QtWidgets.QVBoxLayout()
-        layout.setObjectName('MainLayout')
-        layout.setAlignment(QtCore.Qt.AlignTop)
-
-        self.setLayout(layout)
-
         # Assign custom context menu
         #
         self.customContextMenu = QtWidgets.QMenu('', parent=self)
@@ -128,7 +120,10 @@ class QRollout(QtWidgets.QWidget):
 
         # Install new event filter
         #
+        layout.setObjectName('centralLayout')
         layout.installEventFilter(self)
+        layout.setAlignment(QtCore.Qt.AlignTop)
+        layout.setContentsMargins(0, self.__thickness__, 0, 0)
 
         # Call parent method
         #
