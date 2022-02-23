@@ -7,6 +7,10 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
+__executable__ = os.path.normpath(sys.executable)
+__application__ = os.path.splitext(os.path.split(__executable__)[1])[0]
+
+
 def rollback():
     """
     Removes all modules, derived from the dcc package, from the system module.

@@ -1,12 +1,9 @@
-from . import platform
+from . import __application__
 
 import logging
 logging.basicConfig()
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
-
-
-__application__ = platform.getApplication()
 
 
 if __application__ == 'maya':
