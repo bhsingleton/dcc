@@ -200,7 +200,16 @@ class Influences(collections_abc.MutableMapping):
         :rtype: int
         """
 
-        return list(self.keys())[-1]
+        indices = list(self.keys())
+        numIndices = len(indices)
+
+        if numIndices > 0:
+
+            return indices[-1]
+
+        else:
+
+            return -1
 
     def update(self, obj, **kwargs):
         """
