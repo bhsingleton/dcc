@@ -24,24 +24,25 @@ class QMatrixEdit(QtWidgets.QWidget):
     # region Dunderscores
     __decimals__ = 3
 
-    def __init__(self, rowCount, columnCount, parent=None):
+    def __init__(self, *args, **kwargs):
         """
         Private method called after a new instance has been created.
 
         :type rowCount: int
         :type columnCount: int
         :type parent: QtWidgets.QWidget
+        :type f: QtCore.Qt.WindowFlags
         :rtype: None
         """
 
         # Call parent method
         #
-        super(QMatrixEdit, self).__init__(parent=parent)
+        super(QMatrixEdit, self).__init__(*args, **kwargs)
 
         # Declare private variables
         #
-        self._rowCount = rowCount
-        self._columnCount = columnCount
+        self._rowCount = kwargs.get('rowCount', 4)
+        self._columnCount = kwargs.get('columnCount', 4)
         self._matrix = numpy.matrix(numpy.zeros((self._rowCount, self._columnCount)))
         self._readOnly = False
         self._validator = self.defaultValidator()

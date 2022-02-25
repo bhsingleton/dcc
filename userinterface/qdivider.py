@@ -16,13 +16,13 @@ class QDivider(QtWidgets.QFrame):
         Private method called after a new instance has been created.
 
         :type parent: QtWidgets.QWidget
-        :type f: int
+        :type f: QtCore.Qt.WindowFlags
         :rtype: None
         """
 
         # Call parent method
         #
-        super(QDivider, self).__init__(parent=parent, f=f)
+        super(QDivider, self).__init__(parent=parent)
 
         # Edit class properties
         #

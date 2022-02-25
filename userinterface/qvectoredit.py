@@ -22,11 +22,12 @@ class QVectorEdit(QtWidgets.QWidget):
     # region Dunderscores
     __decimals__ = 3
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, f=QtCore.Qt.WindowFlags):
         """
         Private method called after a new instance has been created.
 
         :type parent: QtWidgets.QWidget
+        :type f: QtCore.Qt.WindowFlags
         :rtype: None
         """
 

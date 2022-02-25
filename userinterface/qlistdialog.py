@@ -18,7 +18,7 @@ class QListDialog(QtWidgets.QDialog):
 
         :type title: str
         :type parent: QtWidgets.QWidget
-        :type f: int
+        :type f: QtCore.Qt.WindowFlags
         :rtype: None
         """
 

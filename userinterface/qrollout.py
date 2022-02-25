@@ -28,13 +28,13 @@ class QRollout(QtWidgets.QWidget):
         Private method called after a new instance has been created.
 
         :type parent: QtWidgets.QWidget
-        :type f: int
+        :type f: QtCore.Qt.WindowFlags
         :rtype: None
         """
 
         # Call parent method
         #
-        super(QRollout, self).__init__(parent=parent, f=f)
+        super(QRollout, self).__init__(parent=parent)
 
         # Declare class variables
         #
@@ -121,9 +121,8 @@ class QRollout(QtWidgets.QWidget):
         # Install new event filter
         #
         layout.setObjectName('centralLayout')
-        layout.installEventFilter(self)
         layout.setAlignment(QtCore.Qt.AlignTop)
-        layout.setContentsMargins(0, self.__thickness__, 0, 0)
+        layout.installEventFilter(self)
 
         # Call parent method
         #
@@ -584,12 +583,20 @@ class QRollout(QtWidgets.QWidget):
         :rtype: bool
         """
 
-        # Check if a widget was added to the layout manager
+        # Check if layout triggered event
         #
         if watched is self.layout() and isinstance(event, QtCore.QChildEvent):
 
+            # Check if child object is a widget
+            #
             child = event.child()
 
+            if not isinstance(child, QtWidgets.QWidget):
+
+                return super(QRollout, self).eventFilter(watched, event)
+
+            # Connect signal to child
+            #
             if event.added():
 
                 log.info('Adding child: %s' % child)
@@ -606,7 +613,7 @@ class QRollout(QtWidgets.QWidget):
 
         # Call parent method
         #
-        super(QRollout, self).eventFilter(watched, event)
+        return super(QRollout, self).eventFilter(watched, event)
 
     def mousePressEvent(self, event):
         """

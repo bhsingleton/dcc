@@ -63,11 +63,10 @@ class QProxyWindow(QtWidgets.QMainWindow):
         # Initialize user interface
         #
         self.__settings__ = QtCore.QSettings(self.__author__, self.className)
-        self.__build__(**kwargs)
+        self.__build__(*args, **kwargs)
         self.__instances__[self.className] = self
 
-    @abstractmethod
-    def __build__(self, **kwargs):
+    def __build__(self, *args, **kwargs):
         """
         Private method used to build the user interface.
 
@@ -77,8 +76,8 @@ class QProxyWindow(QtWidgets.QMainWindow):
         # Modify window properties
         #
         self.setObjectName(self.className)
-        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
         self.setWindowIcon(self.__class__.__icon__)
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
     # endregion
 
     # region Properties
