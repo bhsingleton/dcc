@@ -8,6 +8,16 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
+def defaultLayer():
+    """
+    Returns the default layer.
+
+    :rtype: pymxs.runtime.LayerProperties
+    """
+
+    return pymxs.runtime.LayerManager.getLayerFromName('0')
+
+
 def resetCurrentLayer():
     """
     Resets the current layer back to the default layer.
@@ -15,7 +25,7 @@ def resetCurrentLayer():
     :rtype: None
     """
 
-    pymxs.runtime.LayerManager.getLayerFromName('0').current = True
+    defaultLayer().current = True
 
 
 def iterTopLevelLayers():
