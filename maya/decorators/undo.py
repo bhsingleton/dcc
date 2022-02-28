@@ -1,5 +1,4 @@
-import maya.cmds as mc
-
+from maya import cmds as mc
 from six import string_types
 from functools import partial
 
