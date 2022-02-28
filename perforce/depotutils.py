@@ -2,7 +2,8 @@ import os
 import getpass
 
 from six.moves import collections_abc
-from . import cmds
+from dcc.perforce import cmds
+from dcc.perforce.decorators.relogin import relogin
 
 import logging
 logging.basicConfig()
@@ -15,6 +16,7 @@ class DepotSpec(object):
     Base class used for interfacing with depot related data.
     """
 
+    # region Dunderscores
     __slots__ = (
         'date',
         'name',
@@ -43,6 +45,7 @@ class DepotSpec(object):
         self.owner = kwargs.get('Owner', '')
         self.streamDepth = kwargs.get('StreamDepth', '')
         self.type = kwargs.get('Type', '')
+    # endregion
 
 
 class DepotSpecs(collections_abc.MutableMapping):
@@ -50,6 +53,7 @@ class DepotSpecs(collections_abc.MutableMapping):
     Overload of MutableMapping designed to store depot specs associated with the current user.
     """
 
+    # region Dunderscores
     __slots__ = ('_user', '_port', '_depots')
 
     def __init__(self, *args, **kwargs):
@@ -122,7 +126,55 @@ class DepotSpecs(collections_abc.MutableMapping):
         """
 
         return iter(self._depots)
+    # endregion
 
+    # region Properties
+    @property
+    def user(self):
+        """
+        Getter method used to retrieve the username associated with these clients.
+
+        :rtype: str
+        """
+
+        return self._user
+
+    @user.setter
+    def user(self, username):
+        """
+        Setter method used to update the global perforce username for this session.
+
+        :type username: str
+        :rtype: None
+        """
+
+        self._user = username
+        self.refresh()
+
+    @property
+    def port(self):
+        """
+        Getter method used to retrieve the port associated with these clients.
+
+        :rtype: str
+        """
+
+        return self._port
+
+    @port.setter
+    def port(self, port):
+        """
+        Setter method used to update the global perforce port for this session.
+
+        :type port: str
+        :rtype: None
+        """
+
+        self._port = port
+        self.refresh()
+    # endregion
+
+    # region Methods
     def get(self, key, default=None):
         """
         Inherited method used to safely retrieve a value from this instance with a default option.
@@ -196,50 +248,7 @@ class DepotSpecs(collections_abc.MutableMapping):
 
         self.clear()
         self.update({x['Depot']: x for x in cmds.depots(user=self.user, port=self.port)})
-
-    @property
-    def user(self):
-        """
-        Getter method used to retrieve the username associated with these clients.
-
-        :rtype: str
-        """
-
-        return self._user
-
-    @user.setter
-    def user(self, username):
-        """
-        Setter method used to update the global perforce username for this session.
-
-        :type username: str
-        :rtype: None
-        """
-
-        self._user = username
-        self.refresh()
-
-    @property
-    def port(self):
-        """
-        Getter method used to retrieve the port associated with these clients.
-
-        :rtype: str
-        """
-
-        return self._port
-
-    @port.setter
-    def port(self, port):
-        """
-        Setter method used to update the global perforce port for this session.
-
-        :type port: str
-        :rtype: None
-        """
-
-        self._port = port
-        self.refresh()
+    # endregion
 
 
 def getDepot(depot):
@@ -257,7 +266,7 @@ def getDepotNames():
     """
     Method used to retrieve all of the available depots belonging to the current user.
 
-    :rtype: list(str,)
+    :rtype: list[str]
     """
 
     return list(__depotspecs__.keys())
@@ -273,7 +282,19 @@ def iterDepots():
     return iter(__depotspecs__.items())
 
 
-__depotspecs__ = DepotSpecs(
-    user=os.environ.get('P4USER', getpass.getuser()),
-    port=os.environ.get('P4PORT', 'localhost:1666')
-)
+@relogin
+def initializeDepots():
+    """
+    Initializes the depot specs for the current session.
+    Any expired tickets will be resolved through the decorator!
+
+    :rtype: DepotSpecs
+    """
+
+    return DepotSpecs(
+        user=os.environ.get('P4USER', getpass.getuser()),
+        port=os.environ.get('P4PORT', 'localhost:1666')
+    )
+
+
+__depotspecs__ = initializeDepots()

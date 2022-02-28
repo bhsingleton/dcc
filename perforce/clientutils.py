@@ -6,6 +6,7 @@ from six.moves import collections_abc
 from collections import namedtuple
 from dcc import fnqt
 from dcc.perforce import cmds
+from dcc.perforce.decorators.relogin import relogin
 
 import logging
 logging.basicConfig()
@@ -21,6 +22,7 @@ class ClientSpec(object):
     Base class used for interfacing with client related data.
     """
 
+    # region Dunderscores
     __slots__ = (
         'user',
         'port',
@@ -63,7 +65,9 @@ class ClientSpec(object):
         self.submitOptions = kwargs.get('SubmitOptions', '')
         self.update = kwargs.get('Update', '')
         self.view = [self.parseView(x) for x in kwargs.get('View', [])]
+    # endregion
 
+    # region Methods
     @staticmethod
     def parseView(view):
         """
@@ -174,6 +178,7 @@ class ClientSpec(object):
         """
 
         return cmds.changes(user=self.user, port=self.port, client=self.name, status='pending')
+    # endregion
 
 
 class ClientSpecs(collections_abc.MutableMapping):
@@ -182,6 +187,7 @@ class ClientSpecs(collections_abc.MutableMapping):
     This class is capable of dynamic lookup in case the requested client couldn't be found.
     """
 
+    # region dunderscores
     __slots__ = ('_user', '_port', '_clients')
 
     def __init__(self, *args, **kwargs):
@@ -261,7 +267,55 @@ class ClientSpecs(collections_abc.MutableMapping):
         """
 
         return iter(self._clients)
+    # endregion
 
+    # region Properties
+    @property
+    def user(self):
+        """
+        Getter method used to retrieve the username associated with these clients.
+
+        :rtype: str
+        """
+
+        return self._user
+
+    @user.setter
+    def user(self, username):
+        """
+        Setter method used to update the global perforce username for this session.
+
+        :type username: str
+        :rtype: None
+        """
+
+        self._user = username
+        self.refresh()
+
+    @property
+    def port(self):
+        """
+        Getter method used to retrieve the port associated with these clients.
+
+        :rtype: str
+        """
+
+        return self._port
+
+    @port.setter
+    def port(self, port):
+        """
+        Setter method used to update the global perforce port for this session.
+
+        :type port: str
+        :rtype: None
+        """
+
+        self._port = port
+        self.refresh()
+    # endregion
+
+    # region Methods
     def get(self, key, default=None):
         """
         Returns an index item from this collection with any exceptions.
@@ -344,50 +398,7 @@ class ClientSpecs(collections_abc.MutableMapping):
 
         self._clients.clear()
         self._clients = {x['Client']: ClientSpec(**x) for x in cmds.clients(user=self._user, port=self._port)}
-
-    @property
-    def user(self):
-        """
-        Getter method used to retrieve the username associated with these clients.
-
-        :rtype: str
-        """
-
-        return self._user
-
-    @user.setter
-    def user(self, username):
-        """
-        Setter method used to update the global perforce username for this session.
-
-        :type username: str
-        :rtype: None
-        """
-
-        self._user = username
-        self.refresh()
-
-    @property
-    def port(self):
-        """
-        Getter method used to retrieve the port associated with these clients.
-
-        :rtype: str
-        """
-
-        return self._port
-
-    @port.setter
-    def port(self, port):
-        """
-        Setter method used to update the global perforce port for this session.
-
-        :type port: str
-        :rtype: None
-        """
-
-        self._port = port
-        self.refresh()
+    # endregion
 
 
 def getClientByName(name):
@@ -539,7 +550,19 @@ def detectClient(filePath):
     return None
 
 
-__clientspecs__ = ClientSpecs(
-    user=os.environ.get('P4USER', getpass.getuser()),
-    port=os.environ.get('P4PORT', 'localhost:1666')
-)
+@relogin
+def initializeClients():
+    """
+    Initializes the client specs for the current session.
+    Any expired tickets will be resolved through the decorator!
+
+    :rtype: ClientSpecs
+    """
+
+    return ClientSpecs(
+        user=os.environ.get('P4USER', getpass.getuser()),
+        port=os.environ.get('P4PORT', 'localhost:1666')
+    )
+
+
+__clientspecs__ = initializeClients()
