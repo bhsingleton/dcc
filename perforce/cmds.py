@@ -6,7 +6,7 @@ Each command is capable of augmenting the environment settings to support client
 import os
 
 from P4 import P4Exception
-from . import createAdapter
+from dcc.perforce import createAdapter
 
 import logging
 logging.basicConfig()
@@ -433,3 +433,60 @@ def changes(*args, **kwargs):
     except P4Exception:
 
         logErrors(p4.errors)
+
+
+def login(password, **kwargs):
+    """
+    Performs a login for the supplied username and password.
+
+    :type password: str
+    :keyword user: str
+    :keyword port: str
+    :rtype: bool
+    """
+
+    # Create repository
+    #
+    p4 = createAdapter(**kwargs)
+    p4.password = password
+
+    try:
+
+        p4.connect()
+        results = p4.run_login()
+        p4.disconnect()
+
+        return int(results[0]['TicketExpiration']) > 0
+
+    except P4Exception:
+
+        logErrors(p4.errors)
+        return False
+
+
+def loginExpiration(*args, **kwargs):
+    """
+    Returns the amount of time left before the specified user's session expires.
+    The time returned is in seconds.
+
+    :keyword user: str
+    :keyword port: str
+    :rtype: int
+    """
+
+    # Create repository
+    #
+    p4 = createAdapter(**kwargs)
+
+    try:
+
+        p4.connect()
+        results = p4.run('login', '-s')
+        p4.disconnect()
+
+        return int(results[0]['TicketExpiration'])
+
+    except P4Exception:
+
+        logErrors(p4.errors)
+        return 0
