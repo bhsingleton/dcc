@@ -197,7 +197,7 @@ class QLoginDialog(QtWidgets.QDialog):
         :rtype: None
         """
 
-        # Store password
+        # Store encoded password
         #
         print(self.size())
         self._password = base64.b64encode(self.passwordLineEdit.text().encode('utf-8'))
