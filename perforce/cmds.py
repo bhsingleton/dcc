@@ -72,7 +72,7 @@ def files(*args, **kwargs):
     """
     Lists files from the depot tree based on the supplied paths.
     To perform a depot search use the following syntax: //{depot}/.../*.fbx
-    To perform a client search used the following syntax: //{client}/.../*.fbx
+    To perform a client search use the following syntax: //{client}/.../*.fbx
     To limit a get request to a specific directory use: //{depot}/*
 
     :rtype: list[dict]
