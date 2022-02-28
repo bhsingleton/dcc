@@ -1,7 +1,7 @@
 import os
 
 from collections import defaultdict
-from . import clientutils, cmds
+from dcc.perforce import clientutils, cmds
 
 import logging
 logging.basicConfig()

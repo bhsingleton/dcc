@@ -3,7 +3,7 @@ import os
 from abc import ABCMeta, abstractmethod
 from six import with_metaclass
 from dcc.abstract import afnbase
-from dcc.perforce import cmds, clientutils, searchengine
+from dcc.perforce import cmds, clientutils, searchutils
 
 import logging
 logging.basicConfig()
@@ -409,7 +409,7 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
             #
             log.info('Searching for: %s' % search)
 
-            fileSpecs = searchengine.findFile(search)
+            fileSpecs = searchutils.findFile(search)
             numFileSpecs = len(fileSpecs)
 
             if numFileSpecs == 0:
