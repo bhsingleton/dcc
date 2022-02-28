@@ -1,5 +1,6 @@
 import os
 import getpass
+import base64
 
 from PySide2 import QtCore, QtWidgets, QtGui
 
@@ -35,6 +36,7 @@ class QLoginDialog(QtWidgets.QDialog):
         #
         self._username = kwargs.get('username', '')
         self._port = kwargs.get('port', 'localhost:1666')
+        self._password = ''
 
         # Build user interface
         #
@@ -70,7 +72,7 @@ class QLoginDialog(QtWidgets.QDialog):
         #
         self.setObjectName('loginDialog')
         self.setWindowFlags(QtCore.Qt.Dialog)
-        self.setMinimumSize(QtCore.QSize(700, 180))
+        self.setMinimumSize(QtCore.QSize(600, 150))
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
         self.setWindowTitle('Perforce Password Required')
 
@@ -104,7 +106,7 @@ class QLoginDialog(QtWidgets.QDialog):
         self.cancelPushButton.pressed.connect(self.reject)
 
         self.buttonLayout = QtWidgets.QHBoxLayout()
-        self.buttonLayout.addWidget(self.buttonSpacerItem)
+        self.buttonLayout.addSpacerItem(self.buttonSpacerItem)
         self.buttonLayout.addWidget(self.okayPushButton)
         self.buttonLayout.addWidget(self.cancelPushButton)
 
@@ -172,7 +174,7 @@ class QLoginDialog(QtWidgets.QDialog):
         :rtype: str
         """
 
-        return self.passwordLineEdit.text()
+        return base64.b64decode(self._password).decode('utf-8')
     # endregion
 
     # region Methods
@@ -185,4 +187,22 @@ class QLoginDialog(QtWidgets.QDialog):
 
         text = 'A password is required for user "{username}" on server "{port}".'.format(username=self.username, port=self.port)
         self.usernameLabel.setText(text)
+    # endregion
+
+    # region Slots
+    def accept(self):
+        """
+        Hides the modal dialog and sets the result code to QDialogCode.Accepted.
+
+        :rtype: None
+        """
+
+        # Store password
+        #
+        print(self.size())
+        self._password = base64.b64encode(self.passwordLineEdit.text().encode('utf-8'))
+
+        # Call parent method
+        #
+        super(QLoginDialog, self).accept()
     # endregion
