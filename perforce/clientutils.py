@@ -1,12 +1,11 @@
-import getpass
 import os
+import getpass
 
 from PySide2 import QtWidgets
 from six.moves import collections_abc
 from collections import namedtuple
-
-from .. import fnqt
-from . import cmds
+from dcc import fnqt
+from dcc.perforce import cmds
 
 import logging
 logging.basicConfig()
@@ -75,14 +74,14 @@ class ClientSpec(object):
         """
 
         index = view.rfind('//')
-        depotPath = view[:index - 1].replace('/...', '')
+        depotPath = view[:index-1].replace('/...', '')
         clientPath = view[index:].replace('/...', '')
 
         return Branch(depotPath, clientPath)
 
     def mapToView(self, depotPath):
         """
-        Utilizes the client view to convert the supplied depot path into a local path.
+        Utilizes the client view to convert the depot path into a local path.
         No error checking is performed to see if this file exists!
 
         :type depotPath: str
@@ -114,7 +113,7 @@ class ClientSpec(object):
 
     def mapToRoot(self, filePath):
         """
-        Utilizes this session's environment variables to resolve any files path to the client root.
+        Utilizes the client root to convert the absolute path into a relative path.
 
         :type filePath: str
         :rtype: str
@@ -130,11 +129,18 @@ class ClientSpec(object):
         #
         filePath = os.path.normpath(filePath)
         clientPath = os.path.normpath(self.root)
-        
-        relativePath = os.path.relpath(filePath, clientPath)
-        newFilePath = os.path.join('$P4ROOT', relativePath)
 
-        return os.path.normpath(newFilePath)
+        return os.path.relpath(filePath, clientPath)
+
+    def mapToDepot(self, filePath):
+        """
+        Utilized the client view to convert the absolute path into a depot path.
+
+        :type filePath: str
+        :rtype: str
+        """
+
+        return os.path.join(self.view[0].depotPath, self.mapToRoot(filePath))
 
     def hasStream(self):
         """
