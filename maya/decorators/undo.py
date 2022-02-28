@@ -145,5 +145,3 @@ def undo(*args, **kwargs):
     else:
 
         raise TypeError('undo() expects at most 1 argument (%s given)!' % numArgs)
-
-
