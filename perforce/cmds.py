@@ -93,6 +93,7 @@ def files(*args, **kwargs):
     except P4Exception:
 
         logErrors(p4.errors)
+        return []
 
 
 def dirs(*args, **kwargs):
@@ -117,6 +118,7 @@ def dirs(*args, **kwargs):
     except P4Exception:
 
         logErrors(p4.errors)
+        return []
 
 
 def where(*args, **kwargs):
@@ -142,6 +144,7 @@ def where(*args, **kwargs):
     except P4Exception:
 
         logErrors(p4.errors)
+        return []
 
 
 def sync(*args, **kwargs):
