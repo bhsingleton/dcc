@@ -3,9 +3,9 @@ from six import with_metaclass, integer_types
 from functools import partial
 from PySide2 import QtWidgets
 
-from . import afnbase
-from ..xml import xmlutils
-from ..userinterface import qmainmenu, qloggingmenu
+from dcc.abstract import afnbase
+from dcc.xml import xmlutils
+from dcc.ui import qmainmenu, qloggingmenu
 
 import logging
 logging.basicConfig()

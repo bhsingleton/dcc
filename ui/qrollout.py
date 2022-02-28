@@ -1,5 +1,5 @@
 from PySide2 import QtCore, QtWidgets, QtGui
-from dcc.userinterface import qdivider, qseparator
+from dcc.ui import qdivider, qseparator
 
 import logging
 logging.basicConfig()

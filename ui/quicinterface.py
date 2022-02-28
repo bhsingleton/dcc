@@ -3,7 +3,7 @@ import inspect
 import shiboken2
 
 from PySide2 import QtCore, QtWidgets, QtGui
-from dcc.userinterface import quicloader
+from dcc.ui import quicloader
 
 import logging
 logging.basicConfig()

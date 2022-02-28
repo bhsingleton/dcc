@@ -9,7 +9,7 @@ from itertools import chain
 from collections import deque, namedtuple
 from scipy.spatial import cKDTree
 
-from . import afnbase
+from dcc.abstract import afnbase
 
 import logging
 logging.basicConfig()

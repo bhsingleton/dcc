@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
 from six import with_metaclass
 
-from . import afnbase
+from dcc.abstract import afnbase
 
 import logging
 logging.basicConfig()

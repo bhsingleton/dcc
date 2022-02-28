@@ -1,4 +1,4 @@
-from dcc.userinterface import qproxywindow, quicinterface
+from dcc.ui import qproxywindow, quicinterface
 
 import logging
 logging.basicConfig()

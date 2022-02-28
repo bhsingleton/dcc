@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
 from six import with_metaclass
 
-from ..decorators.classproperty import classproperty
+from dcc.decorators.classproperty import classproperty
 
 import logging
 logging.basicConfig()

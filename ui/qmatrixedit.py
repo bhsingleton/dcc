@@ -2,7 +2,7 @@ import sys
 import numpy
 
 from PySide2 import QtCore, QtWidgets, QtGui
-from dcc.userinterface import qlineeditgroup
+from dcc.ui import qlineeditgroup
 
 import logging
 logging.basicConfig()

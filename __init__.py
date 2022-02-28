@@ -69,7 +69,7 @@ def closeWindows():
     :rtype: None
     """
 
-    from dcc.userinterface import qproxywindow
+    from dcc.ui import qproxywindow
     qproxywindow.QProxyWindow.closeWindows()
 
 

@@ -190,7 +190,7 @@ def getIconByName(name):
     :rtype: QtGui.QIcon
     """
 
-    return ICONS[name]
+    return __icons__[name]
 
 
-ICONS = QIconLibrary()  # Module constant for icon lookups
+__icons__ = QIconLibrary()  # Module constant for icon lookups
