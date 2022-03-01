@@ -1,11 +1,19 @@
 import inspect
 import weakref
-import typing
 import copy
 
 from abc import ABCMeta
 from six.moves.collections_abc import MutableMapping, MutableSequence
 from dcc.decorators import classproperty
+from dcc.python import annotationutils
+
+try:
+
+    from typing import Sequence
+
+except ImportError:
+
+    Sequence = None
 
 import logging
 logging.basicConfig()
@@ -106,7 +114,8 @@ class PSONObject(MutableMapping):
             # Inspect return type
             # If it doesn't have a return hint then ignore it
             #
-            returnType = func.fget.__annotations__.get('return')
+            annotations = annotationutils.getAnnotations(func.fget)
+            returnType = annotations.get('return', None)
 
             if returnType is None:
 
@@ -221,16 +230,19 @@ class PSONObject(MutableMapping):
             # Check if property is readable
             #
             if readable and func.fget is None:
+
                 continue
 
             # Check if property is writable
             #
             if writable and func.fset is None:
+
                 continue
 
             # Check if property is deletable
             #
             if deletable and func.fdel is None:
+
                 continue
 
             # Yield property
@@ -259,24 +271,28 @@ class PSONObject(MutableMapping):
         :rtype: bool
         """
 
-        return any([issubclass(T, x) for x in cls.__builtins__])
+        return issubclass(T, cls.__builtins__)
 
     @classmethod
     def isJsonCompatible(cls, T):
         """
         Evaluates whether the given type is json compatible.
 
-        :type T: Union[class, type]
+        :type T: Union[type, class, tuple]
         :rtype: bool
         """
 
         # Check if this is a class
         #
-        if inspect.isclass(T):
+        if cls.isBuiltinType(T) or hasattr(T, '__getstate__'):
 
-            return cls.isBuiltinType(T)
+            return True
 
-        elif isinstance(T, typing.Sequence):
+        elif isinstance(T, (tuple, list)):
+
+            return all([cls.isBuiltinType(x) for x in T])
+
+        elif isinstance(T, Sequence) and hasattr(T, '__args__'):
 
             return all([cls.isBuiltinType(x) for x in T.__args__])
 

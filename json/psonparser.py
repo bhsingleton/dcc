@@ -2,7 +2,6 @@ import json
 import sys
 
 from six.moves.collections_abc import MutableSequence, MutableMapping
-from dcc.json import psonobject
 from dcc.python import pythonutils
 
 import logging
@@ -30,7 +29,7 @@ class PSONEncoder(json.JSONEncoder):
         #
         objType = type(obj)
 
-        if issubclass(objType, psonobject.PSONObject):
+        if hasattr(objType, '__getstate__'):
 
             return obj.__getstate__()
 
@@ -118,4 +117,3 @@ class PSONDecoder(json.JSONDecoder):
         else:
 
             return pythonutils.findClass(className, moduleName)
-
