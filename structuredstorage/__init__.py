@@ -22,16 +22,16 @@ def iterFileProperties(filePath):
     # Initialize storage container
     #
     flags = storagecon.STGM_READ | storagecon.STGM_SHARE_EXCLUSIVE
-    storage = pythoncom.StgOpenStorage(filePath, None, flags)
+    fileStorage = pythoncom.StgOpenStorage(filePath, None, flags)
 
     # Open custom property storage
     #
-    properties = storage.QueryInterface(pythoncom.IID_IPropertySetStorage)
-    customProperties = properties.Open(FMTID_CustomDefinedProperties, flags)
+    propertySetStorage = fileStorage.QueryInterface(pythoncom.IID_IPropertySetStorage)
+    propertyStorage = propertySetStorage.Open(FMTID_CustomDefinedProperties, flags)
 
-    for (name, propertyId, varType) in customProperties:
+    for (name, propertyId, varType) in propertyStorage:
 
-        for value in customProperties.ReadMultiple([propertyId]):
+        for value in propertyStorage.ReadMultiple([propertyId]):
 
             yield name, value
 
@@ -41,7 +41,7 @@ def getFileProperties(filePath):
     Returns a list of custom properties from the supplied file.
 
     :type filePath: str
-    :rtype: dict[str:object]
+    :rtype: Dict[str, str]
     """
 
     return dict(iterFileProperties(filePath))
@@ -52,11 +52,26 @@ def setFileProperties(filePath, properties):
     Updates the custom properties for the specified file.
 
     :type filePath: str
-    :type properties: dict[str:Any]
+    :type properties: Dict[str, str]
     :rtype: None
     """
 
-    raise NotImplementedError('setFileProperties() has yet to be implemented!')
+    # Initialize storage container
+    #
+    flags = storagecon.STGM_READ | storagecon.STGM_SHARE_EXCLUSIVE
+    fileStorage = pythoncom.StgOpenStorage(filePath, None, flags)
+
+    # Open custom property storage
+    #
+    propertySetStorage = fileStorage.QueryInterface(pythoncom.IID_IPropertySetStorage)
+    propertyStorage = propertySetStorage.Open(FMTID_CustomDefinedProperties, flags)
+
+    # Overwrite custom properties
+    #
+    customProperties = getFileProperties(filePath)
+    customProperties.update(properties)
+
+    propertyStorage.writeMultiple(list(customProperties.keys()), list(customProperties.values()))
 
 
 def setFileProperty(filePath, key, value):
@@ -69,4 +84,4 @@ def setFileProperty(filePath, key, value):
     :rtype: None
     """
 
-    raise NotImplementedError('setFileProperty() has yet to be implemented!')
+    setFileProperties(filePath, {key: value})
