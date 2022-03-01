@@ -20,8 +20,8 @@ class QLoginDialog(QtWidgets.QDialog):
         """
         Private method called after a new instance has been created.
 
-        :keyword parent: QtWidgets.QWidget
-        :keyword f: QtCore.Qt.WindowFlags
+        :key parent: QtWidgets.QWidget
+        :key f: QtCore.Qt.WindowFlags
         :rtype: None
         """
 

@@ -21,10 +21,10 @@ def createAdapter(**kwargs):
     Returns a P4 adapter configured for the current user.
     If no keyword arguments are supplied then environment variables are queried.
 
-    :keyword user: The username of the account.
-    :keyword port: The server address to access.
-    :keyword host: The host name to filter values.
-    :keyword client: The client name associated with the user.
+    :key user: The username of the account.
+    :key port: The server address to access.
+    :key host: The host name to filter values.
+    :key client: The client name associated with the user.
     :rtype: P4
     """
 

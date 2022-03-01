@@ -16,7 +16,7 @@ class QMainMenu(QtWidgets.QMenu):
         Private method called after a new instance is created.
 
         :type title: str
-        :keyword parent: QtWidgets.QObject
+        :key parent: QtWidgets.QObject
         :rtype: None
         """
 

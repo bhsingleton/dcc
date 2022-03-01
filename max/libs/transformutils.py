@@ -36,10 +36,10 @@ def setTranslation(node, translation, **kwargs):
 
     :type node: pymxs.runtime.Node
     :type translation: pymxs.runtime.Point3
-    :keyword skipTranslate: bool
-    :keyword skipTranslateX: bool
-    :keyword skipTranslateY: bool
-    :keyword skipTranslateZ: bool
+    :key skipTranslate: bool
+    :key skipTranslateX: bool
+    :key skipTranslateY: bool
+    :key skipTranslateZ: bool
     :rtype: None
     """
 
@@ -175,10 +175,10 @@ def setEulerRotation(node, eulerAngles, **kwargs):
 
     :type node: pymxs.runtime.Node
     :type eulerAngles: pymxs.runtime.EulerAngles
-    :keyword skipRotate: bool
-    :keyword skipRotateX: bool
-    :keyword skipRotateY: bool
-    :keyword skipRotateZ: bool
+    :key skipRotate: bool
+    :key skipRotateX: bool
+    :key skipRotateY: bool
+    :key skipRotateZ: bool
     :rtype: None
     """
 
@@ -277,10 +277,10 @@ def setScale(node, scale, **kwargs):
 
     :type node: pymxs.runtime.Node
     :type scale: list[float, float, float]
-    :keyword skipScale: bool
-    :keyword skipScaleX: bool
-    :keyword skipScaleY: bool
-    :keyword skipScaleZ: bool
+    :key skipScale: bool
+    :key skipScaleX: bool
+    :key skipScaleY: bool
+    :key skipScaleZ: bool
     :rtype: None
     """
 

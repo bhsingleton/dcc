@@ -190,9 +190,9 @@ def addAttribute(dependNode, **kwargs):
     Create the attribute then add the children before committing to the node!
 
     :type dependNode: om.MObject
-    :keyword longName: str
-    :keyword shortName: str
-    :keyword attributeType: str
+    :key longName: str
+    :key shortName: str
+    :key attributeType: str
     :rtype: om.MObject
     """
 
@@ -215,9 +215,9 @@ def createAttribute(**kwargs):
     Creates an attribute based on the supplied parameters.
     This method does not add an attribute to a node, tt only creates the attribute object!
 
-    :keyword longName: str
-    :keyword shortName: str
-    :keyword attributeType: str
+    :key longName: str
+    :key shortName: str
+    :key attributeType: str
     :rtype: om.MObject
     """
 

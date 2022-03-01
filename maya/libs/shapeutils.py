@@ -203,8 +203,8 @@ class ShapeDecoder(json.JSONDecoder):
         """
         Private method called after a new instance has been created.
 
-        :keyword parent: om.MObject
-        :keyword scale: float
+        :key parent: om.MObject
+        :key scale: float
         :rtype: None
         """
 
@@ -580,8 +580,8 @@ def applyShapeTemplate(filePath, **kwargs):
     This name will be used to lookup the json file from the shapes directory.
 
     :type filePath: str
-    :keyword scale: float
-    :keyword parent: om.MObject
+    :key scale: float
+    :key parent: om.MObject
     :rtype: list[om.MObject]
     """
 

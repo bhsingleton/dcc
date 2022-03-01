@@ -81,11 +81,11 @@ def setTranslation(dagPath, translation, **kwargs):
 
     :type dagPath: Union[str, om.MObject, om.MDagPath]
     :type translation: om.MVector
-    :keyword space: int
-    :keyword skipTranslate: bool
-    :keyword skipTranslateX: bool
-    :keyword skipTranslateY: bool
-    :keyword skipTranslateZ: bool
+    :key space: int
+    :key skipTranslate: bool
+    :key skipTranslateX: bool
+    :key skipTranslateY: bool
+    :key skipTranslateZ: bool
     :rtype: None
     """
 
@@ -210,10 +210,10 @@ def setEulerRotation(dagPath, rotation, **kwargs):
 
     :type dagPath: om.MDagPath
     :type rotation: om.MEulerRotation
-    :keyword skipRotate: bool
-    :keyword skipRotateX: bool
-    :keyword skipRotateY: bool
-    :keyword skipRotateZ: bool
+    :key skipRotate: bool
+    :key skipRotateX: bool
+    :key skipRotateY: bool
+    :key skipRotateZ: bool
     :rtype: None
     """
 
@@ -377,10 +377,10 @@ def setScale(dagPath, scale, **kwargs):
 
     :type dagPath: om.MDagPath
     :type scale: list[float, float, float]
-    :keyword skipScale: bool
-    :keyword skipScaleX: bool
-    :keyword skipScaleY: bool
-    :keyword skipScaleZ: bool
+    :key skipScale: bool
+    :key skipScaleX: bool
+    :key skipScaleY: bool
+    :key skipScaleZ: bool
     :rtype: None
     """
 
@@ -495,13 +495,13 @@ def applyTransformMatrix(dagPath, matrix, **kwargs):
 
     :type dagPath: Union[str, om.MObject, om.MDagPath]
     :type matrix: om.MMatrix
-    :keyword skipTranslateX: bool
-    :keyword skipTranslateY: bool
-    :keyword skipTranslateZ: bool
-    :keyword skipRotateX: bool
-    :keyword skipRotateY: bool
-    :keyword skipRotateZ: bool
-    :keyword preserveChildren: bool
+    :key skipTranslateX: bool
+    :key skipTranslateY: bool
+    :key skipTranslateZ: bool
+    :key skipRotateX: bool
+    :key skipRotateY: bool
+    :key skipRotateZ: bool
+    :key preserveChildren: bool
     :rtype: None
     """
 
@@ -557,13 +557,13 @@ def applyWorldMatrix(dagPath, worldMatrix, **kwargs):
 
     :type dagPath: Union[str, om.MObject, om.MDagPath]
     :type worldMatrix: om.MMatrix
-    :keyword skipTranslateX: bool
-    :keyword skipTranslateY: bool
-    :keyword skipTranslateZ: bool
-    :keyword skipRotateX: bool
-    :keyword skipRotateY: bool
-    :keyword skipRotateZ: bool
-    :keyword preserveChildren: bool
+    :key skipTranslateX: bool
+    :key skipTranslateY: bool
+    :key skipTranslateZ: bool
+    :key skipRotateX: bool
+    :key skipRotateY: bool
+    :key skipRotateZ: bool
+    :key preserveChildren: bool
     :rtype: None
     """
 

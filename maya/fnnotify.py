@@ -21,8 +21,8 @@ class Message(Notification):
         Private method called after a new instance is created.
 
         :type message: type
-        :keyword messageAttr: str
-        :keyword messageType: Union[int, str]
+        :key messageAttr: str
+        :key messageType: Union[int, str]
         :rtype: None
         """
 

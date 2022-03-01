@@ -43,9 +43,9 @@ class AttributeParser(with_metaclass(ABCMeta, object)):
         """
         Private method called after a new instance has been created.
 
-        :keyword longName: str
-        :keyword shortName: str
-        :keyword attributeType: str
+        :key longName: str
+        :key shortName: str
+        :key attributeType: str
         :rtype: None
         """
 

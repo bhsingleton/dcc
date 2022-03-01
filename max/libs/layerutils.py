@@ -70,7 +70,7 @@ def walk(*args, **kwargs):
     """
     Returns a generator that yields all descendants from the supplied layers.
 
-    :keyword ignore: list[pymxs.runtime.LayerProperties]
+    :key ignore: list[pymxs.runtime.LayerProperties]
     :rtype: iter
     """
 

@@ -1117,7 +1117,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         Averages the supplied vertex weights.
         By default maintain max influences is enabled.
 
-        :keyword maintainMaxInfluences: bool
+        :key maintainMaxInfluences: bool
         :rtype: dict[int:float]
         """
 

@@ -125,7 +125,7 @@ def undo(*args, **kwargs):
     """
     Returns an undo wrapper for the supplied function.
 
-    :keyword name: str
+    :key name: str
     :rtype: function
     """
 

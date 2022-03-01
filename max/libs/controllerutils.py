@@ -65,7 +65,7 @@ def isConstraint(obj):
     """
     Evaluates if the supplied object is a constraint.
 
-    :type obj: pymxs.runtime.MXSWrapperBase
+    :type obj: pymxs.MXSWrapperBase
     :rtype: bool
     """
 
@@ -76,7 +76,7 @@ def isXYZController(obj):
     """
     Evaluates if the supplied object is a XYZ controller.
 
-    :type obj: pymxs.runtime.MXSWrapperBase
+    :type obj: pymxs.MXSWrapperBase
     :rtype: bool
     """
 
@@ -87,7 +87,7 @@ def isBezierController(obj):
     """
     Evaluates if the supplied object is a bezier controller.
 
-    :type obj: pymxs.runtime.MXSWrapperBase
+    :type obj: pymxs.MXSWrapperBase
     :rtype: bool
     """
 
@@ -98,7 +98,7 @@ def isListController(obj):
     """
     Evaluates if the supplied object is a list controller.
 
-    :type obj: pymxs.runtime.MXSWrapperBase
+    :type obj: pymxs.MXSWrapperBase
     :rtype: bool
     """
 
@@ -109,7 +109,7 @@ def isValidController(obj):
     """
     Evaluates if the supplied object is a valid controller.
 
-    :type obj: pymxs.runtime.MXSWrapperBase
+    :type obj: pymxs.MXSWrapperBase
     :rtype: bool
     """
 
@@ -132,7 +132,7 @@ def iterSubAnims(obj, skipNonAnimated=False, skipNullControllers=False, skipComp
     Returns a generator that yields sub anims from the supplied object.
     Optional keywords can be used to skip particular sub-anims.
 
-    :type obj: pymxs.runtime.MXSWrapperBase
+    :type obj: pymxs.MXSWrapperBase
     :type skipNonAnimated: bool
     :type skipNullControllers: bool
     :type skipComplexValues: bool
@@ -173,7 +173,7 @@ def iterMaxKeys(obj):
     Returns a generator that yields max keys from the supplied controller.
     This method is more a catch all for null key properties.
 
-    :type obj: pymxs.runtime.MXSWrapperBase
+    :type obj: pymxs.MXSWrapperBase
     :rtype: iter
     """
 
@@ -218,7 +218,7 @@ def iterControllers(obj):
     Returns a generator that yields controllers from the supplied object.
     This method relies on the subAnim interface for parsing.
 
-    :type obj: pymxs.runtime.MXSWrapperBase
+    :type obj: pymxs.MXSWrapperBase
     :rtype: iter
     """
 

@@ -414,8 +414,8 @@ def changes(*args, **kwargs):
     If no client is supplied then the environment variables are used instead.
     An additional status keyword can be supplied to limit the types of changelists returned.
 
-    :keyword client: str
-    :keyword status: str
+    :key client: str
+    :key status: str
     :rtype: list[dict]
     """
 
@@ -443,8 +443,8 @@ def login(password, **kwargs):
     Performs a login for the supplied username and password.
 
     :type password: str
-    :keyword user: str
-    :keyword port: str
+    :key user: str
+    :key port: str
     :rtype: bool
     """
 
@@ -472,8 +472,8 @@ def loginExpiration(*args, **kwargs):
     Returns the amount of time left before the specified user's session expires.
     The time returned is in seconds.
 
-    :keyword user: str
-    :keyword port: str
+    :key user: str
+    :key port: str
     :rtype: int
     """
 

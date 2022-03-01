@@ -25,8 +25,8 @@ class QUicLoader(QtUiTools.QUiLoader):
         This class must be derived from the top-level xml class element in order to load.
 
         :type instance: QtWidgets.QWidget
-        :keyword customWidgets: dict[str, type]
-        :keyword workingDirectory: str
+        :key customWidgets: dict[str, type]
+        :key workingDirectory: str
         :rtype: None
         """
 

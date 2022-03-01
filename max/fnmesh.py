@@ -285,7 +285,7 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
         """
         Returns a generator that yields the connected vertex elements.
 
-        :keyword componentType: int
+        :key componentType: int
         :rtype: iter
         """
 
@@ -314,7 +314,7 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
         """
         Returns a generator that yields the connected edge elements.
 
-        :keyword componentType: int
+        :key componentType: int
         :rtype: iter
         """
 
@@ -343,7 +343,7 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
         """
         Returns a generator that yields the connected face elements.
 
-        :keyword componentType: int
+        :key componentType: int
         :rtype: iter
         """
 
