@@ -1,0 +1,31 @@
+attributes "FbxSettings"
+remap:
+#(
+	#("fbxAsset", "fbxExportSets", "fbxSequences"),
+	#("fbxAsset", "fbxExportSets", "fbxSequences"),
+)
+version:1
+silentErrors:true
+(
+
+	parameters FbxAssetParameters
+	rollout:FbxAssetRollout
+	attribID:#( 2136342778, 1127631755 )
+	(
+
+		fbxAsset type:#string default:"{}" ui:fbxAssetEditText
+		fbxExportSets type:#string default:"[]" ui:fbxExportSetsEditText
+		fbxSequences type:#string default:"[]" ui:fbxSequencesEditText
+
+	)
+
+	rollout FbxAssetRollout "Fbx Asset"
+	(
+
+		editText fbxAssetEditText "Fbx Asset:" text:"" labelOnTop:true readOnly:false fieldWidth:135
+		editText fbxExportSetsEditText "Fbx Export Sets:" text:"" labelOnTop:true readOnly:false fieldWidth:135
+		editText fbxSequencesEditText "Fbx Sequences:" text:"" labelOnTop:true readOnly:false fieldWidth:135
+
+	)
+
+)

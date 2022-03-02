@@ -1,0 +1,26 @@
+{
+	"$schema": "http://json-schema.org/draft/2019-09/schema#",
+	"description": "A representation of the components required to export a mesh asset.",
+	"type": "array",
+	"items": 
+	{
+		"type": "object",
+		"$ref": "#/definitions/FbxAsset"
+	},
+	"definitions": 
+	{
+		"FbxAsset":
+		{
+			"type": "object",
+			"properties":
+			{
+				"__name__": { "type": "string" },
+				"__module__": { "type": "string" },
+				"name": { "type": "string" },
+				"directory": { "type": "string" },
+				"fileType": { "type": "number" },
+				"fileVersion": { "type": "number" }
+			}
+		}
+	}
+}

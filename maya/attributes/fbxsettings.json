@@ -1,0 +1,24 @@
+[
+    {
+		"longName": "fbxSettings",
+		"attributeType": "compound",
+        "children":
+		[
+			{
+				"longName": "fbxAsset",
+				"attributeType": "string",
+				"default": "{}"
+			},
+			{
+				"longName": "fbxExportSets",
+				"attributeType": "string",
+				"default": "[]"
+			},
+			{
+				"longName": "fbxSequences",
+				"attributeType": "string",
+				"default": "[]"
+			}
+        ]
+	}
+]

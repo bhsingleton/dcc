@@ -1,0 +1,168 @@
+{
+	"$schema": "http://json-schema.org/draft/2019-09/schema#",
+	"description": "A representation of the components required to export a mesh asset.",
+	"type": "array",
+	"items": 
+	{
+		"type": "object",
+		"$ref": "#/definitions/FbxExportSet"
+	},
+	"definitions": 
+	{
+		"FbxExportSet": 
+		{
+			"type": "object",
+			"properties": 
+			{
+				"__name__": { "type": "string" },
+				"__module__": { "type": "string" },
+				"name": { "type": "string" },
+				"directory": { "type": "string" },
+				"scale": { "type": "number" },
+				"moveToOrigin": { "type": "boolean" },
+				"includeNormals": { "type": "boolean" },
+				"includeSmoothings": { "type": "boolean" },
+				"includeColorSets": { "type": "boolean" },
+				"includeTangentsAndBinormals": { "type": "boolean" },
+				"includeSkins": { "type": "boolean" },
+				"includeBlendshapes": { "type": "boolean" },
+				"children": 
+				{
+					"type": "array",
+					"items": 
+					{
+						"anyOf": 
+						[
+							{
+								"type": "object",
+								"$ref": "#/definitions/FbxSkeleton"
+							},
+							{
+								"type": "object",
+								"$ref": "#/definitions/FbxCamera"
+							},
+							{
+								"type": "object",
+								"$ref": "#/definitions/FbxMesh"
+							},
+							{
+								"type": "object",
+								"$ref": "#/definitions/FbxMaterialSlot"
+							}
+						
+						]
+					}
+				},
+				"customScripts": 
+				{ 
+					"type": "array",
+					"items": 
+					{ 
+						"type": "object",
+						"$ref": "#/definitions/CustomScript" 
+					}
+				},
+				"additionalProperties": true
+			}
+		},
+		"FbxSkeleton": 
+		{
+			"type": "object",
+			"properties": 
+			{
+				"__name__": { "type": "string" },
+				"__module__": { "type": "string" },
+				"name": { "type": "string" },
+				"includeJoints": 
+				{
+					"type": "array", 
+					"items": { "type": "string" }
+				},
+				"excludeJoints": 
+				{
+					"type": "array", 
+					"items": { "type": "string" }
+				},
+				"children":
+				{
+					"type": "array",
+					"items":
+					{
+						"type": "object",
+						"maxItems": 0
+					}
+				}
+			}
+		},
+		"FbxCamera": 
+		{
+			"type": "object",
+			"properties": 
+			{
+				"__name__": { "type": "string" },
+				"__module__": { "type": "string" },
+				"name": { "type": "string" },
+				"children":
+				{
+					"type": "array",
+					"items":
+					{
+						"type": "object",
+						"maxItems": 0
+					}
+				}
+			}
+		},
+		"FbxMesh": 
+		{
+			"type": "object",
+			"properties": 
+			{
+				"__name__": { "type": "string" },
+				"__module__": { "type": "string" },
+				"name": { "type": "string" },
+				"children":
+				{
+					"type": "array",
+					"items":
+					{
+						"type": "object",
+						"maxItems": 0
+					}
+				}
+			}
+		},
+		"FbxMaterialSlot": 
+		{
+			"type": "object",
+			"properties": 
+			{
+				"__name__": { "type": "string" },
+				"__module__": { "type": "string" },
+				"name": { "type": "string" },
+				"children": 
+				{
+					"type": "array",
+					"items": 
+					{
+						"type": "object",
+						"$ref": "#/definitions/FbxMesh"
+					}
+				}
+			}
+		},
+		"CustomScript": 
+		{
+			"type": "object",
+			"properties": 
+			{
+				"__name__": { "type": "string" },
+				"__module__": { "type": "string" },
+				"filePath": { "type": "string" },
+				"args": { "type": "array" },
+				"kwargs": { "type": "object" }
+			},
+			"additionalProperties": true
+		}
+	}
+}
