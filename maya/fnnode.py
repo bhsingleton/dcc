@@ -382,6 +382,16 @@ class FnNode(afnnode.AFnNode):
             return None
 
     @classmethod
+    def iterSceneNodes(cls):
+        """
+        Returns a generator that yields all nodes from the scene.
+
+        :rtype: iter
+        """
+
+        return dagutils.iterNodes(apiType=om.MFn.kDagNode)
+
+    @classmethod
     def getActiveSelection(cls):
         """
         Returns the active selection.

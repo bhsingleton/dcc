@@ -1,3 +1,6 @@
+import re
+import fnmatch
+
 from abc import ABCMeta, abstractmethod
 from six import with_metaclass
 from collections import deque
@@ -78,6 +81,21 @@ class AFnNode(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
 
         self.setActiveSelection([self.object()], replace=replace)
+
+    def deselect(self):
+        """
+        Deselects the node associated with this function set.
+
+        :rtype: None
+        """
+
+        activeSelection = self.getActiveSelection()
+        obj = self.object()
+
+        if obj in activeSelection:
+
+            activeSelection.remove(obj)
+            self.setActiveSelection(activeSelection, replace=True)
 
     def isSelected(self):
         """
@@ -304,6 +322,64 @@ class AFnNode(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
 
         pass
+
+    @classmethod
+    @abstractmethod
+    def iterSceneNodes(cls):
+        """
+        Returns a generator that yields all nodes from the scene.
+
+        :rtype: iter
+        """
+
+        pass
+
+    @classmethod
+    def iterNodesByPattern(cls, pattern):
+        """
+        Returns a generator that yields nodes that match the given pattern.
+
+        :type pattern: str
+        :rtype: iter
+        """
+
+        fnNode = cls()
+
+        for node in cls.iterSceneNodes():
+
+            fnNode.setObject(node)
+
+            if fnmatch.fnmatch(fnNode.name(), pattern):
+
+                yield node
+
+            else:
+
+                continue
+
+    @classmethod
+    def iterNodesByRegex(cls, pattern):
+        """
+        Returns a generator that yields nodes that match the given regex expression.
+
+        :type pattern: str
+        :rtype: iter
+        """
+
+        fnNode = cls()
+        regex = re.compile(pattern)
+
+        for node in cls.iterSceneNodes():
+
+            fnNode.setObject(node)
+
+            if regex.match(fnNode.name()):
+
+                yield node
+
+            else:
+
+                continue
 
     @classmethod
     @abstractmethod

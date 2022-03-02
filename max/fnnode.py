@@ -263,6 +263,20 @@ class FnNode(afnnode.AFnNode):
         return pymxs.runtime.getAnimByHandle(handle)
 
     @classmethod
+    def iterSceneNodes(cls):
+        """
+        Returns a generator that yields all nodes from the scene.
+
+        :rtype: iter
+        """
+
+        objectCount = pymxs.runtime.objects.count
+
+        for i in range(objectCount):
+
+            yield pymxs.runtime.objects[i]
+
+    @classmethod
     def getActiveSelection(cls):
         """
         Returns the active selection.
