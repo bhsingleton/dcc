@@ -4,7 +4,7 @@ import copy
 
 from abc import ABCMeta
 from six.moves.collections_abc import MutableMapping, MutableSequence
-from dcc.decorators import classproperty
+from dcc.decorators.classproperty import classproperty
 from dcc.python import annotationutils
 
 try:
