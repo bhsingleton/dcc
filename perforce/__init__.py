@@ -64,12 +64,21 @@ def createAdapter(**kwargs):
 
         client = os.environ.get('P4CLIENT', '')
 
+    # Check if a password was supplied
+    #
+    password = kwargs.get('password', None)
+
+    if password is None:
+
+        password = os.environ.get('P4PASSWD', '')
+
     # Cast values to str before assigning
     #
     p4.user = str(user)
     p4.port = str(port)
     p4.host = str(host)
     p4.client = str(client)
+    p4.password = str(password)
 
     return p4
 

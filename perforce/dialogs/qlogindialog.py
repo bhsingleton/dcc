@@ -37,6 +37,7 @@ class QLoginDialog(QtWidgets.QDialog):
         self._username = kwargs.get('username', '')
         self._port = kwargs.get('port', 'localhost:1666')
         self._password = ''
+        self._rememberPassword = False
 
         # Build user interface
         #
@@ -91,6 +92,14 @@ class QLoginDialog(QtWidgets.QDialog):
         self.passwordLineEdit.setFixedHeight(24)
         self.passwordLineEdit.setEchoMode(QtWidgets.QLineEdit.Password)
 
+        self.rememberPasswordCheckBox = QtWidgets.QCheckBox('Remember Password')
+        self.rememberPasswordCheckBox.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
+        self.rememberPasswordCheckBox.setFixedHeight(24)
+
+        self.passwordLayout = QtWidgets.QHBoxLayout()
+        self.passwordLayout.addWidget(self.passwordLineEdit)
+        self.passwordLayout.addWidget(self.rememberPasswordCheckBox)
+
         # Create buttons
         #
         self.buttonSpacerItem = QtWidgets.QSpacerItem(0, 24, hData=QtWidgets.QSizePolicy.Expanding, vData=QtWidgets.QSizePolicy.Fixed)
@@ -115,7 +124,7 @@ class QLoginDialog(QtWidgets.QDialog):
         centralLayout = QtWidgets.QVBoxLayout()
         centralLayout.addWidget(self.usernameLabel)
         centralLayout.addWidget(self.passwordLabel)
-        centralLayout.addWidget(self.passwordLineEdit)
+        centralLayout.addLayout(self.passwordLayout)
         centralLayout.addLayout(self.buttonLayout)
 
         self.setLayout(centralLayout)
@@ -175,6 +184,14 @@ class QLoginDialog(QtWidgets.QDialog):
         """
 
         return base64.b64decode(self._password).decode('utf-8')
+
+    @property
+    def rememberPassword(self):
+        """
+        Getter method that evaluates if the
+        """
+
+        return self._rememberPassword
     # endregion
 
     # region Methods
@@ -199,8 +216,8 @@ class QLoginDialog(QtWidgets.QDialog):
 
         # Store encoded password
         #
-        print(self.size())
         self._password = base64.b64encode(self.passwordLineEdit.text().encode('utf-8'))
+        self._rememberPassword = self.rememberPasswordCheckBox.isChecked()
 
         # Call parent method
         #

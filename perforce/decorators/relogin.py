@@ -1,3 +1,5 @@
+import os
+
 from functools import partial
 from dcc.perforce import cmds
 from dcc.perforce.dialogs import qlogindialog
@@ -13,6 +15,7 @@ class Relogin(object):
     Base class used to evaluate the time before the user's perforce session expires.
     """
 
+    # region Dunderscores
     __slots__ = ('_name', '_instance', '_owner', '_func')
 
     def __init__(self, *args, **kwargs):
@@ -85,18 +88,26 @@ class Relogin(object):
 
             return
 
-        # Prompt user for password
+        # Try remembered password
         #
-        dialog = qlogindialog.QLoginDialog()
-        result = dialog.exec_()
+        success = self.tryRememberedPassword()
 
-        if result:
+        if success:
 
-            success = cmds.login(dialog.password)
+            return
+
+        # Get existing password from user
+        #
+        password = self.getExistingPassword()
+
+        if password is not None:
+
+            # Evaluate login attempt
+            #
+            success = cmds.login(password)
 
             if success:
 
-                log.info('Successfully logged in!')
                 return
 
             else:
@@ -105,8 +116,7 @@ class Relogin(object):
 
         else:
 
-            log.info('Operation aborted...')
-            return
+            raise RuntimeError('Unable to renew perforce ticket!')
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """
@@ -119,7 +129,9 @@ class Relogin(object):
         """
 
         pass
+    # endregion
 
+    # region Properties
     @property
     def func(self):
         """
@@ -136,6 +148,58 @@ class Relogin(object):
         else:
 
             return self._func
+    # endregion
+
+    # region Methods
+    def tryRememberedPassword(self):
+        """
+        Attempts to login using the P4PASSWD environment variable.
+
+        :rtype: bool
+        """
+
+        # Check password variable
+        #
+        password = os.environ.get('P4PASSWD', None)
+
+        if password is not None:
+
+            return cmds.login(password)
+
+        else:
+
+            return False
+
+    def getExistingPassword(self):
+        """
+        Returns a password from the user.
+
+        :rtype: str
+        """
+
+        # Prompt user for password
+        #
+        dialog = qlogindialog.QLoginDialog()
+        result = dialog.exec_()
+
+        if result:
+
+            # Check if password should be remembered
+            #
+            if dialog.rememberPassword:
+
+                os.environ['P4PASSWD'] = dialog.password
+
+            # Return decoded password
+            #
+            log.info('Successfully logged in!')
+            return dialog.password
+
+        else:
+
+            log.info('Operation aborted...')
+            return None
+    # endregion
 
 
 def relogin(*args, **kwargs):
