@@ -58,7 +58,7 @@ def setFileProperties(filePath, properties):
 
     # Initialize storage container
     #
-    flags = storagecon.STGM_READ | storagecon.STGM_SHARE_EXCLUSIVE
+    flags = storagecon.STGM_WRITE | storagecon.STGM_SHARE_EXCLUSIVE
     fileStorage = pythoncom.StgOpenStorage(filePath, None, flags)
 
     # Open custom property storage
