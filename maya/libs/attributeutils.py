@@ -4,8 +4,7 @@ import json
 from maya.api import OpenMaya as om
 from collections import deque
 from six import string_types
-
-from . import attributeparser
+from dcc.maya.libs import attributeparser
 
 import logging
 logging.basicConfig()
@@ -76,7 +75,7 @@ class AttributeTemplate(object):
         :rtype: str
         """
 
-        return os.path.join(os.path.dirname(__file__), 'attributeschema.json')
+        return os.path.join(os.path.dirname(__file__), '../schemas/attributeschema.json')
 
     @classmethod
     def schema(cls):
@@ -94,7 +93,7 @@ class AttributeTemplate(object):
     def parse(cls, filePath):
         """
         Reads the supplied json file.
-        Eventually we will integrate the json schema into this method.
+        TODO: Integrate the json schema into this method.
 
         :rtype: list[dict]
         """

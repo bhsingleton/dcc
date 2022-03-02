@@ -50,7 +50,7 @@
 				"usedAsColor": { "type": "boolean" },
 				"usedAsFilename": { "type": "boolean" },
 				"disconnectBehavior": { "type": "integer" },
-				"default": {},
+				"default": { "type": ["boolean", "integer", "number", "string"] },
 				"min": { "type": "number" },
 				"max": { "type": "number" },
 				"softMin": { "type": "number" },
