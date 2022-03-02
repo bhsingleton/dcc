@@ -68,7 +68,7 @@ class QProxyWindow(QtWidgets.QMainWindow):
 
     def __build__(self, *args, **kwargs):
         """
-        Private method used to build the user interface.
+        Private method that builds the user interface.
 
         :rtype: None
         """
