@@ -1,5 +1,5 @@
 import os
-import inspect
+import sys
 import shiboken2
 
 from PySide2 import QtCore, QtWidgets, QtGui
@@ -87,7 +87,7 @@ class QUicInterface(object):
         :rtype: str
         """
 
-        filePath = inspect.getfile(cls)
+        filePath = os.path.abspath(sys.modules[cls.__module__].__file__)
         directory, filename = os.path.split(filePath)
         name, ext = os.path.splitext(filename)
 
@@ -113,7 +113,7 @@ class QUicInterface(object):
         :rtype: str
         """
 
-        return os.path.dirname(inspect.getfile(cls))
+        return os.path.dirname(os.path.abspath(sys.modules[cls.__module__].__file__))
 
     def preLoad(self):
         """

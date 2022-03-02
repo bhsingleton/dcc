@@ -1,0 +1,37 @@
+<RCC>
+  <qresource prefix="dcc">
+    <file>icons/camera.png</file>
+    <file>icons/copyFile.png</file>
+    <file>icons/delete.png</file>
+    <file>icons/edit.ico</file>
+    <file>icons/endTime.png</file>
+    <file>icons/frameRange.png</file>
+    <file>icons/joint.png</file>
+    <file>icons/material.png</file>
+    <file>icons/mesh.png</file>
+    <file>icons/newFile.png</file>
+    <file>icons/no.png</file>
+    <file>icons/openFile.png</file>
+    <file>icons/p4v_file.png</file>
+    <file>icons/p4v_file_add.png</file>
+    <file>icons/p4v_file_delete.png</file>
+    <file>icons/p4v_file_edit.png</file>
+    <file>icons/p4v_folder.png</file>
+    <file>icons/python.png</file>
+    <file>icons/refresh.png</file>
+    <file>icons/remove.png</file>
+    <file>icons/rename.png</file>
+    <file>icons/reorder.png</file>
+    <file>icons/saveFile.png</file>
+    <file>icons/search.ico</file>
+    <file>icons/search.png</file>
+    <file>icons/select.png</file>
+    <file>icons/skeleton.png</file>
+    <file>icons/startTime.png</file>
+    <file>icons/switch.ico</file>
+    <file>icons/time.png</file>
+    <file>icons/timeline.png</file>
+    <file>icons/yes.png</file>
+    <file>icons/add.png</file>
+  </qresource>
+</RCC>
