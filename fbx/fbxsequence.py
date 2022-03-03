@@ -17,7 +17,7 @@ class FbxSequence(fbxbase.FbxBase):
     # region Dunderscores
     __slots__ = (
         '_asset',
-        '_filePath',
+        '_directory',
         '_startFrame',
         '_endFrame',
         '_step',
@@ -37,7 +37,7 @@ class FbxSequence(fbxbase.FbxBase):
         # Declare private variables
         #
         self._asset = self.nullWeakReference
-        self._filePath = kwargs.get('filePath', '')
+        self._directory = kwargs.get('directory', '')
         self._startFrame = kwargs.get('startFrame', 0)
         self._endFrame = kwargs.get('endFrame', 1)
         self._step = kwargs.get('step', 1)
@@ -56,25 +56,25 @@ class FbxSequence(fbxbase.FbxBase):
         return self._asset()
 
     @property
-    def filePath(self):
+    def directory(self):
         """
-        Getter method that returns the file path for this sequence.
+        Getter method that returns the directory for this sequence.
 
         :rtype: str
         """
 
-        return self._filePath
+        return self._directory
 
-    @filePath.setter
-    def filePath(self, filePath):
+    @directory.setter
+    def directory(self, directory):
         """
-        Setter method that updates the file path for this sequence.
+        Setter method that updates the directory for this sequence.
 
-        :type filePath: str
+        :type directory: str
         :rtype: None
         """
 
-        self._filePath = filePath
+        self._directory = directory
 
     @property
     def startFrame(self):
