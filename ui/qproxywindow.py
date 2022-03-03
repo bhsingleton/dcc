@@ -1,6 +1,6 @@
 from PySide2 import QtCore, QtWidgets, QtGui
 from dcc import fnqt
-from dcc.ui import resources
+from dcc.ui import resources  # Initializes dcc resources!
 from dcc.decorators.classproperty import classproperty
 
 import logging
@@ -103,45 +103,78 @@ class QProxyWindow(QtWidgets.QMainWindow):
     # endregion
 
     # region Methods
-    @staticmethod
-    def getTextWidth(item, text, offset=12):
+    def hasSettings(self):
         """
-        Static method used to calculate the pixel units from the supplied string value.
+        Evaluates if this window has any settings.
 
-        :type item: QtGui.QStandardItem
-        :type text: str
-        :type offset: int
-        :rtype: int
+        :rtype: bool
         """
 
-        # Get font from item and calculate width
-        #
-        font = item.font()
-        fontMetric = QtGui.QFontMetrics(font)
+        return len(self.settings.allKeys()) > 0
 
-        width = fontMetric.width(text) + offset
+    def loadSettings(self):
+        """
+        Loads the user settings.
+        The base implementation handles size and location.
 
-        return width
+        :rtype: None
+        """
+
+        log.info('Loading settings from: %s' % self.settings.fileName())
+        self.resize(self.settings.value('editor/size'))
+        self.move(self.settings.value('editor/pos'))
+
+    def saveSettings(self):
+        """
+        Saves the user settings.
+        The base implementation handles size and location.
+
+        :rtype: None
+        """
+
+        log.info('Saving settings to: %s' % self.settings.fileName())
+        self.settings.setValue('editor/size', self.size())
+        self.settings.setValue('editor/pos', self.pos())
 
     @classmethod
-    def createStandardItem(cls, text, height=16):
+    def overrideWindowIcon(cls, icon):
         """
-        Class method used to create a QStandardItem from the given string value.
+        Registers a custom icon for all derived classes.
 
-        :type text: str
-        :type height: int
-        :rtype: QtGui.QStandardItem
+        :type icon: str
+        :rtype: None
         """
 
-        # Create item and resize based on text width
+        cls.__icon__ = QtGui.QIcon(icon)
+
+    def hideTearOffMenus(self):
+        """
+        Closes all of the separated menus from the menu bar.
+
+        :rtype: None
+        """
+
+        # Check if menu bar exists
         #
-        item = QtGui.QStandardItem(text)
-        textWidth = cls.getTextWidth(item, text)
+        menuBar = self.menuBar()  # type: QtWidgets.QMenuBar
 
-        item.setSizeHint(QtCore.QSize(textWidth, height))
-        item.setTextAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
+        if menuBar is None:
 
-        return item
+            return
+
+        # Iterate through menu actions
+        #
+        for action in menuBar.actions():
+
+            menu = action.menu()  # type: QtWidgets.QMenu
+
+            if menu.isTearOffMenuVisible():
+
+                menu.hideTearOffMenu()
+
+            else:
+
+                continue
 
     @classmethod
     def isInitialized(cls):
@@ -196,26 +229,35 @@ class QProxyWindow(QtWidgets.QMainWindow):
             return [cls.getInstance(arg) for arg in args]
 
     @classmethod
-    def removeInstance(cls, instance):
+    def removeInstance(cls, *args):
         """
         Removes the supplied instance from the internal array.
 
-        :type instance: QProxyWindow
-        :rtype: bool
-        """
-
-        del cls.__instances__[instance.className]
-
-    @classmethod
-    def overrideWindowIcon(cls, icon):
-        """
-        Registers a custom icon for all derived classes.
-
-        :type icon: str
+        :type args: Sequence[QProxyWindow]
         :rtype: None
         """
 
-        cls.__icon__ = QtGui.QIcon(icon)
+        # Evaluate arguments
+        #
+        numArgs = len(args)
+
+        if numArgs == 0:
+
+            # Retrieve instance using class name
+            #
+            instance = cls.__instances__.get(cls.className, None)
+
+            if instance is not None:
+
+                cls.removeInstance(instance)
+
+        else:
+
+            # Iterate through arguments
+            #
+            for arg in args:
+
+                del cls.__instances__[arg.className]
 
     @classmethod
     def closeWindows(cls):
@@ -232,68 +274,6 @@ class QProxyWindow(QtWidgets.QMainWindow):
 
             log.info('Closing window: %s' % name)
             window.close()
-
-    def hideTearOffMenus(self):
-        """
-        Closes all of the separated menus from the menu bar.
-
-        :rtype: None
-        """
-
-        # Check if menu bar exists
-        #
-        menuBar = self.menuBar()  # type: QtWidgets.QMenuBar
-
-        if menuBar is None:
-
-            return
-
-        # Iterate through menu actions
-        #
-        for action in menuBar.actions():
-
-            menu = action.menu()  # type: QtWidgets.QMenu
-
-            if menu.isTearOffMenuVisible():
-
-                menu.hideTearOffMenu()
-
-            else:
-
-                continue
-
-    def hasSettings(self):
-        """
-        Evaluates if this window has any settings.
-
-        :rtype: bool
-        """
-
-        return len(self.settings.allKeys()) > 0
-
-    def loadSettings(self):
-        """
-        Loads the user settings.
-        The base implementation handles size and location.
-
-        :rtype: None
-        """
-
-        log.info('Loading settings from: %s' % self.settings.fileName())
-        self.resize(self.settings.value('editor/size'))
-        self.move(self.settings.value('editor/pos'))
-
-    def saveSettings(self):
-        """
-        Saves the user settings.
-        The base implementation handles size and location.
-
-        :rtype: None
-        """
-
-        log.info('Saving settings to: %s' % self.settings.fileName())
-        self.settings.setValue('editor/size', self.size())
-        self.settings.setValue('editor/pos', self.pos())
     # endregion
 
     # region Events
