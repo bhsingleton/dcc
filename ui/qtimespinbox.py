@@ -21,22 +21,23 @@ class QTimeSpinBox(QtWidgets.QSpinBox):
     """
 
     # region Dunderscores
-    def __init__(self, parent=None):
+    def __init__(self, *args, **kwargs):
         """
         Private method called after a new instance has been created.
 
-        :type parent: QtWidgets.QWidget
+        :key parent: QtWidgets.QWidget
         :rtype: None
         """
 
         # Call parent method
         #
+        parent = kwargs.get('parent', None)
         super(QTimeSpinBox, self).__init__(parent=parent)
 
         # Declare public variables
         #
         self._fnScene = fnscene.FnScene()
-        self._defaultType = DefaultType.StartTime
+        self._defaultType = kwargs.get('defaultType', DefaultType.StartTime)
     # endregion
 
     # region Properties
