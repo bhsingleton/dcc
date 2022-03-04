@@ -392,7 +392,7 @@ def iterDynamicProperties(obj, skipAnimatable=False, skipComplexValues=False):
             yield key, value
 
 
-def iterProperties(obj, skipAnimatable=False, skipComplexValues=False):
+def iterProperties(obj, skipAnimatable=False, skipComplexValues=False, skipDefaultValues=False):
     """
     Returns a generator that yield property name/value pairs from the supplied object.
     This method only yields properties that are on the class definition.
@@ -400,12 +400,14 @@ def iterProperties(obj, skipAnimatable=False, skipComplexValues=False):
     :type obj: pymxs.runtime.MaxObject
     :type skipAnimatable: bool
     :type skipComplexValues: bool
+    :type skipDefaultValues: bool
     :rtype: iter
     """
 
     # Check if class has already been inspected
     #
-    className = str(pymxs.runtime.classOf(obj))
+    cls = pymxs.runtime.classOf(obj)
+    className = str(cls)
     properties = CLASS_PROPERTIES.get(className, None)
 
     if properties is None:
@@ -430,6 +432,14 @@ def iterProperties(obj, skipAnimatable=False, skipComplexValues=False):
         value = pymxs.runtime.getProperty(obj, name)
 
         if skipComplexValues and not isSerializableValue(value):
+
+            continue
+
+        # Check if non-default values should be skipped
+        #
+        defaultValue, result = pymxs.runtime.DefaultParamInterface.getDefaultParamValue(cls, key, pymxs.byref(None))
+
+        if skipDefaultValues and value == defaultValue:
 
             continue
 
