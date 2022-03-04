@@ -176,8 +176,16 @@ class AttributeDecoder(json.JSONDecoder):
 
         else:
 
-            func = getattr(self, self.__types__[attributeType])
-            return func(obj, attribute=attribute)
+            name = self.__types__.get(attributeType, '')
+            func = getattr(self, name, None)
+
+            if callable(func):
+
+                return func(obj, attribute=attribute)
+
+            else:
+
+                raise TypeError('default() unable to deserialize %s attribute type!' % attributeType)
 
     def deserializeAttribute(self, obj, attribute=om.MObject.kNullObj):
         """
