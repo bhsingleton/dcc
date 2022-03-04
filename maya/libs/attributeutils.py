@@ -2,9 +2,9 @@ import os
 import json
 
 from maya.api import OpenMaya as om
-from collections import deque
 from six import string_types
-from dcc.maya.libs import attributeparser
+from dcc.maya.libs import dagutils
+from dcc.maya.json import attributeparser
 
 import logging
 logging.basicConfig()
@@ -12,179 +12,13 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-NUMERIC_TYPES = {value: key for (key, value) in om.MFnNumericData.__dict__.items() if key.startswith('k') and isinstance(value, int)}
-ATTR_TYPES = {value: key for (key, value) in om.MFnData.__dict__.items() if key.startswith('k') and isinstance(value, int)}
-UNIT_TYPES = {value: key for (key, value) in om.MFnUnitAttribute.__dict__.items() if key.startswith('k') and isinstance(value, int)}
-
-
-class AttributeTemplate(object):
-    """
-    Base class used to parse a json-based attribute template.
-    """
-
-    __slots__ = ('_filePath', '_attributes')
-
-    def __init__(self, filePath):
-        """
-        Inherited method called after a new instance has been created.
-
-        :type filePath: str
-        :rtype: None
-        """
-
-        # Call parent method
-        #
-        super(AttributeTemplate, self).__init__()
-
-        # Check if file path exists
-        #
-        if not os.path.isfile(filePath):
-
-            raise TypeError('Unable to locate file template: %s' % filePath)
-
-        # Declare class variables
-        #
-        self._filePath = filePath
-        self._attributes = self.parse(filePath)
-
-    @property
-    def filePath(self):
-        """
-        Getter method that returns the file path for this template.
-
-        :rtype: str
-        """
-
-        return self._filePath
-
-    @property
-    def attributes(self):
-        """
-        Getter method that returns the attribute definitions from this template.
-
-        :rtype: list[dict]
-        """
-
-        return self._attributes
-
-    @staticmethod
-    def schemaPath():
-        """
-        Returns the attribute schema to validate json files.
-
-        :rtype: str
-        """
-
-        return os.path.join(os.path.dirname(__file__), '../schemas/attributeschema.json')
-
-    @classmethod
-    def schema(cls):
-        """
-        Returns the schema data for validating json data.
-
-        :rtype: dict
-        """
-
-        with open(cls.schemaPath(), 'r') as schemaFile:
-
-            return json.load(schemaFile)
-
-    @classmethod
-    def parse(cls, filePath):
-        """
-        Reads the supplied json file.
-        TODO: Integrate the json schema into this method.
-
-        :rtype: list[dict]
-        """
-
-        try:
-
-            with open(filePath, 'r') as jsonFile:
-
-                return json.load(jsonFile)
-
-        except (ValueError, IOError) as exception:
-
-            log.error(exception)
-            return []
-
-    @staticmethod
-    def walk(children):
-        """
-        Walks through the json tree.
-        This method will dynamically add a parent keyword to each item!
-
-        :type children: list[dict]
-        :rtype: iter
-        """
-
-        # Iterate through queue
-        #
-        queue = deque(children)
-
-        while len(queue):
-
-            # Pop item from queue
-            #
-            item = queue.popleft()
-            children = item.get('children', [])
-
-            for child in children:
-
-                child['parent'] = item['longName']
-
-            # Yield edited item
-            #
-            queue.extend(children)
-            yield item
-
-    def applyTemplate(self, dependNode):
-        """
-        Applies this attribute template to the supplied dependency node.
-
-        :type dependNode: Union[str, om.MTypeId, om.MObject]
-        :rtype: dict
-        """
-
-        # Iterate through attributes
-        #
-        attributes = {}
-
-        for kwargs in self.walk(self.attributes):
-
-            # Find a compatible parser
-            #
-            Parser = attributeparser.findCompatibleParser(kwargs)
-
-            if Parser is None:
-
-                continue
-
-            # Initialize parser
-            #
-            parser = Parser(dependNode, **kwargs)
-
-            if parser.hasAttribute():
-
-                # Skip item and move onto next
-                #
-                log.info('Skipping %s attribute...' % parser.longName)
-                attributes[parser.longName] = om.MObjectHandle(parser.attribute())
-
-            else:
-
-                # Add attribute to dependency node
-                #
-                attribute = parser.addAttribute()
-                attributes[parser.longName] = om.MObjectHandle(attribute)
-
-        return attributes
+SCHEMA_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'schemas')
+ATTRIBUTES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'attributes')
 
 
 def addAttribute(dependNode, **kwargs):
     """
-    Adds an attribute to the supplied node with the supplied parameters.
+    Adds an attribute to the supplied node with the specified parameters.
     Do not use this method with compound attributes!
     Create the attribute then add the children before committing to the node!
 
@@ -195,24 +29,22 @@ def addAttribute(dependNode, **kwargs):
     :rtype: om.MObject
     """
 
-    # Find compatible parser
-    #
-    attributeType = kwargs.get('attributeType', '')
-    Parser = attributeparser.findCompatibleParser(attributeType)
+    fnDependNode = om.MFnDependencyNode(dependNode)
 
-    if Parser is not None:
+    attribute = createAttribute(**kwargs)
+    fnAttribute = om.MFnAttribute(attribute)
 
-        return Parser(dependNode, **kwargs).addAttribute()
+    if not fnDependNode.hasAttribute(fnAttribute.name):
 
-    else:
+        fnDependNode.addAttribute(attribute)
 
-        raise TypeError('addAttribute() expects a valid attribute type (%s given)!' % attributeType)
+    return attribute
 
 
 def createAttribute(**kwargs):
     """
     Creates an attribute based on the supplied parameters.
-    This method does not add an attribute to a node, tt only creates the attribute object!
+    This method does not add an attribute to a node, it only creates the attribute definition!
 
     :key longName: str
     :key shortName: str
@@ -220,44 +52,93 @@ def createAttribute(**kwargs):
     :rtype: om.MObject
     """
 
-    # Find compatible parser
-    #
-    attributeType = kwargs.get('attributeType', '')
-    Parser = attributeparser.findCompatibleParser(attributeType)
-
-    if Parser is not None:
-
-        return Parser(**kwargs).createAttribute()
-
-    else:
-
-        raise TypeError('createAttribute() expects a valid attribute type (%s given)!' % attributeType)
+    decoder = attributeparser.AttributeDecoder()
+    return decoder.default(kwargs)
 
 
 def applyAttributeTemplate(dependNode, filePath):
     """
-    Method used to apply an attribute template to the supplied node handle.
+    Applies an attribute template to the supplied dependency node.
 
-    :type dependNode: Union[str, om.MTypeId, om.MObject]
+    :type dependNode: Union[str, om.MObject]
     :type filePath: str
-    :rtype: dict
+    :rtype: List[om.MObject]
     """
 
-    # Check if handle is valid
+    # Check value type
     #
-    if not isinstance(dependNode, (string_types, om.MTypeId, om.MObject)):
+    if isinstance(dependNode, string_types):
 
-        raise TypeError('Unable to apply template to dead node handle!')
+        dependNode = dagutils.getMObject(dependNode)
 
-    # Check if template file exists
+    # Load json data
     #
-    if not os.path.exists(filePath):
+    attributes = []
 
-        raise TypeError('Unable to locate template: %s' % filePath)
+    with open(filePath, 'r') as jsonFile:
 
-    # Apply template to node handle
+        attributes = json.load(jsonFile, cls=attributeparser.AttributeDecoder, node=dependNode)
+
+    # Iterate through attributes
     #
-    return AttributeTemplate(filePath).applyTemplate(dependNode)
+    fnDependNode = om.MFnDependencyNode(dependNode)
+    fnAttribute = om.MFnAttribute()
+
+    for attribute in attributes:
+
+        fnAttribute.setObject(attribute)
+
+        if not fnDependNode.hasAttribute(fnAttribute.name):
+
+            fnDependNode.addAttribute(attribute)
+
+        else:
+
+            continue
+
+    return attributes
+
+
+def applyAttributeExtensionTemplate(nodeClass, filePath):
+    """
+    Applies an attribute template to the supplied node class.
+
+    :type nodeClass: Union[str, om.MNodeClass]
+    :type filePath: str
+    :rtype: List[om.MObject]
+    """
+
+    # Check value type
+    #
+    if isinstance(nodeClass, string_types):
+
+        nodeClass = om.MNodeClass(nodeClass)
+
+    # Load json data
+    #
+    attributes = []
+
+    with open(filePath, 'r') as jsonFile:
+
+        attributes = json.load(jsonFile, cls=attributeparser.AttributeDecoder, nodeClass=nodeClass)
+
+    # Iterate through attributes
+    #
+    fnAttribute = om.MFnAttribute()
+
+    for attribute in attributes:
+
+        fnAttribute.setObject(attribute)
+
+        if not nodeClass.hasAttribute(fnAttribute.name):
+
+            nodeClass.addExtensionAttribute(attribute)
+
+        else:
+
+            continue
+
+    return attributes
 
 
 def getAttributeTypeName(attribute):
@@ -317,3 +198,27 @@ def getAttributeTypeName(attribute):
             letter=attribute.apiTypeStr[1].lower(),
             name=attribute.apiTypeStr[2:-9]  # Strip the 'Attribute' suffix
         )
+
+
+def iterEnums(obj):
+    """
+    Returns a generator that yields Maya enums pairs from the supplied object.
+
+    :type obj: Any
+    :rtype: iter
+    """
+
+    for (key, value) in obj.__dict__.items():
+
+        if key.startswith('k') and isinstance(value, int):
+
+            yield key, value
+
+        else:
+
+            continue
+
+
+NUMERIC_TYPES = dict(iterEnums(om.MFnNumericData))
+ATTR_TYPES = dict(iterEnums(om.MFnData))
+UNIT_TYPES = dict(iterEnums(om.MFnUnitAttribute))

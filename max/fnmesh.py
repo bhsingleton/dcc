@@ -28,7 +28,7 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
         # Inspect arguments
         #
         numArgs = len(args)
-        start, stop, step = 1, 2, 1
+        start, stop, step = 1, 1, 1
 
         if numArgs == 1:
 
@@ -64,6 +64,15 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
         for i in range(numElements):
 
             yield (i + 1), elements[i]
+
+    def triMesh(self):
+        """
+        Returns the triangulated mesh data object for this mesh.
+
+        :rtype: pymxs.MXSWrapperBase
+        """
+
+        return self.object().baseObject.triMesh
 
     def numVertices(self):
         """

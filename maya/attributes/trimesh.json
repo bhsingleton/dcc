@@ -1,0 +1,9 @@
+[
+    {
+		"longName": "triMesh",
+        "shortName": "tm",
+		"attributeType": "mesh",
+		"storable": false,
+		"hidden": true
+	}
+]

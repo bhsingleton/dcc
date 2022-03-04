@@ -4,7 +4,6 @@ import fnmatch
 from abc import ABCMeta, abstractmethod
 from six import with_metaclass
 from collections import deque
-
 from dcc.abstract import afnbase
 
 import logging
@@ -15,7 +14,7 @@ log.setLevel(logging.INFO)
 
 class AFnNode(with_metaclass(ABCMeta, afnbase.AFnBase)):
     """
-    Overload of AFnBase that outlines function set behaviour for interfacing with DCC scene nodes.
+    Overload of AFnBase that outlines function set behaviour for scene nodes.
     Any overloads should take care of internally storing the node handle.
     If the DCC has no means of looking up nodes via node handle then the developer must store it themself.
     """

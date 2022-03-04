@@ -3,7 +3,7 @@ import maya.api.OpenMaya as om
 
 from dcc import fnnode
 from dcc.abstract import afnmesh
-from dcc.maya.libs import dagutils
+from dcc.maya.libs import dagutils, meshutils
 
 import logging
 logging.basicConfig()
@@ -17,6 +17,26 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
     """
 
     __slots__ = ()
+
+    def setObject(self, obj):
+        """
+        Assigns an object to this function set for manipulation.
+
+        :type obj: Union[str, om.MObject, om.MDagPath]
+        :rtype: None
+        """
+
+        # Check if this is a transform
+        #
+        obj = dagutils.getMObject(obj)
+
+        if obj.hasFn(om.MFn.kTransform):
+
+            obj = om.MDagPath.getAPathTo(obj).extendToShape().node()
+
+        # Call parent method
+        #
+        super(FnMesh, self).setObject(obj)
 
     def range(self, *args):
         """
@@ -36,6 +56,15 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
         """
 
         return enumerate(elements)
+
+    def triMesh(self):
+        """
+        Returns the triangulated mesh data object for this mesh.
+
+        :rtype: om.MObject
+        """
+
+        return meshutils.getTriMeshData(self.object())
 
     def numVertices(self):
         """

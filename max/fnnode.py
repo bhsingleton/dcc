@@ -1,7 +1,7 @@
 import pymxs
 
 from six import string_types, integer_types
-from dcc.abstract import afnnode
+from dcc.abstract import afnnode, ArrayIndexType
 from dcc.decorators.validator import validator
 
 import logging
@@ -16,7 +16,7 @@ class FnNode(afnnode.AFnNode):
     """
 
     __slots__ = ()
-    __arrayoffset__ = 1
+    __arrayindextype__ = ArrayIndexType.OneBased
 
     def object(self):
         """

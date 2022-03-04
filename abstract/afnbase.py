@@ -1,6 +1,7 @@
 from abc import ABCMeta, abstractmethod
 from six import with_metaclass
 
+from dcc.abstract import ArrayIndexType
 from dcc.decorators.classproperty import classproperty
 
 import logging
@@ -14,8 +15,9 @@ class AFnBase(with_metaclass(ABCMeta, object)):
     Base class for all DCC function sets.
     """
 
+    # region Dunderscores
     __slots__ = ('_object',)
-    __arrayoffset__ = 0
+    __arrayindextype__ = ArrayIndexType.ZeroBased
 
     def __init__(self, *args, **kwargs):
         """
@@ -37,17 +39,21 @@ class AFnBase(with_metaclass(ABCMeta, object)):
         if numArgs == 1:
 
             self.setObject(args[0])
+    # endregion
 
+    # region Properties
     @classproperty
-    def arrayOffset(cls):
+    def arrayIndexType(cls):
         """
-        Getter method that returns the array offset for this dcc.
+        Getter method that returns the array index type for the associated dcc.
 
         :rtype: int
         """
 
-        return cls.__arrayoffset__
+        return cls.__arrayindextype__
+    # endregion
 
+    # region Methods
     def object(self):
         """
         Returns the object assigned to this function set.
@@ -114,3 +120,4 @@ class AFnBase(with_metaclass(ABCMeta, object)):
         """
 
         return True
+    # endregion
