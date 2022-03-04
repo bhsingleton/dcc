@@ -9,6 +9,9 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
+__port__ = 4434
+
+
 def findPycharm():
     """
     Returns the location of pycharm from the user's machine.
@@ -98,7 +101,7 @@ def startDebugger(*args, **kwargs):
         import pydevd
 
         pydevd.stoptrace()
-        pydevd.settrace('localhost', port=4434, stdoutToServer=True, stderrToServer=True, suspend=False)
+        pydevd.settrace('localhost', port=__port__, stdoutToServer=True, stderrToServer=True, suspend=False)
 
     except ImportError:
 
