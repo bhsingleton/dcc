@@ -29,7 +29,8 @@ class MXSValueEncoder(json.JSONEncoder):
         'MAXKey': 'serializeMAXKey',
         'MAXKeyArray': 'serializeArray',
         'Array': 'serializeArray',
-        'Dictionary': 'serializeDictionary'
+        'Dictionary': 'serializeDictionary',
+        'ArrayParameter': 'serializeArray'
     }
 
     def default(self, obj):
