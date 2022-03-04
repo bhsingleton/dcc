@@ -32,7 +32,7 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
             #
             if pymxs.runtime.isValidNode(obj):
 
-                return self.serializeNode(obj)
+                return self.serializeINode(obj)
 
             elif controllerutils.isValidController(obj):
 
@@ -40,7 +40,7 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
 
             elif modifierutils.isValidModifier(obj):
 
-                return self.serializeAnimatableObject(obj)
+                return self.serializeAnimatable(obj)
 
             else:
 
@@ -50,34 +50,35 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
 
             return super(MXSObjectEncoder, self).default(obj)
 
-    def serializeMaxObject(self, maxObject):
+    def serializeReferenceTarget(self, referenceTarget):
         """
-        Returns a serializable object for the supplied max object.
+        Returns a serializable object for the supplied reference target.
 
-        :type maxObject: pymxs.MXSWrapperBase
+        :type referenceTarget: pymxs.MXSWrapperBase
         :rtype: dict
         """
 
         return {
-            'class': str(pymxs.runtime.classOf(maxObject)),
-            'superClass': str(pymxs.runtime.superClassOf(maxObject)),
-            'properties': {key: value for (key, value) in controllerutils.iterProperties(maxObject, skipAnimatable=True, skipComplexValues=True)}
+            'class': str(pymxs.runtime.classOf(referenceTarget)),
+            'superClass': str(pymxs.runtime.superClassOf(referenceTarget))
         }
 
-    def serializeAnimatableObject(self, maxObject):
+    def serializeAnimatable(self, animatable):
         """
-        Returns a serializable object for the supplied animatable max object.
+        Returns a serializable object for the supplied max object.
 
-        :type maxObject: pymxs.MXSWrapperBase
+        :type animatable: pymxs.MXSWrapperBase
         :rtype: dict
         """
 
-        obj = self.serializeMaxObject(maxObject)
-        obj['subAnims'] = [self.serializeSubAnim(x) for x in controllerutils.iterSubAnims(maxObject, skipComplexValues=True)]
+        obj = self.serializeReferenceTarget(animatable)
+        obj['name'] = animatable.name if pymxs.runtime.isProperty(animatable, 'name') else ''
+        obj['properties'] = {key: value for (key, value) in controllerutils.iterProperties(animatable, skipAnimatable=True, skipComplexValues=True, skipDefaultValues=True)}
+        obj['subAnims'] = [self.serializeSubAnim(x) for x in controllerutils.iterSubAnims(animatable, skipComplexValues=True)]
 
         return obj
 
-    def serializeNode(self, node):
+    def serializeINode(self, node):
         """
         Returns a serializable object for the supplied max node.
 
@@ -85,11 +86,10 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
         :rtype: dict
         """
 
-        obj = self.serializeAnimatableObject(node)
-        obj['name'] = node.name
+        obj = self.serializeAnimatable(node)
         obj['handle'] = node.handle
-        obj['modifiers'] = [self.serializeAnimatableObject(x) for x in node.modifiers]
-        obj['customAttributes'] = [self.serializeAnimatableObject(x) for x in attributeutils.iterDefinitions(node)]
+        obj['modifiers'] = [self.serializeAnimatable(x) for x in node.modifiers]
+        obj['customAttributes'] = [self.serializeAnimatable(x) for x in attributeutils.iterDefinitions(node)]
 
         return obj
 
@@ -101,16 +101,24 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
         :rtype: dict
         """
 
-        if controllerutils.isValidController(controller):
-
-            obj = self.serializeAnimatableObject(controller)
-            obj['keys'] = list(controllerutils.iterMaxKeys(controller))
-
-            return obj
-
-        else:
+        # Check if controller is valid
+        #
+        if not controllerutils.isValidController(controller):
 
             return None
+
+        # Serialize animatable
+        #
+        obj = self.serializeAnimatable(controller)
+        obj['keys'] = list(controllerutils.iterMaxKeys(controller))
+
+        if controllerutils.isConstraint(controller):
+
+            numTargets = controller.getNumTargets()
+            obj['targets'] = [controller.getNode(x+1).name for x in range(numTargets)]
+            obj['weights'] = [controller.getWeight(x+1) for x in range(numTargets)]
+
+        return obj
 
     def serializeSubAnim(self, subAnim):
         """
@@ -120,10 +128,11 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
         :rtype: dict
         """
 
-        obj = self.serializeMaxObject(subAnim)
+        obj = self.serializeReferenceTarget(subAnim)
         obj['name'] = subAnim.name.replace(' ', '_')
         obj['index'] = subAnim.index
         obj['value'] = subAnim.value
+        obj['isAnimated'] = subAnim.isAnimated if pymxs.runtime.isProperty(subAnim, 'isAnimated') else False
         obj['controller'] = self.serializeController(subAnim.controller)
 
         return obj
