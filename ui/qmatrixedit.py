@@ -140,7 +140,7 @@ class QMatrixEdit(QtWidgets.QWidget):
         """
         Returns a list of line edit groups.
 
-        :rtype: list[qlineeditgroup.QLineEditGroup]
+        :rtype: List[qlineeditgroup.QLineEditGroup]
         """
 
         return self._rows

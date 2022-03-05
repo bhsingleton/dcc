@@ -185,7 +185,7 @@ class Path(object):
         """
         Getter method that returns the children of this path.
 
-        :rtype: list[Path]
+        :rtype: List[Path]
         """
 
         # Check if children have been initialized

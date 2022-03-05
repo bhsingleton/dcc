@@ -172,7 +172,7 @@ class QRollout(QtWidgets.QWidget):
         """
         Returns a list of sibling rollouts.
 
-        :rtype: list[QRollout]
+        :rtype: List[QRollout]
         """
 
         return list(self.iterSiblingWidgets())
@@ -492,7 +492,7 @@ class QRollout(QtWidgets.QWidget):
         """
         Returns the points that make up the gripper.
 
-        :rtype: list[QtCore.QPointF]
+        :rtype: List[QtCore.QPointF]
         """
 
         # Shrink bounding box
@@ -516,7 +516,7 @@ class QRollout(QtWidgets.QWidget):
         """
         Returns all of the divider bounding box consideration for dragging.
 
-        :rtype: list[QtCore.QRect]
+        :rtype: List[QtCore.QRect]
         """
 
         parentLayout = self.parentLayout()

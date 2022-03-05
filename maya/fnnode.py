@@ -249,7 +249,7 @@ class FnNode(afnnode.AFnNode):
         """
         Returns a list of shapes from this node.
 
-        :rtype: list[om.MObject]
+        :rtype: List[om.MObject]
         """
 
         return list(self.iterShapes())
@@ -305,7 +305,7 @@ class FnNode(afnnode.AFnNode):
         """
         Returns a list of intermediate objects from this node.
 
-        :rtype: list[om.MObject]
+        :rtype: List[om.MObject]
         """
 
         return list(self.iterIntermediateObjects())
@@ -314,7 +314,7 @@ class FnNode(afnnode.AFnNode):
         """
         Returns a list of nodes that this object is dependent on.
 
-        :rtype: list[om.MObject]
+        :rtype: List[om.MObject]
         """
 
         return dagutils.dependsOn(self.object(), apiType=apiType)
@@ -323,7 +323,7 @@ class FnNode(afnnode.AFnNode):
         """
         Returns a list of nodes that are dependent on this object.
 
-        :return: list[om.MObject]
+        :return: List[om.MObject]
         """
 
         return dagutils.dependents(self.object(), apiType=apiType)
@@ -396,7 +396,7 @@ class FnNode(afnnode.AFnNode):
         """
         Returns the active selection.
 
-        :rtype: list[om.MObject]
+        :rtype: List[om.MObject]
         """
 
         selection = om.MGlobal.getActiveSelectionList()  # type: om.MSelectionList

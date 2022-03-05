@@ -196,7 +196,7 @@ class FnScene(afnscene.AFnScene):
         Applies all of the texture path updates to the associated file nodes.
         Each key-value pair should consist of the original and updates texture paths!
 
-        :type updates: dict[str:str]
+        :type updates: Dict[str, str]
         :rtype: None
         """
 

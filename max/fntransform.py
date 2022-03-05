@@ -37,7 +37,7 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
         Returns the translation values for this node.
 
         :type worldSpace: bool
-        :rtype: list[float, float, float]
+        :rtype: List[float, float, float]
         """
 
         if worldSpace:
@@ -54,7 +54,7 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
         """
         Updates the translation values for this node.
 
-        :type translation: list[float, float, float]
+        :type translation: List[float, float, float]
         :rtype: None
         """
 
@@ -75,7 +75,7 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
         """
         Returns the rotation values, as euler angles, from this node.
 
-        :rtype: list[float, float, float]
+        :rtype: List[float, float, float]
         """
 
         eulerAngles = transformutils.getEulerRotation(self.object())
@@ -85,7 +85,7 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
         """
         Updates the rotation values, as euler angles, for this node.
 
-        :type rotation: list[float, float, float]
+        :type rotation: List[float, float, float]
         :rtype: None
         """
 
@@ -96,7 +96,7 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
         """
         Returns the scale values for this node.
 
-        :rtype: list[float, float, float]
+        :rtype: List[float, float, float]
         """
 
         return transformutils.getScale(self.object())
@@ -105,7 +105,7 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
         """
         Updates the scale values for this node.
 
-        :type scale: list[float, float, float]
+        :type scale: List[float, float, float]
         :rtype: None
         """
 
@@ -117,7 +117,7 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
         Returns the bounding box for this node.
         This consists of a minimum and maximum point in world space.
 
-        :rtype: list[float, float, float], list[float, float, float]
+        :rtype: List[float, float, float], List[float, float, float]
         """
 
         minPoint, maxPoint = transformutils.getBoundingBox(self.object())
@@ -192,7 +192,7 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
         """
         Returns the world parent matrix for this node.
 
-        :rtype: list[List[Any], List[Any], List[Any], List[Any]]
+        :rtype: List[List[float], List[float], List[float], List[float]]
         """
 
         matrix3 = transformutils.getParentMatrix(self.object())

@@ -30,7 +30,7 @@ def getNodesByPattern(pattern, ignoreCase=False):
 
     :type pattern: str
     :type ignoreCase: bool
-    :rtype: list[pymxs.runtime.Node]
+    :rtype: List[pymxs.runtime.Node]
     """
 
     return list(iterNodesByPattern(pattern, ignoreCase=ignoreCase))

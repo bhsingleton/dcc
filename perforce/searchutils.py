@@ -125,7 +125,7 @@ def findFile(search):
     Locates the supplied file using the search engine.
 
     :type search: str
-    :rtype: list[dict]
+    :rtype: List[dict]
     """
 
     return __searchengine__.searchClient(search)

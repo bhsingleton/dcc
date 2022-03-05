@@ -40,7 +40,7 @@ class QPropertyItemModel(QtCore.QAbstractItemModel):
         """
         Returns the list of objects to display.
 
-        :rtype: list[object]
+        :rtype: List[object]
         """
 
         return self._objects
@@ -49,7 +49,7 @@ class QPropertyItemModel(QtCore.QAbstractItemModel):
         """
         Updates the list of objects to display.
 
-        :type objects: list[object]
+        :type objects: List[object]
         :rtype: None
         """
 

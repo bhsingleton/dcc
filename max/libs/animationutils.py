@@ -15,7 +15,7 @@ def saveAnimation(filePath, nodes):
     Exports all of the animation from the supplied nodes to the specified path.
 
     :type filePath: str
-    :type nodes: list[pymxs.runtime.Node]
+    :type nodes: List[pymxs.runtime.Node]
     :rtype: None
     """
 
@@ -41,7 +41,7 @@ def loadAnimation(filePath, nodes):
     Imports all of the animation to the supplied nodes from the specified path.
 
     :type filePath: str
-    :type nodes: list[pymxs.runtime.Node]
+    :type nodes: List[pymxs.runtime.Node]
     :rtype: None
     """
 

@@ -499,7 +499,7 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
         Applies all of the texture path updates to the associated file nodes.
         Each key-value pair should consist of the old and new texture paths!
 
-        :type updates: dict[str:str]
+        :type updates: Dict[str, str]
         :rtype: None
         """
 

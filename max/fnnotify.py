@@ -133,7 +133,7 @@ class NodeEventCallback(Notification):
         """
         Getter method that returns a list of the associated callback names.
 
-        :rtype: list[pymxs.runtime.name]
+        :rtype: List[pymxs.runtime.name]
         """
 
         return [pymxs.runtime.name(x) for x in self._callbacks]

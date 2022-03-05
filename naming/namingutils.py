@@ -14,7 +14,7 @@ def getMirrorTable():
     Method used to retrieve all of the available side names.
     This dictionary can be used to resolve any form of mirroring.
 
-    :rtype: dict[str:str]
+    :rtype: Dict[str, str]
     """
 
     # Concatenate file path

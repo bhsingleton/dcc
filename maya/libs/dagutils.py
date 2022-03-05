@@ -168,7 +168,7 @@ def getMObjectByMUuid(uuid):
     If multiple nodes are found with the same UUID then a list will be returned!
 
     :type uuid: om.MUuid
-    :rtype: Union[om.MObject, list[om.MObject]]
+    :rtype: Union[om.MObject, List[om.MObject]]
     """
 
     # Add UUID to selection list
@@ -537,7 +537,7 @@ def getActiveSelection(apiType=om.MFn.kDependencyNode):
     An optional api type can be supplied to narrow down the selection.
 
     :type apiType: int
-    :rtype: list[om.MObject]
+    :rtype: List[om.MObject]
     """
 
     return list(iterActiveSelection(apiType=apiType))
@@ -579,7 +579,7 @@ def getRichSelection(apiType=om.MFn.kMeshVertComponent):
     MItSelectionList will automatically convert any mesh component back to vertices unless overrided.
 
     :type apiType: int
-    :rtype: list[tuple[om.MDagPath, dict[int: float]]]
+    :rtype: List[Sequence[om.MDagPath, Dict[int, float]]]
     """
 
     # Get rich selection from MGlobal
@@ -634,7 +634,7 @@ def getComponentSelection():
     Retrieves the current active component selection.
     Since multiple shape nodes can be edited at different component levels tuples must be returned in a list.
 
-    :rtype: list[tuple[om.MDagPath, om.MObject]]
+    :rtype: List[tuple[om.MDagPath, om.MObject]]
     """
 
     # Access the Maya global selection list
@@ -955,7 +955,7 @@ def dependsOn(dependNode, apiType=om.MFn.kDependencyNode):
 
     :type dependNode: om.MObject
     :type apiType: int
-    :rtype: list[om.MObject]
+    :rtype: List[om.MObject]
     """
 
     return list(iterDependencies(dependNode, apiType, direction=om.MItDependencyGraph.kUpstream))
@@ -967,7 +967,7 @@ def dependents(dependNode, apiType=om.MFn.kDependencyNode):
 
     :type dependNode: om.MObject
     :type apiType: int
-    :rtype: list[om.MObject]
+    :rtype: List[om.MObject]
     """
 
     return list(iterDependencies(dependNode, apiType, direction=om.MItDependencyGraph.kDownstream))

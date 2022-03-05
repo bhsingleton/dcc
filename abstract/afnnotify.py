@@ -163,7 +163,7 @@ class Notification(with_metaclass(ABCMeta, object)):
     """
 
     __slots__ = ('_handle', '_ids', '_type')
-    __functions__ = {}  # type: dict[str:callable]
+    __functions__ = {}  # type: Dict[str, Callable]
 
     def __init__(self, *args, **kwargs):
         """
@@ -292,7 +292,7 @@ class Notification(with_metaclass(ABCMeta, object)):
         """
         Returns a list of functions from this notify.
 
-        :rtype: list[function]
+        :rtype: List[function]
         """
 
         return list(self.iterFunctions())

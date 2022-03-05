@@ -197,7 +197,7 @@ def decomposeTransform(matrix, rotateOrder='xyz'):
 
     :type matrix: numpy.matrix
     :type rotateOrder: str
-    :rtype: numpy.array, list[float, float, float], list[float, float, float]
+    :rtype: numpy.array, List[float, float, float], List[float, float, float]
     """
 
     # Check value type
@@ -243,7 +243,7 @@ def decomposeTranslateMatrix(matrix):
     Breaks the supplied transform matrix into its translate component.
 
     :type matrix: numpy.matrix
-    :rtype: list[float, float, float]
+    :rtype: List[float, float, float]
     """
 
     return numpy.array([matrix[3, 0], matrix[3, 1], matrix[3, 2]])
@@ -256,7 +256,7 @@ def decomposeRotateMatrix(matrix, rotateOrder='xyz'):
 
     :type matrix: numpy.matrix
     :type rotateOrder: str
-    :rtype: list[float, float, float]
+    :rtype: List[float, float, float]
     """
 
     return __matrixtoeuler__[rotateOrder](matrix)
@@ -267,7 +267,7 @@ def matrixToEulerXYZ(matrix):
     Converts the supplied matrix to euler XYZ angles.
 
     :type matrix: numpy.matrix
-    :rtype: list[float, float, float]
+    :rtype: List[float, float, float]
     """
 
     x, y, z = 0, 0, 0
@@ -300,7 +300,7 @@ def matrixToEulerXZY(matrix):
     Converts the supplied matrix to euler XZY angles.
 
     :type matrix: numpy.matrix
-    :rtype: list[float, float, float]
+    :rtype: List[float, float, float]
     """
 
     x, y, z = 0, 0, 0
@@ -333,7 +333,7 @@ def matrixToEulerYXZ(matrix):
     Converts the supplied matrix to euler YXZ angles.
 
     :type matrix: numpy.matrix
-    :rtype: list[float, float, float]
+    :rtype: List[float, float, float]
     """
 
     x, y, z = 0, 0, 0
@@ -366,7 +366,7 @@ def matrixToEulerYZX(matrix):
     Converts the supplied matrix to euler YZX angles.
 
     :type matrix: numpy.matrix
-    :rtype: list[float, float, float]
+    :rtype: List[float, float, float]
     """
 
     x, y, z = 0, 0, 0
@@ -399,7 +399,7 @@ def matrixToEulerZXY(matrix):
     Converts the supplied matrix to euler ZXY angles.
 
     :type matrix: numpy.matrix
-    :rtype: list[float, float, float]
+    :rtype: List[float, float, float]
     """
 
     x, y, z = 0, 0, 0
@@ -432,7 +432,7 @@ def matrixToEulerZYX(matrix):
     Converts the supplied matrix to euler XZY angles.
 
     :type matrix: numpy.matrix
-    :rtype: list[float, float, float]
+    :rtype: List[float, float, float]
     """
 
     x, y, z = 0, 0, 0
@@ -475,7 +475,7 @@ def decomposeScaleMatrix(matrix):
     Breaks the supplied transform matrix into its scale component.
 
     :type matrix: numpy.matrix
-    :rtype: list[float, float, float]
+    :rtype: List[float, float, float]
     """
 
     return [numpy.linalg.norm(matrix[0]), numpy.linalg.norm(matrix[1]), numpy.linalg.norm(matrix[2])]

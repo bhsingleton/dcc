@@ -38,7 +38,7 @@ class AFnTransform(with_metaclass(ABCMeta, afnnode.AFnNode)):
         Returns the translation values for this node.
 
         :type worldSpace: bool
-        :rtype: list[float, float, float]
+        :rtype: List[float, float, float]
         """
 
         pass
@@ -48,7 +48,7 @@ class AFnTransform(with_metaclass(ABCMeta, afnnode.AFnNode)):
         """
         Updates the translation values for this node.
 
-        :type translation: list[float, float, float]
+        :type translation: List[float, float, float]
         :rtype: None
         """
 
@@ -78,7 +78,7 @@ class AFnTransform(with_metaclass(ABCMeta, afnnode.AFnNode)):
         """
         Returns the rotation values, as euler angles, from this node.
 
-        :rtype: list[float, float, float]
+        :rtype: List[float, float, float]
         """
 
         pass
@@ -88,7 +88,7 @@ class AFnTransform(with_metaclass(ABCMeta, afnnode.AFnNode)):
         """
         Updates the rotation values, as euler angles, for this node.
 
-        :type rotation: list[float, float, float]
+        :type rotation: List[float, float, float]
         :rtype: None
         """
 
@@ -108,7 +108,7 @@ class AFnTransform(with_metaclass(ABCMeta, afnnode.AFnNode)):
         """
         Returns the scale values for this node.
 
-        :rtype: list[float, float, float]
+        :rtype: List[float, float, float]
         """
 
         pass
@@ -118,7 +118,7 @@ class AFnTransform(with_metaclass(ABCMeta, afnnode.AFnNode)):
         """
         Updates the scale values for this node.
 
-        :type scale: list[float, float, float]
+        :type scale: List[float, float, float]
         :rtype: None
         """
 
@@ -139,7 +139,7 @@ class AFnTransform(with_metaclass(ABCMeta, afnnode.AFnNode)):
         Returns the bounding box for this node.
         This consists of a minimum and maximum point in world space.
 
-        :rtype: list[float, float, float], list[float, float, float]
+        :rtype: List[float, float, float], List[float, float, float]
         """
 
         pass

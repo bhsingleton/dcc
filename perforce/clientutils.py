@@ -174,7 +174,7 @@ class ClientSpec(object):
         """
         Returns a list of changelists from this client.
 
-        :rtype: list[dict]
+        :rtype: List[dict]
         """
 
         return cmds.changes(user=self.user, port=self.port, client=self.name, status='pending')

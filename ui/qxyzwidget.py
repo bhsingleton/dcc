@@ -74,7 +74,7 @@ class QXyzWidget(QtWidgets.QWidget):
         """
         Returns a list of state values for each button.
 
-        :rtype: list[bool, bool, bool]
+        :rtype: List[bool, bool, bool]
         """
 
         return [x.isChecked() for x in self.matchButtonGroup.buttons()]
@@ -83,7 +83,7 @@ class QXyzWidget(QtWidgets.QWidget):
         """
         Updates the match state for each button.
 
-        :type matches: list[bool, bool, bool]
+        :type matches: List[bool, bool, bool]
         :rtype: None
         """
 

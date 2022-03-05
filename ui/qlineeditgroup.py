@@ -80,7 +80,7 @@ class QLineEditGroup(QtCore.QObject):
         """
         Returns a list of line edits in this group.
 
-        :rtype: list[QtWidgets.QLineEdit]
+        :rtype: List[QtWidgets.QLineEdit]
         """
 
         return list(self._lineEdits.values())
