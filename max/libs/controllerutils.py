@@ -57,6 +57,13 @@ LIST_TYPES = {
 }
 
 
+DUMMY_TYPES = {
+    'position_ListDummyEntry': pymxs.runtime.position_ListDummyEntry,
+    'rotation_ListDummyEntry': pymxs.runtime.rotation_ListDummyEntry,
+    'scale_ListDummyEntry': pymxs.runtime.scale_ListDummyEntry
+}
+
+
 PROPERTY_PARSER = re.compile(r'\.{1}([a-zA-Z0-9_]+)')
 CLASS_PROPERTIES = {}
 
@@ -105,6 +112,17 @@ def isListController(obj):
     return pymxs.runtime.classOf(obj) in LIST_TYPES.values()
 
 
+def isDummyController(obj):
+    """
+    Evaluates if the supplied object is a dummy controller.
+
+    :type obj: pymxs.MXSWrapperBase
+    :rtype: bool
+    """
+
+    return pymxs.runtime.classOf(obj) in DUMMY_TYPES.values()
+
+
 def isValidController(obj):
     """
     Evaluates if the supplied object is a valid controller.
@@ -114,6 +132,17 @@ def isValidController(obj):
     """
 
     return pymxs.runtime.superClassOf(obj) in BASE_TYPES.values()
+
+
+def isValidSubAnim(obj):
+    """
+    Evaluates if the supplied object is a valid sub anim.
+
+    :type obj: pymxs.MXSWrapperBase
+    :rtype: bool
+    """
+
+    return pymxs.runtime.classOf(obj) == pymxs.runtime.SubAnim
 
 
 def isSerializableValue(value):
