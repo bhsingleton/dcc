@@ -550,7 +550,6 @@ def detectClient(filePath):
     return None
 
 
-@relogin
 def initializeClients():
     """
     Initializes the client specs for the current session.

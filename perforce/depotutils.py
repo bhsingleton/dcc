@@ -282,7 +282,6 @@ def iterDepots():
     return iter(__depotspecs__.items())
 
 
-@relogin
 def initializeDepots():
     """
     Initializes the depot specs for the current session.
