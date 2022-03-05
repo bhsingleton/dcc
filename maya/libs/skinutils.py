@@ -406,8 +406,8 @@ def setWeightList(skinCluster, weightList):
 
         # Get pre-existing influences
         #
-        weightListPlug.selectAncestorLogicalIndex(vertexIndex)
-        weightsPlug = weightListPlug.child(0)  # type: om.MPlug
+        element = weightListPlug.elementByLogicalIndex(vertexIndex)
+        weightsPlug = element.child(0)  # type: om.MPlug
 
         setWeights(skinCluster, vertexIndex, weights, plug=weightsPlug)
 
