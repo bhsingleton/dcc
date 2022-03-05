@@ -7,9 +7,10 @@ from six.moves import collections_abc
 from copy import deepcopy
 from collections import OrderedDict
 
-from dcc.abstract import afnbase, afnnode
 from dcc import fnnode, fnmesh
+from dcc.abstract import afnbase, afnnode
 from dcc.naming import namingutils
+from dcc.math import linearalgebra
 
 import logging
 logging.basicConfig()
@@ -219,13 +220,13 @@ class Influences(collections_abc.MutableMapping):
         :rtype: None
         """
 
-        for (key, value) in obj.items():
+        for key in sorted(obj.keys()):
 
-            self.__setitem__(key, value)
+            self.__setitem__(key, obj[key])
 
     def clear(self):
         """
-        Removes all of the influences from this collection.
+        Removes all the influences from this collection.
 
         :rtype: None
         """
@@ -294,7 +295,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         """
         Getter method that returns the clipboard.
 
-        :rtype: dict[int:dict[int:float]]
+        :rtype: Dict[int,Dict[int, float]]
         """
 
         return self._clipboard
@@ -313,7 +314,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         """
         Returns a list of vertex indices.
 
-        :rtype: list[int]
+        :rtype: List[int]
         """
 
         return list(self.iterVertices())
@@ -350,7 +351,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
     @abstractmethod
     def iterSelection(self):
         """
-        Returns a generator that yields the selected vertices.
+        Returns a generator that yields the selected vertex indices.
 
         :rtype: iter
         """
@@ -361,7 +362,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         """
         Returns the selected vertex elements.
 
-        :rtype: list[int]
+        :rtype: List[int]
         """
 
         return list(self.iterSelection())
@@ -371,7 +372,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         """
         Updates the active selection with the supplied vertex elements.
 
-        :type vertices: list[int]
+        :type vertices: List[int]
         :rtype: None
         """
 
@@ -391,7 +392,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         """
         Returns a dictionary of selected vertex and soft value pairs.
 
-        :rtype dict[int:float]
+        :rtype Dict[int, float]
         """
 
         return OrderedDict(self.iterSoftSelection())
@@ -457,7 +458,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         """
         Returns all of the influence names from this deformer.
 
-        :rtype: dict[int:str]
+        :rtype: Dict[int,str]
         """
 
         influences = self.influences()
@@ -545,7 +546,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         Returns a list of used influence IDs.
         An optional list of vertices can used to narrow down this search.
 
-        :rtype: list[int]
+        :rtype: List[int]
         """
 
         # Iterate through weights
@@ -563,7 +564,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         Returns a list of unused influence IDs.
         An optional list of vertices can used to narrow down this search.
 
-        :rtype: list[int]
+        :rtype: List[int]
         """
 
         return list(set(self.influences().keys()) - set(self.getUsedInfluenceIds(*args)))
@@ -575,7 +576,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
 
         :type otherSkin: AFnSkin
         :type influenceIds: Union[list, tuple, set]
-        :rtype: dict[int:int]
+        :rtype: Dict[int,int]
         """
 
         # Check if skin is valid
@@ -621,9 +622,9 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         """
         Remaps the supplied vertex weights using the specified influence map.
 
-        :type vertexWeights: dict[int:dict[int:float]]
-        :type influenceMap: dict[int:int]
-        :rtype: dict[int:dict[int:float]]
+        :type vertexWeights: Dict[int,Dict[int, float]]
+        :type influenceMap: Dict[int,int]
+        :rtype: Dict[int,Dict[int, float]]
         """
 
         # Check if arguments are valid
@@ -664,7 +665,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         Returns a list of vertices associated with the supplied influence ids.
         This can be an expensive operation so use sparingly.
 
-        :rtype: list[int]
+        :rtype: List[int]
         """
 
         # Iterate through vertices
@@ -757,7 +758,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         Returns the weights for the supplied vertex indices.
         If no vertex indices are supplied then all weights are returned instead.
 
-        :rtype: dict[int:dict[int:float]]
+        :rtype: Dict[int,Dict[int, float]]
         """
 
         return dict(self.iterVertexWeights(*args))
@@ -766,12 +767,12 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         """
         Sets the supplied target ID to the specified amount while preserving normalization.
 
-        :type weights: dict[int:float]
+        :type weights: Dict[int, float]
         :type target: int
-        :type source: list[int]
+        :type source: List[int]
         :type amount: float
         :type falloff: float
-        :rtype: dict[int:float]
+        :rtype: Dict[int, float]
         """
 
         # Check weights type
@@ -885,7 +886,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
 
             # Check if all influences are being replaced
             #
-            if self.isClose(amount, total, abs_tol=1e-06):
+            if linearalgebra.isClose(amount, total, abs_tol=1e-06):
 
                 newWeights = {target: 1.0}
 
@@ -909,12 +910,12 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         """
         Scales the supplied target ID to the specified amount while preserving normalization.
 
-        :type weights: dict[int:float]
+        :type weights: Dict[int, float]
         :type target: int
-        :type source: list[int]
+        :type source: List[int]
         :type percent: float
         :type falloff: float
-        :rtype: dict[int:float]
+        :rtype: Dict[int, float]
         """
 
         # Get amount to redistribute
@@ -931,12 +932,12 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         """
         Increments the supplied target ID to the specified amount while preserving normalization.
 
-        :type weights: dict[int:float]
+        :type weights: Dict[int, float]
         :type target: int
-        :type source: list[int]
+        :type source: List[int]
         :type increment: float
         :type falloff: float
-        :rtype: dict[int:float]
+        :rtype: Dict[int, float]
         """
 
         # Get amount to redistribute
@@ -953,32 +954,17 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         """
         Removes any zeroes from the supplied weights.
 
-        :type weights: dict[int:float]
-        :rtype: dict[int:float]
+        :type weights: Dict[int, float]
+        :rtype: Dict[int, float]
         """
 
-        return {influenceId: weight for (influenceId, weight) in weights.items() if not self.isClose(0.0, weight)}
-
-    @staticmethod
-    def isClose(a, b, rel_tol=1e-03, abs_tol=1e-03):
-        """
-        Evaluates if the two numbers of relatively close.
-        Sadly this function doesn't exist in the math module until Python 3.5
-
-        :type a: float
-        :type b: float
-        :type rel_tol: float
-        :type abs_tol: float
-        :rtype: bool
-        """
-
-        return abs(a - b) <= max(rel_tol * max(abs(a), abs(b)), abs_tol)
+        return {influenceId: weight for (influenceId, weight) in weights.items() if not linearalgebra.isClose(0.0, weight)}
 
     def isNormalized(self, weights):
         """
         Evaluates if the supplied weights have been normalized.
 
-        :type weights: dict[int:float]
+        :type weights: Dict[int, float]
         :rtype: bool
         """
 
@@ -993,15 +979,15 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         total = sum([weight for (influenceId, weight) in weights.items()])
         log.debug('Supplied influence weights equal %s.' % total)
 
-        return self.isClose(1.0, total)
+        return linearalgebra.isClose(1.0, total)
 
     def normalizeWeights(self, weights, maintainMaxInfluences=True):
         """
         Normalizes the supplied vertex weights.
 
         :type maintainMaxInfluences: bool
-        :type weights: dict[int:float]
-        :rtype: dict[int:float]
+        :type weights: Dict[int, float]
+        :rtype: Dict[int, float]
         """
 
         # Check value type
@@ -1058,8 +1044,8 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         """
         Prunes the supplied vertex weights to meet the maximum number of weighted influences.
 
-        :type weights: dict[int:float]
-        :rtype: dict[int:float]
+        :type weights: Dict[int, float]
+        :rtype: Dict[int, float]
         """
 
         # Check value type
@@ -1076,7 +1062,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
 
             # Check if influence weight is below threshold
             #
-            if self.isClose(0.0, weight) or influences[influenceId] is None:
+            if linearalgebra.isClose(0.0, weight) or influences[influenceId] is None:
 
                 weights[influenceId] = 0.0
 
@@ -1118,7 +1104,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         By default maintain max influences is enabled.
 
         :key maintainMaxInfluences: bool
-        :rtype: dict[int:float]
+        :rtype: Dict[int, float]
         """
 
         # Iterate through vertices
@@ -1158,7 +1144,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         :type startWeights: dict
         :type endWeights: dict
         :type percent: float
-        :rtype: dict[int:float]
+        :rtype: Dict[int, float]
         """
 
         # Check percentage type
@@ -1193,7 +1179,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         """
         Assigns the supplied vertex weights to this deformer.
 
-        :type vertices: dict[int:dict[int:float]]
+        :type vertices: Dict[int,Dict[int, float]]
         :rtype: None
         """
 
@@ -1221,9 +1207,9 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         """
         Averages supplied vertex weights based on the inverse distance.
 
-        :type vertexWeights: dict[int:dict[int:float]]
+        :type vertexWeights: Dict[int,Dict[int, float]]
         :type distances: list[float]
-        :rtype: dict[int:float]
+        :rtype: Dict[int, float]
         """
 
         # Check value types
@@ -1280,9 +1266,9 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         """
         Returns the barycentric average for the specified vertices.
 
-        :type vertexIndices: list[int]
+        :type vertexIndices: List[int]
         :type baryCoords list[float, float, float]
-        :rtype: dict[int:float]
+        :rtype: Dict[int, float]
         """
 
         # Check if list size mismatch
@@ -1399,7 +1385,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         """
         Copies the supplied vertex indices to the nearest neighbour.
 
-        :type vertexIndices: list[int]
+        :type vertexIndices: List[int]
         :type mode: int
         :rtype: None
         """
@@ -1410,11 +1396,11 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         """
         Returns a series of mirrored weights for the supplied vertex weights.
 
-        :type vertexIndices: list[int]
+        :type vertexIndices: List[int]
         :type pull: bool
         :type axis: int
         :type tolerance: float
-        :rtype: dict[int:dict[int:float]]
+        :rtype: Dict[int,Dict[int, float]]
         """
 
         # Mirror the supplied vertex indices
@@ -1446,9 +1432,9 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         """
         Mirrors the influence IDs in the supplied vertex weight dictionary.
 
-        :type weights: dict[int: float]
+        :type weights: Dict[int, float]
         :type isCenterSeam: bool
-        :rtype: dict[int: float]
+        :rtype: Dict[int, float]
         """
 
         # Check value type
@@ -1512,7 +1498,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         """
         Blends the selected vertices.
 
-        :type vertexIndices: list[int]
+        :type vertexIndices: List[int]
         :rtype: None
         """
 
@@ -1553,7 +1539,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         """
         Blends between the supplied vertices using the shortest path.
 
-        :type vertexIndices: list[int]
+        :type vertexIndices: List[int]
         :type blendByDistance: bool
         :rtype: None
         """
