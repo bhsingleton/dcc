@@ -106,9 +106,7 @@ def iterWeightList(skinCluster, vertexIndices=None):
 
     # Check number of vertices
     #
-    numVertexIndices = len(vertexIndices)
-
-    if numVertexIndices == 0:
+    if vertexIndices is None:
 
         vertexIndices = list(range(numControlPoints(skinCluster)))
 
@@ -121,11 +119,11 @@ def iterWeightList(skinCluster, vertexIndices=None):
 
         # Go to weight list element
         #
-        weightListPlug.selectAncestorLogicalIndex(vertexIndex)
+        element = weightListPlug.elementByLogicalIndex(vertexIndex)
 
         # Yield vertex weights
         #
-        weightsPlug = weightListPlug.child(0)  # type: om.MPlug
+        weightsPlug = element.child(0)  # type: om.MPlug
         weights = dict(iterWeights(skinCluster, vertexIndex, plug=weightsPlug))
 
         yield vertexIndex, weights
