@@ -76,8 +76,12 @@ class QProxyWindow(QtWidgets.QMainWindow):
         # Modify window properties
         #
         self.setObjectName(self.className)
-        self.setWindowIcon(self.__class__.__icon__)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+
+        if not self.overrideIcon.isNull():
+
+            self.setWindowIcon(self.overrideIcon)
+
     # endregion
 
     # region Properties
@@ -90,6 +94,16 @@ class QProxyWindow(QtWidgets.QMainWindow):
         """
 
         return cls.__name__
+
+    @classproperty
+    def overrideIcon(cls):
+        """
+        Getter method that returns the override icon for this class.
+
+        :rtype: QtGui.QIcon
+        """
+
+        return cls.__icon__
 
     @property
     def settings(self):
