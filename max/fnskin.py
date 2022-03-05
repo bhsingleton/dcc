@@ -2,7 +2,7 @@ import pymxs
 
 from dcc import fnnode
 from dcc.abstract import afnskin
-from dcc.max.libs import modifierutils
+from dcc.max.libs import modifierutils, skinutils
 from dcc.max.decorators import commandpaneloverride
 
 import logging
@@ -142,37 +142,21 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
         return range(1, self.numControlPoints() + 1, 1)
 
-    @commandpaneloverride.commandPanelOverride(mode='modify')
     def iterSelection(self):
         """
-        Returns the selected vertex elements.
-        This operation is not super efficient in max...
+        Returns a generator that yields the selected vertex indices.
 
-        :rtype: list[int]
+        :rtype: iter
         """
 
-        # Iterate through vertices
-        #
-        skinModifier = self.object()
-
-        for i in range(1, self.numControlPoints() + 1, 1):
-
-            # Check if vertex is selected
-            #
-            if pymxs.runtime.skinOps.isVertexSelected(skinModifier, i):
-
-                yield i
-
-            else:
-
-                continue
+        return skinutils.iterSelection(self.object())
 
     @commandpaneloverride.commandPanelOverride(mode='modify')
     def setSelection(self, vertices):
         """
         Updates the active selection with the supplied vertex elements.
 
-        :type vertices: list[int]
+        :type vertices: List[int]
         :rtype: None
         """
 
@@ -227,47 +211,14 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         #
         pymxs.runtime.subObjectLevel = 0
 
-    @commandpaneloverride.commandPanelOverride(mode='modify')
     def iterInfluences(self):
         """
-        Returns a generator that yields all of the influence object from this deformer.
+        Returns a generator that yields all the influence objects from this deformer.
 
         :rtype: iter
         """
 
-        # Iterate through bones
-        #
-        skinModifier = self.object()
-        numBones = pymxs.runtime.skinOps.getNumberBones(skinModifier)
-
-        for i in range(1, numBones + 1, 1):
-
-            # Get bone properties
-            #
-            boneId = pymxs.runtime.skinOps.getBoneIDByListID(skinModifier, i)
-            boneName = pymxs.runtime.skinOps.getBoneName(skinModifier, boneId, 0)
-
-            # Get bone from name
-            #
-            nodes = pymxs.runtime.getNodeByName(boneName, exact=True, all=True)
-            numNodes = nodes.count
-
-            bone = None
-
-            if numNodes == 0:
-
-                raise RuntimeError('iterInfluences() cannot locate bone from name: %s' % boneName)
-
-            elif numNodes == 1:
-
-                bone = nodes[0]
-
-            else:
-
-                dependencies = pymxs.runtime.dependsOn(skinModifier)
-                bone = [x for x in nodes if x in dependencies][0]
-
-            yield boneId, bone
+        return skinutils.iterInfluences(self.object())
 
     @commandpaneloverride.commandPanelOverride(mode='modify')
     def addInfluence(self, influence):
@@ -321,7 +272,6 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
         pymxs.runtime.skinOps.selectBone(self.object(), influenceId)
 
-    @commandpaneloverride.commandPanelOverride(mode='modify')
     def iterVertexWeights(self, *args):
         """
         Returns a generator that yields weights for the supplied vertex indices.
@@ -330,72 +280,17 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         :rtype: iter
         """
 
-        # Inspect arguments
-        #
-        numArgs = len(args)
+        return skinutils.iterVertexWeights(self.object(), vertexIndices=args)
 
-        if numArgs == 0:
-
-            args = range(1, self.numControlPoints() + 1, 1)
-
-        # Iterate through arguments
-        #
-        for arg in args:
-
-            # Iterate through bones
-            #
-            skinModifier = self.object()
-            numBones = pymxs.runtime.skinOps.getVertexWeightCount(skinModifier, arg)
-
-            vertexWeights = {}
-
-            for i in range(1, numBones + 1, 1):
-
-                boneId = pymxs.runtime.skinOps.getVertexWeightBoneID(skinModifier, arg, i)
-                boneWeight = pymxs.runtime.skinOps.getVertexWeight(skinModifier, arg, i)
-
-                vertexWeights[boneId] = boneWeight
-
-            # Yield vertex weights
-            #
-            yield arg, vertexWeights
-
-    @commandpaneloverride.commandPanelOverride(mode='modify')
     def applyVertexWeights(self, vertexWeights):
         """
         Assigns the supplied vertex weights to this deformer.
 
-        :type vertexWeights: dict[int:dict[int:float]]
+        :type vertexWeights: Dict[int, Dict[int, float]]
         :rtype: None
         """
 
-        # Define undo chunk
-        #
-        with pymxs.undo(True, 'Apply Weights'):
-
-            # Bake selected vertices before applying weights
-            # This allows for undo support
-            #
-            skinModifier = self.object()
-            pymxs.runtime.skinOps.bakeSelectedVerts(skinModifier)
-
-            # Iterate and replace vertex weights
-            #
-            for (vertexIndex, weights) in vertexWeights.items():
-
-                weights = self.removeZeroWeights(weights)
-
-                pymxs.runtime.skinOps.replaceVertexWeights(
-                    skinModifier,
-                    vertexIndex,
-                    list(weights.keys()),
-                    list(weights.values())
-                )
-
-        # Force redraw
-        # This prevents any zero weights being returned in the same execution thread!
-        #
-        pymxs.runtime.completeRedraw()
+        skinutils.setVertexWeights(self.object(), vertexWeights)
 
     @commandpaneloverride.commandPanelOverride(mode='modify')
     def resetPreBindMatrices(self):
