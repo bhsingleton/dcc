@@ -1,7 +1,7 @@
 import pymxs
 
 from dcc.max.json import mxsvalueparser
-from dcc.max.libs import controllerutils, modifierutils, attributeutils
+from dcc.max.libs import controllerutils, modifierutils, attributeutils, arrayutils
 
 import logging
 logging.basicConfig()
@@ -33,6 +33,10 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
             if pymxs.runtime.isValidNode(obj):
 
                 return self.serializeINode(obj)
+
+            elif controllerutils.isValidSubAnim(obj):
+
+                return self.serializeSubAnim(obj)
 
             elif controllerutils.isValidController(obj):
 
@@ -72,9 +76,9 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
         """
 
         obj = self.serializeReferenceTarget(animatable)
-        obj['name'] = animatable.name if pymxs.runtime.isProperty(animatable, 'name') else ''
-        obj['properties'] = {key: value for (key, value) in controllerutils.iterProperties(animatable, skipAnimatable=True, skipComplexValues=True, skipDefaultValues=True)}
-        obj['subAnims'] = [self.serializeSubAnim(x) for x in controllerutils.iterSubAnims(animatable, skipComplexValues=True)]
+        obj['name'] = getattr(animatable, 'name', '')
+        obj['properties'] = dict(controllerutils.iterProperties(animatable, skipAnimatable=True, skipComplexValues=True, skipDefaultValues=True))
+        obj['subAnims'] = list(controllerutils.iterSubAnims(animatable, skipComplexValues=True))
 
         return obj
 
@@ -88,7 +92,7 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
 
         obj = self.serializeAnimatable(node)
         obj['handle'] = node.handle
-        obj['modifiers'] = [self.serializeAnimatable(x) for x in node.modifiers]
+        obj['modifiers'] = list(node.modifiers)
         obj['customAttributes'] = [self.serializeAnimatable(x) for x in attributeutils.iterDefinitions(node)]
 
         return obj
@@ -109,20 +113,39 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
 
         # Serialize animatable
         #
-        obj = self.serializeAnimatable(controller)
-        obj['keys'] = list(controllerutils.iterMaxKeys(controller))
+        obj = self.serializeReferenceTarget(controller)
+        obj['properties'] = dict(controllerutils.iterProperties(controller, skipAnimatable=True, skipComplexValues=True, skipDefaultValues=True))
+        obj['subAnims'] = []
+        obj['value'] = controller.value
+        obj['keys'] = []
 
         if controllerutils.isConstraint(controller):
 
             numTargets = controller.getNumTargets()
-            obj['targets'] = [controller.getNode(x+1).name for x in range(numTargets)]
-            obj['weights'] = [controller.getWeight(x+1) for x in range(numTargets)]
+            obj['targets'] = [{'name': controller.getNode(x).name, 'weight': controller.getWeight(x)} for x in range(1, numTargets + 1, 1)]
+
+        elif controllerutils.isListController(controller):
+
+            controllers = controller.list
+            controllerCount = controllers.count
+
+            obj['active'] = controller.getActive()
+            obj['list'] = [{'name': controllers.getName(x), 'controller': controllers.getSubCtrl(x)} for x in range(1, controllerCount + 1, 1)]
+            obj['weight'] = [controllers.getSubCtrlWeight(x) for x in range(1, controllerCount + 1, 1)]
+
+        elif controllerutils.isBezierController(controller):
+
+            obj['keys'].extend(list(controllerutils.iterMaxKeys(controller)))
+
+        else:
+
+            obj['subAnims'].extend(list(controllerutils.iterSubAnims(controller, skipComplexValues=True)))
 
         return obj
 
     def serializeSubAnim(self, subAnim):
         """
-        Returns a serializable object for the supplied max subanim.
+        Returns a serializable object for the supplied max sub anim.
 
         :type subAnim: pymxs.runtime.SubAnim
         :rtype: dict
@@ -132,8 +155,8 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
         obj['name'] = subAnim.name.replace(' ', '_')
         obj['index'] = subAnim.index
         obj['value'] = subAnim.value
-        obj['isAnimated'] = subAnim.isAnimated if pymxs.runtime.isProperty(subAnim, 'isAnimated') else False
-        obj['controller'] = self.serializeController(subAnim.controller)
+        obj['isAnimated'] = getattr(subAnim, 'isAnimated', False)
+        obj['controller'] = subAnim.controller
 
         return obj
 
@@ -144,7 +167,6 @@ class MXSObjectDecoder(mxsvalueparser.MXSValueDecoder):
     """
 
     __slots__ = ()
-    __dummies__ = ['position_ListDummyEntry', 'rotation_ListDummyEntry', 'scale_ListDummyEntry']
 
     def default(self, obj):
         """
@@ -159,62 +181,27 @@ class MXSObjectDecoder(mxsvalueparser.MXSValueDecoder):
         className = obj.get('class', '')
         superClassName = obj.get('superClass', '')
 
-        if hasattr(pymxs.runtime, className):
+        if not hasattr(pymxs.runtime, className):
 
-            # Check if this is a dummy controller
-            #
-            if className in MXSObjectDecoder.__dummies__:
+            return super(MXSObjectDecoder, self).default(obj)
 
-                return obj
+        # Delegate controller type to correct method
+        #
+        if className in controllerutils.LIST_TYPES.keys():
 
-            # Delegate controller type to correct method
-            #
-            if className in controllerutils.LIST_TYPES.keys():
+            return self.deserializeListController(obj)
 
-                return self.deserializeListController(obj)
+        elif className in controllerutils.CONSTRAINT_TYPES.keys():
 
-            elif superClassName in controllerutils.BASE_TYPES.keys():
+            return self.deserializeConstraint(obj)
 
-                return self.deserializeController(obj)
+        elif superClassName in controllerutils.BASE_TYPES.keys():
 
-            else:
-
-                return super(MXSObjectDecoder, self).default(obj)
+            return self.deserializeController(obj)
 
         else:
 
             return super(MXSObjectDecoder, self).default(obj)
-
-    def deserializeListController(self, obj):
-        """
-        Returns a deserialized list controller from the supplied object.
-        List controllers have too many caveats to be allowed to pass through deserializeController().
-
-        :type obj: dict
-        :rtype: pymxs.MXSWrapperBase
-        """
-
-        # Create new controller
-        #
-        cls = getattr(pymxs.runtime, obj['class'])
-        controller = cls()
-
-        # Assign sub-anim controllers
-        #
-        available = [x for x in obj['subAnims'] if x['name'] != 'Available']
-
-        for subAnim in available:
-
-            pymxs.runtime.setPropertyController(controller, 'Available', subAnim['controller'])
-            controller.setName(subAnim['index'], subAnim['name'])
-
-        # Assign properties to controller
-        #
-        for (key, value) in obj['properties'].items():
-
-            pymxs.runtime.setProperty(controller, pymxs.runtime.Name(key), value)
-
-        return controller
 
     def deserializeController(self, obj):
         """
@@ -228,7 +215,6 @@ class MXSObjectDecoder(mxsvalueparser.MXSValueDecoder):
         #
         cls = getattr(pymxs.runtime, obj['class'])
         controller = cls()
-        print('%s at %s' % (controller, hex(id(controller))))
 
         # Assign properties to controller
         #
@@ -240,8 +226,8 @@ class MXSObjectDecoder(mxsvalueparser.MXSValueDecoder):
         #
         for subAnim in obj['subAnims']:
 
-            print('Assigning %s.%s = %s' % (controller, subAnim['name'], subAnim['controller']))
-            pymxs.runtime.setPropertyController(controller, subAnim['name'], subAnim['controller'])
+            subAnim = pymxs.runtime.getSubAnim(controller, subAnim['name'])
+            subAnim.controller = subAnim['controller']
 
         # Assign max keys
         #
@@ -252,5 +238,51 @@ class MXSObjectDecoder(mxsvalueparser.MXSValueDecoder):
             for (key, value) in keyframe['kwargs'].items():
 
                 pymxs.runtime.setProperty(controller.keys[index], pymxs.runtime.Name(key), value)
+
+        return controller
+
+    def deserializeListController(self, obj):
+        """
+        Returns a deserialized list controller from the supplied object.
+
+        :type obj: dict
+        :rtype: pymxs.MXSWrapperBase
+        """
+
+        # Assign list controllers
+        #
+        controller = self.deserializeController(obj)
+        available = pymxs.runtime.getSubAnim(controller, 'available')
+
+        for (index, item) in enumerate(obj['list']):
+
+            available.controller = item['controller']
+            controller.setName(index, item['name'])
+
+        # Assign list weights and set active
+        #
+        controller.weight = obj['weight']
+        controller.setActive(obj['active'])
+
+        return controller
+
+    def deserializeConstraint(self, obj):
+        """
+        Returns a deserialized constraint controller from the supplied object.
+
+        :type obj: dict
+        :rtype: pymxs.MXSWrapperBase
+        """
+
+        # Assign target nodes
+        #
+        controller = self.deserializeController(obj)
+
+        for (index, item) in enumerate(obj['targets']):
+
+            target = pymxs.runtime.getNodeByName(item['name'])
+
+            controller.appendTarget(target)
+            controller.setWeight(index, item['weight'])
 
         return controller
