@@ -89,7 +89,7 @@ class QLineEditGroup(QtCore.QObject):
         """
         Returns a list of IDs that are currently in use.
 
-        :rtype: list[int]
+        :rtype: List[int]
         """
 
         return list(self._lineEdits.keys())

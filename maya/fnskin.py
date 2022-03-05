@@ -127,12 +127,11 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
         return self.isSelected() or self.shape() in self.getActiveSelection()
 
-    def iterSelection(self, includeWeight=False):
+    def iterSelection(self):
         """
-        Returns the selected vertex elements.
+        Returns a generator that yields the selected vertex indices.
 
-        :type includeWeight: bool
-        :rtype: list[int]
+        :rtype: iter
         """
 
         # Inspect component selection
@@ -155,7 +154,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         """
         Updates the active selection with the supplied vertex elements.
 
-        :type vertices: list[int]
+        :type vertices: List[int]
         :rtype: None
         """
 
@@ -427,7 +426,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         """
         Assigns the supplied vertex weights to this deformer.
 
-        :type vertices: dict[int:dict[int:float]]
+        :type vertices: Dict[int, Dict[int, float]]
         :rtype: None
         """
 

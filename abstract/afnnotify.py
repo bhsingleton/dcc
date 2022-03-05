@@ -259,7 +259,7 @@ class Notification(with_metaclass(ABCMeta, object)):
         """
         Getter method that returns the ids in use by this notify.
 
-        :rtype: list[int]
+        :rtype: List[int]
         """
 
         return self._ids

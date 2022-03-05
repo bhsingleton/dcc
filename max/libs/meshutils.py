@@ -13,8 +13,8 @@ def getConnectedVerts(mesh, vertices):
     Returns a list of connected vertices.
 
     :type mesh: pymxs.runtime.MXSWrapperBase
-    :type vertices: list[int]
-    :rtype: list[int]
+    :type vertices: List[int]
+    :rtype: List[int]
     """
 
     edges = pymxs.runtime.polyOp.getEdgesUsingVert(mesh, vertices)
@@ -33,8 +33,8 @@ def getConnectedEdges(mesh, edges):
     Returns a list of connected edges.
 
     :type mesh: pymxs.runtime.MXSWrapperBase
-    :type edges: list[int]
-    :rtype: list[int]
+    :type edges: List[int]
+    :rtype: List[int]
     """
 
     faces = pymxs.runtime.polyOp.getFacesUsingEdge(mesh, edges)
@@ -53,8 +53,8 @@ def getConnectedFaces(mesh, faces):
     Returns a list of connected faces.
 
     :type mesh: pymxs.runtime.MXSWrapperBase
-    :type faces: list[int]
-    :rtype: list[int]
+    :type faces: List[int]
+    :rtype: List[int]
     """
 
     verts = pymxs.runtime.polyOp.getVertsUsingFace(mesh, faces)

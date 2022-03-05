@@ -100,7 +100,7 @@ def iterWeightList(skinCluster, vertexIndices=None):
     An optional list of vertex indices can be supplied to limit the generator.
 
     :type skinCluster: om.MObject
-    :type vertexIndices: Union[list[int], tuple[int]]
+    :type vertexIndices: Union[List[int], tuple[int]]
     :rtype: iter
     """
 
@@ -112,8 +112,7 @@ def iterWeightList(skinCluster, vertexIndices=None):
 
     # Iterate through arguments
     #
-    fnDependNode = om.MFnDependencyNode(skinCluster)
-    weightListPlug = fnDependNode.findPlug('weightList', False)  # type: om.MPlug
+    weightListPlug = plugutils.findPlug(skinCluster, 'weightList')
 
     for vertexIndex in vertexIndices:
 
@@ -331,7 +330,7 @@ def setWeights(skinCluster, vertexIndex, weights, plug=None):
 
     :type skinCluster: om.MObject
     :type vertexIndex: int
-    :type weights: dict[int:float]
+    :type weights: Dict[int, float]
     :type plug: om.MPlug
     :rtype: None
     """
@@ -364,7 +363,7 @@ def setWeights(skinCluster, vertexIndex, weights, plug=None):
     for (influenceId, weight) in weights.items():
 
         # Check for zero weights
-        # Be sure to remove these if encountered!
+        # Be sure to remove these when encountered!
         #
         if weight <= ZERO_TOLERANCE:
 
@@ -384,10 +383,10 @@ def setWeights(skinCluster, vertexIndex, weights, plug=None):
 
 def setWeightList(skinCluster, weightList):
     """
-    Updates the weights for all of the specified vertices.
+    Updates the weights for all the specified vertices.
 
     :type skinCluster: om.MObject
-    :type weightList: dict[int:dict[int:float]]
+    :type weightList: Dict[int, Dict[int, float]]
     :rtype: None
     """
 
@@ -395,7 +394,7 @@ def setWeightList(skinCluster, weightList):
     #
     fnDependNode = om.MFnDependencyNode(skinCluster)
 
-    normalizePlug = fnDependNode.findPlug('normalizeWeights', False)  # type: om.MPlug
+    normalizePlug = plugutils.findPlug('normalizeWeights')  # type: om.MPlug
     normalizePlug.setBool(False)
 
     # Iterate through vertices
