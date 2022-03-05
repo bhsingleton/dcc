@@ -240,9 +240,9 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
         Converts all of the texture paths to relative.
         If a path is not relative then no changes are made to the original path.
 
-        :type filePaths: list[str]
+        :type filePaths: List[str]
         :type directory: str
-        :rtype: list[str]
+        :rtype: List[str]
         """
 
         # Iterate through file paths
@@ -277,8 +277,8 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
         Converts all of the texture paths to absolute.
 
-        :type filePaths: list[str]
-        :rtype: list[str]
+        :type filePaths: List[str]
+        :rtype: List[str]
         """
 
         numFilePaths = len(filePaths)
@@ -299,9 +299,9 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
         Converts all of the texture paths to dynamic.
         The supplied variable name must contain a dollar sign!
 
-        :type filePaths: list[str]
+        :type filePaths: List[str]
         :type variable: str
-        :rtype: list[str]
+        :rtype: List[str]
         """
 
         # Iterate through file paths
@@ -349,7 +349,7 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
         An optional keyword argument can be used to convert paths to absolute.
 
         :type absolute: bool
-        :rtype: list[str]
+        :rtype: List[str]
         """
 
         return list(self.iterTextures(absolute=absolute))
@@ -379,7 +379,7 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
         Returns a list of missing texture paths from the scene.
 
-        :rtype: list[str]
+        :rtype: List[str]
         """
 
         return list(self.iterMissingTextures())

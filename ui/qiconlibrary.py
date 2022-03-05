@@ -137,7 +137,7 @@ class QIconLibrary(collections_abc.MutableMapping):
         """
         Getter method that returns the paths utilized by this library.
 
-        :rtype: list[str]
+        :rtype: List[str]
         """
 
         return cls.__paths__

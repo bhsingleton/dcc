@@ -192,7 +192,7 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
         """
         Returns the world parent matrix for this node.
 
-        :rtype: list[list[Any], list[Any], list[Any], list[Any]]
+        :rtype: list[List[Any], List[Any], List[Any], List[Any]]
         """
 
         matrix3 = transformutils.getParentMatrix(self.object())

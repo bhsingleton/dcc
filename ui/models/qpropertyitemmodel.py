@@ -61,7 +61,7 @@ class QPropertyItemModel(QtCore.QAbstractItemModel):
         """
         Returns the list of properties to derive data from.
 
-        :rtype: list[str]
+        :rtype: List[str]
         """
 
         return self._dataProperties
@@ -70,7 +70,7 @@ class QPropertyItemModel(QtCore.QAbstractItemModel):
         """
         Updates the list of properties to derive data from.
 
-        :type dataProperties: list[str]
+        :type dataProperties: List[str]
         :rtype: None
         """
 

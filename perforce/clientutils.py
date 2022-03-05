@@ -427,7 +427,7 @@ def getClientNames():
     """
     Returns a list of client names.
 
-    :rtype: list[str]
+    :rtype: List[str]
     """
 
     return list(__clientspecs__.keys())

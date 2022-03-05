@@ -77,7 +77,7 @@ class QListDialog(QtWidgets.QDialog):
         """
         Returns the current string items being edited.
 
-        :rtype: list[str]
+        :rtype: List[str]
         """
 
         return [self.listWidget.item(x).text() for x in range(self.listWidget.count())]
@@ -86,7 +86,7 @@ class QListDialog(QtWidgets.QDialog):
         """
         Updates the current string items being edited.
 
-        :type items: list[str]
+        :type items: List[str]
         :rtype: None
         """
 

@@ -266,7 +266,7 @@ def getDepotNames():
     """
     Method used to retrieve all of the available depots belonging to the current user.
 
-    :rtype: list[str]
+    :rtype: List[str]
     """
 
     return list(__depotspecs__.keys())
