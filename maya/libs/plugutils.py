@@ -435,7 +435,7 @@ def getNextAvailableConnection(plug, child=om.MObject.kNullObj):
         #
         if physicalIndex != logicalIndex:
 
-            return element
+            return physicalIndex
 
         # Check if element is connected
         #
