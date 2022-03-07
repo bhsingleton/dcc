@@ -32,7 +32,7 @@ class AttributeDecoder(json.JSONDecoder):
     Overload of JSONDecoder used to deserialize custom Maya attributes.
     """
 
-    __slots__ = ('nodeHandle', 'nodeClass')
+    __slots__ = ('_nodeHandle', '_nodeClass')
 
     __numerictypes__ = {
         'bool': om.MFnNumericData.kBoolean,
@@ -97,29 +97,19 @@ class AttributeDecoder(json.JSONDecoder):
         """
         Private method called after a new instance has been created.
 
+        :key node: om.MObject
+        :key nodeClass: om.MNodeClass
         :rtype: None
         """
 
+        # Declare private variables
+        #
+        self._nodeHandle = om.MObjectHandle(kwargs.pop('node', om.MObject.kNullObj))
+        self._nodeClass = kwargs.pop('nodeClass', None)
+
         # Call parent method
         #
-        parse_float = kwargs.get('parse_float', None)
-        parse_int = kwargs.get('parse_int', None)
-        parse_constant = kwargs.get('parse_constant', None)
-        strict = kwargs.get('parse_float', True)
-
-        super(AttributeDecoder, self).__init__(
-            *args,
-            object_hook=self.default,
-            parse_float=parse_float,
-            parse_int=parse_int,
-            parse_constant=parse_constant,
-            strict=strict
-        )
-
-        # Declare public variables
-        #
-        self.nodeHandle = om.MObjectHandle(kwargs.get('node', om.MObject.kNullObj))
-        self.nodeClass = kwargs.get('nodeClass', None)
+        super(AttributeDecoder, self).__init__(*args, **kwargs)
 
     def attribute(self, name):
         """
@@ -130,16 +120,16 @@ class AttributeDecoder(json.JSONDecoder):
         :rtype: om.MObject
         """
 
-        if self.nodeHandle.isAlive():
+        if self._nodeHandle.isAlive():
 
-            dependNode = self.nodeHandle.object()
+            dependNode = self._nodeHandle.object()
             fnDependNode = om.MFnDependencyNode(dependNode)
 
             return fnDependNode.attribute(name)
 
-        elif self.nodeClass is not None:
+        elif self._nodeClass is not None:
 
-            return self.nodeClass.attribute(name)
+            return self._nodeClass.attribute(name)
 
         else:
 
