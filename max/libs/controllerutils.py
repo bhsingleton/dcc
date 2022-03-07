@@ -176,7 +176,7 @@ def iterSubAnims(obj, skipNonAnimated=False, skipNullControllers=False, skipComp
         #
         subAnim = pymxs.runtime.getSubAnim(obj, i + 1)
 
-        if skipNonAnimated and not subAnim.isAnimated:
+        if skipNonAnimated and not getattr(subAnim, 'isAnimated', False):
 
             continue
 
@@ -200,7 +200,7 @@ def iterSubAnims(obj, skipNonAnimated=False, skipNullControllers=False, skipComp
 def iterMaxKeys(obj):
     """
     Returns a generator that yields max keys from the supplied controller.
-    This method is more a catch all for null key properties.
+    This method is more of a catch-all for null key properties.
 
     :type obj: pymxs.MXSWrapperBase
     :rtype: iter
@@ -216,7 +216,7 @@ def iterMaxKeys(obj):
     # Check if controller has keys
     # Be aware that max can return none for empty arrays!
     #
-    keys = obj.keys
+    keys = getattr(obj, 'keys', None)
 
     if keys is None:
 
@@ -286,7 +286,10 @@ def iterConstraints(obj):
 
     for controller in walkControllers(obj):
 
-        if controller in CONSTRAINT_TYPES:
+        cls = pymxs.runtime.classOf(controller)
+        clsName = str(cls)
+
+        if clsName in CONSTRAINT_TYPES:
 
             yield controller
 
@@ -356,6 +359,14 @@ def inspectClassProperties(className):
     :rtype: list[str]
     """
 
+    # Check if class has already been inspected
+    #
+    properties = CLASS_PROPERTIES.get(className, None)
+
+    if properties is not None:
+
+        return properties
+
     # Concatenate class lookup pattern
     #
     pattern = '{className}.*'.format(className=className)
@@ -363,11 +374,9 @@ def inspectClassProperties(className):
     stringStream = pymxs.runtime.StringStream('')
     pymxs.runtime.showClass(pattern, to=stringStream)
 
-    # Iterate through lines
+    # Iterate through string stream
     #
     properties = []
-    CLASS_PROPERTIES[className] = properties
-
     pymxs.runtime.seek(stringStream, 1)
 
     while not pymxs.runtime.eof(stringStream):
@@ -379,6 +388,9 @@ def inspectClassProperties(className):
 
             properties.append(found[0])
 
+    # Cache list for later use
+    #
+    CLASS_PROPERTIES[className] = properties
     return properties
 
 
@@ -423,8 +435,8 @@ def iterDynamicProperties(obj, skipAnimatable=False, skipComplexValues=False):
 
 def iterProperties(obj, skipAnimatable=False, skipComplexValues=False, skipDefaultValues=False):
     """
-    Returns a generator that yield property name/value pairs from the supplied object.
-    This method only yields properties that are on the class definition.
+    Returns a generator that yields property name/value pairs from the supplied object.
+    This method only yields properties that are on the class definition!
 
     :type obj: pymxs.runtime.MaxObject
     :type skipAnimatable: bool
@@ -433,18 +445,13 @@ def iterProperties(obj, skipAnimatable=False, skipComplexValues=False, skipDefau
     :rtype: iter
     """
 
-    # Check if class has already been inspected
-    #
-    cls = pymxs.runtime.classOf(obj)
-    className = str(cls)
-    properties = CLASS_PROPERTIES.get(className, None)
-
-    if properties is None:
-
-        properties = inspectClassProperties(className)
-
     # Iterate through property names
     #
+    cls = pymxs.runtime.classOf(obj)
+    clsName = str(cls)
+
+    properties = inspectClassProperties(clsName)
+
     for key in properties:
 
         # Check if animatable properties should be skipped
@@ -456,7 +463,7 @@ def iterProperties(obj, skipAnimatable=False, skipComplexValues=False, skipDefau
 
             continue
 
-        # Check if compound values should be skipped
+        # Check if non-values should be skipped
         #
         value = pymxs.runtime.getProperty(obj, name)
 
