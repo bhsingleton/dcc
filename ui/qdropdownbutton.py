@@ -1,4 +1,5 @@
 from PySide2 import QtCore, QtWidgets, QtGui
+from six import string_types
 
 import logging
 logging.basicConfig()
@@ -41,12 +42,36 @@ class QDropDownButton(QtWidgets.QAbstractButton):
 
         if numArgs == 1:
 
-            self.setText(args[0])
+            # Inspect argument
+            #
+            arg = args[0]
+
+            if isinstance(arg, string_types):
+
+                self.setText(args[0])
+
+            elif isinstance(arg, QtWidgets.QWidget):
+
+                self.setParent(arg)
+
+            else:
+
+                raise TypeError('__init__() expects a str (%s given)!' % type(arg).__name__)
 
         elif numArgs == 2:
 
-            self.setIcon(args[0])
-            self.setText(args[1])
+            # Inspect arguments
+            #
+            icon, text = args
+
+            if isinstance(icon, QtGui.QIcon) and isinstance(text, string_types):
+
+                self.setIcon(args[0])
+                self.setText(args[1])
+
+            else:
+
+                raise TypeError('__init__() expects an icon and str!')
 
         else:
 
