@@ -61,6 +61,7 @@ class QXyzWidget(QtWidgets.QWidget):
         #
         layout = QtWidgets.QHBoxLayout()
         layout.setSpacing(0)
+        layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.matchPushButton)
         layout.addWidget(self.matchXPushButton)
         layout.addWidget(self.matchYPushButton)
