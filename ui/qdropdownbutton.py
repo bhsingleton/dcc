@@ -32,8 +32,9 @@ class QDropDownButton(QtWidgets.QAbstractButton):
         self._applicationFont = self._application.font()  # type: QtGui.QFont
         self._applicationStyle = self._application.style()  # type: QtWidgets.QStyle
 
-        # Connect signal/slots
+        # Edit widget properties
         #
+        self.setMouseTracking(True)
         self.customContextMenuRequested.connect(self.executeCustomContextMenu)
 
         # Evaluate arguments
@@ -121,6 +122,11 @@ class QDropDownButton(QtWidgets.QAbstractButton):
             raise TypeError('customContextMenu() multiple context menus found in children!')
 
     def sizeHint(self):
+        """
+        Returns a size hint for this widget.
+
+        :rtype: QtCore.QSize
+        """
 
         fontMetric = QtGui.QFontMetrics(self._applicationFont)
         width = fontMetric.width(self.text())
@@ -232,6 +238,38 @@ class QDropDownButton(QtWidgets.QAbstractButton):
     # endregion
 
     # region Events
+    def enterEvent(self, event):
+        """
+        Event for whenever the mouse enters this widget.
+
+        :type event: QtGui.QMouseEvent
+        :rtype: None
+        """
+
+        # Call parent method
+        #
+        super(QDropDownButton, self).enterEvent(event)
+
+        # Repaint widget
+        #
+        self.repaint()
+
+    def leaveEvent(self, event):
+        """
+        Event for whenever the mouse leaves this widget.
+
+        :type event: QtGui.QMouseEvent
+        :rtype: None
+        """
+
+        # Call parent method
+        #
+        super(QDropDownButton, self).leaveEvent(event)
+
+        # Repaint widget
+        #
+        self.repaint()
+
     def mouseReleaseEvent(self, event):
         """
         Event for whenever a mouse button has been released on this widget.
