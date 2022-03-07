@@ -1,7 +1,7 @@
 import pymxs
 
 from dcc.max.json import mxsvalueparser
-from dcc.max.libs import controllerutils, modifierutils, attributeutils, arrayutils
+from dcc.max.libs import controllerutils, modifierutils, attributeutils
 
 import logging
 logging.basicConfig()
@@ -14,8 +14,31 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
     Overload of MXSValueEncoder used to serialize MXS objects.
     """
 
-    __slots__ = ()
+    # region Dunderscores
+    __slots__ = (
+        'includeProperties',
+        'includeSubAnims',
+        'includeModifiers',
+        'includeCustomAttributes',
+        'includeKeys'
+    )
 
+    def __init__(self, *args, **kwargs):
+
+        # Declare private variables
+        #
+        self.includeProperties = kwargs.pop('includeProperties', True)
+        self.includeSubAnims = kwargs.pop('includeSubAnims', True)
+        self.includeModifiers = kwargs.pop('includeModifiers', True)
+        self.includeCustomAttributes = kwargs.pop('includeCustomAttributes', True)
+        self.includeKeys = kwargs.pop('includeKeys', True)
+
+        # Call parent method
+        #
+        super(MXSObjectEncoder, self).__init__(*args, **kwargs)
+    # endregion
+
+    # region Methods
     def default(self, obj):
         """
         Returns a serializable object for the supplied value.
@@ -64,7 +87,8 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
 
         return {
             'class': str(pymxs.runtime.classOf(referenceTarget)),
-            'superClass': str(pymxs.runtime.superClassOf(referenceTarget))
+            'superClass': str(pymxs.runtime.superClassOf(referenceTarget)),
+            'expression': pymxs.runtime.exprForMaxObject(referenceTarget)
         }
 
     def serializeAnimatable(self, animatable):
@@ -75,10 +99,24 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
         :rtype: dict
         """
 
+        # Serialize reference target
+        #
         obj = self.serializeReferenceTarget(animatable)
         obj['name'] = getattr(animatable, 'name', '')
-        obj['properties'] = dict(controllerutils.iterProperties(animatable, skipAnimatable=True, skipComplexValues=True, skipDefaultValues=True))
-        obj['subAnims'] = list(controllerutils.iterSubAnims(animatable, skipComplexValues=True))
+        obj['properties'] = {}
+        obj['subAnims'] = []
+
+        # Check if properties should be included
+        #
+        if self.includeProperties:
+
+            obj['properties'].update(dict(controllerutils.iterProperties(animatable, skipAnimatable=True, skipComplexValues=True, skipDefaultValues=True)))
+
+        # Check if sub-anims should be included
+        #
+        if self.includeSubAnims:
+
+            obj['subAnims'].extend(list(controllerutils.iterSubAnims(animatable, skipComplexValues=True)))
 
         return obj
 
@@ -90,10 +128,22 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
         :rtype: dict
         """
 
+        # Serialize animatable
+        #
         obj = self.serializeAnimatable(node)
         obj['handle'] = node.handle
-        obj['modifiers'] = list(node.modifiers)
-        obj['customAttributes'] = [self.serializeAnimatable(x) for x in attributeutils.iterDefinitions(node)]
+
+        # Check if modifiers should be included
+        #
+        if self.includeModifiers:
+
+            obj['modifiers'] = list(node.modifiers)
+
+        # Check if custom attributes should be included
+        #
+        if self.includeCustomAttributes:
+
+            obj['customAttributes'] = [self.serializeAnimatable(x) for x in attributeutils.iterDefinitions(node)]
 
         return obj
 
@@ -111,7 +161,7 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
 
             return None
 
-        # Serialize animatable
+        # Serialize controller
         #
         obj = self.serializeReferenceTarget(controller)
         obj['properties'] = dict(controllerutils.iterProperties(controller, skipAnimatable=True, skipComplexValues=True, skipDefaultValues=True))
@@ -127,19 +177,19 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
         elif controllerutils.isListController(controller):
 
             controllers = controller.list
-            controllerCount = controllers.count
-
-            obj['active'] = controller.getActive()
-            obj['list'] = [{'name': controllers.getName(x), 'controller': controllers.getSubCtrl(x)} for x in range(1, controllerCount + 1, 1)]
-            obj['weight'] = [controllers.getSubCtrlWeight(x) for x in range(1, controllerCount + 1, 1)]
-
-        elif controllerutils.isBezierController(controller):
-
-            obj['keys'].extend(list(controllerutils.iterMaxKeys(controller)))
+            controllerCount = controllers.getCount()
+            obj['active'] = controllers.getActive()
+            obj['list'] = [{'name': controllers.getName(x), 'controller': controllers.getSubCtrl(x), 'weight': controllers.getSubCtrlWeight(x)} for x in range(1, controllerCount + 1, 1)]
 
         else:
 
             obj['subAnims'].extend(list(controllerutils.iterSubAnims(controller, skipComplexValues=True)))
+
+        # Check if keys should be included
+        #
+        if self.includeKeys and hasattr(controller, 'keys'):
+
+            obj['keys'].extend(list(controllerutils.iterMaxKeys(controller)))
 
         return obj
 
@@ -159,6 +209,7 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
         obj['controller'] = subAnim.controller
 
         return obj
+    # endregion
 
 
 class MXSObjectDecoder(mxsvalueparser.MXSValueDecoder):
@@ -258,10 +309,10 @@ class MXSObjectDecoder(mxsvalueparser.MXSValueDecoder):
 
             available.controller = item['controller']
             controller.setName(index, item['name'])
+            controller.weight[index] = item['weight']
 
         # Assign list weights and set active
         #
-        controller.weight = obj['weight']
         controller.setActive(obj['active'])
 
         return controller
