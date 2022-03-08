@@ -3,12 +3,15 @@ import getpass
 
 from six.moves import collections_abc
 from dcc.perforce import cmds
-from dcc.perforce.decorators.relogin import relogin
+from dcc.perforce.decorators import relogin
 
 import logging
 logging.basicConfig()
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
+
+
+__depots__ = None
 
 
 class DepotSpec(object):
@@ -251,37 +254,7 @@ class DepotSpecs(collections_abc.MutableMapping):
     # endregion
 
 
-def getDepot(depot):
-    """
-    Method used to retrieve the specs associated with the supplied depot name.
-
-    :type depot: str
-    :rtype: DepotSpec
-    """
-
-    return __depotspecs__.get(depot, None)
-
-
-def getDepotNames():
-    """
-    Method used to retrieve all of the available depots belonging to the current user.
-
-    :rtype: List[str]
-    """
-
-    return list(__depotspecs__.keys())
-
-
-def iterDepots():
-    """
-    Method used to retrieve a generator that can iterate through all depots available to the user.
-
-    :rtype: iter
-    """
-
-    return iter(__depotspecs__.items())
-
-
+@relogin.relogin
 def initializeDepots():
     """
     Initializes the depot specs for the current session.
@@ -296,4 +269,51 @@ def initializeDepots():
     )
 
 
-__depotspecs__ = initializeDepots()
+def getDepots():
+    """
+    Returns the depots associated with the current port.
+
+    :rtype: DepotSpecs
+    """
+
+    global __depots__
+
+    if __depots__ is None:
+
+        __depots__ = initializeDepots()
+
+    return __depots__
+
+
+def getDepot(depot):
+    """
+    Returns the specs associated with the specified depot name.
+
+    :type depot: str
+    :rtype: DepotSpec
+    """
+
+    depots = getDepots()
+    return depots.get(depot, None)
+
+
+def getDepotNames():
+    """
+    Returns all active depots derived from the current port.
+
+    :rtype: List[str]
+    """
+
+    depots = getDepots()
+    return list(depots.keys())
+
+
+def iterDepots():
+    """
+    Returns a generator that yields all active depots derived from the current port.
+
+    :rtype: iter
+    """
+
+    depots = getDepots()
+    return iter(depots.items())

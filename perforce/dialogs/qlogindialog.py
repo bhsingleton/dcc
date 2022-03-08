@@ -80,20 +80,20 @@ class QLoginDialog(QtWidgets.QDialog):
         # Create password widgets
         #
         self.usernameLabel = QtWidgets.QLabel('')
-        self.usernameLabel.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
+        self.usernameLabel.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
         self.usernameLabel.setFixedHeight(24)
 
         self.passwordLabel = QtWidgets.QLabel('Please enter the password:')
-        self.passwordLabel.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
+        self.passwordLabel.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
         self.passwordLabel.setFixedHeight(24)
 
         self.passwordLineEdit = QtWidgets.QLineEdit('')
-        self.passwordLineEdit.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
+        self.passwordLineEdit.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
         self.passwordLineEdit.setFixedHeight(24)
         self.passwordLineEdit.setEchoMode(QtWidgets.QLineEdit.Password)
 
         self.rememberPasswordCheckBox = QtWidgets.QCheckBox('Remember Password')
-        self.rememberPasswordCheckBox.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
+        self.rememberPasswordCheckBox.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Fixed)
         self.rememberPasswordCheckBox.setFixedHeight(24)
 
         self.passwordLayout = QtWidgets.QHBoxLayout()

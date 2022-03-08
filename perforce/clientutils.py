@@ -6,12 +6,15 @@ from six.moves import collections_abc
 from collections import namedtuple
 from dcc import fnqt
 from dcc.perforce import cmds
-from dcc.perforce.decorators.relogin import relogin
+from dcc.perforce.decorators import relogin
 
 import logging
 logging.basicConfig()
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
+
+
+__clients__ = None
 
 
 Branch = namedtuple('Branch', ['depotPath', 'clientPath'])
@@ -401,6 +404,37 @@ class ClientSpecs(collections_abc.MutableMapping):
     # endregion
 
 
+@relogin.relogin
+def initializeClients():
+    """
+    Initializes the client specs for the current session.
+    Any expired tickets will be resolved through the decorator!
+
+    :rtype: ClientSpecs
+    """
+
+    return ClientSpecs(
+        user=os.environ.get('P4USER', getpass.getuser()),
+        port=os.environ.get('P4PORT', 'localhost:1666')
+    )
+
+
+def getClients():
+    """
+    Returns the clients associated with the current user.
+
+    :rtype: ClientSpecs
+    """
+
+    global __clients__
+
+    if __clients__ is None:
+
+        __clients__ = initializeClients()
+
+    return __clients__
+
+
 def getClientByName(name):
     """
     Returns a client associated with the given name.
@@ -410,7 +444,8 @@ def getClientByName(name):
     :rtype: ClientSpec
     """
 
-    return __clientspecs__.get(name, None)
+    clients = getClients()
+    return clients.get(name, None)
 
 
 def getCurrentClient():
@@ -420,7 +455,8 @@ def getCurrentClient():
     :rtype: ClientSpec
     """
 
-    return getClientByName(os.environ.get('P4CLIENT', ''))
+    clientName = os.environ.get('P4CLIENT', '')
+    return getClientByName(clientName)
 
 
 def getClientNames():
@@ -430,7 +466,8 @@ def getClientNames():
     :rtype: List[str]
     """
 
-    return list(__clientspecs__.keys())
+    clients = getClients()
+    return list(clients.keys())
 
 
 def iterClients():
@@ -440,7 +477,8 @@ def iterClients():
     :rtype: iter
     """
 
-    return iter(__clientspecs__.items())
+    clients = getClients()
+    return iter(clients.items())
 
 
 def setClient(client):
@@ -459,9 +497,10 @@ def setClient(client):
 
     # Update environment variables to reflect change
     #
-    clientSpec = __clientspecs__[client]
-    log.info('Switching workspace to: "%s"' % clientSpec.name)
+    clients = getClients()
+    clientSpec = clients[client]
 
+    log.info('Switching workspace to: "%s"' % clientSpec.name)
     os.environ['P4CLIENT'] = clientSpec.name
     os.environ['P4ROOT'] = clientSpec.root
 
@@ -479,7 +518,7 @@ def changeClient():
     fnQt = fnqt.FnQt()
     parent = fnQt.getMainWindow()
 
-    clients = [x for (x, y) in __clientspecs__.items() if y.host == os.environ['P4HOST']]
+    clients = [x for (x, y) in iterClients() if y.host == os.environ['P4HOST']]
     numClients = len(clients)
 
     if numClients == 0:
@@ -533,7 +572,7 @@ def detectClient(filePath):
     #
     strings = filePath.split(os.path.sep)
 
-    for (client, clientSpec) in __clientspecs__.items():
+    for (client, clientSpec) in iterClients():
 
         # Concatenate client path
         #
@@ -548,20 +587,3 @@ def detectClient(filePath):
     #
     log.warning('Unable to find client associated with: "%s"' % filePath)
     return None
-
-
-def initializeClients():
-    """
-    Initializes the client specs for the current session.
-    Any expired tickets will be resolved through the decorator!
-
-    :rtype: ClientSpecs
-    """
-
-    return ClientSpecs(
-        user=os.environ.get('P4USER', getpass.getuser()),
-        port=os.environ.get('P4PORT', 'localhost:1666')
-    )
-
-
-__clientspecs__ = initializeClients()
