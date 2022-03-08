@@ -8,6 +8,9 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
+BASE_TYPES = {'modifier': pymxs.runtime.modifier}
+
+
 def findModifierByType(obj, modifierType):
     """
     Finds the skin modifier from the given object.
