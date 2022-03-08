@@ -8,6 +8,15 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
+BASE_TYPES = {
+    'GeometryClass':  pymxs.runtime.geometry,
+    'shape':  pymxs.runtime.shape,
+    'light':  pymxs.runtime.light,
+    'camera':  pymxs.runtime.camera,
+    'helper':  pymxs.runtime.helper
+}
+
+
 def iterNodesByPattern(pattern, ignoreCase=False):
     """
     Returns a generator that yields nodes based on the supplied pattern.
