@@ -9,6 +9,10 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
+__propertyparser__ = re.compile(r'\.([a-zA-Z0-9_]+)')
+__maxproperties__ = {}
+
+
 BASE_TYPES = {
     'Matrix3Controller': pymxs.runtime.Matrix3Controller,
     'positionController': pymxs.runtime.positionController,
@@ -62,10 +66,6 @@ DUMMY_TYPES = {
     'rotation_ListDummyEntry': pymxs.runtime.rotation_ListDummyEntry,
     'scale_ListDummyEntry': pymxs.runtime.scale_ListDummyEntry
 }
-
-
-PROPERTY_PARSER = re.compile(r'\.{1}([a-zA-Z0-9_]+)')
-CLASS_PROPERTIES = {}
 
 
 def isConstraint(obj):
@@ -361,7 +361,7 @@ def inspectClassProperties(className):
 
     # Check if class has already been inspected
     #
-    properties = CLASS_PROPERTIES.get(className, None)
+    properties = __maxproperties__.get(className, None)
 
     if properties is not None:
 
@@ -382,7 +382,7 @@ def inspectClassProperties(className):
     while not pymxs.runtime.eof(stringStream):
 
         line = pymxs.runtime.readLine(stringStream)
-        found = PROPERTY_PARSER.findall(line)
+        found = __propertyparser__.findall(line)
 
         if len(found) == 1:
 
@@ -390,7 +390,7 @@ def inspectClassProperties(className):
 
     # Cache list for later use
     #
-    CLASS_PROPERTIES[className] = properties
+    __maxproperties__[className] = properties
     return properties
 
 
