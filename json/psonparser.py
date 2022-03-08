@@ -52,7 +52,6 @@ class PSONDecoder(json.JSONDecoder):
     """
 
     __slots__ = ()
-    __kwdefaults__ = {}
 
     def __init__(self, *args, **kwargs):
         """
@@ -63,8 +62,25 @@ class PSONDecoder(json.JSONDecoder):
 
         # Call parent method
         #
-        kwargs['object_hook'] = self.default
-        super(PSONDecoder, self).__init__(*args, **kwargs)
+        object_hook = kwargs.pop('object_hook', self.default)
+        object_pairs_hook = kwargs.pop('object_pairs_hook', None)
+        parse_float = kwargs.pop('parse_float', None)
+        parse_int = kwargs.pop('parse_int', None)
+        parse_constant = kwargs.pop('parse_constant', None)
+        strict = kwargs.pop('strict', True)
+
+        super(PSONDecoder, self).__init__(
+            object_hook=object_hook,
+            object_pairs_hook=object_pairs_hook,
+            parse_float=parse_float,
+            parse_int=parse_int,
+            parse_constant=parse_constant,
+            strict=strict,
+        )
+
+        # Store the remaining keyword arguments
+        #
+        self.__kwdefaults__ = kwargs
 
     def default(self, obj):
         """
