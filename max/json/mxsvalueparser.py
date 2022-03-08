@@ -284,3 +284,40 @@ class MXSValueDecoder(json.JSONDecoder):
 
         cls = getattr(pymxs.runtime, obj['class'])
         return cls(*obj['args'], **obj['kwargs'])
+
+    def deserializeMaxKeyArray(self, maxKeyArray, controller=None):
+        """
+        Overwrites the keys on the supplied controller.
+
+        :type maxKeyArray: List[dict]
+        :type controller: pymxs.MXSWrapperBase
+        :rtype: None
+        """
+
+        # Iterate through array
+        #
+        maxKey = None
+
+        for (i, obj) in enumerate(maxKeyArray):
+
+            # Retrieve indexed max key
+            #
+            numKeys = pymxs.runtime.numKeys(controller)
+
+            if i == numKeys:
+
+                maxKey = pymxs.runtime.addNewKey(controller, obj['kwargs']['time'])
+
+            else:
+
+                maxKey = pymxs.runtiume.getKey(controller, i + 1)
+
+            # Assign max key properties
+            #
+            for (key, value) in obj['kwargs'].items():
+
+                pymxs.runtime.setProperty(maxKey, pymxs.runtime.Name(key), value)
+
+        # Resort keys to prevent any index errors
+        #
+        pymxs.runtime.sortKeys(controller)
