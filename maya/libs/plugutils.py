@@ -10,7 +10,7 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-__plugparser__ = re.compile(r'([a-zA-Z_]+)\[?([0-9]*)\]?')
+__plugparser__ = re.compile(r'([a-zA-Z_]+)(?:\[([0-9]+)\])?')
 
 
 def getAttributeType(plug):
