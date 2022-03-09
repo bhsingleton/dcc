@@ -1,6 +1,8 @@
 import pymxs
 import os
 
+from dcc.max.libs import modifierutils
+
 import logging
 logging.basicConfig()
 log = logging.getLogger(__name__)
@@ -124,10 +126,98 @@ def getSceneDefinitionByName(name):
         raise TypeError('Multiple attribute definitions found with the name: %s' % name)
 
 
-def getNodesByDefinition(definition):
-    pass
+def iterNodesFromDefinition(definition):
+    """
+    Returns a list of nodes that use the supplied definition.
+
+    :type definition: pymxs.runtime.AttributeDef
+    :rtype: List[pymxs.MXSWrapperBase]
+    """
+
+    # Iterate through instances
+    #
+    instances = pymxs.runtime.CustAttributes.getDefInstances(definition)
+
+    for instance in instances:
+
+        # Get nodes from dependents
+        #
+        dependents = pymxs.runtime.Refs.dependents(instance)
+
+        for dependent in dependents:
+
+            # Evaluate dependent type
+            #
+            if pymxs.runtime.isValidNode(dependent):
+
+                yield dependent
+
+            elif modifierutils.isValidModifier(dependent):
+
+                yield modifierutils.getNodeFromModifier(dependent)
+
+            else:
+
+                continue
 
 
-def deleteDefinitionsByName():
+def doesDefinitionHaveParameter(definition, name):
+    """
+    Evaluates if the supplied definition has a parameter with the given name.
 
-    pass
+    :type definition: pymxs.runtime.AttributeDef
+    :type name: str
+    :rtype: bool
+    """
+
+    return any(str(paramName) == name for (paramName, paramSpecs) in pymxs.runtime.CustAttributes.getPBlockDefs(definition))
+
+
+def getNodesWithParameter(name):
+    """
+    Returns a list of nodes with the given parameter name.
+
+    :type name: str
+    :rtype: List[pymxs.MXSWrapperBase]
+    """
+
+    # Iterate through scene definitions
+    #
+    sceneDefinitions = pymxs.runtime.CustAttributes.getSceneDefs()
+    nodes = []
+
+    for definition in sceneDefinitions:
+
+        # Check if definition has parameter
+        #
+        if doesDefinitionHaveParameter(definition, name):
+
+            dependentNodes = list(iterNodesFromDefinition(definition))
+            nodes.extend(dependentNodes)
+
+        else:
+
+            continue
+
+    return list(set(nodes))
+
+
+def clearDay1RefCA():
+    """
+    Removes all of the day1RefCA definitions from the scene.
+
+    :rtype: None
+    """
+
+    sceneDefinitions = pymxs.runtime.CustAttributes.getSceneDefs()
+
+    for definition in reversed(sceneDefinitions):
+
+        if definition.name == 'day1RefCA':
+
+            log.info('Deleting attribute defintion: %s' % definition)
+            pymxs.runtime.CustAttributes.deleteDef(definition)
+
+        else:
+
+            continue

@@ -2,8 +2,8 @@ import maya.cmds as mc
 import maya.api.OpenMaya as om
 
 from six import integer_types
-from dcc.maya.libs import dagutils
 from dcc.abstract import afnnode
+from dcc.maya.libs import dagutils, plugutils
 from dcc.decorators.validator import validator
 
 import logging
@@ -100,6 +100,42 @@ class FnNode(afnnode.AFnNode):
         """
 
         om.MFnDependencyNode(self.object()).setName(name)
+
+    @validator
+    def getAttr(self, name):
+        """
+        Returns the specified attribute value.
+
+        :type name: str
+        :rtype: Any
+        """
+
+        plug = plugutils.findPlug(self.object(), name)
+        return plugutils.getValue(plug)
+
+    @validator
+    def hasAttr(self, name):
+        """
+        Evaluates if this node has the specified attribute.
+
+        :type name: str
+        :rtype: bool
+        """
+
+        return om.MFnDependencyNode(self.object()).hasAttribute(name)
+
+    @validator
+    def setAttr(self, name, value):
+        """
+        Updates the specified attribute value.
+
+        :type name: str
+        :type value: Any
+        :rtype: None
+        """
+
+        plug = plugutils.findPlug(self.object(), name)
+        plugutils.setValue(plug, value)
 
     @validator
     def isTransform(self):
@@ -380,6 +416,26 @@ class FnNode(afnnode.AFnNode):
         else:
 
             return None
+
+    @classmethod
+    def getNodesWithAttribute(cls, name):
+        """
+        Returns a list of nodes with the given attribute name.
+
+        :type name: str
+        :rtype: List[object]
+        """
+
+        try:
+
+            selection = om.MSelectionList()
+            selection.add('*.{name}'.format(name=name))
+
+            return [selection.getDependNode(i) for i in range(selection.length())]
+
+        except RuntimeError:
+
+            return []
 
     @classmethod
     def iterSceneNodes(cls):

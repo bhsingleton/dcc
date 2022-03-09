@@ -2,6 +2,7 @@ import pymxs
 
 from six import string_types, integer_types
 from dcc.abstract import afnnode, ArrayIndexType
+from dcc.max.libs import attributeutils
 from dcc.decorators.validator import validator
 
 import logging
@@ -96,6 +97,69 @@ class FnNode(afnnode.AFnNode):
         """
 
         self.object().name = name
+
+    @validator
+    def getAttr(self, name):
+        """
+        Returns the specified attribute value.
+
+        :type name: str
+        :rtype: Any
+        """
+
+        obj = self.object()
+        attributeHolder = obj.modifiers[pymxs.runtime.Name('attributeHolder')]
+
+        if pymxs.runtime.isProperty(obj, name):
+
+            return pymxs.runtime.getProperty(obj, name)
+
+        elif pymxs.runtime.isProperty(attributeHolder, name):
+
+            return pymxs.runtime.getProperty(attributeHolder, name)
+
+        else:
+
+            raise AttributeError('getAttr() "%s" object has no attribute "%s"' % (obj, name))
+
+    @validator
+    def hasAttr(self, name):
+        """
+        Evaluates if this node has the specified attribute.
+
+        :type name: str
+        :rtype: bool
+        """
+
+        obj = self.object()
+        attributeHolder = obj.modifiers[pymxs.runtime.Name('attributeHolder')]
+
+        return pymxs.runtime.isProperty(obj, name) or pymxs.runtime.isProperty(attributeHolder, name)
+
+    @validator
+    def setAttr(self, name, value):
+        """
+        Updates the specified attribute value.
+
+        :type name: str
+        :type value: Any
+        :rtype: None
+        """
+
+        obj = self.object()
+        attributeHolder = obj.modifiers[pymxs.runtime.Name('attributeHolder')]
+
+        if pymxs.runtime.isProperty(obj, name):
+
+            pymxs.runtime.setProperty(obj, name, value)
+
+        elif pymxs.runtime.isProperty(attributeHolder, name):
+
+            pymxs.runtime.setProperty(attributeHolder, name, value)
+
+        else:
+
+            raise AttributeError('setAttr() "%s" object has no attribute "%s"' % (obj, name))
 
     @validator
     def isTransform(self):
@@ -248,7 +312,7 @@ class FnNode(afnnode.AFnNode):
         :rtype: pymxs.MXSWrapperBase
         """
 
-        return pymxs.runtime.getNodeByName(name, exact=True, ignoreCase=True, all=False)
+        return pymxs.runtime.getNodeByName(name, exact=False, ignoreCase=True, all=False)
 
     @classmethod
     def getNodeByHandle(cls, handle):
@@ -261,6 +325,17 @@ class FnNode(afnnode.AFnNode):
         """
 
         return pymxs.runtime.getAnimByHandle(handle)
+
+    @classmethod
+    def getNodesWithAttribute(cls, name):
+        """
+        Returns a list of nodes with the given attribute name.
+
+        :type name: str
+        :rtype: List[object]
+        """
+
+        return attributeutils.getNodesWithParameter(name)
 
     @classmethod
     def iterSceneNodes(cls):

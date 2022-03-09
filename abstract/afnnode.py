@@ -71,6 +71,40 @@ class AFnNode(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         return '|'.join([self.__class__(x).name() for x in self.trace()])
 
+    @abstractmethod
+    def getAttr(self, name):
+        """
+        Returns the specified attribute value.
+
+        :type name: str
+        :rtype: Any
+        """
+
+        pass
+
+    @abstractmethod
+    def hasAttr(self, name):
+        """
+        Evaluates if this node has the specified attribute.
+
+        :type name: str
+        :rtype: bool
+        """
+
+        pass
+
+    @abstractmethod
+    def setAttr(self, name, value):
+        """
+        Updates the specified attribute value.
+
+        :type name: str
+        :type value: Any
+        :rtype: None
+        """
+
+        pass
+
     def select(self, replace=True):
         """
         Selects the node associated with this function set.
@@ -324,6 +358,31 @@ class AFnNode(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
     @classmethod
     @abstractmethod
+    def getNodeByHandle(cls, handle):
+        """
+        Returns a node with the given handle.
+        If no node is associated with this handle then none is returned.
+
+        :type handle: int
+        :rtype: Any
+        """
+
+        pass
+
+    @classmethod
+    @abstractmethod
+    def getNodesWithAttribute(cls, name):
+        """
+        Returns a list of nodes with the given attribute name.
+
+        :type name: str
+        :rtype: List[object]
+        """
+
+        pass
+
+    @classmethod
+    @abstractmethod
     def iterSceneNodes(cls):
         """
         Returns a generator that yields all nodes from the scene.
@@ -379,19 +438,6 @@ class AFnNode(with_metaclass(ABCMeta, afnbase.AFnBase)):
             else:
 
                 continue
-
-    @classmethod
-    @abstractmethod
-    def getNodeByHandle(cls, handle):
-        """
-        Returns a node with the given handle.
-        If no node is associated with this handle then none is returned.
-
-        :type handle: int
-        :rtype: Any
-        """
-
-        pass
 
     @classmethod
     @abstractmethod
