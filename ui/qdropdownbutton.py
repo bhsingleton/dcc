@@ -28,14 +28,12 @@ class QDropDownButton(QtWidgets.QAbstractButton):
 
         # Declare private variables
         #
-        self._application = QtWidgets.QApplication.instance()  # type: QtWidgets.QApplication
-        self._applicationFont = self._application.font()  # type: QtGui.QFont
-        self._applicationStyle = self._application.style()  # type: QtWidgets.QStyle
+        self._menu = None
 
         # Edit widget properties
         #
         self.setMouseTracking(True)
-        self.customContextMenuRequested.connect(self.executeCustomContextMenu)
+        self.customContextMenuRequested.connect(self.executeMenu)
 
         # Evaluate arguments
         #
@@ -49,7 +47,7 @@ class QDropDownButton(QtWidgets.QAbstractButton):
 
             if isinstance(arg, string_types):
 
-                self.setText(args[0])
+                self.setText(arg)
 
             elif isinstance(arg, QtWidgets.QWidget):
 
@@ -67,8 +65,8 @@ class QDropDownButton(QtWidgets.QAbstractButton):
 
             if isinstance(icon, QtGui.QIcon) and isinstance(text, string_types):
 
-                self.setIcon(args[0])
-                self.setText(args[1])
+                self.setIcon(icon)
+                self.setText(text)
 
             else:
 
@@ -98,10 +96,33 @@ class QDropDownButton(QtWidgets.QAbstractButton):
 
         return QtCore.QRect(self.width() - 12, 0, 12, self.height())
 
-    def customContextMenu(self):
+    def menu(self):
         """
-        Returns a context menu from this widget's children.
-        A TypeError will be raised if multiple widgets are found!
+        Returns the drop-down menu.
+
+        :rtype: QtWidgets.QMenu
+        """
+
+        if isinstance(self._menu, QtWidgets.QMenu):
+
+            return self._menu
+
+        else:
+
+            return self.findChildMenu()
+
+    def setMenu(self, menu):
+        """
+        Updates the drop-down menu.
+
+        :rtype: QtWidgets.QMenu
+        """
+
+        self._menu = menu
+
+    def findChildMenu(self):
+        """
+        Returns the first menu derived from this widget's children.
 
         :rtype: QtWidgets.QMenu
         """
@@ -128,7 +149,7 @@ class QDropDownButton(QtWidgets.QAbstractButton):
         :rtype: QtCore.QSize
         """
 
-        fontMetric = QtGui.QFontMetrics(self._applicationFont)
+        fontMetric = self.fontMetrics()
         width = fontMetric.width(self.text())
         height = fontMetric.height()
 
@@ -142,7 +163,7 @@ class QDropDownButton(QtWidgets.QAbstractButton):
         :rtype: bool
         """
 
-        return True
+        return self.pushButtonRect().contains(pos)
 
     def initPushButtonStyleOption(self, styleOption):
         """
@@ -173,15 +194,15 @@ class QDropDownButton(QtWidgets.QAbstractButton):
 
         # Edit mouse over state
         #
-        if self.underMouse():
+        mousePos = self.mapFromGlobal(QtGui.QCursor.pos())
+        underMouse = styleOption.rect.contains(mousePos)
+
+        if underMouse:
 
             styleOption.state |= QtWidgets.QStyle.State_MouseOver
 
         # Edit down state
         #
-        mousePos = self.mapFromGlobal(QtGui.QCursor.pos())
-        underMouse = styleOption.rect.contains(mousePos)
-
         if self.isDown() and underMouse:
 
             styleOption.state |= QtWidgets.QStyle.State_On
@@ -219,15 +240,15 @@ class QDropDownButton(QtWidgets.QAbstractButton):
 
         # Edit mouse over state
         #
-        if self.underMouse():
+        mousePos = self.mapFromGlobal(QtGui.QCursor.pos())
+        underMouse = styleOption.rect.contains(mousePos)
+
+        if underMouse:
 
             styleOption.state |= QtWidgets.QStyle.State_MouseOver
 
         # Edit down state
         #
-        mousePos = self.mapFromGlobal(QtGui.QCursor.pos())
-        underMouse = styleOption.rect.contains(mousePos)
-
         if self.isDown() and underMouse:
 
             styleOption.state |= QtWidgets.QStyle.State_On
@@ -270,6 +291,22 @@ class QDropDownButton(QtWidgets.QAbstractButton):
         #
         self.repaint()
 
+    def mouseMoveEvent(self, event):
+        """
+        Event for whenever the mouse is moving over this widget.
+
+        :type event: QtGui.QMouseEvent
+        :rtype: None
+        """
+
+        # Call parent method
+        #
+        super(QDropDownButton, self).mouseMoveEvent(event)
+
+        # Repaint widget
+        #
+        self.repaint()
+
     def mouseReleaseEvent(self, event):
         """
         Event for whenever a mouse button has been released on this widget.
@@ -278,29 +315,19 @@ class QDropDownButton(QtWidgets.QAbstractButton):
         :rtype: None
         """
 
-        # Take the event
-        #
-        event.accept()
-
         # Evaluate which button was released
         #
-        pushButtonRect = self.pushButtonRect()
         dropDownMenuRect = self.dropDownMenuButtonRect()
-        localPos = self.mapFromGlobal(event.globalPos())
+        mouseButton = event.button()
+        mousePos = event.pos()
 
-        self.setDown(False)  # Don't forget to release the button!
+        if dropDownMenuRect.contains(mousePos) and mouseButton == QtCore.Qt.LeftButton:
 
-        if pushButtonRect.contains(localPos):
+            self.customContextMenuRequested.emit(mousePos)
 
-            self.clicked.emit()
-
-        elif dropDownMenuRect.contains(localPos):
-
-            self.customContextMenuRequested.emit(localPos)
-
-        else:
-
-            pass
+        # Call parent method
+        #
+        super(QDropDownButton, self).mouseReleaseEvent(event)
 
     def paintEvent(self, event):
         """
@@ -315,24 +342,26 @@ class QDropDownButton(QtWidgets.QAbstractButton):
         painter = QtGui.QPainter(self)
         self.initPainter(painter)
 
+        style = QtWidgets.QApplication.instance().style()
+
         # Paint push button control
         #
         pushButtonStyleOption = QtWidgets.QStyleOptionButton()
         self.initPushButtonStyleOption(pushButtonStyleOption)
 
-        self._applicationStyle.drawControl(QtWidgets.QStyle.CE_PushButton, pushButtonStyleOption, painter)
+        style.drawControl(QtWidgets.QStyle.CE_PushButton, pushButtonStyleOption, painter)
 
         # Paint drop-down menu control
         #
         dropDownMenuButtonStyleOption = QtWidgets.QStyleOptionButton()
         self.initDropDownMenuButtonStyleOption(dropDownMenuButtonStyleOption)
 
-        self._applicationStyle.drawControl(QtWidgets.QStyle.CE_PushButton, dropDownMenuButtonStyleOption, painter)
+        style.drawControl(QtWidgets.QStyle.CE_PushButton, dropDownMenuButtonStyleOption, painter)
     # endregion
 
     # region Slots
     @QtCore.Slot()
-    def executeCustomContextMenu(self):
+    def executeMenu(self):
         """
         Custom context menu requested slot method responsible for executing the associated menu.
 
@@ -341,7 +370,7 @@ class QDropDownButton(QtWidgets.QAbstractButton):
 
         # Check if menu exists
         #
-        menu = self.customContextMenu()
+        menu = self.menu()
 
         if menu is None:
 
