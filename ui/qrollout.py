@@ -1,4 +1,5 @@
 from PySide2 import QtCore, QtWidgets, QtGui
+from six import string_types
 from dcc.ui import qdivider, qseparator
 
 import logging
@@ -10,7 +11,7 @@ log.setLevel(logging.INFO)
 QWIDGETSIZE_MAX = (1 << 24) - 1  # https://code.qt.io/cgit/qt/qtbase.git/tree/src/widgets/kernel/qwidget.h#n873
 
 
-class QRollout(QtWidgets.QWidget):
+class QRollout(QtWidgets.QAbstractButton):
     """
     Overload of QWidget used to provide a collapsible viewport triggered by a button.
     This widget relies on toggling the visibility of the viewport widget to emulate Maya and Max's rollouts.
@@ -18,87 +19,86 @@ class QRollout(QtWidgets.QWidget):
     """
 
     expandedChanged = QtCore.Signal(bool)
-    stateChanged = QtCore.Signal(bool)
 
     # region Dunderscores
-    __thickness__ = 20.0  # Global thickness for the rollout bar
-
-    def __init__(self, title, parent=None, f=QtCore.Qt.WindowFlags()):
+    def __init__(self, *args, **kwargs):
         """
         Private method called after a new instance has been created.
 
-        :type parent: QtWidgets.QWidget
-        :type f: QtCore.Qt.WindowFlags
+        :key parent: QtWidgets.QWidget
         :rtype: None
         """
 
         # Call parent method
         #
+        parent = kwargs.get('parent', None)
         super(QRollout, self).__init__(parent=parent)
 
-        # Declare class variables
+        # Declare private variables
         #
-        self._title = title
+        self._thickness = 24
+        self._alignment = QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter
+        self._flat = False
+        self._expanded = True
+        self._grippable = False
+
         self._dragging = False
         self._divider = None
         self._dividers = None
         self._insertAt = 0
-        self._expanded = True
-        self._checked = False
-        self._checkable = False
-        self._checkBoxVisible = False
-        self._grippable = False
 
-        # Modify widget properties
+        self._menu = QtWidgets.QMenu('', parent=self)
+        self.initMenu(self._menu)
+
+        # Edit widget properties
         #
-        self.setContentsMargins(0, self.__thickness__, 0, 0)
+        self.setContentsMargins(0, self._thickness, 0, 0)
         self.setFocusPolicy(QtCore.Qt.ClickFocus)
         self.setMouseTracking(True)
         self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
-        self.customContextMenuRequested.connect(self.showContextMenu)
+        self.customContextMenuRequested.connect(self.executeMenu)
 
-        # Modify color palette
+        # Evaluate arguments
         #
-        palette = self.palette()
-        palette.setColor(QtGui.QPalette.Button, QtGui.QColor(93, 93, 93))
-        palette.setColor(QtGui.QPalette.Highlight, QtGui.QColor(81, 121, 148))
+        numArgs = len(args)
 
-        self.setPalette(palette)
+        if numArgs == 1:
 
-        # Assign custom context menu
-        #
-        self.customContextMenu = QtWidgets.QMenu('', parent=self)
-        self.customContextMenu.setObjectName('CustomContextMenu')
+            # Inspect argument type
+            #
+            arg = args[0]
 
-        self.expandAction = QtWidgets.QAction('Expand', parent=self.customContextMenu)
-        self.expandAction.setObjectName('ExpandAction')
-        self.expandAction.setMenu(self.customContextMenu)
-        self.expandAction.triggered.connect(self.expandAction_triggered)
+            if isinstance(arg, string_types):
 
-        self.collapseAction = QtWidgets.QAction('Collapse', parent=self.customContextMenu)
-        self.collapseAction.setObjectName('CollapseAction')
-        self.collapseAction.setMenu(self.customContextMenu)
-        self.collapseAction.triggered.connect(self.collapseAction_triggered)
+                self.setTitle(arg)
 
-        self.expandAllAction = QtWidgets.QAction('Expand All', parent=self.customContextMenu)
-        self.expandAllAction.setObjectName('ExpandAllAction')
-        self.expandAllAction.setMenu(self.customContextMenu)
-        self.expandAllAction.triggered.connect(self.expandAllAction_triggered)
+            elif isinstance(arg, QtWidgets.QWidget):
 
-        self.collapseAllAction = QtWidgets.QAction('Collapse All', parent=self.customContextMenu)
-        self.collapseAllAction.setObjectName('CollapseAllAction')
-        self.collapseAllAction.setMenu(self.customContextMenu)
-        self.collapseAllAction.triggered.connect(self.collapseAllAction_triggered)
+                self.setParent(arg)
 
-        self.customContextMenu.addActions(
-            [
-                self.expandAction,
-                self.collapseAction,
-                qseparator.QSeparator('', parent=self.customContextMenu),
-                self.expandAllAction,
-                self.collapseAllAction
-            ]
-        )
+            else:
+
+                raise TypeError('__init__() expects a str (%s given)!' % type(arg).__name__)
+
+        elif numArgs == 2:
+
+            # Inspect argument types
+            #
+            title = args[0]
+            parent = args[1]
+
+            if isinstance(title, string_types) and isinstance(parent, QtWidgets.QWidget):
+
+                self.setTitle(title)
+                self.setParent(parent)
+
+            else:
+
+                raise TypeError('__init__() expects a str and QWidget!')
+
+        else:
+
+            pass
     # endregion
 
     # region Methods
@@ -177,143 +177,122 @@ class QRollout(QtWidgets.QWidget):
 
         return list(self.iterSiblingWidgets())
 
-    def showContextMenu(self, pos):
-        """
-        Displays the custom context menu at the specified position.
-
-        :type pos: QtCore.QPointF
-        :rtype: None
-        """
-
-        if self.gripperRect().contains(pos):
-
-            self.customContextMenu.exec_(self.mapToGlobal(pos))
-
     def title(self):
         """
-        Returns the header title for this rollout.
+        Returns the title of this rollout.
+        This method is synonymous with ".text" for QGroupBox compatibility.
 
         :rtype: str
         """
 
-        return self._title
+        return self.text()
 
     def setTitle(self, title):
         """
-        Updates the header title for this rollout.
+        Updates the title of this rollout.
+        This method is synonymous with ".setText" for QGroupBox compatibility.
 
-        :rtype: str
+        :type title: str
+        :rtype: None
         """
 
-        self._title = title
+        self.setText(title)
+
+    def alignment(self):
+        """
+        Returns the alignment for the title text.
+
+        :rtype: int
+        """
+
+        return self._alignment
+
+    def setAlignment(self, alignment):
+        """
+        Updates the alignment for the title text.
+
+        :type alignment: int
+        :rtype: None
+        """
+
+        self._alignment = alignment
         self.repaint()
 
-    def checkable(self):
+    def flat(self):
         """
-        Returns the checkable state for this rollout.
+        Returns the flat state for this widget.
 
         :rtype: bool
         """
 
-        return self._checkable
+        return self._flat
 
-    def setCheckable(self, checkable):
+    def setFlat(self, flat):
         """
-        Updates the checkable state for this rollout.
+        Updates the flat state for this widget.
 
-        :type checkable: bool
+        :type flat: bool
         :rtype: None
         """
 
-        self._checkable = checkable
+        self._flat = flat
 
-    def isChecked(self):
+    def thickness(self):
         """
-        Returns the checked state for this rollout.
-        This rollout must be checkable for this value to have any significance.
+        Returns the thickness of the rollout button.
 
-        :rtype: bool
-        """
-
-        return self._checked
-
-    def setChecked(self, checked):
-        """
-        Updates the checked state for this rollout.
-        This method will emit the "stateChanged" signal if successful.
-
-        :rtype: bool
+        :rtype: int
         """
 
-        # Update private value
-        # Be sure to check for redundancy
-        #
-        if checked == self._checked or not self._checkable:
+        return self._thickness
 
-            return
+    def setThickness(self, thickness):
+        """
+        Updates the thickness of the rollout button.
 
-        self._checked = checked
+        :type thickness: int
+        :rtype: None
+        """
 
-        # Redraw widget and emit signal
-        #
+        self._thickness = thickness
         self.repaint()
-        self.stateChanged.emit(self._checked)
 
-    def toggleChecked(self):
+    def sizeHint(self):
         """
-        The event for whenever the header button is checked.
-        If checkable is not enabled then the status will not be inversed.
+        Returns the recommended size for this rollout.
+
+        :rtype: QtCore.QSize
+        """
+
+        return QtCore.QSize(self.fontMetrics().width(self.text()), self.thickness())
+
+    def isGrippable(self):
+        """
+        Returns the grippable state for this rollout.
+
+        :rtype: bool
+        """
+
+        return self._grippable
+
+    def setGrippable(self, grippable):
+        """
+        Updates the grippable state for this rollout.
 
         :rtype: None
         """
 
-        # Check if widget is checkable
-        #
-        if not self._checkable:
-            return
-
-        self.setChecked(not self._checked)
-
-    def showCheckBox(self):
-        """
-        Shows the check box for this rollout.
-        This widget must be checkable for this to have any effect.
-
-        :rtype: None
-        """
-
-        # Check if widget is checkable
-        #
-        if not self._checkable:
-
-            return
-
-        self._checkBoxVisible = True
-
-    def hideCheckBox(self):
-        """
-        Hides the check box for this rollout.
-        This widget must be checkable for this to have any effect.
-
-        :rtype: None
-        """
-
-        # Check if widget is checkable
-        #
-        if not self._checkable:
-
-            return
-
-        self._checkBoxVisible = False
+        self._grippable = grippable
+        self.repaint()
 
     def showGripper(self):
         """
-        Show the gripper icon for this rollout.
+        Shows the gripper icon for this rollout.
 
         :rtype: None
         """
 
-        self._grippable = True
+        self.setGrippable(True)
 
     def hideGripper(self):
         """
@@ -322,9 +301,9 @@ class QRollout(QtWidgets.QWidget):
         :rtype: None
         """
 
-        self._grippable = False
+        self.setGrippable(False)
 
-    def expanded(self):
+    def isExpanded(self):
         """
         Returns the expanded state for this rollout.
 
@@ -359,7 +338,7 @@ class QRollout(QtWidgets.QWidget):
 
         else:
 
-            self.setFixedSize(QtCore.QSize(QWIDGETSIZE_MAX, 20))
+            self.setFixedSize(QtCore.QSize(QWIDGETSIZE_MAX, self.thickness()))
             self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
 
         # Repaint widget and emit signal
@@ -376,6 +355,85 @@ class QRollout(QtWidgets.QWidget):
 
         self.setExpanded(not self._expanded)
 
+    def toggleChecked(self):
+        """
+        Toggles the check state on this rollout.
+
+        :rtype: None
+        """
+
+        self.setChecked(not self.isChecked())
+
+    def menu(self):
+        """
+        Returns the menu for this rollout.
+
+        :rtype: QtWidgets.QMenu
+        """
+
+        return self._menu
+
+    def initMenu(self, menu):
+        """
+        Initializes the supplied menu for use with this rollout.
+
+        :type menu: QtWidgets.QMenu
+        :rtype: None
+        """
+
+        expandAction = QtWidgets.QAction('&Expand', parent=menu)
+        expandAction.setObjectName('expandAction')
+        expandAction.triggered.connect(self.on_expandAction_triggered)
+
+        collapseAction = QtWidgets.QAction('&Collapse', parent=menu)
+        collapseAction.setObjectName('collapseAction')
+        collapseAction.triggered.connect(self.on_collapseAction_triggered)
+
+        expandAllAction = QtWidgets.QAction('&Expand All', parent=menu)
+        expandAllAction.setObjectName('expandAllAction')
+        expandAllAction.triggered.connect(self.on_expandAllAction_triggered)
+
+        collapseAllAction = QtWidgets.QAction('&Collapse All', parent=menu)
+        collapseAllAction.setObjectName('collapseAllAction')
+        collapseAllAction.triggered.connect(self.on_collapseAllAction_triggered)
+
+        menu.setObjectName('customContextMenu')
+        menu.addActions(
+            [
+                expandAction,
+                collapseAction,
+                qseparator.QSeparator('', parent=menu),
+                expandAllAction,
+                collapseAllAction
+            ]
+        )
+
+    def hitButton(self, pos):
+        """
+        Evaluates if the supplied point counts as a button click.
+
+        :type pos: QtCore.QPoint
+        :rtype: bool
+        """
+
+        return self.titleRect().contains(pos)
+
+    def underMouse(self, headerOnly=False):
+        """
+        Evaluates if this widget is under the mouse.
+
+        :type headerOnly: bool
+        :rtype: bool
+        """
+
+        if headerOnly:
+
+            return self.headerRect().contains(self.mapFromGlobal(QtGui.QCursor().pos()))
+
+        else:
+
+            return super(QRollout, self).underMouse()
+
     def headerRect(self):
         """
         Returns the header bounding box.
@@ -383,7 +441,7 @@ class QRollout(QtWidgets.QWidget):
         :rtype: QtCore.QRectF
         """
 
-        return QtCore.QRectF(0.0, 0.0, self.rect().width(), self.__thickness__)
+        return QtCore.QRectF(0.0, 0.0, self.rect().width(), self._thickness)
 
     def titleRect(self):
         """
@@ -392,7 +450,10 @@ class QRollout(QtWidgets.QWidget):
         :rtype: QtCore.QRectF
         """
 
-        return QtCore.QRectF(self.__thickness__, 0.0, self.rect().width() - (self.__thickness__ * 2.0), self.__thickness__)
+        return QtCore.QRectF(
+            QtCore.QPointF(self._thickness, 0.0),
+            QtCore.QPointF(self.rect().right() - self._thickness, self._thickness)
+        )
 
     def viewportRect(self):
         """
@@ -401,7 +462,7 @@ class QRollout(QtWidgets.QWidget):
         :rtype: QtCore.QRectF
         """
 
-        return QtCore.QRectF(0.0, self.__thickness__, self.rect().width(), self.rect().height() - self.__thickness__)
+        return QtCore.QRectF(0.0, self._thickness, self.rect().width(), self.rect().height() - self._thickness)
 
     def expanderRect(self):
         """
@@ -410,7 +471,7 @@ class QRollout(QtWidgets.QWidget):
         :rtype: QtCore.QRectF
         """
 
-        return QtCore.QRectF(0, 0, self.__thickness__, self.__thickness__)
+        return QtCore.QRectF(0, 0, self._thickness, self._thickness)
 
     def gripperRect(self):
         """
@@ -419,9 +480,9 @@ class QRollout(QtWidgets.QWidget):
         :rtype: QtCore.QRectF
         """
 
-        return QtCore.QRectF(self.rect().width() - self.__thickness__, 0, self.__thickness__, self.__thickness__)
+        return QtCore.QRectF(self.rect().width() - self._thickness, 0, self._thickness, self._thickness)
 
-    def expander(self):
+    def expanderPolygon(self):
         """
         Returns the polygonal shape for the expander icon.
 
@@ -452,43 +513,7 @@ class QRollout(QtWidgets.QWidget):
 
         return polygon
 
-    def isDragging(self):
-        """
-        Evaluates if the rollout is currently being dragged.
-
-        :rtype: bool
-        """
-
-        return self._dragging
-
-    def beginDragging(self):
-        """
-        Setups all of the internal components required for dragging.
-
-        :rtype: None
-        """
-
-        self._dragging = True
-        self._dividers = self.dividers()
-
-        self._divider = qdivider.QDivider(QtCore.Qt.Horizontal)
-        self._divider.setStyleSheet('background-color: darkCyan; border: 4px solid darkCyan;')
-
-        self.setCursor(QtGui.QCursor(QtCore.Qt.ClosedHandCursor))
-
-    def endDragging(self):
-        """
-        Cleans up all of the internal components used for dragging.
-
-        :rtype: None
-        """
-
-        self._dragging = False
-        self._divider.deleteLater()
-
-        self.setCursor(QtGui.QCursor(QtCore.Qt.ArrowCursor))
-
-    def gripper(self):
+    def gripperPoints(self):
         """
         Returns the points that make up the gripper.
 
@@ -512,9 +537,45 @@ class QRollout(QtWidgets.QWidget):
             QtCore.QPointF(rect.right(), rect.bottom()),
         )
 
+    def isDragging(self):
+        """
+        Evaluates if the rollout is currently being dragged.
+
+        :rtype: bool
+        """
+
+        return self._dragging
+
+    def beginDragging(self):
+        """
+        Initializes all the internal components required for dragging.
+
+        :rtype: None
+        """
+
+        self._dragging = True
+        self._dividers = self.dividers()
+
+        self._divider = qdivider.QDivider(QtCore.Qt.Horizontal)
+        self._divider.setStyleSheet('background-color: darkCyan; border: 4px solid darkCyan;')
+
+        self.setCursor(QtGui.QCursor(QtCore.Qt.ClosedHandCursor))
+
+    def endDragging(self):
+        """
+        Cleans up all the internal components used for dragging.
+
+        :rtype: None
+        """
+
+        self._dragging = False
+        self._divider.deleteLater()
+
+        self.setCursor(QtGui.QCursor(QtCore.Qt.ArrowCursor))
+
     def dividers(self):
         """
-        Returns all of the divider bounding box consideration for dragging.
+        Returns all the divider bounding box considerations for dragging.
 
         :rtype: List[QtCore.QRect]
         """
@@ -537,43 +598,63 @@ class QRollout(QtWidgets.QWidget):
                 dividers[i] = QtCore.QRect(QtCore.QPoint(rects[i-1].left(), rects[i-1].center().y()), QtCore.QPoint(rect.right(), rect.center().y()))
 
         return dividers
+
+    def initPainter(self, painter):
+        """
+        Initializes the supplied painter for this rollout.
+
+        :type painter: QtGui.QPainter
+        :rtype: None
+        """
+
+        # Call parent method
+        #
+        super(QRollout, self).initPainter(painter)
+
+        # Enable anti-aliasing
+        #
+        painter.setRenderHint(QtGui.QPainter.Antialiasing, True)
+
+    def initCheckBoxStyleOption(self, styleOption):
+        """
+        Initializes the supplied check-box style options.
+
+        :type styleOption: QtWidgets.QStyleOptionButton
+        :rtype: None
+        """
+
+        # Check if rollout is checkable
+        #
+        styleOption.text = self.title()
+        styleOption.rect = self.titleRect().toAlignedRect()
+
+        if self.isCheckable():
+
+            styleOption.state = QtWidgets.QStyle.State_Enabled
+
+        else:
+
+            styleOption.state = QtWidgets.QStyle.State_None
+            return
+
+        # Edit checked state
+        #
+        if self.isChecked():
+
+            styleOption.state |= QtWidgets.QStyle.State_On
+
+        else:
+
+            styleOption.state |= QtWidgets.QStyle.State_Off
+
+        # Edit mouse over state
+        #
+        if self.underMouse(headerOnly=True):
+
+            styleOption.state |= QtWidgets.QStyle.State_MouseOver
     # endregion
 
     # region Events
-    def enterEvent(self, event):
-        """
-        The event for whenever the mouse enters this widget.
-        To get mouse highlighting we need to force a repaint operation here.
-
-        :type event: QtGui.QEvent
-        :rtype: None
-        """
-
-        # Force re-paint
-        #
-        self.repaint()
-
-        # Call parent method
-        #
-        super(QRollout, self).enterEvent(event)
-
-    def leaveEvent(self, event):
-        """
-        The event for whenever the mouse leaves this widget.
-        To get mouse highlighting we need to force a repaint operation here.
-
-        :type event: QtGui.QEvent
-        :rtype: None
-        """
-
-        # Force re-paint
-        #
-        self.repaint()
-
-        # Call parent method
-        #
-        super(QRollout, self).leaveEvent(event)
-
     def eventFilter(self, watched, event):
         """
         Filters events if this object has been installed as an event filter for the watched object.
@@ -615,6 +696,38 @@ class QRollout(QtWidgets.QWidget):
         #
         return super(QRollout, self).eventFilter(watched, event)
 
+    def enterEvent(self, event):
+        """
+        Event for whenever the mouse enters this widget.
+
+        :type event: QtGui.QMouseEvent
+        :rtype: None
+        """
+
+        # Call parent method
+        #
+        super(QRollout, self).enterEvent(event)
+
+        # Force re-paint
+        #
+        self.repaint()
+
+    def leaveEvent(self, event):
+        """
+        Event for whenever the mouse leaves this widget.
+
+        :type event: QtGui.QMouseEvent
+        :rtype: None
+        """
+
+        # Force re-paint
+        #
+        self.repaint()
+
+        # Call parent method
+        #
+        super(QRollout, self).leaveEvent(event)
+
     def mousePressEvent(self, event):
         """
         The event for when a mouse button has been pressed on this widget
@@ -625,7 +738,10 @@ class QRollout(QtWidgets.QWidget):
 
         # Check if the gripper was pressed
         #
-        if self.gripperRect().contains(event.pos()) and event.button() == QtCore.Qt.LeftButton and self._grippable:
+        mousePos = event.pos()
+        mouseButton = event.button()
+
+        if self.gripperRect().contains(mousePos) and mouseButton == QtCore.Qt.LeftButton and self.isGrippable():
 
             self.beginDragging()
 
@@ -635,7 +751,7 @@ class QRollout(QtWidgets.QWidget):
 
     def mouseMoveEvent(self, event):
         """
-        The event for when the mouse is moving over this widget.
+        Event for whenever the mouse is moving over this widget.
 
         :type event: QtGui.QMouseEvent
         :rtype: None
@@ -657,6 +773,10 @@ class QRollout(QtWidgets.QWidget):
                 self._insertAt = insertAt
                 parentLayout.removeWidget(self._divider)
                 parentLayout.insertWidget(self._insertAt, self._divider)
+
+        else:
+
+            self.repaint()
 
         # Call parent method
         #
@@ -684,17 +804,12 @@ class QRollout(QtWidgets.QWidget):
 
             # Check if expander was pressed
             #
-            if self.expanderRect().contains(event.pos()) and event.button() == QtCore.Qt.LeftButton:
+            mousePos = event.pos()
+            mouseButton = event.button()
+
+            if self.expanderRect().contains(mousePos) and mouseButton == QtCore.Qt.LeftButton:
 
                 self.toggleExpanded()
-
-            elif self.titleRect().contains(event.pos()) and event.button() == QtCore.Qt.LeftButton:
-
-                self.toggleChecked()
-
-            else:
-
-                pass
 
         # Call parent method
         #
@@ -711,12 +826,12 @@ class QRollout(QtWidgets.QWidget):
         # Initialize painter
         #
         painter = QtGui.QPainter(self)
-        painter.setRenderHint(QtGui.QPainter.Antialiasing, True)
+        self.initPainter(painter)
 
         # Get brush from palette
         #
         palette = self.palette()
-        pen = QtGui.QPen(palette.highlightedText(), 1) if self.underMouse() else QtGui.QPen(palette.text(), 1)
+        pen = QtGui.QPen(palette.highlightedText(), 1) if self.underMouse(headerOnly=True) else QtGui.QPen(palette.text(), 1)
 
         # Paint background
         #
@@ -725,46 +840,40 @@ class QRollout(QtWidgets.QWidget):
 
         painter.setPen(QtCore.Qt.NoPen)
         painter.setBrush(QtCore.Qt.NoBrush)
-        painter.fillPath(path, palette.highlight() if self._checked else palette.button())
+        painter.fillPath(path, palette.highlight() if self.isChecked() else palette.button())
 
         # Paint title
         #
         titleRect = self.titleRect()
 
-        if self._checkable and self._checkBoxVisible:
+        if self.isCheckable():
 
-            # Define check box options
-            #
             options = QtWidgets.QStyleOptionButton()
-            options.state |= QtWidgets.QStyle.State_On if self._checked else QtWidgets.QStyle.State_Off
-            options.state |= QtWidgets.QStyle.State_Enabled
-            options.text = self._title
-            options.rect = QtCore.QRect(titleRect.x(), titleRect.y(), titleRect.width(), titleRect.height())
+            self.initCheckBoxStyleOption(options)
 
-            # Draw check box control
-            #
-            style = QtWidgets.QApplication.style()
+            style = QtWidgets.QApplication.instance().style()
             style.drawControl(QtWidgets.QStyle.CE_CheckBox, options, painter)
 
         else:
 
             painter.setPen(pen)
             painter.setBrush(QtCore.Qt.NoBrush)
-            painter.drawText(titleRect, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter, self._title, boundingRect=titleRect)
+            painter.drawText(titleRect, self.alignment(), self.text(), boundingRect=titleRect)
 
         # Paint expander
         #
         path = QtGui.QPainterPath()
-        path.addPolygon(self.expander())
+        path.addPolygon(self.expanderPolygon())
 
         painter.setPen(QtCore.Qt.NoPen)
-        painter.fillPath(path, palette.highlightedText() if self.underMouse() else palette.text())
+        painter.setBrush(QtCore.Qt.NoBrush)
+        painter.fillPath(path, palette.highlightedText() if self.underMouse(headerOnly=True) else palette.text())
 
         # Paint mover if grippable
         #
-        if self._grippable:
+        if self.isGrippable():
 
-            points = self.gripper()
+            points = self.gripperPoints()
 
             painter.setPen(pen)
             painter.setBrush(QtCore.Qt.NoBrush)
@@ -772,19 +881,32 @@ class QRollout(QtWidgets.QWidget):
 
         # Paint viewport if expanded
         #
-        if self._expanded:
-
-            brush = QtGui.QBrush(QtGui.QColor(73, 73, 73), style=QtCore.Qt.SolidPattern)
+        if self.isExpanded():
 
             path = QtGui.QPainterPath()
             path.addRoundedRect(self.viewportRect(), 4, 4)
 
             painter.setPen(QtCore.Qt.NoPen)
-            painter.fillPath(path, brush)
+            painter.setBrush(QtCore.Qt.NoBrush)
+            painter.fillPath(path, QtGui.QBrush(QtGui.QColor(73, 73, 73), style=QtCore.Qt.SolidPattern))
     # endregion
 
     # region Slots
-    def expandAction_triggered(self, checked=False):
+    @QtCore.Slot(QtCore.QPointF)
+    def executeMenu(self, pos):
+        """
+        Displays the custom context menu at the specified position.
+
+        :type pos: QtCore.QPointF
+        :rtype: None
+        """
+
+        if self.gripperRect().contains(pos):
+
+            self.menu().exec_(self.mapToGlobal(pos))
+
+    @QtCore.Slot(bool)
+    def on_expandAction_triggered(self, checked=False):
         """
         Triggered slot method responsible for expanding this rollout.
 
@@ -794,7 +916,8 @@ class QRollout(QtWidgets.QWidget):
 
         self.setExpanded(True)
 
-    def expandAllAction_triggered(self, checked=False):
+    @QtCore.Slot(bool)
+    def on_expandAllAction_triggered(self, checked=False):
         """
         Triggered slot method responsible for expanding all sibling rollouts.
 
@@ -808,7 +931,8 @@ class QRollout(QtWidgets.QWidget):
 
             rollout.setExpanded(True)
 
-    def collapseAction_triggered(self, checked=False):
+    @QtCore.Slot(bool)
+    def on_collapseAction_triggered(self, checked=False):
         """
         Triggered slot method responsible for collapsing this rollout.
 
@@ -818,7 +942,8 @@ class QRollout(QtWidgets.QWidget):
 
         self.setExpanded(False)
 
-    def collapseAllAction_triggered(self, checked=False):
+    @QtCore.Slot(bool)
+    def on_collapseAllAction_triggered(self, checked=False):
         """
         Triggered slot method responsible for collapsing all sibling rollouts.
 
