@@ -173,9 +173,19 @@ class ClientSpec(object):
 
         return filePath.lower().startswith(clientPath.lower())
 
+    def hasDepotFile(self, depotPath):
+        """
+        Evaluates if the supplied depot file is derived from this client.
+
+        :type depotPath: str
+        :rtype: bool
+        """
+
+        return depotPath.lower().startswith(self.view[0].depotPath.lower())
+
     def getChangelists(self):
         """
-        Returns a list of changelists from this client.
+        Returns a list of changes from this client.
 
         :rtype: List[dict]
         """
