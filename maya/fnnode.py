@@ -14,7 +14,7 @@ log.setLevel(logging.INFO)
 
 class FnNode(afnnode.AFnNode):
     """
-    Overload of AFnNode that implements the node interface for Maya.
+    Overload of AFnNode that implements the function set behavior for Maya scene nodes.
     """
 
     __slots__ = ()
@@ -167,6 +167,15 @@ class FnNode(afnnode.AFnNode):
 
         return self.object().hasFn(om.MFn.kMesh)
 
+    def getAssociatedReference(self):
+        """
+        Returns the reference this node is associated with.
+
+        :rtype: om.MObject
+        """
+
+        return dagutils.getAssociatedReferenceNode(self.object())
+
     @validator
     def parent(self):
         """
@@ -222,7 +231,7 @@ class FnNode(afnnode.AFnNode):
     @validator
     def iterChildren(self, apiType=om.MFn.kTransform):
         """
-        Returns a generator that yields all of the children belonging to this node.
+        Returns a generator that yields all the children from this node.
 
         :type apiType: int
         :rtype: iter

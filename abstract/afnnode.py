@@ -3,8 +3,7 @@ import fnmatch
 
 from abc import ABCMeta, abstractmethod
 from six import with_metaclass
-from collections import deque
-from dcc.abstract import afnbase
+from dcc.abstract import afnobject
 
 import logging
 logging.basicConfig()
@@ -12,11 +11,11 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-class AFnNode(with_metaclass(ABCMeta, afnbase.AFnBase)):
+class AFnNode(with_metaclass(ABCMeta, afnobject.AFnObject)):
     """
-    Overload of AFnBase that outlines function set behaviour for scene nodes.
-    Any overloads should take care of internally storing the node handle.
-    If the DCC has no means of looking up nodes via node handle then the developer must store it themself.
+    Overload of AFnObject that outlines scene node interfaces.
+    Any overloads should take care of internally storing the node handle for faster lookups.
+    If the DCC has no means of looking up nodes via handles then the developer must use an alternative method.
     """
 
     __slots__ = ()
@@ -192,144 +191,14 @@ class AFnNode(with_metaclass(ABCMeta, afnbase.AFnBase)):
         pass
 
     @abstractmethod
-    def parent(self):
+    def getAssociatedReference(self):
         """
-        Returns the parent of this node.
+        Returns the reference this node is associated with.
 
-        :rtype: Any
-        """
-
-        pass
-
-    def iterParents(self):
-        """
-        Returns a generator that yields all of the parents for this node.
-
-        :rtype: iter
-        """
-
-        # Initialize function set
-        #
-        fnNode = self.__class__()
-        fnNode.setObject(self.object())
-
-        # Iterate through parents
-        #
-        parent = fnNode.parent()
-
-        while parent is not None:
-
-            yield parent
-
-            fnNode.setObject(parent)
-            parent = fnNode.parent()
-
-    def parents(self):
-        """
-        Returns a list of parents starting from closest to furthest away.
-
-        :rtype: list[Any]
-        """
-
-        return list(self.iterParents())
-
-    def topLevelParent(self):
-        """
-        Returns the top level parent of this node.
-        If this node has no parents then itself is returned.
-
-        :rtype: Any
-        """
-
-        parents = self.parents()
-        numParents = len(parents)
-
-        if numParents > 0:
-
-            return parents[-1]
-
-        else:
-
-            return None
-
-    def hasParent(self):
-        """
-        Evaluates whether this node has a parent.
-
-        :rtype: bool
-        """
-
-        return self.parent() is not None
-
-    @abstractmethod
-    def setParent(self, parent):
-        """
-        Updates the parent of this node.
-
-        :type parent: Any
-        :rtype: None
+        :rtype: object
         """
 
         pass
-
-    def trace(self):
-        """
-        Returns a generator that yields all of the nodes up to and including this node.
-
-        :rtype: iter
-        """
-
-        for parent in reversed(list(self.iterParents())):
-
-            yield parent
-
-        yield self.object()
-
-    @abstractmethod
-    def iterChildren(self):
-        """
-        Returns a generator that yields all of the children for this node.
-
-        :rtype: iter
-        """
-
-        pass
-
-    def children(self):
-        """
-        Returns a list of children belonging to this node.
-
-        :rtype: list[Any]
-        """
-
-        return list(self.iterChildren())
-
-    def iterDescendants(self):
-        """
-        Returns a generator that yields all of the descendants for this node.
-
-        :rtype: iter
-        """
-
-        queue = deque(self.children())
-        fnNode = self.__class__()
-
-        while len(queue) > 0:
-
-            node = queue.popleft()
-            yield node
-
-            fnNode.setObject(node)
-            queue.extend(fnNode.children())
-
-    def descendants(self):
-        """
-        Returns a list of all the descendants for this node.
-
-        :rtype: list[Any]
-        """
-
-        return list(self.iterDescendants())
 
     @classmethod
     @abstractmethod

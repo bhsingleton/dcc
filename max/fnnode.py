@@ -13,7 +13,7 @@ log.setLevel(logging.INFO)
 
 class FnNode(afnnode.AFnNode):
     """
-    Overload of AFnNode that implements the node interface for 3ds Max.
+    Overload of AFnNode that implements the function set behavior for 3ds Max scene nodes.
     """
 
     __slots__ = ()
@@ -191,6 +191,15 @@ class FnNode(afnnode.AFnNode):
         """
 
         return pymxs.runtime.classOf(self.object()) in (pymxs.runtime.PolyMeshObject, pymxs.runtime.Editable_Poly, pymxs.runtime.Editable_Mesh)
+
+    def getAssociatedReference(self):
+        """
+        Returns the reference this node is associated with.
+
+        :rtype: om.MObject
+        """
+
+        return pymxs.runtime.objXRefMgr.IsNodeXRefed(self.object())
 
     @validator
     def parent(self):
