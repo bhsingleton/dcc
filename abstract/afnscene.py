@@ -194,7 +194,7 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
             raise TypeError('isNullOrEmpty() expects a sequence (%s given)!' % type(value).__name__)
 
     @staticmethod
-    def isRelative(path, directory):
+    def isPathRelativeTo(path, directory):
         """
         Evaluates if the supplied path is relative to the given directory.
         This method ignores casing!
@@ -237,7 +237,7 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
     def makePathsRelative(self, filePaths, directory):
         """
-        Converts all of the texture paths to relative.
+        Converts all the texture paths to relative.
         If a path is not relative then no changes are made to the original path.
 
         :type filePaths: List[str]
@@ -259,7 +259,7 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
             filePath = os.path.normpath(filePath)
             fullFilePath = self.expandPath(filePath)
 
-            if self.isRelative(fullFilePath, directory):
+            if self.isPathRelativeTo(fullFilePath, directory):
 
                 relativePath = os.path.relpath(fullFilePath, directory)
 
@@ -275,7 +275,7 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
     def makePathsAbsolute(self, filePaths):
         """
-        Converts all of the texture paths to absolute.
+        Converts all the texture paths to absolute.
 
         :type filePaths: List[str]
         :rtype: List[str]
@@ -294,9 +294,9 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         return absolutePaths
 
-    def makePathsDynamic(self, filePaths, variable):
+    def makePathsVariable(self, filePaths, variable):
         """
-        Converts all of the texture paths to dynamic.
+        Converts all the texture paths to variable.
         The supplied variable name must contain a dollar sign!
 
         :type filePaths: List[str]
@@ -318,7 +318,7 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
             filePath = os.path.normpath(filePath)
             fullFilePath = self.expandPath(filePath)
 
-            if self.isRelative(fullFilePath, directory):
+            if self.isPathRelativeTo(fullFilePath, directory):
 
                 dynamicPath = os.path.join(variable, os.path.relpath(fullFilePath, directory))
 
@@ -436,7 +436,7 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
     def syncTextures(self):
         """
-        Syncs all of the textures inside the scene.
+        Syncs all the textures inside the scene.
         If the texture is not relative to the client it is ignored.
 
         :rtype: None
@@ -459,7 +459,7 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
     def makeTexturesRelative(self):
         """
-        Converts all of the textures to relative paths.
+        Converts all the textures to relative paths.
 
         :rtype: None
         """
@@ -471,7 +471,7 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
     def makeTexturesAbsolute(self):
         """
-        Converts all of the textures to absolute paths.
+        Converts all the textures to absolute paths.
 
         :rtype: None
         """
@@ -481,22 +481,22 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         self.updateTextures(dict(zip(oldPaths, newPaths)))
 
-    def makeTexturesDynamic(self):
+    def makeTexturesVariable(self):
         """
-        Converts all of the textures to dynamic paths.
+        Converts all the textures to dynamic paths.
 
         :rtype: None
         """
 
         oldPaths = self.textures(absolute=True)
-        newPaths = self.makePathsDynamic(oldPaths, '$P4ROOT')
+        newPaths = self.makePathsVariable(oldPaths, '$P4ROOT')
 
         self.updateTextures(dict(zip(oldPaths, newPaths)))
 
     @abstractmethod
     def updateTextures(self, updates):
         """
-        Applies all of the texture path updates to the associated file nodes.
+        Applies all the texture path updates to the associated file nodes.
         Each key-value pair should consist of the old and new texture paths!
 
         :type updates: Dict[str, str]
@@ -508,7 +508,7 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
     @abstractmethod
     def reloadTextures(self):
         """
-        Forces all of the texture nodes to reload.
+        Forces all the texture nodes to reload.
 
         :rtype: None
         """
