@@ -502,6 +502,8 @@ def getAssociatedReferenceNode(dependNode):
 
             continue
 
+    return None
+
 
 def getComponentFromString(value):
     """
