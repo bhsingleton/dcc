@@ -8,9 +8,10 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-def load(filePath):
+def load(filePath, **kwargs):
     """
     Loads the json objects from the supplied file path.
+    Any keyword arguments will be passed to the class constructors.
 
     :type filePath: str
     :rtype: Any
@@ -18,7 +19,7 @@ def load(filePath):
 
     with open(filePath, mode='r') as jsonFile:
 
-        return json.load(jsonFile, cls=psonparser.PSONDecoder)
+        return loads(jsonFile.read(), **kwargs)
 
 
 def loads(string, default=None, **kwargs):
@@ -31,15 +32,11 @@ def loads(string, default=None, **kwargs):
     :rtype: Any
     """
 
-    # Assign keyword defaults
-    #
-    psonparser.PSONDecoder.__kwdefaults__ = kwargs
-
     # Try and load json string
     #
     try:
 
-        return json.loads(string, cls=psonparser.PSONDecoder)
+        return json.loads(string, cls=psonparser.PSONDecoder, **kwargs)
 
     except json.JSONDecodeError as exception:
 
