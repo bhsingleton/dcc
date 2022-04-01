@@ -293,15 +293,26 @@ class PSONObject(with_metaclass(ABCMeta, MutableMapping)):
             return cls.isBuiltinType(type(T))
 
     @staticmethod
-    def isTypeHint(T):
+    def isTypeAlias(T):
         """
-        Evaluates if the given type is a type hint.
+        Evaluates if the given object represents a type alias.
 
         :type T: Any
         :rtype: bool
         """
 
-        return hasattr(T, '__origin__') and hasattr(T, '__args__')
+        return hasattr(T, '__origin__')
+
+    @classmethod
+    def isSequenceAlias(cls, T):
+        """
+        Evaluates if the given object represents a sequence alias.
+
+        :type T: Any
+        :rtype: bool
+        """
+
+        return cls.isTypeAlias(T) and hasattr(T, '__args__')
 
     @classmethod
     def isJsonCompatible(cls, T):
@@ -314,7 +325,7 @@ class PSONObject(with_metaclass(ABCMeta, MutableMapping)):
 
         # Evaluate type object
         #
-        if cls.isTypeHint(T):
+        if cls.isSequenceAlias(T):
 
             return all([cls.isJsonCompatible(x) for x in T.__args__])
 
