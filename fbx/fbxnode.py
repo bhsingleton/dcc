@@ -1,5 +1,6 @@
 from abc import abstractmethod
-from dcc import fnnode
+from enum import IntEnum
+from dcc import fnnode, fnlayer
 from dcc.fbx import fbxobject
 
 import logging
@@ -52,6 +53,16 @@ class FbxNode(fbxobject.FbxObject):
 
         return self.name.split('|')[-1].split(':')[-1]
 
+    @abstractmethod
+    def icon(self):
+        """
+        Returns the icon resource for this node.
+
+        :rtype: str
+        """
+
+        pass
+
     def exists(self):
         """
         Method used to check if this weak-reference exists in the scene file.
@@ -103,34 +114,6 @@ class FbxNode(fbxobject.FbxObject):
     # endregion
 
 
-class FbxLayer(FbxNode):
-
-    # region Dunderscores
-    __slots__ = ('_fnLayer',)
-
-    def __init__(self, *args, **kwargs):
-
-        # Call parent method
-        #
-        super(FbxNode, self).__init__(*args, **kwargs)
-
-        # Declare private variables
-        #
-        #self._fnLayer = fnlayer.FnLayer()
-    # endregion
-
-    # region Methods
-    def exists(self):
-        pass
-
-    def select(self):
-        pass
-
-    def acceptsChild(self, obj):
-        pass
-    # endregion
-
-
 class FbxSkeleton(FbxNode):
     """
     Overload of FbxNode used to store skeleton properties.
@@ -138,6 +121,7 @@ class FbxSkeleton(FbxNode):
 
     # region Dunderscores
     __slots__ = (
+        '_includeDescendants',
         '_includeJoints',
         '_includeRegex',
         '_excludeJoints',
@@ -157,13 +141,35 @@ class FbxSkeleton(FbxNode):
 
         # Declare private variables
         #
-        self._includeJoints = []
+        self._includeDescendants = kwargs.get('includeDescendants', True)
+        self._includeJoints = kwargs.get('includeJoints', [])
         self._includeRegex = kwargs.get('includeRegex', '')
-        self._excludeJoints = []
+        self._excludeJoints = kwargs.get('excludeJoints', [])
         self._excludeRegex = kwargs.get('excludeRegex', '')
     # endregion
 
     # region Properties
+    @property
+    def includeDescendants(self):
+        """
+        Getter method that returns the include descendants flag.
+
+        :rtype: bool
+        """
+
+        return self._includeDescendants
+
+    @includeDescendants.setter
+    def includeDescendants(self, includeDescendants):
+        """
+        Setter method that updates the include descendants flag.
+
+        :type includeDescendants: bool
+        :rtype: None
+        """
+
+        self._includeDescendants = includeDescendants
+
     @property
     def includeJoints(self):
         """
@@ -250,6 +256,15 @@ class FbxSkeleton(FbxNode):
     # endregion
 
     # region Methods
+    def icon(self):
+        """
+        Returns the icon resource for this node.
+
+        :rtype: str
+        """
+
+        return ':dcc/icons/skeleton'
+
     def select(self):
         """
         Selects the associated node from the scene file.
@@ -299,7 +314,7 @@ class FbxSkeleton(FbxNode):
 
         fnNode = fnnode.FnNode()
 
-        for node in fnNode.iterNodesByRegex(self.includeRegex):
+        for node in fnNode.iterInstancesByRegex(self.includeRegex):
 
             fnNode.setObject(node)
             fnNode.select(replace=False)
@@ -335,7 +350,7 @@ class FbxSkeleton(FbxNode):
 
         fnNode = fnnode.FnNode()
 
-        for node in fnNode.iterNodesByRegex(self.excludeRegex):
+        for node in fnNode.iterInstancesByRegex(self.excludeRegex):
 
             fnNode.setObject(node)
             fnNode.deselect()
@@ -373,6 +388,15 @@ class FbxCamera(FbxNode):
     # endregion
 
     # region Methods
+    def icon(self):
+        """
+        Returns the icon resource for this node.
+
+        :rtype: str
+        """
+
+        return ':dcc/icons/camera.png'
+
     def acceptsChild(self, obj):
         """
         Evaluates whether the supplied object can be parented to this instance.
@@ -386,25 +410,115 @@ class FbxCamera(FbxNode):
     # endregion
 
 
+class FbxMeshComponent(IntEnum):
+
+    Unknown = -1
+    Vertex = 0
+    Edge = 1
+    Polygon = 3
+
+
 class FbxMesh(FbxNode):
     """
     Overload of FbxNode used to store mesh properties.
     """
 
     # region Dunderscores
-    __slots__ = ()
+    __slots__ = ('_extract', '_extractType', '_extractElements')
 
     def __init__(self, *args, **kwargs):
         """
         Private method called after a new instance has been created.
+
+        :rtype: None
         """
 
         # Call parent method
         #
         super(FbxMesh, self).__init__(*args, **kwargs)
+
+        # Declare private variables
+        #
+        self._extract = kwargs.get('extract', False)
+        self._extractType = kwargs.get('extractType', FbxMeshComponent.Polygon)
+        self._extractElements = kwargs.get('extractElements', [])
+    # endregion
+
+    # region Properties
+    @property
+    def extract(self):
+        """
+        Getter method that returns the extract flag.
+
+        :rtype: bool
+        """
+
+        return self._extract
+
+    @extract.setter
+    def extract(self, extract):
+        """
+        Setter method that updates the extract flag.
+
+        :type extract: bool
+        :rtype: None
+        """
+
+        self._extract = extract
+
+    @property
+    def extractType(self):
+        """
+        Getter method that returns the extraction type.
+
+        :rtype: FbxMeshComponent
+        """
+
+        return self._extractType
+
+    @extractType.setter
+    def extractType(self, extractType):
+        """
+        Setter method that updates the extraction type.
+
+        :type extractType: FbxMeshComponent
+        :rtype: None
+        """
+
+        self._extractType = extractType
+
+    @property
+    def extractElements(self):
+        """
+        Getter method that returns the mesh extraction elements.
+
+        :rtype: List[int]
+        """
+
+        return self._extractElements
+
+    @extractElements.setter
+    def extractElements(self, extractElements):
+        """
+        Setter method that updates the mesh extraction elements.
+
+        :type extractElements: List[int]
+        :rtype: None
+        """
+
+        self._extractElements = extractElements
     # endregion
 
     # region Methods
+    def icon(self):
+        """
+        Returns the icon resource for this node.
+
+        :rtype: str
+        """
+
+        return ':dcc/icons/mesh.png'
+
     def acceptsChild(self, obj):
         """
         Evaluates whether the supplied object can be parented to this instance.
@@ -429,6 +543,8 @@ class FbxMaterialSlot(FbxNode):
     def __init__(self, *args, **kwargs):
         """
         Private method called after a new instance has been created.
+
+        :rtype: None
         """
 
         # Call parent method
@@ -446,6 +562,15 @@ class FbxMaterialSlot(FbxNode):
         """
 
         return [x for x in self.parent.children if isinstance(x, FbxMaterialSlot)].index(self)
+
+    def icon(self):
+        """
+        Returns the icon resource for this node.
+
+        :rtype: str
+        """
+
+        return ':dcc/icons/material.png'
 
     def acceptsChild(self, obj):
         """

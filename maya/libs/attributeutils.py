@@ -200,6 +200,80 @@ def getAttributeTypeName(attribute):
         )
 
 
+def iterParentAttributes(attribute):
+    """
+    Returns a generator that yields all the parents of the supplied attribute.
+
+    :type attribute: om.MObject
+    :rtype: iter
+    """
+
+    fnAttribute = om.MFnAttribute(attribute)
+    current = fnAttribute.parent
+
+    while not current.isNull():
+
+        yield current
+
+        fnAttribute.setObject(current)
+        current = fnAttribute.parent
+
+
+def traceAttribute(attribute):
+    """
+    Returns a generator that yields the all the attributes leading to the supplied attribute.
+
+    :type attribute: om.MObject
+    :rtype: iter
+    """
+
+    for attribute in reversed(list(iterParentAttributes(attribute))):
+
+        yield attribute
+
+    yield attribute
+
+
+def iterAttributes(dependNode):
+    """
+    Returns a generator that yields attributes.
+
+    :type dependNode: om.MObject
+    :rtype: iter
+    """
+
+    fnDependNode = om.MFnDependencyNode(dependNode)
+    numAttributes = fnDependNode.attributeCount()
+
+    for i in range(numAttributes):
+
+        yield fnDependNode.attribute(i)
+
+
+def iterAttributeNames(dependNode, shortNames=False):
+    """
+    Returns a generator that yields attribute names.
+
+    :type dependNode: om.MObject
+    :type shortNames: bool
+    :rtype: iter
+    """
+
+    fnAttribute = om.MFnAttribute()
+
+    for attribute in iterAttributes(dependNode):
+
+        fnAttribute.setObject(attribute)
+
+        if shortNames:
+
+            yield fnAttribute.shortName
+
+        else:
+
+            yield fnAttribute.name
+
+
 def iterEnums(obj):
     """
     Returns a generator that yields Maya enums pairs from the supplied object.

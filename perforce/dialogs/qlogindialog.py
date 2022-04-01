@@ -1,6 +1,5 @@
 import os
 import getpass
-import base64
 
 from PySide2 import QtCore, QtWidgets, QtGui
 
@@ -36,8 +35,6 @@ class QLoginDialog(QtWidgets.QDialog):
         #
         self._username = kwargs.get('username', '')
         self._port = kwargs.get('port', 'localhost:1666')
-        self._password = ''
-        self._rememberPassword = False
 
         # Build user interface
         #
@@ -74,7 +71,6 @@ class QLoginDialog(QtWidgets.QDialog):
         self.setObjectName('loginDialog')
         self.setWindowFlags(QtCore.Qt.Dialog)
         self.setMinimumSize(QtCore.QSize(600, 150))
-        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
         self.setWindowTitle('Perforce Password Required')
 
         # Create password widgets
@@ -174,27 +170,47 @@ class QLoginDialog(QtWidgets.QDialog):
 
         self._port = port
         self.invalidate()
+    # endregion
 
-    @property
+    # region Methods
     def password(self):
         """
-        Returns the entered password.
+        Returns the current password.
 
         :rtype: str
         """
 
-        return base64.b64decode(self._password).decode('utf-8')
+        return self.passwordLineEdit.text()
 
-    @property
+    def setPassword(self, password):
+        """
+        Updates the current password.
+
+        :type password: str
+        :rtype: None
+        """
+
+        self.passwordLineEdit.setText(password)
+
     def rememberPassword(self):
         """
-        Getter method that evaluates if the
+        Returns the remember-password flag.
+
+        :rtype: bool
         """
 
-        return self._rememberPassword
-    # endregion
+        return self.rememberPasswordCheckBox.isChecked()
 
-    # region Methods
+    def setRememberPassword(self, rememberPassword):
+        """
+        Updates the remember-password flag.
+
+        :type rememberPassword: bool
+        :rtype: None
+        """
+
+        self.rememberPasswordCheckBox.setChecked(rememberPassword)
+
     def invalidate(self):
         """
         Forces the dialog to re-concatenate its display text.
@@ -204,22 +220,4 @@ class QLoginDialog(QtWidgets.QDialog):
 
         text = 'A password is required for user "{username}" on server "{port}".'.format(username=self.username, port=self.port)
         self.usernameLabel.setText(text)
-    # endregion
-
-    # region Slots
-    def accept(self):
-        """
-        Hides the modal dialog and sets the result code to QDialogCode.Accepted.
-
-        :rtype: None
-        """
-
-        # Store encoded password
-        #
-        self._password = base64.b64encode(self.passwordLineEdit.text().encode('utf-8'))
-        self._rememberPassword = self.rememberPasswordCheckBox.isChecked()
-
-        # Call parent method
-        #
-        super(QLoginDialog, self).accept()
     # endregion

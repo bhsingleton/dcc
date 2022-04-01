@@ -9,6 +9,27 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
+def isNullOrEmpty(value):
+    """
+    Evaluates if the supplied value is null or empty.
+
+    :type value: Any
+    :rtype: bool
+    """
+
+    if hasattr(value, '__len__'):
+
+        return len(value) == 0
+
+    elif value is None:
+
+        return True
+
+    else:
+
+        raise TypeError('isNullOrEmpty() expects a sequence (%s given)!' % type(value).__name__)
+
+
 @commandpaneloverride.commandPanelOverride(mode='modify')
 def iterSelection(skin):
     """
@@ -91,7 +112,7 @@ def iterVertexWeights(skin, vertexIndices=None):
 
     # Inspect arguments
     #
-    if vertexIndices is None:
+    if isNullOrEmpty(vertexIndices):
 
         numVertices = pymxs.runtime.skinOps.getNumberVertices(skin)
         vertexIndices = range(1, numVertices + 1, 1)

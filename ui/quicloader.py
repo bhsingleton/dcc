@@ -55,8 +55,9 @@ class QUicLoader(QtUiTools.QUiLoader):
         """
 
         return self._instance
+    # endregion
 
-    @property
+    # region Methods
     def customWidgets(self):
         """
         Getter method that returns the custom widget collection.
@@ -65,9 +66,7 @@ class QUicLoader(QtUiTools.QUiLoader):
         """
 
         return self._customWidgets
-    # endregion
 
-    # region Methods
     def createWidget(self, className, parent=None, name=''):
         """
         Called for each widget defined in the .ui file.
@@ -82,28 +81,26 @@ class QUicLoader(QtUiTools.QUiLoader):
         # Check if this is top-level widget
         # If so then return the associated instance instead
         #
-        log.info('Creating widget: %s' % className)
+        log.debug('Creating widget: %s' % className)
 
         if parent is None and self.instance is not None:
 
             return self.instance
 
-        # Try and create widget from ui file
+        # Check if this is a builtin type
+        # If not then check if it's a custom widget
         #
-        try:
+        customWidgets = self.customWidgets()
 
-            # Check if this is a builtin type
-            # If not then check if it's a custom widget
-            #
-            if className in self.availableWidgets():
+        if className in self.availableWidgets():
 
-                return super(QUicLoader, self).createWidget(className, parent, name)
+            return super(QUicLoader, self).createWidget(className, parent, name)
 
-            else:
+        elif className in customWidgets:
 
-                return self.customWidgets[className](parent)
+            return customWidgets[className](parent)
 
-        except (TypeError, KeyError) as exception:
+        else:
 
-            raise Exception('createWidget() Unable to locate custom widget: %s' % className)
+            raise TypeError('createWidget() expects a valid widget (%s given)!' % className)
     # endregion

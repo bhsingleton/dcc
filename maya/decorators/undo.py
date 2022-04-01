@@ -1,6 +1,7 @@
-from maya import cmds as mc
-from six import string_types
+import maya.cmds as mc
+
 from functools import partial
+from dcc.decorators import abstractdecorator
 
 import logging
 logging.basicConfig()
@@ -8,12 +9,13 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-class Undo(object):
+class Undo(abstractdecorator.AbstractDecorator):
     """
     Base class used to manage undo chunks either as a decorator or with statement.
     """
 
-    __slots__ = ('_name', '_instance', '_owner', '_func')
+    # region Dunderscores
+    __slots__ = ('_name',)
 
     def __init__(self, *args, **kwargs):
         """
@@ -25,52 +27,11 @@ class Undo(object):
 
         # Call parent method
         #
-        super(Undo, self).__init__()
+        super(Undo, self).__init__(*args, **kwargs)
 
         # Declare public variables
         #
         self._name = kwargs.get('name')
-        self._instance = None
-        self._owner = None
-        self._func = None
-
-        # Inspect arguments
-        #
-        numArgs = len(args)
-
-        if numArgs == 1:
-
-            self._func = args[0]
-
-    def __get__(self, instance, owner):
-        """
-        Private method called whenever this object is accessed via attribute lookup.
-
-        :type instance: object
-        :type owner: type
-        :rtype: Undo
-        """
-
-        self._instance = instance
-        self._owner = owner
-
-        return self
-
-    def __call__(self, *args, **kwargs):
-        """
-        Private method that is called whenever this instance is evoked.
-
-        :type func: function
-        :rtype: function
-        """
-
-        # Execute order of operations
-        #
-        self.__enter__()
-        results = self.func(*args, **kwargs)
-        self.__exit__(None, None, None)
-
-        return results
 
     def __enter__(self, *args):
         """
@@ -92,7 +53,9 @@ class Undo(object):
         """
 
         mc.undoInfo(closeChunk=True)
+    # endregion
 
+    # region Properties
     @property
     def name(self):
         """
@@ -102,23 +65,7 @@ class Undo(object):
         """
 
         return self._name
-
-    @property
-    def func(self):
-        """
-        Getter method used to return the wrapped function.
-        If this is a descriptor then the function will be bound.
-
-        :rtype: function
-        """
-
-        if self._instance is not None:
-
-            return self._func.__get__(self._instance, self._owner)
-
-        else:
-
-            return self._func
+    # endregion
 
 
 def undo(*args, **kwargs):

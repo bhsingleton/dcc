@@ -2,6 +2,7 @@ import os
 import sys
 
 from PySide2 import QtWidgets, QtCore, QtGui
+from dcc import fnnotify
 from dcc.ui import quicwindow, qrollout, qdivider, qtimespinbox
 from dcc.fbx import fbxsequence
 
@@ -387,8 +388,9 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
         """
         Private method called after a new instance has been created.
 
-        :keyword parent: QtWidgets.QWidget
-        :keyword flags: QtCore.Qt.WindowFlags
+        :key parent: QtWidgets.QWidget
+        :key flags: QtCore.Qt.WindowFlags
+        :rtype: None
         """
 
         # Call parent method
@@ -401,6 +403,22 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
         self._currentAsset = None
         self._sequences = None
         self._currentSequence = None
+        self._fnNotify = fnnotify.FnNotify()
+        self._notifyId = None
+    # endregion
+
+    # region Methods
+    # endregion
+
+    # region Callbacks
+    def sceneChanged(self, *args, **kwargs):
+        """
+        Post file-open callback that invalidates the current asset.
+
+        :rtype: None
+        """
+
+        self.invalidateAsset()
     # endregion
 
     # region Events
@@ -416,6 +434,10 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
         #
         super(QFbxSequenceEditor, self).showEvent(event)
 
+        # Create post file-open notify
+        #
+        self._notifyId = self._fnNotify.addPostFileOpenNotify(self.sceneChanged)
+
     def closeEvent(self, event):
         """
         Event method called after the window has been closed.
@@ -427,6 +449,10 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
         # Call inherited method
         #
         super(QFbxSequenceEditor, self).closeEvent(event)
+
+        # Remove post file-open notify
+        #
+        self._fnNotify.removeNotify(self._notifyId)
     # endregion
 
     # region Slots

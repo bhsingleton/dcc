@@ -12,7 +12,9 @@ log.setLevel(logging.INFO)
 
 class FnReference(afnreference.AFnReference):
     """
-    Overload of AFnReference that implements the function set behavior for Maya references.
+    Overload of AFnReference that implements the function set behavior for 3ds Max references.
+    Fun fact: 3ds Max has been around for 25+ years now and they still can't get XRefs to work with rigs!
+    Money Saving Tip: You can save money by not using 3ds Max!
     """
 
     __slots__ = ()
@@ -56,14 +58,43 @@ class FnReference(afnreference.AFnReference):
         #
         super(FnReference, self).setObject(handle)
 
-    def namespace(self):
+    def name(self):
         """
-        Returns the namespace for this reference.
+        Returns the name of this object.
 
         :rtype: str
         """
 
         return ''
+
+    def setName(self, name):
+        """
+        Updates the name of this object.
+
+        :type name: str
+        :rtype: None
+        """
+
+        pass
+
+    def namespace(self):
+        """
+        Returns the namespace for this object.
+
+        :rtype: str
+        """
+
+        return ''
+
+    def setNamespace(self, namespace):
+        """
+        Updates the namespace for this object.
+
+        :type namespace: str
+        :rtype: None
+        """
+
+        pass
 
     def parent(self):
         """
@@ -91,7 +122,7 @@ class FnReference(afnreference.AFnReference):
         :rtype: None
         """
 
-        raise NotImplementedError('setParent() references cannot be re-parented!')
+        pass
 
     def iterChildren(self):
         """
@@ -223,7 +254,7 @@ class FnReference(afnreference.AFnReference):
         :rtype: object
         """
 
-        return pymxs.runtime.getAnimByHandle(handle)
+        return pymxs.runtime.objXRefMgr.findRecord(handle)
 
     @classmethod
     def getReferenceByUid(cls, uid, parentReference=None):

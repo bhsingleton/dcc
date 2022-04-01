@@ -332,12 +332,35 @@ def findControllerByType(node, controllerType, all=False):
             raise TypeError('findControllerByType() multiple controllers found!')
 
 
+def clearListController(controller):
+    """
+    Deletes all the controllers from the supplied list controller.
+    
+    :type controller: pymxs.MXSWrapperBase
+    :rtype: None
+    """
+    
+    # Redundancy check
+    #
+    if not isListController(controller):
+
+        return
+
+    # Iterate through controller list
+    #
+    listCount = controller.list.getCount()
+    
+    for i in range(listCount, 0, -1):
+        
+        controller.list.delete(i)
+    
+
 def isPropertyAnimatable(obj, name):
     """
     Evaluates if the supplied MXS object wrapper is animatable.
     Max will throw errors if the object isn't explicitly derived from MaxObject!
 
-    :type obj: pymxs.runtime.MXSWrapperBase
+    :type obj: pymxs.MXSWrapperBase
     :type name: pymxs.runtime.Name
     :rtype: bool
     """

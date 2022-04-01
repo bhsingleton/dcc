@@ -11,6 +11,27 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
+def isNullOrEmpty(value):
+    """
+    Evaluates if the supplied value is null or empty.
+
+    :type value: Any
+    :rtype: bool
+    """
+
+    if hasattr(value, '__len__'):
+
+        return len(value) == 0
+
+    elif value is None:
+
+        return True
+
+    else:
+
+        raise TypeError('isNullOrEmpty() expects a sequence (%s given)!' % type(value).__name__)
+
+
 def filePathToModulePath(filePath):
     """
     Converts a file path into a module path compatible with import statements.
@@ -55,7 +76,7 @@ def filePathToModulePath(filePath):
 
 def iterPackage(packagePath, forceReload=False):
     """
-    Generator method used to iterate through all of the modules from the given package folder.
+    Returns a generator that yields all the modules from the given package folder.
     If the supplied path does not exist then a type error will be raised!
     The level flag indicates the import operation: -1: best guess, 0: absolute, 1: relative
 
@@ -116,7 +137,7 @@ def iterPackage(packagePath, forceReload=False):
 
 def iterModule(module, includeAbstract=False, classFilter=object):
     """
-    Generator method used to iterate through all of the classes inside a module.
+    Returns a generator that yields all the classes inside a module.
     An optional subclass filter can be provided to ignore certain types.
 
     :type module: module
@@ -152,35 +173,52 @@ def iterModule(module, includeAbstract=False, classFilter=object):
             log.debug('Skipping %s class...' % key)
 
 
-def findClass(className, modulePath):
+def findClass(className, modulePath, locals=None, globals=None):
     """
     Returns the class associated with the given string.
     To improve the results be sure to provide a class name complete with module path.
 
     :type className: str
     :type modulePath: str
+    :type locals: dict
+    :type globals: dict
     :rtype: class
     """
 
-    # Check if string is valid
+    # Check if class name is valid
     #
-    if len(className) == 0:
+    if isNullOrEmpty(className):
 
         return None
 
     # Split string using delimiter
     #
-    if len(modulePath) == 0:
+    fromlist = modulePath.split('.', 1)
+    module = __import__(modulePath, locals=locals, globals=globals, fromlist=fromlist, level=0)
 
-        return globals().get(className, None)
+    return getattr(module, className)
 
-    else:
 
-        module = sys.modules.get(modulePath, None)
-        root = modulePath.split('.', 1)[0]
+def tryImport(path, default=None, locals=None, globals=None):
+    """
+    Tries to import the given module path.
+    If no module exists then the default value is returned instead.
 
-        if module is None:
+    :type path: str
+    :type default: Any
+    :type locals: dict
+    :type globals: dict
+    :rtype: module
+    """
 
-            module = __import__(modulePath, locals=locals(), globals=globals(), fromlist=[root], level=0)
+    # Try and import path
+    #
+    try:
 
-        return module.__dict__.get(className, None)
+        fromlist = path.split('.', 1)
+        return __import__(path, locals=locals, globals=globals, fromlist=fromlist, level=0)
+
+    except ImportError as exception:
+
+        log.info(exception)
+        return default

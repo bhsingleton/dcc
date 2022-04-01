@@ -3,7 +3,6 @@ import pymxs
 from six import string_types
 from dcc.abstract import afnlayer
 from dcc.max.libs import layerutils
-from dcc.decorators.validator import validator
 
 import logging
 logging.basicConfig()
@@ -13,7 +12,7 @@ log.setLevel(logging.INFO)
 
 class FnLayer(afnlayer.AFnLayer):
     """
-    Overload of AFnNode that implements the node interface for 3ds Max.
+    Overload of AFnLayer that defines the function set behavior for 3ds Max layers.
     """
 
     __slots__ = ()
@@ -55,7 +54,7 @@ class FnLayer(afnlayer.AFnLayer):
 
         elif isinstance(obj, pymxs.MXSWrapperBase):
 
-            super(FnLayer, self).setObject(obj.name)
+            self.setObject(obj.name)
 
         else:
 
@@ -71,7 +70,6 @@ class FnLayer(afnlayer.AFnLayer):
 
         return isinstance(obj, (str, pymxs.MXSWrapperBase))
 
-    @validator
     def name(self):
         """
         Returns the name of this layer.
@@ -81,7 +79,6 @@ class FnLayer(afnlayer.AFnLayer):
 
         return self.object().name
 
-    @validator
     def setName(self, name):
         """
         Updates the name of this layer.
@@ -92,7 +89,60 @@ class FnLayer(afnlayer.AFnLayer):
 
         self.object().setName(name)
 
-    @validator
+    def namespace(self):
+        """
+        Returns the namespace for this object.
+
+        :rtype: str
+        """
+
+        return ''
+
+    def setNamespace(self, namespace):
+        """
+        Updates the namespace for this object.
+
+        :type namespace: str
+        :rtype: None
+        """
+
+        pass
+
+    def parent(self):
+        """
+        Returns the parent of this node.
+
+        :rtype: pymxs.MXSWrapperBase
+        """
+
+        return self.object().getParent()
+
+    def setParent(self, parent):
+        """
+        Updates the parent of this node.
+
+        :type parent: pymxs.MXSWrapperBase
+        :rtype: None
+        """
+
+        self.object().setParent(parent)
+
+    def iterChildren(self):
+        """
+        Returns a generator that yields all the children from this node.
+
+        :rtype: iter
+        """
+
+        # Iterate through children
+        #
+        obj = self.object()
+        numChildren = obj.getNumChildren()
+
+        for i in range(1, numChildren + 1, 1):
+
+            yield obj.getChild(i)
+
     def visibility(self):
         """
         Returns the visibility state of this layer.
@@ -102,7 +152,6 @@ class FnLayer(afnlayer.AFnLayer):
 
         return self.object().visibility
 
-    @validator
     def setVisibility(self, visibility):
         """
         Updates the visibility state of this layer.
@@ -113,7 +162,6 @@ class FnLayer(afnlayer.AFnLayer):
 
         self.object().visibility = visibility
 
-    @validator
     def iterNodes(self):
         """
         Returns a generator that yields nodes from this layer.
@@ -123,7 +171,6 @@ class FnLayer(afnlayer.AFnLayer):
 
         return layerutils.iterNodesFromLayers(self.object())
 
-    @validator
     def addNodes(self, *nodes):
         """
         Adds the supplied nodes to this layer.
@@ -138,7 +185,6 @@ class FnLayer(afnlayer.AFnLayer):
 
             layer.addNode(node)
 
-    @validator
     def removeNodes(self, *nodes):
         """
         Removes the supplied nodes from this layer.

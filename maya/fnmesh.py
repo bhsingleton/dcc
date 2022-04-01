@@ -11,7 +11,7 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
+class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
     """
     Overload of AFnMesh used to interface with meshes in Maya.
     """
@@ -37,25 +37,6 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
         # Call parent method
         #
         super(FnMesh, self).setObject(obj)
-
-    def range(self, *args):
-        """
-        Returns a generator for yielding a range of mesh elements.
-
-        :rtype: iter
-        """
-
-        return range(*args)
-
-    def enumerate(self, elements):
-        """
-        Returns a generator for yielding local indices for global mesh elements.
-
-        :type elements: list[int]
-        :rtype: iter
-        """
-
-        return enumerate(elements)
 
     def triMesh(self):
         """

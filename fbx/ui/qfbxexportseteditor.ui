@@ -7,13 +7,13 @@
     <x>0</x>
     <y>0</y>
     <width>400</width>
-    <height>750</height>
+    <height>700</height>
    </rect>
   </property>
   <property name="minimumSize">
    <size>
     <width>400</width>
-    <height>750</height>
+    <height>700</height>
    </size>
   </property>
   <property name="windowTitle">
@@ -32,7 +32,13 @@
       <property name="title">
        <string>Asset:</string>
       </property>
-      <layout class="QVBoxLayout" name="verticalLayout_3">
+      <property name="alignment">
+       <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+      </property>
+      <property name="flat">
+       <bool>false</bool>
+      </property>
+      <layout class="QVBoxLayout" name="assetLayout">
        <item>
         <layout class="QHBoxLayout" name="assetNameLayout">
          <item>
@@ -83,10 +89,13 @@
              <height>24</height>
             </size>
            </property>
+           <property name="clearButtonEnabled">
+            <bool>true</bool>
+           </property>
           </widget>
          </item>
          <item>
-          <widget class="QPushButton" name="savePushButton">
+          <widget class="QPushButton" name="pushButton">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
              <horstretch>0</horstretch>
@@ -110,16 +119,16 @@
            </property>
            <property name="icon">
             <iconset resource="../../ui/resources.qrc">
-             <normaloff>:/dcc/icons/save_file.png</normaloff>:/dcc/icons/save_file.png</iconset>
+             <normaloff>:/dcc/icons/save_file.svg</normaloff>:/dcc/icons/save_file.svg</iconset>
            </property>
           </widget>
          </item>
         </layout>
        </item>
        <item>
-        <layout class="QHBoxLayout" name="projectPathLayout">
+        <layout class="QHBoxLayout" name="assetDirectoryLayout">
          <item>
-          <widget class="QLabel" name="projectPathLabel">
+          <widget class="QLabel" name="assetDirectoryLabel">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
              <horstretch>0</horstretch>
@@ -147,7 +156,7 @@
           </widget>
          </item>
          <item>
-          <widget class="QLineEdit" name="projectPathLineEdit">
+          <widget class="QLineEdit" name="assetDirectoryLineEdit">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
              <horstretch>0</horstretch>
@@ -167,12 +176,15 @@
             </size>
            </property>
            <property name="readOnly">
+            <bool>false</bool>
+           </property>
+           <property name="clearButtonEnabled">
             <bool>true</bool>
            </property>
           </widget>
          </item>
          <item>
-          <widget class="QPushButton" name="projectPathPushButton">
+          <widget class="QPushButton" name="assetDirectoryPushButton">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
              <horstretch>0</horstretch>
@@ -196,72 +208,8 @@
            </property>
            <property name="icon">
             <iconset resource="../../ui/resources.qrc">
-             <normaloff>:/dcc/icons/open_file.png</normaloff>:/dcc/icons/open_file.png</iconset>
+             <normaloff>:/dcc/icons/open_folder.svg</normaloff>:/dcc/icons/open_folder.svg</iconset>
            </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-       <item>
-        <layout class="QHBoxLayout" name="fileTypeLayout">
-         <item>
-          <widget class="QLabel" name="fileTypeLabel">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-             <horstretch>0</horstretch>
-             <verstretch>60</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="minimumSize">
-            <size>
-             <width>60</width>
-             <height>24</height>
-            </size>
-           </property>
-           <property name="maximumSize">
-            <size>
-             <width>16777215</width>
-             <height>24</height>
-            </size>
-           </property>
-           <property name="text">
-            <string>File Type:</string>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QComboBox" name="fileTypeComboBox">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="minimumSize">
-            <size>
-             <width>0</width>
-             <height>24</height>
-            </size>
-           </property>
-           <property name="maximumSize">
-            <size>
-             <width>16777215</width>
-             <height>24</height>
-            </size>
-           </property>
-           <item>
-            <property name="text">
-             <string>Binary</string>
-            </property>
-           </item>
-           <item>
-            <property name="text">
-             <string>ASCII</string>
-            </property>
-           </item>
           </widget>
          </item>
         </layout>
@@ -289,7 +237,7 @@
             </size>
            </property>
            <property name="text">
-            <string>FileVersion:</string>
+            <string>File Version:</string>
            </property>
            <property name="alignment">
             <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -382,9 +330,47 @@
       <property name="title">
        <string>Export Sets:</string>
       </property>
+      <property name="alignment">
+       <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+      </property>
+      <property name="flat">
+       <bool>false</bool>
+      </property>
       <layout class="QVBoxLayout" name="exportSetsLayout">
        <item>
         <layout class="QHBoxLayout" name="exportSetLayout">
+         <item>
+          <widget class="QPushButton" name="customScriptsPushButton">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>24</width>
+             <height>24</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>24</width>
+             <height>24</height>
+            </size>
+           </property>
+           <property name="toolTip">
+            <string>Edit custom scripts.</string>
+           </property>
+           <property name="text">
+            <string/>
+           </property>
+           <property name="icon">
+            <iconset resource="../../ui/resources.qrc">
+             <normaloff>:/dcc/icons/python.png</normaloff>:/dcc/icons/python.png</iconset>
+           </property>
+          </widget>
+         </item>
          <item>
           <widget class="QComboBox" name="exportSetComboBox">
            <property name="sizePolicy">
@@ -427,12 +413,15 @@
              <height>24</height>
             </size>
            </property>
+           <property name="toolTip">
+            <string>Create new export set.</string>
+           </property>
            <property name="text">
             <string/>
            </property>
            <property name="icon">
             <iconset resource="../../ui/resources.qrc">
-             <normaloff>:/dcc/icons/new_file.png</normaloff>:/dcc/icons/new_file.png</iconset>
+             <normaloff>:/dcc/icons/new_file.svg</normaloff>:/dcc/icons/new_file.svg</iconset>
            </property>
           </widget>
          </item>
@@ -456,12 +445,15 @@
              <height>24</height>
             </size>
            </property>
+           <property name="toolTip">
+            <string>Duplicate export set.</string>
+           </property>
            <property name="text">
             <string/>
            </property>
            <property name="icon">
             <iconset resource="../../ui/resources.qrc">
-             <normaloff>:/dcc/icons/copy_file.png</normaloff>:/dcc/icons/copy_file.png</iconset>
+             <normaloff>:/dcc/icons/copy_file.svg</normaloff>:/dcc/icons/copy_file.svg</iconset>
            </property>
           </widget>
          </item>
@@ -485,12 +477,15 @@
              <height>24</height>
             </size>
            </property>
+           <property name="toolTip">
+            <string>Rename export set.</string>
+           </property>
            <property name="text">
             <string/>
            </property>
            <property name="icon">
             <iconset resource="../../ui/resources.qrc">
-             <normaloff>:/dcc/icons/rename.png</normaloff>:/dcc/icons/rename.png</iconset>
+             <normaloff>:/dcc/icons/rename.svg</normaloff>:/dcc/icons/rename.svg</iconset>
            </property>
           </widget>
          </item>
@@ -514,12 +509,15 @@
              <height>24</height>
             </size>
            </property>
+           <property name="toolTip">
+            <string>Re-order export sets.</string>
+           </property>
            <property name="text">
             <string/>
            </property>
            <property name="icon">
             <iconset resource="../../ui/resources.qrc">
-             <normaloff>:/dcc/icons/reorder.png</normaloff>:/dcc/icons/reorder.png</iconset>
+             <normaloff>:/dcc/icons/reorder.svg</normaloff>:/dcc/icons/reorder.svg</iconset>
            </property>
           </widget>
          </item>
@@ -543,12 +541,15 @@
              <height>24</height>
             </size>
            </property>
+           <property name="toolTip">
+            <string>Delete export set.</string>
+           </property>
            <property name="text">
             <string/>
            </property>
            <property name="icon">
             <iconset resource="../../ui/resources.qrc">
-             <normaloff>:/dcc/icons/delete.png</normaloff>:/dcc/icons/delete.png</iconset>
+             <normaloff>:/dcc/icons/delete.svg</normaloff>:/dcc/icons/delete.svg</iconset>
            </property>
           </widget>
          </item>
@@ -556,11 +557,23 @@
        </item>
        <item>
         <widget class="QTreeView" name="exportSetTreeView">
+         <property name="contextMenuPolicy">
+          <enum>Qt::CustomContextMenu</enum>
+         </property>
+         <property name="autoFillBackground">
+          <bool>true</bool>
+         </property>
          <property name="styleSheet">
           <string notr="true">QTreeView::item { height: 24px; }</string>
          </property>
          <property name="horizontalScrollBarPolicy">
           <enum>Qt::ScrollBarAlwaysOff</enum>
+         </property>
+         <property name="editTriggers">
+          <set>QAbstractItemView::DoubleClicked</set>
+         </property>
+         <property name="dragEnabled">
+          <bool>true</bool>
          </property>
          <property name="dragDropMode">
           <enum>QAbstractItemView::InternalMove</enum>
@@ -571,58 +584,194 @@
          <property name="alternatingRowColors">
           <bool>true</bool>
          </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QPushButton" name="customScriptsPushButton">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
+         <property name="selectionMode">
+          <enum>QAbstractItemView::ContiguousSelection</enum>
          </property>
-         <property name="minimumSize">
-          <size>
-           <width>0</width>
-           <height>24</height>
-          </size>
+         <property name="selectionBehavior">
+          <enum>QAbstractItemView::SelectRows</enum>
          </property>
-         <property name="maximumSize">
-          <size>
-           <width>16777215</width>
-           <height>24</height>
-          </size>
+         <property name="uniformRowHeights">
+          <bool>true</bool>
          </property>
-         <property name="text">
-          <string>Edit Custom Scripts</string>
+         <property name="animated">
+          <bool>true</bool>
          </property>
-         <property name="icon">
-          <iconset resource="../../ui/resources.qrc">
-           <normaloff>:/dcc/icons/python.png</normaloff>:/dcc/icons/python.png</iconset>
+         <property name="expandsOnDoubleClick">
+          <bool>false</bool>
          </property>
         </widget>
        </item>
        <item>
-        <widget class="QFrame" name="frame_3">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
-         <property name="frameShape">
-          <enum>QFrame::HLine</enum>
-         </property>
-         <property name="frameShadow">
-          <enum>QFrame::Sunken</enum>
-         </property>
-         <property name="lineWidth">
-          <number>2</number>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <layout class="QGridLayout" name="transformSettingsLayout">
+        <layout class="QGridLayout" name="exportSettingsLayout">
+         <item row="3" column="0">
+          <widget class="QCheckBox" name="colorSetsCheckBox">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>24</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>16777215</width>
+             <height>24</height>
+            </size>
+           </property>
+           <property name="whatsThis">
+            <string>includeColorSets</string>
+           </property>
+           <property name="text">
+            <string>Color Sets</string>
+           </property>
+           <attribute name="buttonGroup">
+            <string notr="true">meshSettingsCheckBoxGroup</string>
+           </attribute>
+          </widget>
+         </item>
+         <item row="5" column="0">
+          <widget class="QCheckBox" name="skinsCheckBox">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>24</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>16777215</width>
+             <height>24</height>
+            </size>
+           </property>
+           <property name="whatsThis">
+            <string>includeSkins</string>
+           </property>
+           <property name="text">
+            <string>Skins</string>
+           </property>
+           <attribute name="buttonGroup">
+            <string notr="true">meshSettingsCheckBoxGroup</string>
+           </attribute>
+          </widget>
+         </item>
+         <item row="5" column="1">
+          <widget class="QCheckBox" name="blendshapesCheckBox">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>24</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>16777215</width>
+             <height>24</height>
+            </size>
+           </property>
+           <property name="whatsThis">
+            <string>includeBlendshapes</string>
+           </property>
+           <property name="text">
+            <string>Blendshapes</string>
+           </property>
+           <attribute name="buttonGroup">
+            <string notr="true">meshSettingsCheckBoxGroup</string>
+           </attribute>
+          </widget>
+         </item>
+         <item row="3" column="1">
+          <widget class="QCheckBox" name="tangentsAndBinormalsCheckBox">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>24</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>16777215</width>
+             <height>24</height>
+            </size>
+           </property>
+           <property name="whatsThis">
+            <string>includeTangentsAndBinormals</string>
+           </property>
+           <property name="text">
+            <string>Tangents and Binormals</string>
+           </property>
+           <attribute name="buttonGroup">
+            <string notr="true">meshSettingsCheckBoxGroup</string>
+           </attribute>
+          </widget>
+         </item>
+         <item row="2" column="0">
+          <widget class="QCheckBox" name="normalsCheckBox">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>24</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>16777215</width>
+             <height>24</height>
+            </size>
+           </property>
+           <property name="whatsThis">
+            <string>includeNormals</string>
+           </property>
+           <property name="text">
+            <string>Normals</string>
+           </property>
+           <attribute name="buttonGroup">
+            <string notr="true">meshSettingsCheckBoxGroup</string>
+           </attribute>
+          </widget>
+         </item>
+         <item row="2" column="1">
+          <widget class="QCheckBox" name="smoothingsCheckBox">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>24</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>16777215</width>
+             <height>24</height>
+            </size>
+           </property>
+           <property name="whatsThis">
+            <string>includeSmoothings</string>
+           </property>
+           <property name="text">
+            <string>Smoothings</string>
+           </property>
+           <attribute name="buttonGroup">
+            <string notr="true">meshSettingsCheckBoxGroup</string>
+           </attribute>
+          </widget>
+         </item>
+         <item row="4" column="0" colspan="2">
+          <widget class="QFrame" name="frame_2">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="frameShape">
+            <enum>QFrame::HLine</enum>
+           </property>
+           <property name="frameShadow">
+            <enum>QFrame::Sunken</enum>
+           </property>
+           <property name="lineWidth">
+            <number>2</number>
+           </property>
+          </widget>
+         </item>
          <item row="0" column="0">
           <layout class="QHBoxLayout" name="scaleLayout">
            <item>
@@ -709,187 +858,37 @@
              <height>24</height>
             </size>
            </property>
+           <property name="whatsThis">
+            <string>moveToOrigin</string>
+           </property>
            <property name="text">
             <string>Move to Origin</string>
            </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-       <item>
-        <widget class="QFrame" name="frame">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
-         <property name="frameShape">
-          <enum>QFrame::HLine</enum>
-         </property>
-         <property name="frameShadow">
-          <enum>QFrame::Sunken</enum>
-         </property>
-         <property name="lineWidth">
-          <number>2</number>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <layout class="QGridLayout" name="staticMeshLayout">
-         <item row="0" column="0">
-          <widget class="QCheckBox" name="normalsCheckBox">
-           <property name="minimumSize">
-            <size>
-             <width>0</width>
-             <height>24</height>
-            </size>
-           </property>
-           <property name="maximumSize">
-            <size>
-             <width>16777215</width>
-             <height>24</height>
-            </size>
-           </property>
-           <property name="text">
-            <string>Normals</string>
+           <property name="checked">
+            <bool>false</bool>
            </property>
            <attribute name="buttonGroup">
-            <string notr="true">staticMeshCheckBoxGroup</string>
+            <string notr="true">meshSettingsCheckBoxGroup</string>
            </attribute>
           </widget>
          </item>
-         <item row="0" column="1">
-          <widget class="QCheckBox" name="smoothingsCheckBox">
-           <property name="minimumSize">
-            <size>
-             <width>0</width>
-             <height>24</height>
-            </size>
+         <item row="1" column="0" colspan="2">
+          <widget class="QFrame" name="frame_1">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
            </property>
-           <property name="maximumSize">
-            <size>
-             <width>16777215</width>
-             <height>24</height>
-            </size>
+           <property name="frameShape">
+            <enum>QFrame::HLine</enum>
            </property>
-           <property name="text">
-            <string>Smoothings</string>
+           <property name="frameShadow">
+            <enum>QFrame::Sunken</enum>
            </property>
-           <attribute name="buttonGroup">
-            <string notr="true">staticMeshCheckBoxGroup</string>
-           </attribute>
-          </widget>
-         </item>
-         <item row="1" column="0">
-          <widget class="QCheckBox" name="colorSetsCheckBox">
-           <property name="minimumSize">
-            <size>
-             <width>0</width>
-             <height>24</height>
-            </size>
+           <property name="lineWidth">
+            <number>2</number>
            </property>
-           <property name="maximumSize">
-            <size>
-             <width>16777215</width>
-             <height>24</height>
-            </size>
-           </property>
-           <property name="text">
-            <string>Color Sets</string>
-           </property>
-           <attribute name="buttonGroup">
-            <string notr="true">staticMeshCheckBoxGroup</string>
-           </attribute>
-          </widget>
-         </item>
-         <item row="1" column="1">
-          <widget class="QCheckBox" name="tangentsAndBinormalsCheckBox">
-           <property name="minimumSize">
-            <size>
-             <width>0</width>
-             <height>24</height>
-            </size>
-           </property>
-           <property name="maximumSize">
-            <size>
-             <width>16777215</width>
-             <height>24</height>
-            </size>
-           </property>
-           <property name="text">
-            <string>Tangents and Binormals</string>
-           </property>
-           <attribute name="buttonGroup">
-            <string notr="true">staticMeshCheckBoxGroup</string>
-           </attribute>
-          </widget>
-         </item>
-        </layout>
-       </item>
-       <item>
-        <widget class="QFrame" name="frame_2">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
-         <property name="frameShape">
-          <enum>QFrame::HLine</enum>
-         </property>
-         <property name="frameShadow">
-          <enum>QFrame::Sunken</enum>
-         </property>
-         <property name="lineWidth">
-          <number>2</number>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <layout class="QGridLayout" name="skeletalMeshLayout">
-         <item row="0" column="0">
-          <widget class="QCheckBox" name="skinsCheckBox">
-           <property name="minimumSize">
-            <size>
-             <width>0</width>
-             <height>24</height>
-            </size>
-           </property>
-           <property name="maximumSize">
-            <size>
-             <width>16777215</width>
-             <height>24</height>
-            </size>
-           </property>
-           <property name="text">
-            <string>Skins</string>
-           </property>
-           <attribute name="buttonGroup">
-            <string notr="true">skeletalMeshCheckBoxGroup</string>
-           </attribute>
-          </widget>
-         </item>
-         <item row="0" column="1">
-          <widget class="QCheckBox" name="blendshapesCheckBox">
-           <property name="minimumSize">
-            <size>
-             <width>0</width>
-             <height>24</height>
-            </size>
-           </property>
-           <property name="maximumSize">
-            <size>
-             <width>16777215</width>
-             <height>24</height>
-            </size>
-           </property>
-           <property name="text">
-            <string>Blendshapes</string>
-           </property>
-           <attribute name="buttonGroup">
-            <string notr="true">skeletalMeshCheckBoxGroup</string>
-           </attribute>
           </widget>
          </item>
         </layout>
@@ -898,7 +897,7 @@
      </widget>
     </item>
     <item>
-     <widget class="QGroupBox" name="exportPathGroupBox">
+     <widget class="QGroupBox" name="exportGroupBox">
       <property name="sizePolicy">
        <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
         <horstretch>0</horstretch>
@@ -906,9 +905,15 @@
        </sizepolicy>
       </property>
       <property name="title">
-       <string>Export Path:</string>
+       <string>Export:</string>
       </property>
-      <layout class="QVBoxLayout" name="verticalLayout_2">
+      <property name="alignment">
+       <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+      </property>
+      <property name="flat">
+       <bool>false</bool>
+      </property>
+      <layout class="QVBoxLayout" name="exportLayout">
        <item>
         <layout class="QHBoxLayout" name="exportDirectoryLayout">
          <item>
@@ -962,6 +967,9 @@
            <property name="readOnly">
             <bool>false</bool>
            </property>
+           <property name="clearButtonEnabled">
+            <bool>true</bool>
+           </property>
           </widget>
          </item>
          <item>
@@ -989,7 +997,7 @@
            </property>
            <property name="icon">
             <iconset resource="../../ui/resources.qrc">
-             <normaloff>:/dcc/icons/open_file.png</normaloff>:/dcc/icons/open_file.png</iconset>
+             <normaloff>:/dcc/icons/open_folder.svg</normaloff>:/dcc/icons/open_folder.svg</iconset>
            </property>
           </widget>
          </item>
@@ -1052,77 +1060,175 @@
          </item>
         </layout>
        </item>
+       <item>
+        <layout class="QHBoxLayout" name="buttonLayout">
+         <item>
+          <widget class="QPushButton" name="exportPushButton">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>24</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>16777215</width>
+             <height>24</height>
+            </size>
+           </property>
+           <property name="text">
+            <string>Export</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="exportAllPushButton">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>24</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>16777215</width>
+             <height>24</height>
+            </size>
+           </property>
+           <property name="text">
+            <string>Export All</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
       </layout>
      </widget>
     </item>
-    <item>
-     <layout class="QHBoxLayout" name="buttonLayout">
-      <item>
-       <widget class="QPushButton" name="exportPushButton">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="minimumSize">
-         <size>
-          <width>0</width>
-          <height>24</height>
-         </size>
-        </property>
-        <property name="maximumSize">
-         <size>
-          <width>16777215</width>
-          <height>24</height>
-         </size>
-        </property>
-        <property name="text">
-         <string>Export</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="exportAllPushButton">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="minimumSize">
-         <size>
-          <width>0</width>
-          <height>24</height>
-         </size>
-        </property>
-        <property name="maximumSize">
-         <size>
-          <width>16777215</width>
-          <height>24</height>
-         </size>
-        </property>
-        <property name="text">
-         <string>Export All</string>
-        </property>
-       </widget>
-      </item>
-     </layout>
-    </item>
    </layout>
   </widget>
+  <widget class="QMenuBar" name="menuBar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>400</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="fileMenu">
+    <property name="title">
+     <string>&amp;File</string>
+    </property>
+    <addaction name="saveAction"/>
+    <addaction name="separator"/>
+    <addaction name="importAction"/>
+    <addaction name="exportAction"/>
+   </widget>
+   <widget class="QMenu" name="helpMenu">
+    <property name="title">
+     <string>&amp;Help</string>
+    </property>
+    <addaction name="usingFbxExportSetEditorAction"/>
+   </widget>
+   <widget class="QMenu" name="settingsMenu">
+    <property name="title">
+     <string>&amp;Settings</string>
+    </property>
+    <addaction name="separator"/>
+    <addaction name="binaryAction"/>
+    <addaction name="asciiAction"/>
+    <addaction name="separator"/>
+    <addaction name="generateLogsAction"/>
+   </widget>
+   <addaction name="fileMenu"/>
+   <addaction name="settingsMenu"/>
+   <addaction name="helpMenu"/>
+  </widget>
+  <action name="usingFbxExportSetEditorAction">
+   <property name="text">
+    <string>&amp;Using Fbx Export Set Editor</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+H</string>
+   </property>
+  </action>
+  <action name="saveAction">
+   <property name="icon">
+    <iconset resource="../../ui/resources.qrc">
+     <normaloff>:/dcc/icons/save_file.svg</normaloff>:/dcc/icons/save_file.svg</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Save</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+S</string>
+   </property>
+  </action>
+  <action name="exportAction">
+   <property name="icon">
+    <iconset resource="../../ui/resources.qrc">
+     <normaloff>:/dcc/icons/export_file.svg</normaloff>:/dcc/icons/export_file.svg</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Export</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+E</string>
+   </property>
+  </action>
+  <action name="importAction">
+   <property name="icon">
+    <iconset resource="../../ui/resources.qrc">
+     <normaloff>:/dcc/icons/import_file.svg</normaloff>:/dcc/icons/import_file.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Import</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+I</string>
+   </property>
+  </action>
+  <action name="binaryAction">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Binary</string>
+   </property>
+  </action>
+  <action name="asciiAction">
+   <property name="text">
+    <string>ASCII</string>
+   </property>
+  </action>
+  <action name="generateLogsAction">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>&amp;Generate Logs</string>
+   </property>
+  </action>
  </widget>
  <resources>
   <include location="../../ui/resources.qrc"/>
  </resources>
  <connections/>
  <buttongroups>
-  <buttongroup name="skeletalMeshCheckBoxGroup">
-   <property name="exclusive">
-    <bool>false</bool>
-   </property>
-  </buttongroup>
-  <buttongroup name="staticMeshCheckBoxGroup">
+  <buttongroup name="meshSettingsCheckBoxGroup">
    <property name="exclusive">
     <bool>false</bool>
    </property>

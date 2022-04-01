@@ -82,7 +82,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         :rtype: None
         """
 
-        self.setActiveSelection([self.shape()], replace=replace)
+        self.scene.setActiveSelection([self.shape()], replace=replace)
         self.selectModifier()
 
     def selectModifier(self):
@@ -131,7 +131,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         :rtype: bool
         """
 
-        return self.isSelected() or self.shape() in self.getActiveSelection()
+        return self.isSelected() or self.shape() in self.scene.getActiveSelection()
 
     def iterVertices(self):
         """
@@ -272,6 +272,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
         pymxs.runtime.skinOps.selectBone(self.object(), influenceId)
 
+    @commandpaneloverride.commandPanelOverride(mode='modify')
     def iterVertexWeights(self, *args):
         """
         Returns a generator that yields weights for the supplied vertex indices.
@@ -336,3 +337,14 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         for i in range(numPoints):
 
             pymxs.runtime.polyOp.setVert(intermediateObject, i + 1, points[i])
+
+    @classmethod
+    def iterInstances(cls):
+        """
+        Returns a generator that yields texture instances.
+
+        :rtype: iter
+        """
+
+        return iter(pymxs.runtime.getClassInstances(pymxs.runtime.Skin))
+

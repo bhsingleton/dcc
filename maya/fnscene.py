@@ -1,7 +1,9 @@
 import os
 
 from maya import cmds as mc
+from maya.api import OpenMaya as om
 from dcc.abstract import afnscene
+from dcc.maya.libs import dagutils
 
 import logging
 logging.basicConfig()
@@ -36,7 +38,7 @@ class FnScene(afnscene.AFnScene):
 
     def isBatchMode(self):
         """
-        Evaluates if the the scene is running in batch mode.
+        Evaluates if the scene is running in batch mode.
 
         :rtype: bool
         """
@@ -160,80 +162,6 @@ class FnScene(afnscene.AFnScene):
 
         mc.autoKeyframe(state=False)
 
-    def iterTextures(self, absolute=False):
-        """
-        Returns a generator that yields all texture paths inside the scene.
-        An optional keyword argument can be used to convert paths to absolute.
-
-        :type absolute: bool
-        :rtype: iter
-        """
-
-        # Iterate through file nodes
-        #
-        for nodeName in mc.ls(type='file'):
-
-            # Check if path is valid
-            #
-            texturePath = mc.getAttr('%s.fileTextureName' % nodeName)
-
-            if self.isNullOrEmpty(texturePath):
-
-                continue
-
-            # Check if absolute path should be yielded
-            #
-            if absolute:
-
-                yield self.expandPath(texturePath)
-
-            else:
-
-                yield os.path.normpath(texturePath)
-
-    def updateTextures(self, updates):
-        """
-        Applies all of the texture path updates to the associated file nodes.
-        Each key-value pair should consist of the original and updates texture paths!
-
-        :type updates: Dict[str, str]
-        :rtype: None
-        """
-
-        # Iterate through file nodes
-        #
-        for nodeName in mc.ls(type='file'):
-
-            # Check if path is valid
-            #
-            texturePath = mc.getAttr('%s.fileTextureName' % nodeName)
-
-            if self.isNullOrEmpty(texturePath):
-
-                continue
-
-            # Check if file node has an update
-            #
-            oldPath = os.path.normpath(texturePath)
-            newPath = updates.get(oldPath)
-
-            if newPath is not None:
-
-                mc.setAttr('%s.fileTextureName' % nodeName, newPath, type='string')
-
-    def reloadTextures(self):
-        """
-        Forces all of the texture nodes to reload.
-
-        :rtype: None
-        """
-
-        # Iterate through file nodes
-        #
-        for nodeName in mc.ls(type='file'):
-
-            mc.dgdirty('%s.fileTextureName' % nodeName)
-
     def iterFileProperties(self):
         """
         Returns a generator that yields file properties as key-value pairs.
@@ -247,18 +175,6 @@ class FnScene(afnscene.AFnScene):
         for i in range(0, numProperties, 2):
 
             yield properties[i], properties[i + 1].encode('ascii').decode('unicode-escape')
-
-    def getFileProperty(self, key, default=None):
-        """
-        Returns a file property value.
-        An optional default value can be provided if no key is found.
-
-        :type key: str
-        :type default: object
-        :rtype: Union[str, int, float, bool]
-        """
-
-        return self.fileProperties().get(key, default)
 
     def setFileProperty(self, key, value):
         """
@@ -298,3 +214,87 @@ class FnScene(afnscene.AFnScene):
         """
 
         mc.file(modified=False)
+
+    def iterNodes(self):
+        """
+        Returns a generator that yields all nodes from the scene.
+
+        :rtype: iter
+        """
+
+        return dagutils.iterNodes(apiType=om.MFn.kDagNode)
+
+    def getActiveSelection(self):
+        """
+        Returns the active selection.
+
+        :rtype: List[om.MObject]
+        """
+
+        selection = om.MGlobal.getActiveSelectionList()  # type: om.MSelectionList
+        selectionCount = selection.length()
+
+        return [selection.getDependNode(i) for i in range(selectionCount)]
+
+    def setActiveSelection(self, selection, replace=True):
+        """
+        Updates the active selection.
+
+        :type selection: list
+        :type replace: bool
+        :rtype: None
+        """
+
+        # Check if selection should be replaced
+        #
+        if not replace:
+
+            selection.extend(self.getActiveSelection())
+
+        # Update selection global
+        #
+        om.MGlobal.setActiveSelectionList(selection)
+
+    def clearActiveSelection(self):
+        """
+        Clears the active selection.
+
+        :rtype: None
+        """
+
+        om.MGlobal.clearSelectionList()
+
+    def iterActiveComponentSelection(self):
+        """
+        Returns a generator that yields all selected components
+
+        :rtype: iter
+        """
+
+        # Access the Maya global selection list
+        #
+        selection = om.MGlobal.getActiveSelectionList()
+        numSelected = selection.length()
+
+        if numSelected == 0:
+
+            return
+
+        # Iterate through selection
+        #
+        iterSelection = om.MItSelectionList(selection, om.MFn.kComponent)
+
+        while not iterSelection.isDone():
+
+            # Check if items are valid
+            #
+            dagPath, component = iterSelection.getComponent()
+
+            if dagPath.isValid() and not component.isNull():
+
+                yield dagPath, component
+
+            # Go to next selection
+            #
+            iterSelection.next()
+

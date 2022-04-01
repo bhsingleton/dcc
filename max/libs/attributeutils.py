@@ -1,12 +1,17 @@
 import pymxs
 import os
 
+from itertools import chain
+from collections import namedtuple
 from dcc.max.libs import modifierutils
 
 import logging
 logging.basicConfig()
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
+
+
+ParamBlockDefinition = namedtuple('ParamBlockDefinition', ['name', 'id', 'ref_no', 'keyword_params', 'parameters'])
 
 
 def maxscriptToString(filePath):
@@ -61,6 +66,16 @@ def loadDefinition(filePath):
     return pymxs.runtime.execute(maxscriptToString(filePath))
 
 
+def iterSceneDefinitions():
+    """
+    Returns a generator that yields attribute definitions from the scene.
+
+    :rtype: iter
+    """
+
+    return iter(pymxs.runtime.CustAttributes.getSceneDefs())
+
+
 def iterDefinitions(obj, baseObject=True):
     """
     Returns a generator that yields attribute definitions from the supplied node.
@@ -97,7 +112,7 @@ def doesSceneHaveDefinition(name):
     :rtype: bool
     """
 
-    return len([x for x in pymxs.runtime.CustAttributes.getSceneDefs() if x.name == name]) > 0
+    return len([x for x in iterSceneDefinitions() if x.name == name]) > 0
 
 
 def getSceneDefinitionByName(name):
@@ -110,7 +125,7 @@ def getSceneDefinitionByName(name):
     :rtype: pymxs.runtime.AttributeDef
     """
 
-    found = [x for x in pymxs.runtime.CustAttributes.getSceneDefs() if x.name == name]
+    found = [x for x in iterSceneDefinitions() if x.name == name]
     numFound = len(found)
 
     if found == 0:
@@ -161,6 +176,31 @@ def iterNodesFromDefinition(definition):
                 continue
 
 
+def iterParameterBlockDefinitions(definition):
+    """
+    Returns a generator that yields parameter block definitions.
+    These parameters are yielded as: {paramName}, {paramSpecs}
+
+    :rtype: iter
+    """
+
+    # Iterate through parameter blocks
+    #
+    paramBlocks = pymxs.runtime.CustAttributes.getPBlockDefs(definition)
+
+    for paramBlock in paramBlocks:
+
+        # Un-pack parameter block
+        #
+        name, index, ref_no, keyword_params = paramBlock[0], paramBlock[1], paramBlock[2], paramBlock[3]
+        log.debug('Param Block:: {"name": %s, "id": %s, "ref_no": %s, "keyword_params": %s}' % (name, index, ref_no, keyword_params))
+
+        numItems = len(paramBlock)
+        parameters = [(paramBlock[i][0], paramBlock[i][0]) for i in range(4, numItems, 1)]
+
+        yield ParamBlockDefinition(name=name, id=index, ref_no=ref_no, keyword_params=keyword_params, parameters=parameters)
+
+
 def doesDefinitionHaveParameter(definition, name):
     """
     Evaluates if the supplied definition has a parameter with the given name.
@@ -170,7 +210,30 @@ def doesDefinitionHaveParameter(definition, name):
     :rtype: bool
     """
 
-    return any(str(paramName) == name for (paramName, paramSpecs) in pymxs.runtime.CustAttributes.getPBlockDefs(definition))
+    return any(chain(*[[str(parameter.name) == name for parameter in paramBlock.parameters] for paramBlock in iterParameterBlockDefinitions(definition)]))
+
+
+def iterDefinitionsWithParameter(name):
+    """
+    Returns a generator that yields definitions with the specified parameter.
+
+    :type name: str
+    :rtype: iter
+    """
+
+    # Iterate through scene definitions
+    #
+    for definition in iterSceneDefinitions():
+
+        # Check if definition has parameter
+        #
+        if doesDefinitionHaveParameter(definition, name):
+
+            yield definition
+
+        else:
+
+            continue
 
 
 def getNodesWithParameter(name):
@@ -181,41 +244,36 @@ def getNodesWithParameter(name):
     :rtype: List[pymxs.MXSWrapperBase]
     """
 
-    # Iterate through scene definitions
-    #
-    sceneDefinitions = pymxs.runtime.CustAttributes.getSceneDefs()
-    nodes = []
-
-    for definition in sceneDefinitions:
-
-        # Check if definition has parameter
-        #
-        if doesDefinitionHaveParameter(definition, name):
-
-            dependentNodes = list(iterNodesFromDefinition(definition))
-            nodes.extend(dependentNodes)
-
-        else:
-
-            continue
-
-    return list(set(nodes))
+    return list(chain(*[list(iterNodesFromDefinition(x)) for x in iterDefinitionsWithParameter(name)]))
 
 
 def clearDay1RefCA():
     """
-    Removes all of the day1RefCA definitions from the scene.
+    Removes all the day1RefCA definitions from the scene.
 
     :rtype: None
     """
 
-    sceneDefinitions = pymxs.runtime.CustAttributes.getSceneDefs()
+    # Iterate through scene definitions
+    #
+    for definition in iterSceneDefinitions():
 
-    for definition in reversed(sceneDefinitions):
+        # Check if this is a day1RefCA definition
+        #
+        name = str(definition.name)
 
-        if definition.name == 'day1RefCA':
+        if name != 'day1RefCA':
 
-            log.info('Deleting attribute defintion: %s' % definition)
+            continue
+
+        # Check if definition is in use
+        #
+        nodes = list(iterNodesFromDefinition(definition))
+        numNodes = len(nodes)
+
+        if numNodes == 0:
+
+            log.info('Deleting attribute definition: %s' % definition)
             pymxs.runtime.CustAttributes.deleteDef(definition)
 
         else:

@@ -30,28 +30,54 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
     Components = IntEnum('Components', {'Unknown': -1, 'Vertex': 0, 'Edge': 1, 'Face': 2})
     Hit = namedtuple('Hit', ['hitIndex', 'hitPoint', 'hitBary'])
 
-    @abstractmethod
     def range(self, *args):
         """
         Returns a generator for yielding a range of mesh elements.
-        This is useful for programs that don't utilize zero-based arrays.
+        This helps support programs that don't utilize zero-based arrays.
 
         :rtype: iter
         """
 
-        pass
+        # Inspect arguments
+        #
+        numArgs = len(args)
+        start, stop, step = self.arrayIndexType, self.arrayIndexType, 1
 
-    @abstractmethod
+        if numArgs == 1:
+
+            stop = args[0] + self.arrayIndexType
+
+        elif numArgs == 2:
+
+            start = args[0]
+            stop = args[1] + self.arrayIndexType
+
+        elif numArgs == 3:
+
+            start = args[0]
+            stop = args[1] + self.arrayIndexType
+            step = args[2]
+
+        else:
+
+            raise TypeError('range() expects at least 1 argument (%s given)!' % numArgs)
+
+        return range(start, stop, step)
+
     def enumerate(self, elements):
         """
         Returns a generator for yielding local indices for global mesh elements.
-        This is useful for programs that don't utilize zero-based arrays.
+        This helps support programs that don't utilize zero-based arrays.
 
-        :type elements: list[int]
+        :type elements: List[int]
         :rtype: iter
         """
 
-        pass
+        numElements = len(elements)
+
+        for i in range(numElements):
+
+            yield (i + self.arrayIndexType), elements[i]
 
     @abstractmethod
     def triMesh(self):
@@ -263,7 +289,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
         Returns a list of face-triangle indices.
 
-        :rtype: list[list[int]]
+        :rtype: List[List[int]]
         """
 
         return list(self.iterFaceTriangleIndices(*args))
@@ -272,7 +298,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
         Returns a reverse lookup map for triangle-face indices.
 
-        :rtype: dict[int:int]
+        :rtype: Dict[int, int]
         """
 
         # Iterate through face-triangle indices
@@ -305,7 +331,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
         Returns a list of face centers.
 
-        :rtype: list[tuple[float, float, float]]
+        :rtype: Sequence[List[float, float, float]]
         """
 
         return list(self.iterFaceCenters(*args))
@@ -325,7 +351,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
         Returns a list of face normals.
 
-        :rtype: list[tuple[float, float, float]]
+        :rtype: Sequence[List[float, float, float]]
         """
 
         return list(self.iterFaceNormals(*args))
@@ -335,8 +361,8 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
         Returns the centroid of the given triangle.
 
-        :type points: list[tuple[float, float, float]]
-        :rtype: list[float, float, float]
+        :type points: Sequence[List[float, float, float]]
+        :rtype: List[float, float, float]
         """
 
         return (sum(numpy.array(points)) / len(points)).tolist()
@@ -704,10 +730,10 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         triangleIndices = list(chain(*faceTriangleIndices))
         triangleMap = dict(enumerate(triangleIndices))
 
-        fnTriMesh = self.__class__(self.triMesh())
-        triangleCentroids = fnTriMesh.faceCenters(*triangleIndices)
+        triMesh = self.__class__(self.triMesh())
+        triangleCentroids = triMesh.faceCenters(*triangleIndices)
 
-        # Get closest triangles using point tree
+        # Get the closest triangles using point tree
         #
         tree = cKDTree(triangleCentroids)
         distances, indices = tree.query(points)
@@ -716,7 +742,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         # Remember to use the triangle map to resolve the local indices!
         #
         closestTriangles = [triangleMap[index] for index in indices]
-        triangleVertexIndices = dict(zip(closestTriangles, fnTriMesh.faceVertexIndices(*closestTriangles)))
+        triangleVertexIndices = dict(zip(closestTriangles, triMesh.faceVertexIndices(*closestTriangles)))
 
         numHits = len(indices)
         hits = [None] * numHits

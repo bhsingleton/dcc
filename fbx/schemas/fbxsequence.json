@@ -22,7 +22,6 @@
 				"startFrame": { "type": "number" },
 				"endFrame": { "type": "number" },
 				"step": { "type": "number" },
-				"frameRate": { "type": "number" },
 				"exportSetId": { "type": "number" },
 				"customScripts": 
 				{ 

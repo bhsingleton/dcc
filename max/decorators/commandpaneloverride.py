@@ -1,9 +1,8 @@
 import pymxs
 
-from six import string_types
 from functools import partial
-
-from .. import fnnode
+from dcc.decorators import abstractdecorator
+from dcc.max import fnnode
 
 import logging
 logging.basicConfig()
@@ -11,12 +10,13 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-class CommandPanelOverride(object):
+class CommandPanelOverride(abstractdecorator.AbstractDecorator):
     """
-    Class decorator used to override the command panel task mode at runtime.
+    Overload of AbstractDecorator that overrides the command panel task mode at runtime.
     """
 
-    __slots__ = ('_mode', '_autoSelect', '_instance', '_owner', '_func')
+    # region Dunderscores
+    __slots__ = ('_mode', '_autoSelect')
 
     def __init__(self, *args, **kwargs):
         """
@@ -25,53 +25,12 @@ class CommandPanelOverride(object):
 
         # Call parent method
         #
-        super(CommandPanelOverride, self).__init__()
+        super(CommandPanelOverride, self).__init__(*args, **kwargs)
 
         # Declare public variables
         #
         self._mode = kwargs.get('mode', 'create')
         self._autoSelect = kwargs.get('autoSelect', True)
-        self._instance = None
-        self._owner = None
-        self._func = None
-
-        # Inspect arguments
-        #
-        numArgs = len(args)
-
-        if numArgs == 1:
-
-            self._func = args[0]
-
-    def __get__(self, instance, owner):
-        """
-        Private method called whenever this object is accessed via attribute lookup.
-
-        :type instance: object
-        :type owner: type
-        :rtype: Undo
-        """
-
-        self._instance = instance
-        self._owner = owner
-
-        return self
-
-    def __call__(self, *args, **kwargs):
-        """
-        Private method that is called whenever this instance is evoked.
-
-        :type func: function
-        :rtype: function
-        """
-
-        # Execute order of operations
-        #
-        self.__enter__()
-        results = self.func(*args, **kwargs)
-        self.__exit__(None, None, None)
-
-        return results
 
     def __enter__(self):
         """
@@ -110,7 +69,9 @@ class CommandPanelOverride(object):
         """
 
         pass
+    # endregion
 
+    # region Properties
     @property
     def mode(self):
         """
@@ -130,23 +91,7 @@ class CommandPanelOverride(object):
         """
 
         return self._autoSelect
-
-    @property
-    def func(self):
-        """
-        Getter method used to return the wrapped function.
-        If this is a descriptor then the function will be bound.
-
-        :rtype: function
-        """
-
-        if self._instance is not None:
-
-            return self._func.__get__(self._instance, self._owner)
-
-        else:
-
-            return self._func
+    # endregion
 
 
 def commandPanelOverride(*args, **kwargs):

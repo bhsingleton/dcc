@@ -1,7 +1,8 @@
 import maya.cmds as mc
 import maya.api.OpenMaya as om
 
-from ..abstract.afnnotify import AFnNotify, Notification, Notifications
+from functools import partial
+from dcc.abstract.afnnotify import AFnNotify, AbstractNotification, Notifications
 
 import logging
 logging.basicConfig()
@@ -9,18 +10,19 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-class Message(Notification):
+class Message(AbstractNotification):
     """
     Overload of Notification used to interface with max callbacks.
     """
 
-    __slots__ = ('_message', '_messageAttr', '_messageType')
+    # region Dunderscores
+    __slots__ = ('_messageCls', '_messageAttr', '_messageType')
 
-    def __init__(self, message, **kwargs):
+    def __init__(self, T, **kwargs):
         """
         Private method called after a new instance is created.
 
-        :type message: type
+        :type T: type
         :key messageAttr: str
         :key messageType: Union[int, str]
         :rtype: None
@@ -28,14 +30,16 @@ class Message(Notification):
 
         # Declare private variables
         #
-        self._message = message
+        self._messageCls = T
         self._messageAttr = kwargs.get('messageAttr', 'addCallback')
         self._messageType = kwargs.get('messageType', None)
 
         # Call parent method
         #
         super(Message, self).__init__(**kwargs)
+    # endregion
 
+    # region Methods
     def creator(self):
         """
         Returns a new callback handle for this instance.
@@ -43,8 +47,8 @@ class Message(Notification):
         :rtype: Any
         """
 
-        func = getattr(self._message, self._messageAttr)
-        return func(self._messageType, self.notify)
+        func = getattr(self._messageCls, self._messageAttr)
+        return func(self._messageType, self.delegate)
 
     def destroy(self):
         """
@@ -55,6 +59,7 @@ class Message(Notification):
 
         om.MMessage.removeCallback(self._handle)
         self._handle = None
+    # endregion
 
 
 class FnNotify(AFnNotify):
@@ -65,15 +70,15 @@ class FnNotify(AFnNotify):
     __slots__ = ()
 
     @classmethod
-    def initialize(cls):
+    def register(cls):
         """
-        Registers all of the required notifications for Maya.
+        Registers all the notification constructors for this function set.
 
         :rtype: None
         """
 
-        cls.registerNotification(Message(om.MSceneMessage, messageType=om.MSceneMessage.kBeforeOpen, notifyType=Notifications.PreFileOpen))
-        cls.registerNotification(Message(om.MSceneMessage, messageType=om.MSceneMessage.kAfterOpen, notifyType=Notifications.PostFileOpen))
-        cls.registerNotification(Message(om.MEventMessage, messageAttr='addEventCallback', messageType='Undo', notifyType=Notifications.Undo))
-        cls.registerNotification(Message(om.MEventMessage, messageAttr='addEventCallback', messageType='Redo', notifyType=Notifications.Redo))
-        cls.registerNotification(Message(om.MEventMessage, messageAttr='addEventCallback', messageType='SelectionChanged', notifyType=Notifications.SelectionChanged))
+        cls.registerNotification(partial(Message, om.MSceneMessage, messageType=om.MSceneMessage.kBeforeOpen), typeId=Notifications.PreFileOpen)
+        cls.registerNotification(partial(Message, om.MSceneMessage, messageType=om.MSceneMessage.kAfterOpen), typeId=Notifications.PostFileOpen)
+        cls.registerNotification(partial(Message, om.MEventMessage, messageAttr='addEventCallback', messageType='Undo'), typeId=Notifications.Undo)
+        cls.registerNotification(partial(Message, om.MEventMessage, messageAttr='addEventCallback', messageType='Redo'), typeId=Notifications.Redo)
+        cls.registerNotification(partial(Message, om.MEventMessage, messageAttr='addEventCallback', messageType='SelectionChanged'), typeId=Notifications.SelectionChanged)

@@ -1,9 +1,10 @@
 import re
-import fnmatch
 
 from abc import ABCMeta, abstractmethod
 from six import with_metaclass
+from fnmatch import fnmatch
 from dcc.abstract import afnobject
+from dcc.decorators.classproperty import classproperty
 
 import logging
 logging.basicConfig()
@@ -19,16 +20,22 @@ class AFnNode(with_metaclass(ABCMeta, afnobject.AFnObject)):
     """
 
     __slots__ = ()
+    __scene__ = None
 
-    @abstractmethod
-    def handle(self):
+    @classproperty
+    def scene(cls):
         """
-        Returns the handle for this node.
+        Getter method that returns the scene function set.
 
-        :rtype: int
+        :rtype: fnscene.FnScene
         """
 
-        pass
+        if cls.__scene__ is None:
+
+            from dcc import fnscene
+            cls.__scene__ = fnscene.FnScene()
+
+        return cls.__scene__
 
     def isValid(self):
         """
@@ -40,35 +47,44 @@ class AFnNode(with_metaclass(ABCMeta, afnobject.AFnObject)):
         return self.object() is not None
 
     @abstractmethod
-    def name(self):
+    def handle(self):
         """
-        Returns the name of this node.
+        Returns the handle for this node.
 
-        :rtype: str
+        :rtype: int
         """
 
         pass
 
     @abstractmethod
-    def setName(self, name):
+    def isTransform(self):
         """
-        Updates the name of this node.
+        Evaluates if this node represents a transform.
 
-        :type name: str
-        :rtype: None
+        :rtype: bool
         """
 
         pass
 
-    def dagPath(self):
+    @abstractmethod
+    def isJoint(self):
         """
-        Returns a dag path to this node.
-        This uses pipes to delimit a break between two nodes.
+        Evaluates if this node represents an influence object.
 
-        :rtype: str
+        :rtype: bool
         """
 
-        return '|'.join([self.__class__(x).name() for x in self.trace()])
+        pass
+
+    @abstractmethod
+    def isMesh(self):
+        """
+        Evaluates if this node represents a mesh.
+
+        :rtype: bool
+        """
+
+        pass
 
     @abstractmethod
     def getAttr(self, name):
@@ -104,6 +120,25 @@ class AFnNode(with_metaclass(ABCMeta, afnobject.AFnObject)):
 
         pass
 
+    @abstractmethod
+    def iterAttr(self):
+        """
+        Returns a generator that yields attribute names.
+
+        :rtype: iter
+        """
+
+        pass
+
+    def listAttr(self):
+        """
+        Returns a list of attribute names.
+
+        :rtype: List[str]
+        """
+
+        return list(self.iterAttr())
+
     def select(self, replace=True):
         """
         Selects the node associated with this function set.
@@ -112,7 +147,7 @@ class AFnNode(with_metaclass(ABCMeta, afnobject.AFnObject)):
         :rtype: None
         """
 
-        self.setActiveSelection([self.object()], replace=replace)
+        self.scene.setActiveSelection([self.object()], replace=replace)
 
     def deselect(self):
         """
@@ -121,13 +156,13 @@ class AFnNode(with_metaclass(ABCMeta, afnobject.AFnObject)):
         :rtype: None
         """
 
-        activeSelection = self.getActiveSelection()
+        activeSelection = self.scene.getActiveSelection()
         obj = self.object()
 
         if obj in activeSelection:
 
             activeSelection.remove(obj)
-            self.setActiveSelection(activeSelection, replace=True)
+            self.scene.setActiveSelection(activeSelection, replace=True)
 
     def isSelected(self):
         """
@@ -136,7 +171,7 @@ class AFnNode(with_metaclass(ABCMeta, afnobject.AFnObject)):
         :rtype: bool
         """
 
-        return self.object() in self.getActiveSelection()
+        return self.object() in self.scene.getActiveSelection()
 
     def isPartiallySelected(self):
         """
@@ -155,37 +190,27 @@ class AFnNode(with_metaclass(ABCMeta, afnobject.AFnObject)):
         :rtype: bool
         """
 
-        selection = self.getActiveSelection()
+        selection = self.scene.getActiveSelection()
         selectionCount = len(selection)
 
         return selectionCount == 1 and self.isPartiallySelected()
 
     @abstractmethod
-    def isTransform(self):
+    def userPropertyBuffer(self):
         """
-        Evaluates if this node represents a transform.
+        Returns the user property buffer.
 
-        :rtype: bool
-        """
-
-        pass
-
-    @abstractmethod
-    def isJoint(self):
-        """
-        Evaluates if this node represents an influence object.
-
-        :rtype: bool
+        :rtype: str
         """
 
         pass
 
     @abstractmethod
-    def isMesh(self):
+    def userProperties(self):
         """
-        Evaluates if this node represents a mesh.
+        Returns the user properties.
 
-        :rtype: bool
+        :rtype: dict
         """
 
         pass
@@ -199,6 +224,15 @@ class AFnNode(with_metaclass(ABCMeta, afnobject.AFnObject)):
         """
 
         pass
+
+    def isReferencedNode(self):
+        """
+        Evaluates if this is a referenced node.
+
+        :rtype: bool
+        """
+
+        return self.getAssociatedReference() is not None
 
     @classmethod
     @abstractmethod
@@ -240,7 +274,7 @@ class AFnNode(with_metaclass(ABCMeta, afnobject.AFnObject)):
 
     @classmethod
     @abstractmethod
-    def getNodesWithAttribute(cls, name):
+    def getNodesByAttribute(cls, name):
         """
         Returns a list of nodes with the given attribute name.
 
@@ -252,9 +286,9 @@ class AFnNode(with_metaclass(ABCMeta, afnobject.AFnObject)):
 
     @classmethod
     @abstractmethod
-    def iterSceneNodes(cls):
+    def iterInstances(cls):
         """
-        Returns a generator that yields all nodes from the scene.
+        Returns a generator that yields texture instances.
 
         :rtype: iter
         """
@@ -262,7 +296,17 @@ class AFnNode(with_metaclass(ABCMeta, afnobject.AFnObject)):
         pass
 
     @classmethod
-    def iterNodesByPattern(cls, pattern):
+    def instances(cls):
+        """
+        Returns a list of texture instances.
+
+        :rtype: List[object]
+        """
+
+        return list(cls.iterInstances())
+
+    @classmethod
+    def iterInstancesByPattern(cls, pattern):
         """
         Returns a generator that yields nodes that match the given pattern.
 
@@ -271,12 +315,13 @@ class AFnNode(with_metaclass(ABCMeta, afnobject.AFnObject)):
         """
 
         fnNode = cls()
+        fnNode.setQueue(cls.iterInstances())
 
-        for node in cls.iterSceneNodes():
+        while not fnNode.isDone():
 
-            fnNode.setObject(node)
+            node = fnNode.next()
 
-            if fnmatch.fnmatch(fnNode.name(), pattern):
+            if fnmatch(fnNode.name(), pattern):
 
                 yield node
 
@@ -285,7 +330,7 @@ class AFnNode(with_metaclass(ABCMeta, afnobject.AFnObject)):
                 continue
 
     @classmethod
-    def iterNodesByRegex(cls, pattern):
+    def iterInstancesByRegex(cls, pattern):
         """
         Returns a generator that yields nodes that match the given regex expression.
 
@@ -294,11 +339,13 @@ class AFnNode(with_metaclass(ABCMeta, afnobject.AFnObject)):
         """
 
         fnNode = cls()
+        fnNode.setQueue(cls.iterInstances())
+
         regex = re.compile(pattern)
 
-        for node in cls.iterSceneNodes():
+        while not fnNode.isDone():
 
-            fnNode.setObject(node)
+            node = fnNode.next()
 
             if regex.match(fnNode.name()):
 
@@ -307,38 +354,3 @@ class AFnNode(with_metaclass(ABCMeta, afnobject.AFnObject)):
             else:
 
                 continue
-
-    @classmethod
-    @abstractmethod
-    def getActiveSelection(cls):
-        """
-        Returns the active selection.
-
-        :rtype: list
-        """
-
-        pass
-
-    @classmethod
-    @abstractmethod
-    def setActiveSelection(cls, selection, replace=True):
-        """
-        Updates the active selection.
-
-        :type selection: list
-        :type replace: bool
-        :rtype: None
-        """
-
-        pass
-
-    @classmethod
-    @abstractmethod
-    def clearActiveSelection(cls):
-        """
-        Clears the active selection.
-
-        :rtype: None
-        """
-
-        pass

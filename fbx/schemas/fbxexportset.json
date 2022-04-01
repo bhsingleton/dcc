@@ -37,6 +37,10 @@
 								"type": "object",
 								"$ref": "#/definitions/FbxSkeleton"
 							},
+                            {
+								"type": "object",
+								"$ref": "#/definitions/FbxLayer"
+							},
 							{
 								"type": "object",
 								"$ref": "#/definitions/FbxCamera"
@@ -65,7 +69,7 @@
 				"additionalProperties": true
 			}
 		},
-		"FbxSkeleton": 
+		"FbxSkeleton":
 		{
 			"type": "object",
 			"properties": 
@@ -73,16 +77,37 @@
 				"__name__": { "type": "string" },
 				"__module__": { "type": "string" },
 				"name": { "type": "string" },
-				"includeJoints": 
+				"includeJoints":
 				{
 					"type": "array", 
 					"items": { "type": "string" }
 				},
-				"excludeJoints": 
+                "includeRegex": { "type": "string" },
+				"excludeJoints":
 				{
 					"type": "array", 
 					"items": { "type": "string" }
 				},
+                "excludeRegex": { "type": "string" },
+				"children":
+				{
+					"type": "array",
+					"items":
+					{
+						"type": "object",
+						"maxItems": 0
+					}
+				}
+			}
+		},
+        "FbxLayer":
+		{
+			"type": "object",
+			"properties":
+			{
+				"__name__": { "type": "string" },
+				"__module__": { "type": "string" },
+				"name": { "type": "string" },
 				"children":
 				{
 					"type": "array",

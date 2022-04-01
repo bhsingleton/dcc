@@ -3,17 +3,10 @@ import weakref
 import copy
 
 from abc import ABCMeta
-from six.moves.collections_abc import MutableMapping, MutableSequence
+from six import with_metaclass
+from typing import *
 from dcc.decorators.classproperty import classproperty
 from dcc.python import annotationutils
-
-try:
-
-    from typing import Sequence
-
-except ImportError:
-
-    Sequence = None
 
 import logging
 logging.basicConfig()
@@ -21,13 +14,12 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-class PSONObject(MutableMapping):
+class PSONObject(with_metaclass(ABCMeta, MutableMapping)):
     """
     Overload of MutableMapping used to provide a serialization routine for json.
     """
 
     # region Dunderscores
-    __metaclass__ = ABCMeta
     __slots__ = ('__weakref__',)
     __builtins__ = (bool, int, float, str, MutableSequence, MutableMapping)
 
@@ -86,7 +78,7 @@ class PSONObject(MutableMapping):
         :rtype: iter
         """
 
-        return iter(self.properties())
+        return self.keys()
 
     def __len__(self):
         """
@@ -95,7 +87,7 @@ class PSONObject(MutableMapping):
         :rtype: int
         """
 
-        return len(self.properties())
+        return len(list(self.items()))
 
     def __getstate__(self):
         """
@@ -223,31 +215,31 @@ class PSONObject(MutableMapping):
 
         # Iterate through members
         #
-        members = inspect.getmembers(cls, lambda x: isinstance(x, property))
+        members = inspect.getmembers(cls, predicate=(lambda x: isinstance(x, property)))
 
-        for (name, func) in members:
+        for (name, member) in reversed(members):
 
             # Check if property is readable
             #
-            if readable and func.fget is None:
+            if readable and member.fget is None:
 
                 continue
 
             # Check if property is writable
             #
-            if writable and func.fset is None:
+            if writable and member.fset is None:
 
                 continue
 
             # Check if property is deletable
             #
-            if deletable and func.fdel is None:
+            if deletable and member.fdel is None:
 
                 continue
 
             # Yield property
             #
-            yield name, func
+            yield name, member
 
     @classmethod
     def properties(cls, readable=True, writable=False, deletable=False):
@@ -257,48 +249,82 @@ class PSONObject(MutableMapping):
         :type readable: bool
         :type writable: bool
         :type deletable: bool
-        :rtype: dict[str:property]
+        :rtype: Dict[str, property]
         """
 
         return dict(cls.iterProperties(readable=readable, writable=writable, deletable=deletable))
+
+    @staticmethod
+    def isNullOrEmpty(value):
+        """
+        Evaluates if the supplied value is null or empty.
+
+        :type value: Any
+        :rtype: bool
+        """
+
+        if hasattr(value, '__len__'):
+
+            return len(value) == 0
+
+        elif value is None:
+
+            return True
+
+        else:
+
+            raise TypeError('isNullOrEmpty() expects a sequence (%s given)!' % type(value).__name__)
 
     @classmethod
     def isBuiltinType(cls, T):
         """
         Evaluates whether the supplied type is derived from a builtin type.
 
-        :type T: type
+        :type T: Any
         :rtype: bool
         """
 
-        return issubclass(T, cls.__builtins__)
+        if inspect.isclass(T):
+
+            return issubclass(T, cls.__builtins__)
+
+        else:
+
+            return cls.isBuiltinType(type(T))
+
+    @staticmethod
+    def isTypeHint(T):
+        """
+        Evaluates if the given type is a type hint.
+
+        :type T: Any
+        :rtype: bool
+        """
+
+        return hasattr(T, '__origin__') and hasattr(T, '__args__')
 
     @classmethod
     def isJsonCompatible(cls, T):
         """
         Evaluates whether the given type is json compatible.
 
-        :type T: Union[type, class, tuple]
+        :type T: Union[type, object, tuple]
         :rtype: bool
         """
 
-        # Check if this is a class
+        # Evaluate type object
         #
-        if cls.isBuiltinType(T) or hasattr(T, '__getstate__'):
+        if cls.isTypeHint(T):
 
-            return True
+            return all([cls.isJsonCompatible(x) for x in T.__args__])
 
         elif isinstance(T, (tuple, list)):
 
-            return all([cls.isBuiltinType(x) for x in T])
-
-        elif isinstance(T, Sequence) and hasattr(T, '__args__'):
-
-            return all([cls.isBuiltinType(x) for x in T.__args__])
+            return all([cls.isJsonCompatible(x) for x in T])
 
         else:
 
-            return False
+            return cls.isBuiltinType(T) or hasattr(T, '__getstate__')
 
     def weakReference(self):
         """
@@ -316,7 +342,9 @@ class PSONObject(MutableMapping):
         :rtype: collections.abc.KeysView
         """
 
-        return self.__getstate__().keys()
+        for (name, obj) in self.iterProperties(readable=True, writable=True):
+
+            yield name
 
     def values(self):
         """
@@ -325,7 +353,9 @@ class PSONObject(MutableMapping):
         :rtype: collections.abc.ValuesView
         """
 
-        return self.__getstate__().values()
+        for (name, obj) in self.iterProperties(readable=True, writable=True):
+
+            yield obj.fget(self)
 
     def items(self):
         """
@@ -334,19 +364,21 @@ class PSONObject(MutableMapping):
         :rtype: collections.abc.ItemsView
         """
 
-        return self.__getstate__().items()
+        for (name, obj) in self.iterProperties(readable=True, writable=True):
 
-    def update(self, items):
+            yield name, obj.fget(self)
+
+    def update(self, obj):
         """
         Copies any items from the supplied dictionary to this collection.
 
-        :type items: dict
+        :type obj: dict
         :rtype: None
         """
 
         # Iterate through items
         #
-        for (key, value) in items.items():
+        for (key, value) in obj.items():
 
             # Check if collection has property
             #

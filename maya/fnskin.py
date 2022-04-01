@@ -12,7 +12,7 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
+class FnSkin(fnnode.FnNode, afnskin.AFnSkin):
     """
     Overload of AFnSkin that outlines function set behaviour for skin weighting in Maya.
     This class also inherits from FnNode since skin clusters are node objects.
@@ -125,7 +125,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         :rtype: bool
         """
 
-        return self.isSelected() or self.shape() in self.getActiveSelection()
+        return self.isSelected() or self.shape() in self.scene.getActiveSelection()
 
     def iterSelection(self):
         """
@@ -451,3 +451,13 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         """
 
         skinutils.resetIntermediateObject(self.object())
+
+    @classmethod
+    def iterInstances(cls, apiType=om.MFn.kSkinClusterFilter):
+        """
+        Returns a generator that yields skin cluster instances.
+
+        :rtype: iter
+        """
+
+        return super(FnSkin, cls).iterInstances(apiType=apiType)

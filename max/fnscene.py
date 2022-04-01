@@ -92,6 +92,36 @@ class FnScene(afnscene.AFnScene):
 
         return os.path.normpath(pymxs.runtime.pathConfig.getCurrentProjectFolder())
 
+    def paths(self):
+        """
+        Returns a list of content paths.
+
+        :rtype: List[str]
+        """
+
+        # Call parent method
+        #
+        paths = super(FnScene, self).paths()
+
+        # Append map paths
+        #
+        numMapPaths = pymxs.runtime.MapPaths.count()
+        paths.extend([os.path.normpath(pymxs.runtime.MapPaths.get(i)) for i in range(1, numMapPaths + 1, 1)])
+
+        # Append xref paths
+        #
+        numXRefPaths = pymxs.runtime.XRefPaths.count()
+        paths.extend([os.path.normpath(pymxs.runtime.XRefPaths.get(i)) for i in range(1, numXRefPaths + 1, 1)])
+
+        # Append session paths
+        #
+        for sessionType in (pymxs.runtime.Name('map'), pymxs.runtime.Name('xref')):
+
+            numPaths = pymxs.runtime.SessionPaths.count(sessionType)
+            paths.extend([os.path.normpath(pymxs.runtime.SessionPaths.get(sessionType, i)) for i in range(1, numPaths + 1, 1)])
+
+        return list(set(paths))
+
     def getStartTime(self):
         """
         Returns the current start time.
@@ -167,85 +197,6 @@ class FnScene(afnscene.AFnScene):
 
         pymxs.runtime.animateMode = False
 
-    def iterTextures(self, absolute=False):
-        """
-        Returns a generator that yields all texture paths inside the scene.
-        An optional keyword argument can be used to convert paths to absolute.
-
-        :type absolute: bool
-        :rtype: iter
-        """
-
-        # Iterate through bitmaps
-        #
-        for bitmap in pymxs.runtime.getClassInstances(pymxs.runtime.BitmapTexture):
-
-            # Check if path is valid
-            #
-            texturePath = bitmap.filename
-
-            if self.isNullOrEmpty(texturePath):
-
-                continue
-
-            # Check if absolute path should be yielded
-            #
-            if absolute:
-
-                yield self.expandPath(texturePath)
-
-            else:
-
-                yield os.path.normpath(texturePath)
-
-    def updateTextures(self, updates):
-        """
-        Applies all of the texture path updates to the associated file nodes.
-        Each key-value pair should consist of the original and updates texture paths!
-
-        :type updates: Dict[str, str]
-        :rtype: None
-        """
-
-        # Iterate through bitmaps
-        #
-        for bitmap in pymxs.runtime.getClassInstances(pymxs.runtime.BitmapTexture):
-
-            # Check if path is valid
-            #
-            texturePath = bitmap.filename
-
-            if self.isNullOrEmpty(texturePath):
-
-                continue
-
-            # Check if bitmap has an update
-            #
-            oldPath = os.path.normpath(texturePath)
-            newPath = updates.get(oldPath)
-
-            if newPath is not None:
-
-                log.info('%s.filename = %s' % (bitmap.name, newPath))
-                bitmap.filename = newPath
-
-        # Reload textures
-        #
-        self.reloadTextures()
-
-    def reloadTextures(self):
-        """
-        Forces all of the texture nodes to reload.
-
-        :rtype: None
-        """
-
-        # Iterate through bitmaps
-        #
-        for bitmap in pymxs.runtime.getClassInstances(pymxs.runtime.BitmapTexture):
-
-            bitmap.reload()
-
     def iterFileProperties(self):
         """
         Generator method used to iterate through the file properties.
@@ -316,3 +267,50 @@ class FnScene(afnscene.AFnScene):
         """
 
         pymxs.runtime.setSaveRequired(False)
+
+    def iterNodes(self):
+        """
+        Returns a generator that yields all nodes from the scene.
+
+        :rtype: iter
+        """
+
+        return iter(pymxs.runtime.objects)
+
+    def getActiveSelection(self):
+        """
+        Returns the active selection.
+
+        :rtype: list[pymxs.MXSWrapperBase]
+        """
+
+        selection = pymxs.runtime.selection
+        return [selection[x] for x in range(selection.count)]
+
+    def setActiveSelection(self, selection, replace=True):
+        """
+        Updates the active selection.
+
+        :type selection: list
+        :type replace: bool
+        :rtype: None
+        """
+
+        # Check if selection should be replaced
+        #
+        if replace:
+
+            pymxs.runtime.select(selection)
+
+        else:
+
+            pymxs.runtime.selectMore(selection)
+
+    def clearActiveSelection(self):
+        """
+        Clears the active selection.
+
+        :rtype: None
+        """
+
+        pymxs.runtime.clearSelection()

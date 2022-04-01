@@ -77,6 +77,8 @@ class FnReference(afnreference.AFnReference):
 
         return om.MFnReference(self.object()).namespace
 
+
+
     def parent(self):
         """
         Returns the parent of this node.
@@ -85,15 +87,9 @@ class FnReference(afnreference.AFnReference):
         """
 
         fnReference = om.MFnReference(self.object())
-        parent = fnReference.parentReference()
+        parentReference = fnReference.parentReference()
 
-        if not parent.isNull():
-
-            return parent
-
-        else:
-
-            return None
+        return parentReference if not parentReference.isNull() else None
 
     def setParent(self, parent):
         """

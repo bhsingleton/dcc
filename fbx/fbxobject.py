@@ -1,3 +1,5 @@
+from six import integer_types
+from collections import deque
 from dcc.fbx import fbxbase
 from dcc.collections import notifylist
 
@@ -150,6 +152,22 @@ class FbxObject(fbxbase.FbxBase):
         """
 
         return list(self.iterSiblings())
+
+    def walk(self):
+        """
+        Returns a generator that can walk over the entire hierarchy.
+
+        :rtype: iter
+        """
+
+        queue = deque(self.children)
+
+        while len(queue):
+
+            obj = queue.popleft()
+            yield obj
+
+            queue.extend(obj.children)
     # endregion
 
     # region Callbacks

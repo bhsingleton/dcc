@@ -1,6 +1,5 @@
 import os
 
-from collections import deque
 from dcc.fbx import fbxobject
 from dcc import fnfbx, fnnode
 
@@ -18,7 +17,7 @@ class FbxExportSet(fbxobject.FbxObject):
     # region Dunderscores
     __slots__ = (
         '_asset',
-        '_filePath',
+        '_directory',
         '_customScripts',
         '_scale',
         '_moveToOrigin',
@@ -33,13 +32,19 @@ class FbxExportSet(fbxobject.FbxObject):
     def __init__(self, *args, **kwargs):
         """
         Private method called after a new instance has been created.
+
+        :rtype: None
         """
+
+        # Call parent method
+        #
+        super(FbxExportSet, self).__init__(*args, **kwargs)
 
         # Declare private variables
         #
         self._asset = self.nullWeakReference
         self._customScripts = []
-        self._filePath = kwargs.get('filePath', '')
+        self._directory = kwargs.get('directory', '')
         self._scale = kwargs.get('scale', 1.0)
         self._moveToOrigin = kwargs.get('moveToOrigin', False)
         self._includeNormals = kwargs.get('includeNormals', True)
@@ -48,10 +53,6 @@ class FbxExportSet(fbxobject.FbxObject):
         self._includeColorSets = kwargs.get('includeColorSets', False)
         self._includeSkins = kwargs.get('includeSkins', False)
         self._includeBlendshapes = kwargs.get('includeBlendshapes', False)
-
-        # Call parent method
-        #
-        super(FbxExportSet, self).__init__(*args, **kwargs)
     # endregion
 
     # region Properties
@@ -66,25 +67,25 @@ class FbxExportSet(fbxobject.FbxObject):
         return self._asset()
 
     @property
-    def filePath(self) -> str:
+    def directory(self):
         """
-        Getter method that returns the file path for this export set.
+        Getter method that returns the directory for this export set.
 
         :rtype: str
         """
 
-        return self._filePath
+        return self._directory
 
-    @filePath.setter
-    def filePath(self, filePath):
+    @directory.setter
+    def directory(self, directory):
         """
-        Setter method that updates the file path for this export set.
+        Setter method that updates the directory for this export set.
 
-        :type filePath: str
+        :type directory: str
         :rtype: None
         """
 
-        self._filePath = filePath
+        self._directory = directory
 
     @property
     def customScripts(self):
@@ -277,22 +278,6 @@ class FbxExportSet(fbxobject.FbxObject):
     # endregion
 
     # region Methods
-    def walk(self):
-        """
-        Returns a generator that can walk over the entire hierarchy.
-
-        :rtype: iter
-        """
-
-        queue = deque(self.children)
-
-        while len(queue):
-
-            obj = queue.popleft()
-            yield obj
-
-            queue.extend(obj.children)
-
     def selectNodes(self):
         """
         Serializes the contents of this export set.
@@ -316,7 +301,7 @@ class FbxExportSet(fbxobject.FbxObject):
 
         return os.path.join(
             os.path.expandvars(self.asset.directory),
-            self.filePath,
+            self.directory,
             '{name}.fbx'.format(name=self.name)
         )
 
@@ -327,7 +312,7 @@ class FbxExportSet(fbxobject.FbxObject):
         :rtype: None
         """
 
-        # Execute pre-sripts
+        # Execute pre-scripts
         #
         for customScript in self.customScripts:
 

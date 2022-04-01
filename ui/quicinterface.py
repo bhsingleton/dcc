@@ -67,14 +67,7 @@ class QUicInterface(object):
         filePath = os.path.join(self.workingDirectory(), self.filename())
 
         log.info('Loading UI file: %s' % filePath)
-        widget = loader.load(filePath)
-
-        # Automate signal/slot connections
-        # Qt expects the following method names: on_{objectName}_{signal} complete with a QtCore.Slot decorator!
-        #
-        QtCore.QMetaObject.connectSlotsByName(widget)
-
-        return widget
+        return loader.load(filePath)
     # endregion
 
     # region Methods
@@ -132,4 +125,14 @@ class QUicInterface(object):
         """
 
         pass
+
+    def connectSlots(self):
+        """
+        Called after the user interface has been loaded to form signal/slot connections.
+        For automation Qt expects the following slot syntax: on_{objectName}_{signal} complete with a slot decorator!
+
+        :rtype: None
+        """
+
+        QtCore.QMetaObject.connectSlotsByName(self)
     # endregion

@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
 from six import with_metaclass
 
-from dcc.abstract import afnbase
+from dcc.abstract import afnobject
 
 import logging
 logging.basicConfig()
@@ -9,33 +9,12 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-class AFnLayer(with_metaclass(ABCMeta, afnbase.AFnBase)):
+class AFnLayer(with_metaclass(ABCMeta, afnobject.AFnObject)):
     """
     Overload of AFnBase that outlines the function set behaviour for layers.
     """
 
     __slots__ = ()
-
-    @abstractmethod
-    def name(self):
-        """
-        Returns the name of this layer.
-
-        :rtype: str
-        """
-
-        pass
-
-    @abstractmethod
-    def setName(self, name):
-        """
-        Updates the name of this layer.
-
-        :type name: str
-        :rtype: None
-        """
-
-        pass
 
     @abstractmethod
     def visibility(self):

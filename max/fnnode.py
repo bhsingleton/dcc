@@ -2,8 +2,7 @@ import pymxs
 
 from six import string_types, integer_types
 from dcc.abstract import afnnode, ArrayIndexType
-from dcc.max.libs import attributeutils
-from dcc.decorators.validator import validator
+from dcc.max.libs import nodeutils, controllerutils, attributeutils
 
 import logging
 logging.basicConfig()
@@ -28,17 +27,17 @@ class FnNode(afnnode.AFnNode):
 
         # Call parent method
         #
-        handle = super(FnNode, self).object()
+        obj = super(FnNode, self).object()
 
         # Inspect object type
         #
-        if isinstance(handle, integer_types):
+        if isinstance(obj, integer_types):
 
-            return self.getNodeByHandle(handle)
+            return self.getNodeByHandle(obj)
 
         else:
 
-            return None
+            return obj
 
     def setObject(self, obj):
         """
@@ -48,12 +47,12 @@ class FnNode(afnnode.AFnNode):
         :rtype: None
         """
 
-        # Get maxscript wrapper
+        # Get node handle
         #
         obj = self.getMXSWrapper(obj)
         handle = pymxs.runtime.getHandleByAnim(obj)
 
-        # Assign anim handle
+        # Call parent method
         #
         super(FnNode, self).setObject(handle)
 
@@ -67,7 +66,132 @@ class FnNode(afnnode.AFnNode):
 
         return isinstance(obj, (str, pymxs.MXSWrapperBase))
 
-    @validator
+    def baseObject(self):
+        """
+        Returns the base object assigned to this function set.
+        If there is no base then itself is returned!
+
+        :rtype: pymxs.MXSWrapperBase
+        """
+
+        obj = self.object()
+
+        if pymxs.runtime.isProperty(obj, 'baseObject'):
+
+            return obj.baseObject
+
+        else:
+
+            return obj
+
+    def name(self):
+        """
+        Returns the name of this node.
+
+        :rtype: str
+        """
+
+        obj = self.object()
+
+        if pymxs.runtime.isProperty(obj, 'name'):
+
+            return obj.name
+
+        else:
+
+            return ''
+
+    def setName(self, name):
+        """
+        Updates the name of this node.
+
+        :type name: str
+        :rtype: None
+        """
+
+        obj = self.object()
+
+        if pymxs.runtime.isProperty(obj, 'name'):
+
+            obj.name = name
+
+    def namespace(self):
+        """
+        Returns the namespace for this object.
+
+        :rtype: str
+        """
+
+        return ''
+
+    def setNamespace(self, namespace):
+        """
+        Updates the namespace for this object.
+
+        :type namespace: str
+        :rtype: None
+        """
+
+        pass
+
+    def parent(self):
+        """
+        Returns the parent of this node.
+
+        :rtype: pymxs.MXSWrapperBase
+        """
+
+        # Check if object has property
+        #
+        obj = self.object()
+
+        if pymxs.runtime.isProperty(obj, 'parent'):
+
+            return obj.parent
+
+        else:
+
+            return None
+
+    def setParent(self, parent):
+        """
+        Updates the parent of this node.
+
+        :type parent: pymxs.MXSWrapperBase
+        :rtype: None
+        """
+
+        # Check if object has property
+        #
+        obj = self.object()
+
+        if pymxs.runtime.isProperty(obj, 'parent'):
+
+            obj.parent = parent
+
+    def iterChildren(self):
+        """
+        Returns a generator that yields all the children from this node.
+
+        :rtype: iter
+        """
+
+        # Check if object has property
+        #
+        obj = self.object()
+
+        if not pymxs.runtime.isProperty(obj, 'children'):
+
+            return
+
+        # Iterate through children
+        #
+        children = obj.children
+
+        for i in range(children.count):
+
+            yield children[i]
+
     def handle(self):
         """
         Returns the handle for this node.
@@ -77,28 +201,34 @@ class FnNode(afnnode.AFnNode):
 
         return int(pymxs.runtime.getHandleByAnim(self.object()))
 
-    @validator
-    def name(self):
+    def isTransform(self):
         """
-        Returns the name of this node.
+        Evaluates if this node represents a transform.
 
-        :rtype: str
-        """
-
-        return self.object().name
-
-    @validator
-    def setName(self, name):
-        """
-        Updates the name of this node.
-
-        :type name: str
-        :rtype: None
+        :rtype: bool
         """
 
-        self.object().name = name
+        return pymxs.runtime.isProperty(self.object(), 'transform')
 
-    @validator
+    def isJoint(self):
+        """
+        Evaluates if this node represents an influence object.
+        In 3ds Max all transform nodes can be used as joints!
+
+        :rtype: bool
+        """
+
+        return self.isTransform()
+
+    def isMesh(self):
+        """
+        Evaluates if this node represents a mesh.
+
+        :rtype: bool
+        """
+
+        return pymxs.runtime.classOf(self.object()) in (pymxs.runtime.PolyMeshObject, pymxs.runtime.Editable_Poly, pymxs.runtime.Editable_Mesh)
+
     def getAttr(self, name):
         """
         Returns the specified attribute value.
@@ -122,7 +252,6 @@ class FnNode(afnnode.AFnNode):
 
             raise AttributeError('getAttr() "%s" object has no attribute "%s"' % (obj, name))
 
-    @validator
     def hasAttr(self, name):
         """
         Evaluates if this node has the specified attribute.
@@ -136,7 +265,6 @@ class FnNode(afnnode.AFnNode):
 
         return pymxs.runtime.isProperty(obj, name) or pymxs.runtime.isProperty(attributeHolder, name)
 
-    @validator
     def setAttr(self, name, value):
         """
         Updates the specified attribute value.
@@ -161,36 +289,34 @@ class FnNode(afnnode.AFnNode):
 
             raise AttributeError('setAttr() "%s" object has no attribute "%s"' % (obj, name))
 
-    @validator
-    def isTransform(self):
+    def iterAttr(self):
         """
-        Evaluates if this node represents a transform.
+        Returns a generator that yields attribute names.
 
-        :rtype: bool
-        """
-
-        return pymxs.runtime.isProperty(self.object(), 'transform')
-
-    @validator
-    def isJoint(self):
-        """
-        Evaluates if this node represents an influence object.
-        In 3ds Max all transform nodes can be used as joints!
-
-        :rtype: bool
+        :rtype: iter
         """
 
-        return self.isTransform()
+        for (key, value) in controllerutils.iterProperties(self.object()):
 
-    @validator
-    def isMesh(self):
+            yield key
+
+    def userPropertyBuffer(self):
         """
-        Evaluates if this node represents a mesh.
+        Returns the user property buffer.
 
-        :rtype: bool
+        :rtype: str
         """
 
-        return pymxs.runtime.classOf(self.object()) in (pymxs.runtime.PolyMeshObject, pymxs.runtime.Editable_Poly, pymxs.runtime.Editable_Mesh)
+        return pymxs.runtime.getUserPropBuffer(self.object())
+
+    def userProperties(self):
+        """
+        Returns the user properties.
+
+        :rtype: dict
+        """
+
+        return {}
 
     def getAssociatedReference(self):
         """
@@ -201,68 +327,6 @@ class FnNode(afnnode.AFnNode):
 
         return pymxs.runtime.objXRefMgr.IsNodeXRefed(self.object())
 
-    @validator
-    def parent(self):
-        """
-        Returns the parent of this node.
-
-        :rtype: pymxs.MXSWrapperBase
-        """
-
-        # Check if object has property
-        #
-        obj = self.object()
-
-        if pymxs.runtime.isProperty(obj, 'parent'):
-
-            return obj.parent
-
-        else:
-
-            return None
-
-    @validator
-    def setParent(self, parent):
-        """
-        Updates the parent of this node.
-
-        :type parent: pymxs.MXSWrapperBase
-        :rtype: None
-        """
-
-        # Check if object has property
-        #
-        obj = self.object()
-
-        if pymxs.runtime.isProperty(obj, 'parent'):
-
-            obj.parent = parent
-
-    @validator
-    def iterChildren(self):
-        """
-        Returns a generator that yields all of the children for this node.
-
-        :rtype: iter
-        """
-
-        # Check if object has property
-        #
-        obj = self.object()
-
-        if not pymxs.runtime.isProperty(obj, 'children'):
-
-            return
-
-        # Iterate through children
-        #
-        children = obj.children
-
-        for i in range(children.count):
-
-            yield children[i]
-
-    @validator
     def getModifiersByType(self, T):
         """
         Returns a list of modifiers from the specified type.
@@ -271,34 +335,15 @@ class FnNode(afnnode.AFnNode):
         :rtype: list
         """
 
-        return [x for x in self.object().modifiers if pymxs.runtime.classOf(x) == T]
+        obj = self.object()
 
-    @classmethod
-    def getMXSWrapper(cls, value):
-        """
-        Returns an MXSWrapper from any given value.
+        if pymxs.runtime.isProperty(obj, 'modifiers'):
 
-        :type value: Union[str, int, pymxs.MXSWrapperBase]
-        :rtype: pymxs.MXSWrapperBase
-        """
-
-        # Check object type
-        #
-        if isinstance(value, pymxs.MXSWrapperBase):
-
-            return value
-
-        elif isinstance(value, integer_types):
-
-            return cls.getNodeByHandle(value)
-
-        elif isinstance(value, string_types):
-
-            return cls.getNodeByName(value)
+            return [x for x in obj.modifiers if pymxs.runtime.classOf(x) == T]
 
         else:
 
-            raise TypeError('setObject() expects a str or int (%s given)!' % type(value).__name__)
+            return []
 
     @classmethod
     def doesNodeExist(cls, name):
@@ -336,7 +381,7 @@ class FnNode(afnnode.AFnNode):
         return pymxs.runtime.getAnimByHandle(handle)
 
     @classmethod
-    def getNodesWithAttribute(cls, name):
+    def getNodesByAttribute(cls, name):
         """
         Returns a list of nodes with the given attribute name.
 
@@ -347,56 +392,38 @@ class FnNode(afnnode.AFnNode):
         return attributeutils.getNodesWithParameter(name)
 
     @classmethod
-    def iterSceneNodes(cls):
+    def getMXSWrapper(cls, value):
         """
-        Returns a generator that yields all nodes from the scene.
+        Returns an MXSWrapper from any given value.
+
+        :type value: Union[str, int, pymxs.MXSWrapperBase]
+        :rtype: pymxs.MXSWrapperBase
+        """
+
+        # Check object type
+        #
+        if isinstance(value, pymxs.MXSWrapperBase):
+
+            return value
+
+        elif isinstance(value, integer_types):
+
+            return cls.getNodeByHandle(value)
+
+        elif isinstance(value, string_types):
+
+            return cls.getNodeByName(value)
+
+        else:
+
+            raise TypeError('getMXSWrapper() expects a str or int (%s given)!' % type(value).__name__)
+
+    @classmethod
+    def iterInstances(cls):
+        """
+        Returns a generator that yields texture instances.
 
         :rtype: iter
         """
 
-        objectCount = pymxs.runtime.objects.count
-
-        for i in range(objectCount):
-
-            yield pymxs.runtime.objects[i]
-
-    @classmethod
-    def getActiveSelection(cls):
-        """
-        Returns the active selection.
-
-        :rtype: list[pymxs.MXSWrapperBase]
-        """
-
-        selection = pymxs.runtime.selection
-        return [selection[x] for x in range(selection.count)]
-
-    @classmethod
-    def setActiveSelection(cls, selection, replace=True):
-        """
-        Updates the active selection.
-
-        :type selection: list
-        :type replace: bool
-        :rtype: None
-        """
-
-        # Check if selection should be replaced
-        #
-        if replace:
-
-            pymxs.runtime.select(selection)
-
-        else:
-
-            pymxs.runtime.selectMore(selection)
-
-    @classmethod
-    def clearActiveSelection(cls):
-        """
-        Clears the active selection.
-
-        :rtype: None
-        """
-
-        pymxs.runtime.clearSelection()
+        return iter(pymxs.runtime.objects)

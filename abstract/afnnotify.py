@@ -13,10 +13,12 @@ import inspect
 import sys
 
 from abc import ABCMeta, abstractmethod
-from six import with_metaclass
+from six import with_metaclass, string_types
+from functools import partial
 from enum import IntEnum
-
+from collections import namedtuple
 from dcc.abstract import afnbase
+from dcc.collections import sparsearray
 
 import logging
 logging.basicConfig()
@@ -24,11 +26,15 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
+Notify = namedtuple('Notify', ['typeId', 'weakMethod'])
+
+
 class WeakMethod(object):
     """
-    Base class used to create references to methods.
+    Base class used to create weak references to methods.
     """
 
+    # region Dunderscores
     __slots__ = ('_instance', '_function')
 
     def __init__(self, func):
@@ -90,6 +96,28 @@ class WeakMethod(object):
 
             return func
 
+    def __eq__(self, other):
+        """
+        Evaluates if this ref is equivalent to the supplied object.
+
+        :type other: object
+        :rtype: bool
+        """
+
+        return self.__call__() == other
+
+    def __ne__(self, other):
+        """
+        Evaluates if this ref is not equivalent to the supplied object.
+
+        :type other: object
+        :rtype: bool
+        """
+
+        return self.__call__() != other
+    # endregion
+
+    # region Methods
     @staticmethod
     def isUnboundMethod(obj):
         """
@@ -141,6 +169,7 @@ class WeakMethod(object):
         else:
 
             return self._function() is not None
+    # endregion
 
 
 class Notifications(IntEnum):
@@ -148,22 +177,22 @@ class Notifications(IntEnum):
     Collection of notification types.
     """
 
-    Unknown = 0
-    PreFileOpen = 1
-    PostFileOpen = 2
-    Undo = 3
-    Redo = 4
-    SelectionChanged = 5
+    Unknown = -1
+    PreFileOpen = 0
+    PostFileOpen = 1
+    Undo = 2
+    Redo = 3
+    SelectionChanged = 4
 
 
-class Notification(with_metaclass(ABCMeta, object)):
+class AbstractNotification(with_metaclass(ABCMeta, object)):
     """
-    Abstract base class used to define behavior for notifications.
+    Abstract base class used as a delegate for DCC notifies.
     Each DCC should derive its overloads from this class for each notification type.
     """
 
-    __slots__ = ('_handle', '_ids', '_type')
-    __functions__ = {}  # type: Dict[str, Callable]
+    # region Dunderscores
+    __slots__ = ('_typeId', '_delegate', '_handle')
 
     def __init__(self, *args, **kwargs):
         """
@@ -176,12 +205,12 @@ class Notification(with_metaclass(ABCMeta, object)):
 
         # Call parent method
         #
-        super(Notification, self).__init__()
+        super(AbstractNotification, self).__init__()
 
         # Declare private variables
         #
-        self._type = kwargs.get('notifyType', Notifications.Unknown)
-        self._ids = []
+        self._typeId = kwargs.get('typeId', Notifications.Unknown)
+        self._delegate = kwargs.get('delegate', None)
         self._handle = self.creator()
 
     def __call__(self, *args, **kwargs):
@@ -203,46 +232,38 @@ class Notification(with_metaclass(ABCMeta, object)):
         if self._handle is not None:
 
             self.destroy()
+    # endregion
 
-    def __delitem__(self, _id):
+    # region Properties
+    @property
+    def typeId(self):
         """
-        Private method that deletes an indexed item.
+        Getter method that returns the type id for this instance.
 
-        :type _id: int
-        :rtype: None
-        """
-
-        self.remove(_id)
-
-    def __contains__(self, item):
-        """
-        Private method that evaluates if the given item exists.
-
-        :type item: Union[int, function]
-        :rtype: bool
+        :rtype: Notifications
         """
 
-        if isinstance(item, int):
-
-            return item in self._ids
-
-        elif callable(item):
-
-            return item in self.functions()
-
-        else:
-
-            return False
+        return self._typeId
 
     @property
-    def name(self):
+    def typeName(self):
         """
         Getter method that returns the type name for this instance.
 
         :rtype: str
         """
 
-        return self._type.name
+        return self.typeId.name
+
+    @property
+    def delegate(self):
+        """
+        Getter method that returns the function hook for this notification.
+
+        :rtype: function
+        """
+
+        return self._delegate
 
     @property
     def handle(self):
@@ -253,175 +274,9 @@ class Notification(with_metaclass(ABCMeta, object)):
         """
 
         return self._handle
+    # endregion
 
-    @property
-    def ids(self):
-        """
-        Getter method that returns the ids in use by this notify.
-
-        :rtype: List[int]
-        """
-
-        return self._ids
-
-    def iterFunctions(self):
-        """
-        Returns a generator that yields all functions from this notify.
-
-        :rtype: iter
-        """
-
-        # Iterate through ids
-        #
-        for _id in self._ids:
-
-            # Check if weakref is still alive
-            #
-            ref = self.__class__.__functions__.get(_id, lambda: None)
-            func = ref()
-
-            if func is not None:
-
-                yield func
-
-            else:
-
-                continue
-
-    def functions(self):
-        """
-        Returns a list of functions from this notify.
-
-        :rtype: List[function]
-        """
-
-        return list(self.iterFunctions())
-
-    def notify(self, *args, **kwargs):
-        """
-        Calls all of the functions derived from this notification.
-        The additional arguments are for any DCC callbacks.
-
-        :rtype: None
-        """
-
-        # Iterate through ids
-        #
-        deleteLater = []
-
-        for _id in self._ids:
-
-            ref = self.__class__.__functions__[_id]
-
-            if ref.isAlive():
-
-                func = ref()
-                func()
-
-            else:
-
-                deleteLater.append(_id)
-                continue
-
-        # Remove dead references
-        #
-        for _id in deleteLater:
-
-            self.remove(_id)
-
-    def type(self):
-        """
-        Returns the notify type constant for this instance.
-
-        :rtype: Notifications
-        """
-
-        return self._type
-
-    @classmethod
-    def createUniqueID(cls):
-        """
-        Returns a unique id for a new notify.
-
-        :rtype: int
-        """
-
-        keys = list(cls.__functions__.keys())
-        numKeys = len(keys)
-
-        if numKeys == 0:
-
-            return 0
-
-        else:
-
-            return keys[-1] + 1
-
-    def add(self, func):
-        """
-        Adds the supplied function to the notify list.
-
-        :type func: function
-        :rtype: int
-        """
-
-        # Check if function has already been added
-        #
-        if func not in self:
-
-            # Assign func using new id
-            #
-            notifyId = self.createUniqueID()
-
-            self.__class__.__functions__[notifyId] = WeakMethod(func)
-            self._ids.append(notifyId)
-
-            return notifyId
-
-        else:
-
-            return self.index(func)
-
-    def remove(self, _id):
-        """
-        Removes the supplied notify ID.
-
-        :type _id: int
-        :rtype: bool
-        """
-
-        try:
-
-            self._ids.remove(_id)
-            del self.__class__.__functions__[_id]
-
-            return True
-
-        except (ValueError, KeyError) as exception:
-
-            log.debug(exception)
-            return False
-
-    def index(self, func):
-        """
-        Returns the notify ID associated with the given function.
-
-        :type func: function
-        :rtype: int
-        """
-
-        try:
-
-            functions = self.functions()
-            index = functions.index(func)
-
-            return self._ids[index]
-
-        except ValueError as exception:
-
-            log.debug(exception)
-            return None
-
+    # region Methods
     @abstractmethod
     def creator(self):
         """
@@ -441,131 +296,214 @@ class Notification(with_metaclass(ABCMeta, object)):
         """
 
         pass
+    # endregion
+
+
+def delegate(*args, **kwargs):
+    """
+    Notify hook used to delegate to the associated function set.
+    By using an unbound method we can avoid reference counts to function set instances.
+    Once all references to a function set are gone we can clean up all notification handles.
+
+    :rtype: None
+    """
+
+    # Get associated object id
+    #
+    objectId = kwargs.pop('objectId', 0)
+    ref = AFnNotify.__instances__.get(objectId)
+
+    instance = None
+
+    if callable(ref):
+
+        instance = ref()
+
+    # Check if instance still exists
+    #
+    if isinstance(instance, AFnNotify):
+
+        instance.notify(*args, **kwargs)
 
 
 class AFnNotify(with_metaclass(ABCMeta, afnbase.AFnBase)):
     """
     Overload of AFnBase that outlines function set behaviour for DCC callbacks.
     For the sake of backwards compatibility each overload should register its callbacks with this class.
-    From there this class will handle notifying all of the associated functions.
+    From there this class will handle notifying all the associated functions.
     That way we're not shooting ourselves in the foot by purely relying on string execution.
     """
 
-    __slots__ = ()
+    # region Dunderscores
+    __slots__ = ('_notifications', '_functions', '__weakref__')
     __notifications__ = {}
+    __instances__ = {}
+
+    def __new__(cls, *args, **kwargs):
+        """
+        Private methods called before a new instance is created.
+
+        :rtype: AFnNotify
+        """
+
+        # Check if notifications have been registered
+        #
+        if not cls.hasRegistered():
+
+            cls.register()
+
+        # Call parent method
+        #
+        instance = super(AFnNotify, cls).__new__(cls)
+        cls.__instances__[id(instance)] = weakref.ref(instance)
+
+        return instance
 
     def __init__(self, *args, **kwargs):
         """
         Private method called after a new instance has been created.
+
+        :rtype: None
         """
 
         # Call parent method
         #
         super(AFnNotify, self).__init__(*args, **kwargs)
 
-        # Check if class has been initialized
+        # Declare private variables
         #
-        if not self.isInitialized():
+        self._notifications = {typeId: T(typeId=typeId, delegate=self.delegate(typeId)) for (typeId, T) in self.__notifications__.items()}
+        self._functions = sparsearray.SparseArray()
 
-            log.info('Initializing notifies...')
-            self.initialize()
-
-    @classmethod
-    def isInitialized(cls):
+    def __del__(self):
         """
-        Evaluates if the function set globals have been initialized.
-
-        :rtype: bool
-        """
-
-        return len(cls.__notifications__) > 0
-
-    @classmethod
-    @abstractmethod
-    def initialize(cls):
-        """
-        Registers all of the required notifications for derived classes.
-        Use the registerNotification method to assign a notification to the private container.
+        Private method called before this instance is sent for garbage collection.
 
         :rtype: None
         """
 
-        pass
+        self.deleteLater()
+    # endregion
 
-    @classmethod
-    def registerNotification(cls, notification):
+    # region Methods
+    def notify(self, *args, **kwargs):
         """
-        Registers the supplied notification under the given type.
+        Notifies all the functions associated with the given code.
 
-        :type notification: Notification
         :rtype: None
         """
 
-        # Assign notification under type
+        # Iterate through functions
         #
-        cls.__notifications__[notification.type()] = notification
+        typeId = kwargs.pop('typeId', Notifications.Unknown)
+        log.debug('Notify received: %s, args = %s, kwargs = %s' % (typeId, args, kwargs))
 
-    @classmethod
-    def notify(cls, notifyType):
-        """
-        Notifies all of the functions associated with the given code.
+        for func in self.iterFunctions(typeId=typeId):
 
-        :type notifyType: int
-        :rtype: None
-        """
+            func(*args, **kwargs)
 
-        # Check if type is valid
-        #
-        if notifyType == Notifications.Unknown:
-
-            raise TypeError('notify() cannot notify unknown type!')
-
-        # Check for none type
-        #
-        notification = cls.__notifications__.get(notifyType, None)
-
-        if notification is not None:
-
-            notification.notify()
-
-        else:
-
-            raise TypeError('notify() expects a valid notify type!')
-
-    @classmethod
-    def hasNotifyType(cls, notifyType):
+    def hasNotifyType(self, typeId):
         """
         Evaluates if the supplied notify type exists.
 
-        :type notifyType: int
+        :type typeId: int
         :rtype: bool
         """
 
-        return notifyType in cls.__notifications__
+        return typeId in self._notifications
+
+    def nextAvailableId(self):
+        """
+        Returns a unique id for a new notify.
+
+        :rtype: int
+        """
+
+        return self._functions.nextAvailableIndex()
+
+    def delegate(self, typeId):
+        """
+        Returns an unbound delegate for notifies.
+
+        :type typeId: Notifications
+        :rtype: function
+        """
+
+        return partial(delegate, objectId=id(self), typeId=typeId)
+
+    def iterFunctions(self, typeId=None):
+        """
+        Returns a generator that yields all notified functions.
+        This method will also clean up dead references on use!
+
+        :type typeId: Notifications
+        :rtype: iter
+        """
+
+        # Iterate through notifies
+        #
+        deleteLater = []
+
+        for (notifyId, notify) in self._functions.items():
+
+            # Inspect type id
+            #
+            if isinstance(typeId, Notifications) and notify.typeId != typeId:
+
+                continue
+
+            # Get weak reference
+            #
+            func = notify.weakMethod()
+
+            if callable(func):
+
+                yield func
+
+            else:
+
+                deleteLater.append(notifyId)
+                continue
+
+        # Cleanup dead methods
+        #
+        for notifyId in deleteLater:
+
+            del self._functions[notifyId]
+
+    def hasNotify(self, func):
+        """
+        Evaluates if the supplied function already has a notify.
+
+        :type func: function
+        :rtype: bool
+        """
+
+        return func in list(self.iterFunctions())
 
     def addPreFileOpenNotify(self, func):
         """
-        Adds a notify before a new scene is opened.
+        Adds notify before a new scene is opened.
 
         :type func: method
         :rtype: int
         """
 
-        return self.addNotify(Notifications.PreFileOpened, func)
+        return self.addNotify(Notifications.PreFileOpen, func)
 
     def addPostFileOpenNotify(self, func):
         """
-        Adds a notify after a new scene is opened.
+        Adds notify after a new scene is opened.
 
         :type func: method
         :rtype: int
         """
 
-        return self.addNotify(Notifications.PostFileOpened, func)
+        return self.addNotify(Notifications.PostFileOpen, func)
 
     def addUndoNotify(self, func):
         """
-        Adds a notify when the user undoes a command.
+        Adds notify when the user undoes a command.
 
         :type func: method
         :rtype: int
@@ -575,7 +513,7 @@ class AFnNotify(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
     def addRedoNotify(self, func):
         """
-        Adds a notify when the user redoes a command.
+        Adds notify when the user redoes a command.
 
         :type func: method
         :rtype: int
@@ -585,7 +523,7 @@ class AFnNotify(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
     def addSelectionChangedNotify(self, func):
         """
-        Adds a notify when the active selection is changed.
+        Adds notify when the active selection is changed.
 
         :type func: method
         :rtype: int
@@ -593,51 +531,121 @@ class AFnNotify(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         return self.addNotify(Notifications.SelectionChanged, func)
 
-    @classmethod
-    def addNotify(cls, notifyType, func):
+    def addNotify(self, typeId, func):
         """
         Adds a new notify using the specified notify type.
 
-        :type notifyType: int
+        :type typeId: int
         :type func: function
         :rtype: int
         """
 
+        # Inspect type id
+        #
+        if isinstance(typeId, string_types):
+
+            typeId = Notifications['typeId']
+
         # Check if notify type exists
         #
-        if cls.hasNotifyType(notifyType):
+        if not self.hasNotifyType(typeId):
 
-            return cls.__notifications__[notifyType].add(func)
+            raise TypeError('addNotify() expects a valid notify type (%s given)!' % typeId)
+
+        # Check if function already notified
+        #
+        if not self.hasNotify(func):
+
+            index = self.nextAvailableId()
+            self._functions[index] = Notify(typeId=typeId, weakMethod=WeakMethod(func))
+
+            return index
 
         else:
 
-            raise TypeError('addNotify() no registered notify found for this type!')
+            return list(self.iterFunctions()).index(func)
 
-    @classmethod
-    def removeNotify(cls, notifyId):
+    def removeNotify(self, notifyId):
         """
-        Removes a notify that is currently in use.
-        It's lazy but it gets the job done...
+        Removes the specified notify.
 
         :type notifyId: int
+        :rtype: bool
+        """
+
+        if self._functions.hasIndex(notifyId):
+
+            del self._functions[notifyId]
+            return True
+
+        else:
+
+            return False
+
+    @classmethod
+    def hasRegistered(cls):
+        """
+        Evaluates if the notification constructors have been registered.
+
+        :rtype: bool
+        """
+
+        return len(cls.__notifications__) > 0
+
+    @classmethod
+    @abstractmethod
+    def register(cls):
+        """
+        Registers all the notification constructors for this function set.
+
         :rtype: None
         """
 
-        for notification in cls.__notifications__.values():
-
-            notification.remove(notifyId)
+        pass
 
     @classmethod
-    def clear(cls):
+    def registerNotification(cls, notification, typeId=Notifications.Unknown):
+        """
+        Registers the supplied notification as the specified type.
+
+        :type notification: Union[type, function]
+        :type typeId: Notifications
+        :rtype: None
+        """
+
+        cls.__notifications__[typeId] = notification
+
+    @classmethod
+    def unregisterNotification(cls, typeId):
+        """
+        Unregisters the specified type.
+
+        :type typeId: Notifications
+        :rtype: None
+        """
+
+        del cls.__notifications__[typeId]
+
+    def deleteLater(self):
         """
         Removes all notifications along with their registered functions.
 
         :rtype: None
         """
 
-        notifyTypes = list(cls.__notifications__.keys())
+        # Iterate through notifications
+        #
+        for (typeId, notification) in self._notifications.items():
 
-        for notifyType in notifyTypes:
-
-            notification = cls.__notifications__.pop(notifyType)
+            log.info('Destroying %s notification...' % notification.typeName)
             notification.destroy()
+
+        # Clear arrays
+        #
+        self._notifications.clear()
+        self._functions.clear()
+
+        # Delete self reference
+        #
+        del self.__instances__[id(self)]
+    # endregion

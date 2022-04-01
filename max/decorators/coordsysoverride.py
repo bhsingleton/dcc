@@ -2,6 +2,7 @@ import pymxs
 
 from six import string_types
 from functools import partial
+from dcc.decorators import abstractdecorator
 
 import logging
 logging.basicConfig()
@@ -9,13 +10,14 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-class CoordSysOverride(object):
+class CoordSysOverride(abstractdecorator.AbstractDecorator):
     """
-    Class decorator used to override the co-ordinate system at runtime.
+    Overload of AbstractDecorator that overrides the co-ordinate system at runtime.
     Accepted values include: view, screen, world, parent, gimbal, local, grid and working_pivot
     """
 
-    __slots__ = ('_mode', '_previous', '_instance', '_owner', '_func')
+    # region Dunderscores
+    __slots__ = ('_mode', '_previous')
 
     def __init__(self, *args, **kwargs):
         """
@@ -24,53 +26,12 @@ class CoordSysOverride(object):
 
         # Call parent method
         #
-        super(CoordSysOverride, self).__init__()
+        super(CoordSysOverride, self).__init__(*args, **kwargs)
 
         # Declare public variables
         #
         self._mode = pymxs.runtime.Name(kwargs.get('mode', 'local'))
         self._previous = None
-        self._instance = None
-        self._owner = None
-        self._func = None
-
-        # Inspect arguments
-        #
-        numArgs = len(args)
-
-        if numArgs == 1:
-
-            self._func = args[0]
-
-    def __get__(self, instance, owner):
-        """
-        Private method called whenever this object is accessed via attribute lookup.
-
-        :type instance: object
-        :type owner: type
-        :rtype: Undo
-        """
-
-        self._instance = instance
-        self._owner = owner
-
-        return self
-
-    def __call__(self, *args, **kwargs):
-        """
-        Private method that is called whenever this instance is evoked.
-
-        :type func: function
-        :rtype: function
-        """
-
-        # Execute order of operations
-        #
-        self.__enter__()
-        results = self.func(*args, **kwargs)
-        self.__exit__(None, None, None)
-
-        return results
 
     def __enter__(self):
         """
@@ -93,7 +54,9 @@ class CoordSysOverride(object):
         """
 
         pymxs.runtime.setRefCoordSys(self.previous)
+    # endregion
 
+    # region Properties
     @property
     def mode(self):
         """
@@ -124,23 +87,7 @@ class CoordSysOverride(object):
         """
 
         self._previous = previous
-
-    @property
-    def func(self):
-        """
-        Getter method used to return the wrapped function.
-        If this is a descriptor then the function will be bound.
-
-        :rtype: function
-        """
-
-        if self._instance is not None:
-
-            return self._func.__get__(self._instance, self._owner)
-
-        else:
-
-            return self._func
+    # endregion
 
 
 def coordSysOverride(*args, **kwargs):
@@ -164,4 +111,4 @@ def coordSysOverride(*args, **kwargs):
 
     else:
 
-        raise TypeError('commandPanelOverride() expects at most 1 argument (%s given)!' % numArgs)
+        raise TypeError('coordSysOverride() expects at most 1 argument (%s given)!' % numArgs)

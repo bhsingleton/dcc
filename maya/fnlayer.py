@@ -11,9 +11,9 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-class FnLayer(afnlayer.AFnLayer, fnnode.FnNode):
+class FnLayer(fnnode.FnNode, afnlayer.AFnLayer):
     """
-    Overload of AFnNode that implements the node interface for Maya.
+    Overload of AFnLayer that defines the function set behavior for Maya layers.
     """
 
     __slots__ = ()
@@ -25,8 +25,7 @@ class FnLayer(afnlayer.AFnLayer, fnnode.FnNode):
         :rtype: bool
         """
 
-        plug = plugutils.findPlug(self.object(), 'visibility')
-        return plugutils.getValue(plug)
+        return self.getAttr('visibility')
 
     def setVisibility(self, visibility):
         """
@@ -36,8 +35,7 @@ class FnLayer(afnlayer.AFnLayer, fnnode.FnNode):
         :rtype: bool
         """
 
-        plug = plugutils.findPlug(self.object(), 'visibility')
-        return plugutils.setValue(plug, visibility)
+        self.setAttr('visibility', visibility)
 
     def iterNodes(self):
         """
@@ -46,7 +44,7 @@ class FnLayer(afnlayer.AFnLayer, fnnode.FnNode):
         :rtype: iter
         """
 
-        layerutils.iterNodesFromLayers(self.object())
+        return layerutils.iterNodesFromLayers(self.object())
 
     def addNodes(self, *nodes):
         """

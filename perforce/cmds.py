@@ -1,6 +1,6 @@
 """
 Low level python module used for issuing perforce commands to the server.
-By default each command will generate a repository based on the user's perforce environment settings.
+By default, each command will generate a repository based on the user's perforce environment settings.
 Each command is capable of augmenting the environment settings to support clients with different streams.
 """
 import os
@@ -55,13 +55,13 @@ def logErrors(errors):
 
         for error in errors:
 
-            logResults(error)
+            logErrors(error)
 
     elif isinstance(errors, dict):
 
         for (key, value) in errors.items():
 
-            log.info(value)
+            log.error(value)
 
     else:
 
@@ -137,6 +137,31 @@ def where(*args, **kwargs):
 
         p4.connect()
         fileSpecs = p4.run('where', *args)
+        p4.disconnect()
+
+        return fileSpecs
+
+    except P4Exception:
+
+        logErrors(p4.errors)
+        return []
+
+
+def fstat(*args, **kwargs):
+    """
+    Returns information for each file.
+
+    :rtype: List[dict]
+    """
+
+    # Create repository
+    #
+    p4 = createAdapter(**kwargs)
+
+    try:
+
+        p4.connect()
+        fileSpecs = p4.run('fstat', *args)
         p4.disconnect()
 
         return fileSpecs

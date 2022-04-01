@@ -17,6 +17,76 @@ class AFnObject(with_metaclass(ABCMeta, afnbase.AFnBase)):
     __slots__ = ()
 
     @abstractmethod
+    def name(self):
+        """
+        Returns the name of this object.
+
+        :rtype: str
+        """
+
+        pass
+
+    @abstractmethod
+    def setName(self, name):
+        """
+        Updates the name of this object.
+
+        :type name: str
+        :rtype: None
+        """
+
+        pass
+
+    @abstractmethod
+    def namespace(self):
+        """
+        Returns the namespace for this object.
+
+        :rtype: str
+        """
+
+        pass
+
+    @abstractmethod
+    def setNamespace(self, namespace):
+        """
+        Updates the namespace for this object.
+
+        :type namespace: str
+        :rtype: None
+        """
+
+        pass
+
+    def absoluteName(self):
+        """
+        Returns the absolute name of this object.
+
+        :rtype: str
+        """
+
+        namespace = self.namespace()
+        name = self.name()
+
+        if len(namespace) > 0:
+
+            return '{namespace}:{name}'.format(namespace=namespace, name=name)
+
+        else:
+
+            return name
+
+    def dagPath(self):
+        """
+        Returns a dag path to this object.
+        This uses pipes to delimit a break between two object.
+
+        :rtype: str
+        """
+
+        return '|'.join([self.__class__(x).absoluteName() for x in self.trace()])
+
+    @abstractmethod
     def parent(self):
         """
         Returns the parent of this object.

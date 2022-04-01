@@ -9,12 +9,23 @@ log.setLevel(logging.INFO)
 
 
 BASE_TYPES = {
-    'GeometryClass':  pymxs.runtime.geometry,
+    'GeometryClass':  pymxs.runtime.GeometryClass,
     'shape':  pymxs.runtime.shape,
     'light':  pymxs.runtime.light,
     'camera':  pymxs.runtime.camera,
     'helper':  pymxs.runtime.helper
 }
+
+
+def isAnimatable(obj):
+    """
+    Evaluates if the supplied object is derived from animatable.
+
+    :type obj: pymxs.MXSWrapperBase
+    :rtype: bool
+    """
+
+    return pymxs.runtime.isProperty(obj, 'numSubs')
 
 
 def iterNodesByPattern(pattern, ignoreCase=False):

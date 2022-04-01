@@ -8,6 +8,7 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
+FMTID_UserDefinedProperties = '{F29F85E0-4FF9-1068-AB91-08002B27B3D9}'
 FMTID_CustomDefinedProperties = '{D5CDD505-2E9C-101B-9397-08002B2CF9AE}'
 
 
@@ -18,6 +19,13 @@ def iterFileProperties(filePath):
     :type filePath: str
     :rtype: iter
     """
+
+    # Check if path represents a storage file
+    #
+    if not pythoncom.StgIsStorageFile(filePath):
+
+        log.warning('iterFileProperties() expects a storage file!')
+        return
 
     # Initialize storage container
     #
@@ -56,22 +64,35 @@ def setFileProperties(filePath, properties):
     :rtype: None
     """
 
-    # Initialize storage container
+    # Check if path represents a storage file
     #
-    flags = storagecon.STGM_WRITE | storagecon.STGM_SHARE_EXCLUSIVE
-    fileStorage = pythoncom.StgOpenStorage(filePath, None, flags)
+    if not pythoncom.StgIsStorageFile(filePath):
 
-    # Open custom property storage
-    #
-    propertySetStorage = fileStorage.QueryInterface(pythoncom.IID_IPropertySetStorage)
-    propertyStorage = propertySetStorage.Open(FMTID_CustomDefinedProperties, flags)
+        log.warning('setFileProperties() expects a storage file!')
+        return
 
-    # Overwrite custom properties
+    # Get existing custom properties
+    # Otherwise a share violation will be raised while the container is open for editing!
     #
     customProperties = getFileProperties(filePath)
     customProperties.update(properties)
 
-    propertyStorage.writeMultiple(list(customProperties.keys()), list(customProperties.values()))
+    # Initialize storage container
+    #
+    flags = storagecon.STGM_READWRITE | storagecon.STGM_SHARE_EXCLUSIVE
+    fileStorage = pythoncom.StgOpenStorage(filePath, None, flags)
+
+    # Edit custom property storage
+    #
+    propertySetStorage = fileStorage.QueryInterface(pythoncom.IID_IPropertySetStorage)
+    propertyStorage = propertySetStorage.Open(FMTID_CustomDefinedProperties, flags)
+
+    propertyStorage.WriteMultiple(list(customProperties.keys()), list(customProperties.values()))
+
+    # Commit changes to storage container
+    #
+    log.info('Committing storage changes to: %s' % filePath)
+    propertyStorage.Commit(0x8)
 
 
 def setFileProperty(filePath, key, value):

@@ -1,4 +1,4 @@
-from dcc.fbx import fbxbase, FbxFileType, FbxFileVersion
+from dcc.fbx import fbxbase, fbxexportset, FbxFileType, FbxFileVersion
 from dcc.collections import notifylist
 
 import logging
@@ -9,21 +9,23 @@ log.setLevel(logging.INFO)
 
 class FbxAsset(fbxbase.FbxBase):
     """
-    Overload of FbxBase that outlines fbx asset data.
+    Overload of FbxBase that interfaces with fbx export set data.
     """
 
     # region Dunderscores
     __slots__ = (
         '_directory',
+        '_frameRate',
         '_fileType',
         '_fileVersion',
-        '_exportSets',
-        '_sequences'
+        '_exportSets'
     )
 
     def __init__(self, *args, **kwargs):
         """
         Private method called after a new instance has been created.
+
+        :rtype: None
         """
 
         # Call parent method
@@ -33,18 +35,15 @@ class FbxAsset(fbxbase.FbxBase):
         # Declare private variables
         #
         self._directory = kwargs.get('directory', '')
+        self._frameRate = kwargs.get('frameRate', 30)
         self._fileType = kwargs.get('fileType', FbxFileType.Binary)
         self._fileVersion = kwargs.get('fileVersion', FbxFileVersion.FBX201600)
         self._exportSets = notifylist.NotifyList()
-        self._sequences = notifylist.NotifyList()
 
-        # Setup notify list
+        # Setup notifies
         #
         self._exportSets.addCallback('itemAdded', self.exportSetAdded)
         self._exportSets.addCallback('itemRemoved', self.exportSetRemoved)
-
-        self._sequences.addCallback('itemAdded', self.sequenceAdded)
-        self._sequences.addCallback('itemRemoved', self.sequenceRemoved)
     # endregion
 
     # region Properties
@@ -68,6 +67,27 @@ class FbxAsset(fbxbase.FbxBase):
         """
 
         self._directory = directory
+
+    @property
+    def frameRate(self):
+        """
+        Getter method that returns the frame rate for this asset.
+
+        :rtype: int
+        """
+
+        return self._frameRate
+
+    @frameRate.setter
+    def frameRate(self, frameRate):
+        """
+        Setter method that updates the frame rate for this asset.
+
+        :type frameRate: int
+        :rtype: None
+        """
+
+        self._frameRate = frameRate
 
     @property
     def fileType(self):
@@ -121,15 +141,39 @@ class FbxAsset(fbxbase.FbxBase):
 
         return self._exportSets
 
-    @property
-    def sequences(self):
+    @exportSets.setter
+    def exportSets(self, exportSets):
         """
         Getter method that returns the fbx export sets for this asset
 
-        :rtype: List[fbxsequence.FbxSequence]
+        :type exportSets: List[fbxexportset.FbxExportSet]
+        :rtype: None
         """
 
-        return self._sequences
+        self._exportSets.clear()
+        self._exportSets.extend(exportSets)
+    # endregion
+
+    # region Methods
+    def initializeSequences(self):
+
+        self.reference.guid()
+
+    def save(self):
+        """
+        Saves any changes made to this asset.
+
+        :rtype: None
+        """
+
+        if self.reference.isValid():
+
+            pass
+
+        else:
+
+            pass
+
     # endregion
 
     # region Callbacks
@@ -153,25 +197,4 @@ class FbxAsset(fbxbase.FbxBase):
         """
 
         exportSet._asset = self.nullWeakReference
-
-    def sequenceAdded(self, index, sequence):
-        """
-        Adds a reference of this asset to the supplied sequence.
-
-        :type index: int
-        :type sequence: fbxsequence.FbxSequence
-        :rtype: None
-        """
-
-        sequence._asset = self.weakReference()
-
-    def sequenceRemoved(self, sequence):
-        """
-        Removes the reference of this asset from the supplied sequence
-
-        :type sequence: fbxsequence.FbxSequence
-        :rtype: None
-        """
-
-        sequence._asset = self.nullWeakReference
     # endregion

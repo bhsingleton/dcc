@@ -1,7 +1,8 @@
+import re
 import pymxs
 
 from dcc.max.json import mxsvalueparser
-from dcc.max.libs import controllerutils, modifierutils, attributeutils
+from dcc.max.libs import nodeutils, attributeutils, controllerutils, modifierutils
 
 import logging
 logging.basicConfig()
@@ -87,9 +88,42 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
 
         return {
             'class': str(pymxs.runtime.classOf(referenceTarget)),
-            'superClass': str(pymxs.runtime.superClassOf(referenceTarget)),
-            'expression': pymxs.runtime.exprForMaxObject(referenceTarget)
+            'superClass': str(pymxs.runtime.superClassOf(referenceTarget))
         }
+
+    def serializeProperties(self, maxObject):
+        """
+        Returns a serializable object for the supplied max object's properties.
+
+        :type maxObject: pymxs.MXSWrapperBase
+        :rtype: Dict[str, Any]
+        """
+
+        return dict(
+            controllerutils.iterProperties(
+                maxObject,
+                skipAnimatable=True,
+                skipComplexValues=True,
+                skipDefaultValues=True
+            )
+        )
+
+    def serializeSubAnim(self, subAnim):
+        """
+        Returns a serializable object for the supplied max sub anim.
+
+        :type subAnim: pymxs.runtime.SubAnim
+        :rtype: dict
+        """
+
+        obj = self.serializeReferenceTarget(subAnim)
+        obj['name'] = subAnim.name.replace(' ', '_')
+        obj['index'] = subAnim.index
+        obj['value'] = subAnim.value
+        obj['isAnimated'] = getattr(subAnim, 'isAnimated', False)
+        obj['controller'] = subAnim.controller
+
+        return obj
 
     def serializeAnimatable(self, animatable):
         """
@@ -103,6 +137,7 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
         #
         obj = self.serializeReferenceTarget(animatable)
         obj['name'] = getattr(animatable, 'name', '')
+        obj['expression'] = pymxs.runtime.exprForMaxObject(animatable)
         obj['properties'] = {}
         obj['subAnims'] = []
 
@@ -110,7 +145,7 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
         #
         if self.includeProperties:
 
-            obj['properties'].update(dict(controllerutils.iterProperties(animatable, skipAnimatable=True, skipComplexValues=True, skipDefaultValues=True)))
+            obj['properties'].update(self.serializeProperties(animatable))
 
         # Check if sub-anims should be included
         #
@@ -164,7 +199,8 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
         # Serialize controller
         #
         obj = self.serializeReferenceTarget(controller)
-        obj['properties'] = dict(controllerutils.iterProperties(controller, skipAnimatable=True, skipComplexValues=True, skipDefaultValues=True))
+        obj['expression'] = pymxs.runtime.exprForMaxObject(controller)
+        obj['properties'] = self.serializeProperties()
         obj['subAnims'] = []
         obj['value'] = controller.value
         obj['keys'] = []
@@ -192,23 +228,6 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
             obj['keys'].extend(list(controllerutils.iterMaxKeys(controller)))
 
         return obj
-
-    def serializeSubAnim(self, subAnim):
-        """
-        Returns a serializable object for the supplied max sub anim.
-
-        :type subAnim: pymxs.runtime.SubAnim
-        :rtype: dict
-        """
-
-        obj = self.serializeReferenceTarget(subAnim)
-        obj['name'] = subAnim.name.replace(' ', '_')
-        obj['index'] = subAnim.index
-        obj['value'] = subAnim.value
-        obj['isAnimated'] = getattr(subAnim, 'isAnimated', False)
-        obj['controller'] = subAnim.controller
-
-        return obj
     # endregion
 
 
@@ -218,6 +237,7 @@ class MXSObjectDecoder(mxsvalueparser.MXSValueDecoder):
     """
 
     __slots__ = ()
+    __propertyparser__ = re.compile(r'([a-zA-Z_]+)(?:\[(#?[a-zA-Z0-9]+)\])?')
 
     def default(self, obj):
         """
@@ -238,13 +258,13 @@ class MXSObjectDecoder(mxsvalueparser.MXSValueDecoder):
 
         # Delegate controller type to correct method
         #
-        if className in controllerutils.LIST_TYPES.keys():
+        if superClassName in nodeutils.BASE_TYPES.keys():
 
-            return self.deserializeListController(obj)
+            return self.deserializeINode(obj)
 
-        elif className in controllerutils.CONSTRAINT_TYPES.keys():
+        elif superClassName in modifierutils.BASE_TYPES.keys():
 
-            return self.deserializeConstraint(obj)
+            return self.deserializeModifier(obj)
 
         elif superClassName in controllerutils.BASE_TYPES.keys():
 
@@ -254,6 +274,116 @@ class MXSObjectDecoder(mxsvalueparser.MXSValueDecoder):
 
             return super(MXSObjectDecoder, self).default(obj)
 
+    def traceMaxObjectExpression(self, expression):
+        """
+        Returns the max object associated with the given expression.
+
+        :type expression: str
+        :rtype: pymxs.MXSWrapperBase
+        """
+
+        # Split expression using delimiter
+        #
+        strings = expression.split('.')
+        numStrings = len(strings)
+
+        if numStrings == 0:
+
+            raise TypeError('traceMaxObjectExpression() expects a valid expression!')
+
+        # Iterate through delimited strings
+        #
+        obj = pymxs.runtime.getNodeByName(strings[0].lstrip('$'))
+
+        for i in range(1, numStrings, 1):
+
+            # Get property value
+            #
+            string, index = self.__propertyparser__.findall(strings[i])[0]
+            name = pymxs.runtime.Name(string)
+
+            if pymxs.runtime.isAnimated(obj, name):
+
+                obj = pymxs.runtime.getSubAnim(obj, name)
+
+            elif pymxs.runtime.isProperty(obj, name):
+
+                obj = pymxs.runtime.getProperty(obj, name)
+
+            else:
+
+                raise TypeError('traceMaxObjectExpression() unable to locate property: %s' % name)
+
+            # Get indexed property
+            #
+            if len(index) > 0:
+
+                index = pymxs.runtime.execute(index)
+                obj = obj[index]
+
+        return obj
+
+    def deserializeProperties(self, properties, maxObject=None):
+        """
+        Overwrites the properties on the supplied max object.
+
+        :type properties: Dict[str, Any]
+        :type maxObject: pymxs.MXSWrapperBase
+        :rtype: None
+        """
+
+        # Assign properties to controller
+        #
+        for (key, value) in properties.items():
+
+            pymxs.runtime.setProperty(maxObject, pymxs.runtime.Name(key), value)
+
+    def deserializeSubAnims(self, subAnims, maxObject=None):
+        """
+        Overwrites the sub-anim controllers on the supplied max object.
+
+        :type subAnims: List[dict]
+        :type maxObject: pymxs.MXSWrapperBase
+        :rtype: None
+        """
+
+        # Iterate through sub-anims
+        #
+        for obj in subAnims:
+
+            subAnim = pymxs.runtime.getSubAnim(maxObject, obj['index'])
+
+            if subAnim.controller != obj['controller']:
+
+                subAnim.controller = obj['controller']
+
+            else:
+
+                continue
+
+    def deserializeCustomAttributes(self, customAttributes, maxObject=None):
+
+        pass
+
+    def deserializeINode(self, obj):
+
+        try:
+
+            node = self.traceMaxObjectExpression(obj['name'])
+            self.deserializeProperties(obj['properties'], maxObject=node)
+            self.deserializeSubAnims(obj['subAnims'], maxObject=node)
+
+            return node
+
+        except TypeError:
+
+            log.warning('Unable to locate node: %s' % obj['name'])
+            return
+
+    def deserializeModifier(self, obj):
+
+        pass
+
     def deserializeController(self, obj):
         """
         Returns a deserialized controller from the supplied object.
@@ -262,54 +392,76 @@ class MXSObjectDecoder(mxsvalueparser.MXSValueDecoder):
         :rtype: pymxs.MXSWrapperBase
         """
 
-        # Create new controller
+        # Get controller
         #
-        cls = getattr(pymxs.runtime, obj['class'])
-        controller = cls()
+        controller = None
 
-        # Assign properties to controller
+        try:
+
+            controller = self.traceMaxObjectExpression(obj['expression'])
+
+        except TypeError:
+
+            cls = getattr(pymxs.runtime, obj['class'])
+            controller = cls()
+
+        # Assign controller value
         #
-        for (key, value) in obj['properties'].items():
+        controller.value = obj['value']
 
-            pymxs.runtime.setProperty(controller, pymxs.runtime.Name(key), value)
-
-        # Assign sub-anim controllers
+        # Deserialize controller components
         #
-        for subAnim in obj['subAnims']:
+        self.deserializeProperties(obj['properties'], maxObject=controller)
+        self.deserializeSubAnims(obj['subAnims'], maxObject=controller)
+        self.deserializeMaxKeyArray(obj['keys'], controller=controller)
 
-            subAnim = pymxs.runtime.getSubAnim(controller, subAnim['name'])
-            subAnim.controller = subAnim['controller']
-
-        # Assign max keys
+        # Check if controller has sub-controllers
         #
-        for (index, keyframe) in enumerate(obj['keys']):
+        if obj['class'] in controllerutils.LIST_TYPES.keys():
 
-            pymxs.runtime.addNewKey(controller, keyframe['kwargs']['time'])
+            self.deserializeControllerList(obj['list'], controller=controller)
 
-            for (key, value) in keyframe['kwargs'].items():
+        # Check if controller has targets
+        #
+        if obj['class'] in controllerutils.CONSTRAINT_TYPES.keys():
 
-                pymxs.runtime.setProperty(controller.keys[index], pymxs.runtime.Name(key), value)
+            self.deserializeConstraintTargets(obj['targets'], constraint=controller)
 
         return controller
 
-    def deserializeListController(self, obj):
+    def deserializeControllerList(self, obj, controller=None):
         """
         Returns a deserialized list controller from the supplied object.
 
         :type obj: dict
-        :rtype: pymxs.MXSWrapperBase
+        :type controller: pymxs.MXSWrapperBase
+        :rtype: None
         """
 
         # Assign list controllers
         #
-        controller = self.deserializeController(obj)
-        available = pymxs.runtime.getSubAnim(controller, 'available')
+        available = pymxs.runtime.getSubAnim(controller, pymxs.runtime.Name('available'))
+        subController = None
 
-        for (index, item) in enumerate(obj['list']):
+        for (i, item) in enumerate(obj['list']):
 
-            available.controller = item['controller']
-            controller.setName(index, item['name'])
-            controller.weight[index] = item['weight']
+            # Get sub-controller
+            #
+            listCount = controller.list.getCount()
+
+            if i == listCount:
+
+                available.controller = item['controller']
+                controller.setName(i, item['name'])
+                controller.weight[i] = item['weight']
+
+            else:
+
+                subController = controller.list.getSubCtrl(i + 1)
+
+                if subController != item['controller']:
+
+                    pass
 
         # Assign list weights and set active
         #
@@ -317,23 +469,22 @@ class MXSObjectDecoder(mxsvalueparser.MXSValueDecoder):
 
         return controller
 
-    def deserializeConstraint(self, obj):
+    def deserializeConstraintTargets(self, obj, constraint=None):
         """
         Returns a deserialized constraint controller from the supplied object.
 
         :type obj: dict
-        :rtype: pymxs.MXSWrapperBase
+        :type constraint: pymxs.MXSWrapperBase
+        :rtype: None
         """
 
         # Assign target nodes
         #
-        controller = self.deserializeController(obj)
-
         for (index, item) in enumerate(obj['targets']):
 
-            target = pymxs.runtime.getNodeByName(item['name'])
+            target = self.traceMaxObjectExpression(item['name'])
 
-            controller.appendTarget(target)
-            controller.setWeight(index, item['weight'])
+            constraint.appendTarget(target)
+            constraint.setWeight(index, item['weight'])
 
-        return controller
+        return constraint

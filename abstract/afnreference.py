@@ -17,6 +17,52 @@ class AFnReference(with_metaclass(ABCMeta, afnobject.AFnObject)):
 
     __slots__ = ()
 
+    def isValid(self):
+        """
+        Evaluates if this function set is valid.
+
+        :rtype: bool
+        """
+
+        return self.object() is not None
+
+    @abstractmethod
+    def handle(self):
+        """
+        Returns the handle to this reference.
+
+        :rtype: int
+        """
+
+        pass
+
+    @abstractmethod
+    def uid(self):
+        """
+        Returns a unique identifier to this reference.
+
+        :rtype: str
+        """
+
+        pass
+
+    def guid(self):
+        """
+        Returns a global unique identifier to this reference.
+
+        :rtype: str
+        """
+
+        fnReference = self.__class__()
+        uids = []
+
+        for reference in self.trace():
+
+            fnReference.setObject(reference)
+            uids.append(fnReference.uid())
+
+        return ':'.join(uids)
+
     @abstractmethod
     def filePath(self):
         """
@@ -56,53 +102,6 @@ class AFnReference(with_metaclass(ABCMeta, afnobject.AFnObject)):
         """
 
         return self.getFileProperties().get(key, default)
-
-    @abstractmethod
-    def namespace(self):
-        """
-        Returns the namespace for this reference.
-
-        :rtype: str
-        """
-
-        pass
-
-    @abstractmethod
-    def handle(self):
-        """
-        Returns the handle to this reference.
-
-        :rtype: int
-        """
-
-        pass
-
-    @abstractmethod
-    def uid(self):
-        """
-        Returns a unique identifier to this reference.
-
-        :rtype: str
-        """
-
-        pass
-
-    def guid(self):
-        """
-        Returns a global unique identifier to this reference.
-
-        :rtype: str
-        """
-
-        fnReference = self.__class__()
-        uids = []
-
-        for reference in self.trace():
-
-            fnReference.setObject(reference)
-            uids.append(fnReference.uid())
-
-        return ':'.join(uids)
 
     @abstractmethod
     def iterReferencedNodes(self):

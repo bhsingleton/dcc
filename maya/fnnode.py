@@ -3,8 +3,7 @@ import maya.api.OpenMaya as om
 
 from six import integer_types
 from dcc.abstract import afnnode
-from dcc.maya.libs import dagutils, plugutils
-from dcc.decorators.validator import validator
+from dcc.maya.libs import dagutils, plugutils, attributeutils
 
 import logging
 logging.basicConfig()
@@ -70,17 +69,6 @@ class FnNode(afnnode.AFnNode):
 
         return isinstance(obj, (str, om.MObject, om.MDagPath, om.MObjectHandle))
 
-    @validator
-    def handle(self):
-        """
-        Returns the handle for this node.
-
-        :rtype: int
-        """
-
-        return om.MObjectHandle(self.object()).hashCode()
-
-    @validator
     def name(self):
         """
         Returns the name of this node.
@@ -90,7 +78,6 @@ class FnNode(afnnode.AFnNode):
 
         return om.MFnDependencyNode(self.object()).name()
 
-    @validator
     def setName(self, name):
         """
         Updates the name of this node.
@@ -101,94 +88,31 @@ class FnNode(afnnode.AFnNode):
 
         om.MFnDependencyNode(self.object()).setName(name)
 
-    @validator
-    def getAttr(self, name):
+    def namespace(self):
         """
-        Returns the specified attribute value.
+        Returns the namespace for this node.
 
-        :type name: str
-        :rtype: Any
+        :rtype: str
         """
 
-        plug = plugutils.findPlug(self.object(), name)
-        return plugutils.getValue(plug)
+        return om.MFnDependencyNode(self.object()).namespace
 
-    @validator
-    def hasAttr(self, name):
+    def setNamespace(self, namespace):
         """
-        Evaluates if this node has the specified attribute.
+        Updates the namespace for this node.
 
-        :type name: str
-        :rtype: bool
-        """
-
-        return om.MFnDependencyNode(self.object()).hasAttribute(name)
-
-    @validator
-    def setAttr(self, name, value):
-        """
-        Updates the specified attribute value.
-
-        :type name: str
-        :type value: Any
+        :type namespace: str
         :rtype: None
         """
 
-        plug = plugutils.findPlug(self.object(), name)
-        plugutils.setValue(plug, value)
+        om.MFnDependencyNode(self.object()).namespace = namespace
 
-    @validator
-    def isTransform(self):
-        """
-        Evaluates if this node represents a transform.
-
-        :rtype: bool
-        """
-
-        return self.object().hasFn(om.MFn.kTransform)
-
-    @validator
-    def isJoint(self):
-        """
-        Evaluates if this node represents an influence object.
-
-        :rtype: bool
-        """
-
-        return self.object().hasFn(om.MFn.kJoint)
-
-    @validator
-    def isMesh(self):
-        """
-        Evaluates if this node represents a mesh.
-
-        :rtype: bool
-        """
-
-        return self.object().hasFn(om.MFn.kMesh)
-
-    def getAssociatedReference(self):
-        """
-        Returns the reference this node is associated with.
-
-        :rtype: om.MObject
-        """
-
-        return dagutils.getAssociatedReferenceNode(self.object())
-
-    @validator
     def parent(self):
         """
         Returns the parent of this node.
 
         :rtype: om.MObject
         """
-
-        # Check if node is valid
-        #
-        if not self.isValid():
-
-            return None
 
         # Check if this is a dag node
         #
@@ -211,7 +135,6 @@ class FnNode(afnnode.AFnNode):
 
             return None
 
-    @validator
     def setParent(self, parent):
         """
         Updates the parent of this node.
@@ -228,7 +151,6 @@ class FnNode(afnnode.AFnNode):
             dagModifer.reparentNode(obj, parent)
             dagModifer.doIt()
 
-    @validator
     def iterChildren(self, apiType=om.MFn.kTransform):
         """
         Returns a generator that yields all the children from this node.
@@ -236,12 +158,6 @@ class FnNode(afnnode.AFnNode):
         :type apiType: int
         :rtype: iter
         """
-
-        # Check if node is valid
-        #
-        if not self.isValid():
-
-            return
 
         # Check if this is a dag node
         #
@@ -355,6 +271,121 @@ class FnNode(afnnode.AFnNode):
 
         return list(self.iterIntermediateObjects())
 
+    def handle(self):
+        """
+        Returns the handle for this node.
+
+        :rtype: int
+        """
+
+        return om.MObjectHandle(self.object()).hashCode()
+
+    def getAttr(self, name):
+        """
+        Returns the specified attribute value.
+
+        :type name: str
+        :rtype: Any
+        """
+
+        plug = plugutils.findPlug(self.object(), name)
+        return plugutils.getValue(plug)
+
+    def hasAttr(self, name):
+        """
+        Evaluates if this node has the specified attribute.
+
+        :type name: str
+        :rtype: bool
+        """
+
+        return om.MFnDependencyNode(self.object()).hasAttribute(name)
+
+    def setAttr(self, name, value):
+        """
+        Updates the specified attribute value.
+
+        :type name: str
+        :type value: Any
+        :rtype: None
+        """
+
+        plug = plugutils.findPlug(self.object(), name)
+        plugutils.setValue(plug, value)
+
+    def iterAttr(self):
+        """
+        Returns a generator that yields attribute names.
+
+        :rtype: iter
+        """
+
+        return attributeutils.iterAttributeNames(self.object())
+
+    def isTransform(self):
+        """
+        Evaluates if this node represents a transform.
+
+        :rtype: bool
+        """
+
+        return self.object().hasFn(om.MFn.kTransform)
+
+    def isJoint(self):
+        """
+        Evaluates if this node represents an influence object.
+
+        :rtype: bool
+        """
+
+        return self.object().hasFn(om.MFn.kJoint)
+
+    def isMesh(self):
+        """
+        Evaluates if this node represents a mesh.
+
+        :rtype: bool
+        """
+
+        return self.object().hasFn(om.MFn.kMesh)
+
+    def getAssociatedReference(self):
+        """
+        Returns the reference this node is associated with.
+
+        :rtype: om.MObject
+        """
+
+        return dagutils.getAssociatedReferenceNode(self.object())
+
+    def userPropertyBuffer(self):
+        """
+        Returns the user property buffer.
+
+        :rtype: str
+        """
+
+        fnDependNode = om.MFnDependencyNode(self.object())
+        hasAttribute = fnDependNode.hasAttribute('notes')
+
+        if hasAttribute:
+
+            plug = plugutils.findPlug(self.object(), 'notes')
+            return plug.asString()
+
+        else:
+
+            return ''
+
+    def userProperties(self):
+        """
+        Returns the user properties.
+
+        :rtype: dict
+        """
+
+        return {}
+
     def dependsOn(self, apiType=om.MFn.kDependencyNode):
         """
         Returns a list of nodes that this object is dependent on.
@@ -394,17 +425,8 @@ class FnNode(afnnode.AFnNode):
         :rtype: om.MObject
         """
 
-        try:
-
-            selection = om.MSelectionList()
-            selection.add(name)
-
-            return selection.getDependNode(0)
-
-        except RuntimeError as exception:
-
-            log.debug(exception)
-            return None
+        node = dagutils.getMObjectByName(name)
+        return node if not node.isNull() else None
 
     @classmethod
     def getNodeByHandle(cls, handle):
@@ -427,7 +449,7 @@ class FnNode(afnnode.AFnNode):
             return None
 
     @classmethod
-    def getNodesWithAttribute(cls, name):
+    def getNodesByAttribute(cls, name):
         """
         Returns a list of nodes with the given attribute name.
 
@@ -447,89 +469,12 @@ class FnNode(afnnode.AFnNode):
             return []
 
     @classmethod
-    def iterSceneNodes(cls):
+    def iterInstances(cls, apiType=om.MFn.kDependencyNode):
         """
-        Returns a generator that yields all nodes from the scene.
+        Returns a generator that yields texture instances.
 
+        :type apiType: int
         :rtype: iter
         """
 
-        return dagutils.iterNodes(apiType=om.MFn.kDagNode)
-
-    @classmethod
-    def getActiveSelection(cls):
-        """
-        Returns the active selection.
-
-        :rtype: List[om.MObject]
-        """
-
-        selection = om.MGlobal.getActiveSelectionList()  # type: om.MSelectionList
-        selectionCount = selection.length()
-
-        return [selection.getDependNode(i) for i in range(selectionCount)]
-
-    @classmethod
-    def setActiveSelection(cls, selection, replace=True):
-        """
-        Updates the active selection.
-
-        :type selection: list
-        :type replace: bool
-        :rtype: None
-        """
-
-        # Check if selection should be replaced
-        #
-        if not replace:
-
-            selection.extend(cls.getActiveSelection())
-
-        # Update selection global
-        #
-        om.MGlobal.setActiveSelectionList(selection)
-
-    @classmethod
-    def clearActiveSelection(cls):
-        """
-        Clears the active selection.
-
-        :rtype: None
-        """
-
-        om.MGlobal.clearSelectionList()
-
-    @classmethod
-    def iterActiveComponentSelection(cls):
-        """
-        Returns a generator that yields all selected components
-
-        :rtype: iter
-        """
-
-        # Access the Maya global selection list
-        #
-        selection = om.MGlobal.getActiveSelectionList()
-        numSelected = selection.length()
-
-        if numSelected == 0:
-
-            return
-
-        # Iterate through selection
-        #
-        iterSelection = om.MItSelectionList(selection, om.MFn.kComponent)
-
-        while not iterSelection.isDone():
-
-            # Check if items are valid
-            #
-            dagPath, component = iterSelection.getComponent()
-
-            if dagPath.isValid() and not component.isNull():
-
-                yield dagPath, component
-
-            # Go to next selection
-            #
-            iterSelection.next()
+        return dagutils.iterNodes(apiType)

@@ -1,6 +1,11 @@
 import pymxs
 
-from ..abstract.afnnotify import AFnNotify, Notification, Notifications
+from functools import partial
+from uuid import uuid4
+from dcc.python import pythonutils
+from dcc.abstract.afnnotify import AFnNotify, AbstractNotification, Notifications
+
+MaxPlus = pythonutils.tryImport('MaxPlus')
 
 import logging
 logging.basicConfig()
@@ -8,39 +13,34 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-class Callback(Notification):
+class Callback(AbstractNotification):
     """
-    Overload of Notification used to interface with max callbacks.
+    Overload of Notification used to interface with 3ds max callbacks.
     """
 
-    __slots__ = ('_callbackType', '_callbackId')
+    # region Dunderscores
+    __slots__ = ('_callbackName', '_callbackId', '_callbackCode')
 
-    def __init__(self, callbackType, **kwargs):
+    def __init__(self, callbackName, **kwargs):
         """
         Private method called after a new instance is created.
 
-        :type callbackType: str
-        :type _id: str
+        :type callbackName: str
         :rtype: None
         """
 
-        # Check for none type
-        #
-        callbackId = kwargs.get('callbackId', None)
-
-        if callbackId is None:
-
-            callbackId = 'dcc{callback}'.format(callback=self.upperfirst(callbackType))
-
         # Declare private variables
         #
-        self._callbackType = callbackType
-        self._callbackId = callbackId
+        self._callbackName = pymxs.runtime.Name(callbackName)
+        self._callbackId = pymxs.runtime.Name(uuid4().hex)
+        self._callbackCode = self.getCallbackCode(self._callbackName)
 
         # Call parent method
         #
         super(Callback, self).__init__(**kwargs)
+    # endregion
 
+    # region Properties
     @property
     def callbackName(self):
         """
@@ -49,18 +49,30 @@ class Callback(Notification):
         :rtype: pymxs.runtime.name
         """
 
-        return pymxs.runtime.name(self._callbackType)
+        return self._callbackName
 
     @property
-    def callbackIdName(self):
+    def callbackId(self):
         """
-        Getter method that returns the associated id name.
+        Getter method that returns the associated callback id.
 
         :rtype: pymxs.runtime.name
         """
 
-        return pymxs.runtime.name(self._callbackId)
+        return self._callbackId
 
+    @property
+    def callbackCode(self):
+        """
+        Getter method that returns the associated callback code.
+
+        :rtype: int
+        """
+
+        return self._callbackCode
+    # endregion
+
+    # region Methods
     @staticmethod
     def upperfirst(string):
         """
@@ -72,14 +84,32 @@ class Callback(Notification):
 
         return '{char}{letters}'.format(char=string[0].upper(), letters=string[1:])
 
-    def createExecutable(self):
+    @staticmethod
+    def supportsMaxPlus():
         """
         Returns an executable string that can trigger this instance.
 
         :rtype: str
         """
         
-        return 'python.execute "from dcc import fnnotify; fnnotify.FnNotify.notify({type});"'.format(type=self.type())
+        return MaxPlus is not None
+
+    @classmethod
+    def getCallbackCode(cls, callbackName):
+        """
+        Returns the callback code associated with the given name.
+
+        :type callbackName: pymxs.runtime.Name
+        :rtype: int
+        """
+
+        if cls.supportsMaxPlus():
+
+            return getattr(MaxPlus.NotificationCodes, cls.upperfirst(str(callbackName)))
+
+        else:
+
+            return None
 
     def creator(self):
         """
@@ -88,14 +118,25 @@ class Callback(Notification):
         :rtype: Any
         """
 
-        pymxs.runtime.callbacks.addScript(
-            self.callbackName,
-            self.createExecutable(),
-            id=self.callbackIdName,
-            persistent=False
-        )
+        # Evaluate if MaxPlus still exists
+        #
+        if self.supportsMaxPlus():
 
-        return self.callbackIdName
+            return MaxPlus.NotificationManager.Register(
+                self.callbackCode,
+                self.delegate
+            )
+
+        else:
+
+            pymxs.runtime.callbacks.addScript(
+                self.callbackName,
+                self.delegate,
+                id=self.callbackId,
+                persistent=False
+            )
+
+            return self.callbackId
 
     def destroy(self):
         """
@@ -104,15 +145,28 @@ class Callback(Notification):
         :rtype: None
         """
 
-        pymxs.runtime.callbacks.removeScripts(id=self._handle)
-        self._handle = None
+        if self.supportsMaxPlus():
+
+            MaxPlus.NotificationManager.Unregister(self._handle)
+            self._handle = None
+
+            pymxs.runtime.gc(light=True)
+
+        else:
+
+            pymxs.runtime.callbacks.removeScripts(id=self._handle)
+            self._handle = None
+
+            pymxs.runtime.gc(light=True)
+    # endregion
 
 
-class NodeEventCallback(Notification):
+class NodeEventCallback(AbstractNotification):
     """
-    Overload of Notification used to interface with max node event callbacks.
+    Overload of Notification used to interface with 3ds Max node event callbacks.
     """
 
+    # region Dunderscores
     __slots__ = ('_callbacks',)
 
     def __init__(self, *args, **kwargs):
@@ -127,17 +181,9 @@ class NodeEventCallback(Notification):
         # Call parent method
         #
         super(NodeEventCallback, self).__init__(**kwargs)
+    # endregion
 
-    @property
-    def callbackNames(self):
-        """
-        Getter method that returns a list of the associated callback names.
-
-        :rtype: List[pymxs.runtime.name]
-        """
-
-        return [pymxs.runtime.name(x) for x in self._callbacks]
-
+    # region Methods
     def creator(self):
         """
         Returns a new callback handle for this instance.
@@ -145,7 +191,7 @@ class NodeEventCallback(Notification):
         :rtype: Any
         """
 
-        kwargs = {x: self.notify for x in self._callbacks}
+        kwargs = {x: self.delegate for x in self._callbacks}
         return pymxs.runtime.nodeEventCallback(**kwargs)
 
     def destroy(self):
@@ -157,6 +203,7 @@ class NodeEventCallback(Notification):
 
         self._handle = None  # NodeEventCallback object will be deleted by GC
         pymxs.runtime.gc(light=True)
+    # endregion
 
 
 class FnNotify(AFnNotify):
@@ -167,15 +214,15 @@ class FnNotify(AFnNotify):
     __slots__ = ()
 
     @classmethod
-    def initialize(cls):
+    def register(cls):
         """
-        Registers all of the required notifications for 3ds Max.
+        Registers all the notification constructors for this function set.
 
         :rtype: None
         """
 
-        cls.registerNotification(Callback('filePreOpen', notifyType=Notifications.PreFileOpen))
-        cls.registerNotification(Callback('filePostOpen', notifyType=Notifications.PostFileOpen))
-        cls.registerNotification(Callback('sceneUndo', notifyType=Notifications.Undo))
-        cls.registerNotification(Callback('sceneRedo', notifyType=Notifications.Redo))
-        cls.registerNotification(NodeEventCallback('selectionChanged', 'subobjectSelectionChanged', notifyType=Notifications.SelectionChanged))
+        cls.registerNotification(partial(Callback, 'filePreOpen'), typeId=Notifications.PreFileOpen)
+        cls.registerNotification(partial(Callback, 'filePostOpen'), typeId=Notifications.PostFileOpen)
+        cls.registerNotification(partial(Callback, 'sceneUndo'), typeId=Notifications.Undo)
+        cls.registerNotification(partial(Callback, 'sceneRedo'), typeId=Notifications.Redo)
+        cls.registerNotification(partial(NodeEventCallback, 'selectionChanged', 'subobjectSelectionChanged'), typeId=Notifications.SelectionChanged)

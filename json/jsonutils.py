@@ -44,7 +44,7 @@ def loads(string, default=None, **kwargs):
         return default
 
 
-def dump(filePath, obj):
+def dump(filePath, obj, **kwargs):
     """
     Dumps the supplied object into the specified json file.
 
@@ -55,10 +55,10 @@ def dump(filePath, obj):
 
     with open(filePath, mode='w') as jsonFile:
 
-        json.dump(obj, jsonFile, cls=psonparser.PSONEncoder, sort_keys=True, indent=4)
+        json.dump(obj, jsonFile, cls=psonparser.PSONEncoder, **kwargs)
 
 
-def dumps(obj):
+def dumps(obj, **kwargs):
     """
     Dumps the supplied object into a json string.
 
@@ -66,4 +66,4 @@ def dumps(obj):
     :rtype: str
     """
 
-    return json.dumps(obj, cls=psonparser.PSONEncoder, sort_keys=True, indent=4)
+    return json.dumps(obj, cls=psonparser.PSONEncoder, **kwargs)

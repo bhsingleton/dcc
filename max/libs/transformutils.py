@@ -648,26 +648,34 @@ def freezeTranslation(node):
     #
     positionController = pymxs.runtime.getPropertyController(transformController, 'Position')
 
+    frozenController = None
+    zeroController = None
+
     if not controllerutils.isListController(positionController):
 
         positionController = pymxs.runtime.Position_List()
-        pymxs.runtime.setPropertyController(transformController, 'Position', positionController)
+        pymxs.runtime.setPropertyController(transformController, 'Position', positionController)  # This will automatically append all current controllers to list!
+        controllerutils.clearListController(positionController)
 
-        pymxs.runtime.setPropertyController(positionController, 'Available', pymxs.runtime.Bezier_Position())
-        pymxs.runtime.setPropertyController(positionController, 'Available', pymxs.runtime.Position_XYZ())
-
-        positionController.delete(1)  # Delete the previous controller from the list!
+        frozenController = pymxs.runtime.Bezier_Position()
+        pymxs.runtime.setPropertyController(positionController, 'Available', frozenController)
         positionController.setName(1, 'Frozen Position')
+
+        zeroController = pymxs.runtime.Position_XYZ()
+        pymxs.runtime.setPropertyController(positionController, 'Available', zeroController)
         positionController.setName(2, 'Zero Pos XYZ')
+
         positionController.setActive(2)
+
+    else:
+
+        frozenController = pymxs.runtime.getPropertyController(positionController, 'Frozen Position')
+        zeroController = pymxs.runtime.getPropertyController(positionController, 'Zero Pos XYZ')
 
     # Update frozen position
     #
-    frozenController = pymxs.runtime.getPropertyController(positionController, 'Frozen Position')
-    activeController = pymxs.runtime.getPropertyController(positionController, 'Zero Pos XYZ')
-
     frozenController.value = position
-    activeController.value = pymxs.runtime.Point3(0.0, 0.0, 0.0)
+    zeroController.value = pymxs.runtime.Point3(0.0, 0.0, 0.0)
 
 
 def freezeRotation(node):
@@ -694,26 +702,34 @@ def freezeRotation(node):
     #
     rotationController = pymxs.runtime.getPropertyController(transformController, 'Rotation')
 
+    frozenController = None
+    zeroController = None
+
     if not controllerutils.isListController(rotationController):
 
         rotationController = pymxs.runtime.Rotation_List()
         pymxs.runtime.setPropertyController(transformController, 'Rotation', rotationController)
+        controllerutils.clearListController(rotationController)
 
-        pymxs.runtime.setPropertyController(rotationController, 'Available', pymxs.runtime.Bezier_Rotation())
-        pymxs.runtime.setPropertyController(rotationController, 'Available', pymxs.runtime.Euler_XYZ())
-
-        rotationController.delete(1)  # Delete the previous controller from the list!
+        frozenController = pymxs.runtime.Bezier_Rotation()
+        pymxs.runtime.setPropertyController(rotationController, 'Available', frozenController)
         rotationController.setName(1, 'Frozen Rotation')
+
+        zeroController = pymxs.runtime.Euler_XYZ()
+        pymxs.runtime.setPropertyController(rotationController, 'Available', zeroController)
         rotationController.setName(2, 'Zero Euler XYZ')
+
         rotationController.setActive(2)
+
+    else:
+
+        frozenController = pymxs.runtime.getPropertyController(rotationController, 'Frozen Rotation')
+        zeroController = pymxs.runtime.getPropertyController(rotationController, 'Zero Euler XYZ')
 
     # Update frozen rotation
     #
-    frozenController = pymxs.runtime.getPropertyController(rotationController, 'Frozen Rotation')
-    activeController = pymxs.runtime.getPropertyController(rotationController, 'Zero Euler XYZ')
-
     frozenController.value = rotation
-    activeController.value = pymxs.runtime.Quat(0.0, 0.0, 0.0, 1.0)
+    zeroController.value = pymxs.runtime.Quat(1.0)
 
 
 def freezeScale(node):
@@ -740,26 +756,34 @@ def freezeScale(node):
     #
     scaleController = pymxs.runtime.getPropertyController(transformController, 'Scale')
 
+    frozenController = None
+    zeroController = None
+
     if not controllerutils.isListController(scaleController):
 
         scaleController = pymxs.runtime.Scale_List()
         pymxs.runtime.setPropertyController(transformController, 'Scale', scaleController)
+        controllerutils.clearListController(scaleController)
 
-        pymxs.runtime.setPropertyController(scaleController, 'Available', pymxs.runtime.Bezier_Scale())
-        pymxs.runtime.setPropertyController(scaleController, 'Available', pymxs.runtime.ScaleXYZ())
-
-        scaleController.delete(1)  # Delete the previous controller from the list!
+        frozenController = pymxs.runtime.Bezier_Scale()
+        pymxs.runtime.setPropertyController(scaleController, 'Available', frozenController)
         scaleController.setName(1, 'Frozen Scale')
+
+        zeroController = pymxs.runtime.ScaleXYZ()
+        pymxs.runtime.setPropertyController(scaleController, 'Available', zeroController)
         scaleController.setName(2, 'Zero Scale XYZ')
+
         scaleController.setActive(2)
+
+    else:
+
+        frozenController = pymxs.runtime.getPropertyController(scaleController, 'Frozen Scale')
+        zeroController = pymxs.runtime.getPropertyController(scaleController, 'Zero Scale XYZ')
 
     # Update frozen scale
     #
-    frozenController = pymxs.runtime.getPropertyController(scaleController, 'Frozen Scale')
-    activeController = pymxs.runtime.getPropertyController(scaleController, 'Zero Scale XYZ')
-
     frozenController.value = scale
-    activeController.value = [1.0, 1.0, 1.0]
+    zeroController.value = [1.0, 1.0, 1.0]
 
 
 def decomposeTransformNode(node, worldSpace=False):

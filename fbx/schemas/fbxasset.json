@@ -1,6 +1,6 @@
 {
 	"$schema": "http://json-schema.org/draft/2019-09/schema#",
-	"description": "A representation of the components required to export a mesh asset.",
+	"description": "A representation of an exportable asset.",
 	"type": "array",
 	"items": 
 	{
@@ -17,6 +17,7 @@
 				"__name__": { "type": "string" },
 				"__module__": { "type": "string" },
 				"name": { "type": "string" },
+                "frameRate": { "type": "integer" },
 				"directory": { "type": "string" },
 				"fileType": { "type": "number" },
 				"fileVersion": { "type": "number" }

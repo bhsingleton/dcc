@@ -1,10 +1,11 @@
 import os
+import win32api
 
 from abc import ABCMeta, abstractmethod
 from six import with_metaclass
-
+from fnmatch import fnmatch
+from dcc import fntexture
 from dcc.abstract import afnbase
-from dcc.perforce import cmds, clientutils, searchutils
 
 import logging
 logging.basicConfig()
@@ -88,6 +89,15 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
 
         pass
+
+    def paths(self):
+        """
+        Returns a list of content paths.
+
+        :rtype: List[str]
+        """
+
+        return [self.currentProjectDirectory()]
 
     @abstractmethod
     def getStartTime(self):
@@ -193,327 +203,248 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
             raise TypeError('isNullOrEmpty() expects a sequence (%s given)!' % type(value).__name__)
 
-    @staticmethod
-    def isPathRelativeTo(path, directory):
+    def getDriveLetters(self):
+        """
+        Returns all the available drive letters.
+
+        :rtype: List[str]
+        """
+
+        return win32api.GetLogicalDriveStrings().split('\000')[:-1]
+
+    @classmethod
+    def isPathRelative(cls, path):
+        """
+        Evaluates if the supplied path is relative.
+
+        :type path: str
+        :rtype: bool
+        """
+
+        segments = os.path.normpath(path).split(os.path.sep)
+        numSegments = len(segments)
+
+        if numSegments == 0:
+
+            return False
+
+        else:
+
+            return not fnmatch(segments[0], '?:')
+
+    @classmethod
+    def isPathVariable(cls, path):
+        """
+        Evaluates if the supplied path contains an environment variable.
+
+        :type path: str
+        :rtype: bool
+        """
+
+        return path.startswith(('%', '$'))
+
+    @classmethod
+    def isPathRelativeTo(cls, path, directory):
         """
         Evaluates if the supplied path is relative to the given directory.
-        This method ignores casing!
 
         :type path: str
         :type directory: str
         :rtype: bool
         """
 
+        # Check for empty strings
+        #
+        if cls.isNullOrEmpty(path) or cls.isNullOrEmpty(directory):
+
+            return ''
+
+        # Normalize and compare paths
+        #
         path = os.path.normpath(os.path.expandvars(path))
         directory = os.path.normpath(os.path.expandvars(directory))
 
-        return path.lower().startswith(directory.lower())
+        return os.path.normcase(path).startswith(os.path.normcase(directory))
 
-    def expandPath(self, filePath):
+    @classmethod
+    def makePathRelativeTo(cls, path, directory):
         """
-        Expands any file path that may contain an environment variable or relative syntax.
+        Returns a path relative to the supplied directory.
 
-        :type filePath: str
+        :type path: str
+        :type directory: str
         :rtype: str
         """
 
         # Check for empty strings
         #
-        if self.isNullOrEmpty(filePath):
+        if cls.isNullOrEmpty(path) or cls.isNullOrEmpty(directory):
 
-            return filePath
+            return ''
 
-        # Evaluate any environment variables
+        # Check if path is relative to directory
         #
-        filePath = os.path.normpath(os.path.expandvars(filePath))
+        path = os.path.normpath(path)
 
-        if os.path.isabs(filePath):
+        if cls.isPathRelativeTo(path, directory):
 
-            return filePath
+            relativePath = os.path.relpath(path, directory)
+            log.info('%s > %s' % (path, relativePath))
+
+            return relativePath
 
         else:
 
-            return os.path.join(self.currentProjectDirectory(), filePath)
+            log.warning('Cannot make: %s, relative to: %s' % (path, directory))
+            return path
 
-    def makePathsRelative(self, filePaths, directory):
+    def makePathRelative(self, path):
         """
-        Converts all the texture paths to relative.
-        If a path is not relative then no changes are made to the original path.
+        Returns a path relative to the current project directory.
 
-        :type filePaths: List[str]
-        :type directory: str
-        :rtype: List[str]
+        :type path: str
+        :rtype: str
         """
 
-        # Iterate through file paths
+        # Iterate through paths
         #
-        directory = os.path.normpath(os.path.expandvars(directory))
+        for directory in self.paths():
 
-        numFilePaths = len(filePaths)
-        relativePaths = [None] * numFilePaths
-
-        for (i, filePath) in enumerate(filePaths):
-
-            # Check if path is relative to directory
+            # Check if path is relative
             #
-            filePath = os.path.normpath(filePath)
-            fullFilePath = self.expandPath(filePath)
+            if self.isPathRelativeTo(path, directory):
 
-            if self.isPathRelativeTo(fullFilePath, directory):
-
-                relativePath = os.path.relpath(fullFilePath, directory)
-
-                log.info('%s > %s' % (filePath, relativePath))
-                relativePaths[i] = relativePath
-
-            else:
-
-                log.warning('Cannot make: %s, relative to: %s' % (filePath, directory))
-                relativePaths[i] = filePath
-
-        return relativePaths
-
-    def makePathsAbsolute(self, filePaths):
-        """
-        Converts all the texture paths to absolute.
-
-        :type filePaths: List[str]
-        :rtype: List[str]
-        """
-
-        numFilePaths = len(filePaths)
-        absolutePaths = [None] * numFilePaths
-
-        for (i, filePath) in enumerate(filePaths):
-
-            filePath = os.path.normpath(filePath)
-            fullFilePath = self.expandPath(filePath)
-
-            log.info('%s > %s' % (filePath, fullFilePath))
-            absolutePaths[i] = fullFilePath
-
-        return absolutePaths
-
-    def makePathsVariable(self, filePaths, variable):
-        """
-        Converts all the texture paths to variable.
-        The supplied variable name must contain a dollar sign!
-
-        :type filePaths: List[str]
-        :type variable: str
-        :rtype: List[str]
-        """
-
-        # Iterate through file paths
-        #
-        directory = os.path.normpath(os.path.expandvars(variable))
-
-        numFilePaths = len(filePaths)
-        dynamicPaths = [None] * numFilePaths
-
-        for (i, filePath) in enumerate(filePaths):
-
-            # Check if path is relative to variable
-            #
-            filePath = os.path.normpath(filePath)
-            fullFilePath = self.expandPath(filePath)
-
-            if self.isPathRelativeTo(fullFilePath, directory):
-
-                dynamicPath = os.path.join(variable, os.path.relpath(fullFilePath, directory))
-
-                log.info('%s > %s' % (filePath, dynamicPath))
-                dynamicPaths[i] = dynamicPath
-
-            else:
-
-                dynamicPaths[i] = filePath
-
-        return dynamicPaths
-
-    @abstractmethod
-    def iterTextures(self, absolute=False):
-        """
-        Returns a generator that yields all texture paths inside the scene.
-        An optional keyword argument can be used to convert paths to absolute.
-
-        :type absolute: bool
-        :rtype: iter
-        """
-
-        pass
-
-    def textures(self, absolute=False):
-        """
-        Returns a list of texture paths from the scene.
-        An optional keyword argument can be used to convert paths to absolute.
-
-        :type absolute: bool
-        :rtype: List[str]
-        """
-
-        return list(self.iterTextures(absolute=absolute))
-
-    def iterMissingTextures(self):
-        """
-        Returns a generator that yields all missing texture paths from the scene.
-
-        :rtype: iter
-        """
-
-        # Iterate through textures
-        #
-        for texturePath in self.iterTextures():
-
-            # Check if texture exists
-            #
-            if not os.path.exists(texturePath):
-
-                yield texturePath
+                return self.makePathRelativeTo(path, directory)
 
             else:
 
                 continue
 
-    def missingTextures(self):
-        """
-        Returns a list of missing texture paths from the scene.
+        # Notify user
+        #
+        log.warning('Unable to make path relative: %s' % path)
+        return path
 
+    def makePathAbsolute(self, path):
+        """
+        Converts all the texture paths to absolute.
+
+        :type path: str
         :rtype: List[str]
         """
 
-        return list(self.iterMissingTextures())
-
-    def findMissingTextures(self):
-        """
-        Attempts to locate all missing textures from the scene using perforce.
-        If a texture cannot be found from the server then it is ignored!
-
-        :rtype: None
-        """
-
-        # Iterate through missing textures
+        # Check for empty strings
         #
-        client = clientutils.getCurrentClient()
+        if self.isNullOrEmpty(path):
 
-        oldPaths = self.missingTextures()
-        newPaths = [None] * len(oldPaths)
+            return ''
 
-        for (i, oldPath) in enumerate(oldPaths):
+        # Inspect path type
+        #
+        path = os.path.normpath(os.path.expandvars(path))
 
-            # Concatenate search request
+        if os.path.isabs(path):
+
+            return path
+
+        # Iterate through paths
+        #
+        for directory in self.paths():
+
+            # Check if combined path is valid
             #
-            directory, filename = os.path.split(oldPath)
-            search = '//{client}/.../{filename}'.format(client=client.name, filename=filename)
+            absolutePath = os.path.join(directory, path)
 
-            # Process search request
-            #
-            log.info('Searching for: %s' % search)
+            if os.path.exists(absolutePath):
 
-            fileSpecs = searchutils.findFile(search)
-            numFileSpecs = len(fileSpecs)
-
-            if numFileSpecs == 0:
-
-                log.warning('No results found for: %s' % oldPath)
-                newPaths[i] = oldPaths[i]
-
-            elif numFileSpecs == 1:
-
-                newPath = client.mapToView(fileSpecs[0]['depotFile'])
-                log.info('Located texture file @ %s' % newPath)
-
-                newPaths[i] = newPath
+                return absolutePath
 
             else:
 
-                log.warning('Multiple results found for: %s' % oldPath)
-                newPaths[i] = oldPaths[i]
+                continue
 
-        # Update texture paths
+        # Notify user
         #
-        self.updateTextures(dict(zip(oldPaths, newPaths)))
+        log.warning('Unable to make path absolute: %s' % path)
+        return path
 
-    def syncTextures(self):
+    def makePathVariable(self, path, variable):
         """
-        Syncs all the textures inside the scene.
-        If the texture is not relative to the client it is ignored.
+        Converts all the texture paths to variable.
+        The supplied variable name must contain a dollar sign!
 
-        :rtype: None
+        :type path: str
+        :type variable: str
+        :rtype: str
         """
 
-        # Collect all client files
+        # Check for empty strings
         #
-        client = clientutils.getCurrentClient()
+        if self.isNullOrEmpty(path) or self.isNullOrEmpty(variable):
 
-        filePaths = [x for x in self.iterTextures(absolute=True) if client.hasAbsoluteFile(x)]
-        numFilePaths = len(filePaths)
+            return ''
 
-        if numFilePaths > 0:
-
-            cmds.sync(*filePaths)
-
-        # Reload textures
+        # Check if path is relative to variable
         #
-        self.reloadTextures()
+        absolutePath = self.makePathAbsolute(path)
+        directory = os.path.expandvars(variable)
+
+        if self.isPathRelativeTo(absolutePath, directory):
+
+            variablePath = os.path.join(variable, os.path.relpath(absolutePath, directory))
+            log.debug('%s > %s' % (absolutePath, variablePath))
+
+            return variablePath
+
+        else:
+
+            log.warning('Unable to make path variable: %s' % path)
+            return path
 
     def makeTexturesRelative(self):
         """
-        Converts all the textures to relative paths.
+        Converts all the texture paths to relative.
 
         :rtype: None
         """
 
-        oldPaths = self.textures(absolute=True)
-        newPaths = self.makePathsRelative(oldPaths, self.currentProjectDirectory())
+        fnTexture = fntexture.FnTexture()
+        fnTexture.setQueue(fnTexture.instances())
 
-        self.updateTextures(dict(zip(oldPaths, newPaths)))
+        while not fnTexture.isDone():
+
+            fnTexture.next()
+            fnTexture.makeRelative()
 
     def makeTexturesAbsolute(self):
         """
-        Converts all the textures to absolute paths.
+        Converts all the texture paths to absolute.
 
         :rtype: None
         """
 
-        oldPaths = self.textures(absolute=True)
-        newPaths = self.makePathsAbsolute(oldPaths)
+        fnTexture = fntexture.FnTexture()
+        fnTexture.setQueue(fnTexture.instances())
 
-        self.updateTextures(dict(zip(oldPaths, newPaths)))
+        while not fnTexture.isDone():
 
-    def makeTexturesVariable(self):
+            fnTexture.next()
+            fnTexture.makeAbsolute()
+
+    def findMissingTextures(self):
         """
-        Converts all the textures to dynamic paths.
+        Locates all the missing textures using perforce.
 
         :rtype: None
         """
 
-        oldPaths = self.textures(absolute=True)
-        newPaths = self.makePathsVariable(oldPaths, '$P4ROOT')
+        fnTexture = fntexture.FnTexture()
+        fnTexture.setQueue(fnTexture.instances())
 
-        self.updateTextures(dict(zip(oldPaths, newPaths)))
+        while not fnTexture.isDone():
 
-    @abstractmethod
-    def updateTextures(self, updates):
-        """
-        Applies all the texture path updates to the associated file nodes.
-        Each key-value pair should consist of the old and new texture paths!
-
-        :type updates: Dict[str, str]
-        :rtype: None
-        """
-
-        pass
-
-    @abstractmethod
-    def reloadTextures(self):
-        """
-        Forces all the texture nodes to reload.
-
-        :rtype: None
-        """
-
-        pass
+            fnTexture.next()
+            fnTexture.fix()
 
     @abstractmethod
     def iterFileProperties(self):
@@ -534,7 +465,6 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         return dict(self.iterFileProperties())
 
-    @abstractmethod
     def getFileProperty(self, key, default=None):
         """
         Returns a file property value.
@@ -545,7 +475,7 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
         :rtype: Any
         """
 
-        pass
+        return self.fileProperties().get(key, default)
 
     @abstractmethod
     def setFileProperty(self, key, value):
@@ -560,7 +490,7 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         pass
 
-    def updateFileProperties(self, properties):
+    def setFileProperties(self, properties):
         """
         Updates the file properties using a dictionary.
         This method will not erase any pre-existing items but overwrite any duplicate keys.
@@ -597,6 +527,48 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
     def markClean(self):
         """
         Marks the scene as clean which will not prompt the user for a save upon close.
+
+        :rtype: None
+        """
+
+        pass
+
+    @abstractmethod
+    def iterNodes(self):
+        """
+        Returns a generator that yields all nodes from the scene.
+
+        :rtype: iter
+        """
+
+        pass
+
+    @abstractmethod
+    def getActiveSelection(self):
+        """
+        Returns the active selection.
+
+        :rtype: list
+        """
+
+        pass
+
+    @abstractmethod
+    def setActiveSelection(self, selection, replace=True):
+        """
+        Updates the active selection.
+
+        :type selection: list
+        :type replace: bool
+        :rtype: None
+        """
+
+        pass
+
+    @abstractmethod
+    def clearActiveSelection(self):
+        """
+        Clears the active selection.
 
         :rtype: None
         """

@@ -21,6 +21,8 @@ class SearchEngine(object):
     def __init__(self):
         """
         Private method called after a new instance has been created.
+
+        :rtype: None
         """
 
         # Call parent method
@@ -41,25 +43,59 @@ class SearchEngine(object):
 
         return self._history[client]
 
-    def searchClient(self, search, client=None):
+    def findFile(self, filePath, client=None):
         """
-        Locates the specified file against the supplied client.
+        Finds the given file using the supplied client.
         If no client is provided then the current client is used instead.
 
-        :type search: str
-        :type client: str
-        :rtype: dict
+        :type filePath: str
+        :type client: clientutils.ClientSpec
+        :rtype: list
         """
 
         # Check if a client was supplied
         #
         if client is None:
 
-            client = os.environ['P4CLIENT']
+            client = clientutils.getCurrentClient()
+
+        # Evaluate path type
+        #
+        filePath = os.path.normpath(filePath)
+        segments = filePath.split(os.path.sep)
+
+        search = None
+
+        if os.path.isabs(filePath):
+
+            search = '/'.join([client.view[0].clientPath, '...', *segments[-2:]])  # Include filename and parent directory
+
+        else:
+
+            search = '/'.join([client.view[0].clientPath, '...', *segments])  # Include all relative directories
+
+        return self.searchClient(search, client=client)
+
+    def searchClient(self, search, client=None):
+        """
+        Finds the given file using the supplied client.
+        This method expects the following search pattern: '{view}/.../{filename}'
+        If no client is provided then the current client is used instead.
+
+        :type search: str
+        :type client: clientutils.ClientSpec
+        :rtype: list
+        """
+
+        # Check if a client was supplied
+        #
+        if client is None:
+
+            client = clientutils.getCurrentClient()
 
         # Check if client has history
         #
-        history = self.history(client)
+        history = self.history(client.name)
 
         if search in history.keys():
 
@@ -67,7 +103,7 @@ class SearchEngine(object):
 
         # Collect files from client view
         #
-        fileSpecs = cmds.files(search, client=client, ignoreDeleted=True)
+        fileSpecs = cmds.files(search, client=client.name, ignoreDeleted=True)
 
         if fileSpecs is not None:
 
@@ -80,7 +116,7 @@ class SearchEngine(object):
 
     def searchClients(self, search):
         """
-        Searches all of the available clients for the given file.
+        Searches all the available clients for the given file.
 
         :type search: str
         :rtype: dict
@@ -90,11 +126,11 @@ class SearchEngine(object):
         #
         results = {}
 
-        for (client, clientSpec) in clientutils.iterClients():
+        for (name, client) in clientutils.iterClients():
 
             # Check if client is associated with host
             #
-            if clientSpec.host != os.environ['P4HOST']:
+            if client.host != os.environ['P4HOST']:
 
                 continue
 
@@ -110,7 +146,7 @@ class SearchEngine(object):
 
     def clearHistory(self):
         """
-        Clears all of the accumulated search history.
+        Clears all the accumulated search history.
         This is useful in case the user has been doing alot of renaming through p4v.
 
         :rtype: None
@@ -120,20 +156,21 @@ class SearchEngine(object):
         self._history.clear()
 
 
-def findFile(search):
+def findFile(filePath, client=None):
     """
     Locates the supplied file using the search engine.
 
-    :type search: str
+    :type filePath: str
+    :type client: clientutils.ClientSpec
     :rtype: List[dict]
     """
 
-    return __searchengine__.searchClient(search)
+    return __searchengine__.findFile(filePath, client=client)
 
 
 def clearHistory():
     """
-    Clears all of the accumulated search history.
+    Clears all the accumulated search history.
     This is useful in case the user has been doing alot of renaming through p4v.
 
     :rtype: None

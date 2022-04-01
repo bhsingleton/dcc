@@ -11,6 +11,27 @@ log.setLevel(logging.INFO)
 ZERO_TOLERANCE = 1e-3
 
 
+def isNullOrEmpty(value):
+    """
+    Evaluates if the supplied value is null or empty.
+
+    :type value: Any
+    :rtype: bool
+    """
+
+    if hasattr(value, '__len__'):
+
+        return len(value) == 0
+
+    elif value is None:
+
+        return True
+
+    else:
+
+        raise TypeError('isNullOrEmpty() expects a sequence (%s given)!' % type(value).__name__)
+
+
 def numControlPoints(skinCluster):
     """
     Evaluates the number of control points this skin cluster affects.
@@ -96,7 +117,7 @@ def iterWeights(skinCluster, vertexIndex, plug=None):
 
 def iterWeightList(skinCluster, vertexIndices=None):
     """
-    Returns a generator that yields all of the vertex weights from the supplied skin cluster.
+    Returns a generator that yields all the vertex weights from the supplied skin cluster.
     An optional list of vertex indices can be supplied to limit the generator.
 
     :type skinCluster: om.MObject
@@ -106,7 +127,7 @@ def iterWeightList(skinCluster, vertexIndices=None):
 
     # Check number of vertices
     #
-    if vertexIndices is None:
+    if isNullOrEmpty(vertexIndices):
 
         vertexIndices = list(range(numControlPoints(skinCluster)))
 

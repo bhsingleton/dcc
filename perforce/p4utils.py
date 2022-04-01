@@ -1,6 +1,7 @@
 import os
 import stat
 import json
+import shutil
 import subprocess
 
 from P4 import P4Exception
@@ -116,6 +117,21 @@ def makeSceneWritable():
     else:
 
         log.warning('Unable to make scene file writable!')
+
+
+def renameFile(oldPath, newPath, changelist='default'):
+    """
+    Renames the old path to the new path and adds it to the specified changelist.
+
+    :type oldPath: str
+    :type newPath: str
+    :type changelist: Union[str, int]
+    :rtype: None
+    """
+
+    shutil.copy(oldPath, newPath)
+    cmds.delete(oldPath, changelist=changelist)
+    cmds.add(newPath, changelist=changelist)
 
 
 def saveChangelist(changelist, filePath, **kwargs):

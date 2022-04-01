@@ -11,59 +11,52 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
+class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
     """
     Overload of AFnMesh that outlines the mesh interface for 3ds Max.
     """
 
     __slots__ = ()
 
-    def range(self, *args):
+    def setObject(self, obj):
         """
-        Returns a generator for yielding a range of mesh elements.
+        Assigns an object to this function set for manipulation.
 
-        :rtype: iter
+        :type obj: Union[str, int, pymxs.MXSWrapperBase]
+        :rtype: None
         """
 
-        # Inspect arguments
+        # Check if this is a tri-mesh
         #
-        numArgs = len(args)
-        start, stop, step = 1, 1, 1
+        obj = self.getMXSWrapper(obj)
+        cls = pymxs.runtime.classOf(obj)
 
-        if numArgs == 1:
+        if cls == pymxs.runtime.TriMesh:
 
-            stop = args[0] + 1
-
-        elif numArgs == 2:
-
-            start = args[0]
-            stop = args[1] + 1
-
-        elif numArgs == 3:
-
-            start = args[0]
-            stop = args[1]
-            step = args[2]
+            super(fnnode.FnNode, self).setObject(obj)
 
         else:
 
-            raise TypeError('range() expects at least 1 argument (%s given)!' % numArgs)
+            handle = pymxs.runtime.getHandleByAnim(obj)
+            super(fnnode.FnNode, self).setObject(handle)
 
-        return range(start, stop, step)
-
-    def enumerate(self, elements):
+    def isEditablePoly(self):
         """
-        Returns a generator for yielding local indices for global mesh elements.
+        Evaluates if this is an editable poly object.
 
-        :type elements: list[int]
-        :rtype: iter
+        :rtype: bool
         """
 
-        numElements = len(elements)
+        return pymxs.runtime.classOf(self.baseObject()) == pymxs.runtime.Editable_Poly
 
-        for i in range(numElements):
+    def isEditableMesh(self):
+        """
+        Evaluates if this is an editable mesh object.
 
-            yield (i + 1), elements[i]
+        :rtype: bool
+        """
+
+        return pymxs.runtime.classOf(self.baseObject()) in (pymxs.runtime.Editable_Mesh, pymxs.runtime.TriMesh)
 
     def triMesh(self):
         """
@@ -72,7 +65,15 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
         :rtype: pymxs.MXSWrapperBase
         """
 
-        return self.object().baseObject.triMesh
+        obj = self.baseObject()
+
+        if pymxs.runtime.isProperty(obj, 'mesh'):
+
+            return obj.mesh
+
+        else:
+
+            return obj
 
     def numVertices(self):
         """
@@ -81,7 +82,15 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
         :rtype: int
         """
 
-        return pymxs.runtime.polyOp.getNumVerts(self.object())
+        obj = self.baseObject()
+
+        if self.isEditablePoly():
+
+            return pymxs.runtime.polyOp.getNumVerts(obj)
+
+        else:
+
+            return pymxs.runtime.meshOp.getNumVerts(obj)
 
     def numEdges(self):
         """
@@ -90,7 +99,15 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
         :rtype: int
         """
 
-        return pymxs.runtime.polyOp.getNumEdges(self.object())
+        obj = self.baseObject()
+
+        if self.isEditablePoly():
+
+            return pymxs.runtime.polyOp.getNumEdges(obj)
+
+        else:
+
+            return pymxs.runtime.meshOp.getNumFaces(obj) * 3  # Whatever you say Max?
 
     def numFaces(self):
         """
@@ -99,7 +116,15 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
         :rtype: int
         """
 
-        return pymxs.runtime.polyOp.getNumFaces(self.object())
+        obj = self.baseObject()
+
+        if self.isEditablePoly():
+
+            return pymxs.runtime.polyOp.getNumFaces(obj)
+
+        else:
+
+            return pymxs.runtime.meshOp.getNumFaces(obj)
 
     def selectedVertices(self):
         """
@@ -108,8 +133,17 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
         :rtype: list[int]
         """
 
-        bitArray = self.object().getSelection(pymxs.runtime.Name('vertex'))
-        return list(arrayutils.iterBitArray(bitArray))
+        obj = self.baseObject()
+
+        if self.isEditablePoly():
+
+            bitArray = obj.getSelection(pymxs.runtime.Name('vertex'))
+            return list(arrayutils.iterBitArray(bitArray))
+
+        else:
+
+            bitArray = pymxs.runtime.getVertSelection(obj)
+            return list(arrayutils.iterBitArray(bitArray))
 
     def selectedEdges(self):
         """
@@ -118,8 +152,17 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
         :rtype: list[int]
         """
 
-        bitArray = self.object().getSelection(pymxs.runtime.Name('edge'))
-        return list(arrayutils.iterBitArray(bitArray))
+        obj = self.baseObject()
+
+        if self.isEditablePoly():
+
+            bitArray = self.object().getSelection(pymxs.runtime.Name('edge'))
+            return list(arrayutils.iterBitArray(bitArray))
+
+        else:
+
+            bitArray = pymxs.runtime.getEdgeSelection(obj)
+            return list(arrayutils.iterBitArray(bitArray))
 
     def selectedFaces(self):
         """
@@ -128,11 +171,20 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
         :rtype: list[int]
         """
 
-        bitArray = self.object().getSelection(pymxs.runtime.Name('face'))
-        return list(arrayutils.iterBitArray(bitArray))
+        obj = self.baseObject()
+
+        if self.isEditablePoly():
+
+            bitArray = self.object().getSelection(pymxs.runtime.Name('face'))
+            return list(arrayutils.iterBitArray(bitArray))
+
+        else:
+
+            bitArray = pymxs.runtime.getFaceSelection(obj)
+            return list(arrayutils.iterBitArray(bitArray))
 
     @coordsysoverride.coordSysOverride(mode='local')
-    def iterVertices(self, *args):
+    def iterVertices(self, *indices):
         """
         Returns a generator that yields vertex points.
         If no arguments are supplied then all vertex points will be yielded.
@@ -142,23 +194,32 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
 
         # Evaluate arguments
         #
-        numArgs = len(args)
+        numIndices = len(indices)
 
-        if numArgs == 0:
+        if numIndices == 0:
 
-            args = self.range(self.numVertices())
+            indices = self.range(self.numVertices())
 
         # Iterate through vertices
         #
-        obj = self.object()
+        obj = self.baseObject()
 
-        for arg in args:
+        if self.isEditablePoly():
 
-            point = pymxs.runtime.polyOp.getVert(obj, arg)
-            yield point.x, point.y, point.z
+            for index in indices:
+
+                point = pymxs.runtime.polyOp.getVert(obj, index)
+                yield point.x, point.y, point.z
+
+        else:
+
+            for index in indices:
+
+                point = pymxs.runtime.meshOp.getVert(obj, index)
+                yield point.x, point.y, point.z
 
     @coordsysoverride.coordSysOverride(mode='local')
-    def iterVertexNormals(self, *args):
+    def iterVertexNormals(self, *indices):
         """
         Returns a generator that yields vertex normals.
         If no arguments are supplied then all vertex normals will be yielded.
@@ -168,26 +229,33 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
 
         # Evaluate arguments
         #
-        numArgs = len(args)
+        numIndices = len(indices)
 
-        if numArgs == 0:
+        if numIndices == 0:
 
-            args = self.range(self.numVertices())
+            indices = self.range(self.numVertices())
 
         # Iterate through vertices
         #
-        obj = self.object()
+        obj = self.baseObject()
 
-        for arg in args:
+        if self.isEditablePoly():
 
-            bits = pymxs.runtime.polyOp.getFacesUsingVert(obj, arg)
+            for index in indices:
 
-            normals = [pymxs.runtime.polyOp.getFaceNormal(obj, x) for x in arrayutils.iterBitArray(bits)]
-            normal = sum(normals) / len(normals)
+                bits = pymxs.runtime.polyOp.getFacesUsingVert(obj, index)
+                normals = [pymxs.runtime.polyOp.getFaceNormal(obj, x) for x in arrayutils.iterBitArray(bits)]
+                normal = sum(normals) / len(normals)
+                yield normal.x, normal.y, normal.z
 
-            yield normal.x, normal.y, normal.z
+        else:
 
-    def iterFaceVertexIndices(self, *args):
+            for index in indices:
+
+                normal = pymxs.runtime.getNormal(obj, index)
+                yield normal.x, normal.y, normal.z
+
+    def iterFaceVertexIndices(self, *indices):
         """
         Returns a generator that yields face vertex indices.
         If no arguments are supplied then all face vertex indices will be yielded.
@@ -197,23 +265,32 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
 
         # Evaluate arguments
         #
-        numArgs = len(args)
+        numIndices = len(indices)
 
-        if numArgs == 0:
+        if numIndices == 0:
 
-            args = self.range(self.numFaces())
+            indices = self.range(self.numFaces())
 
         # Iterate through vertices
         #
-        obj = self.object()
+        obj = self.baseObject()
 
-        for arg in args:
+        if self.isEditablePoly():
 
-            vertices = pymxs.runtime.polyOp.getFaceVerts(obj, arg)
-            yield tuple(arrayutils.iterElements(vertices))
+            for index in indices:
+
+                vertices = pymxs.runtime.polyOp.getFaceVerts(obj, index)
+                yield tuple(arrayutils.iterElements(vertices))
+
+        else:
+
+            for index in indices:
+
+                indices = pymxs.runtime.getFace(obj, index)
+                yield tuple(arrayutils.iterElements(indices))
 
     @coordsysoverride.coordSysOverride(mode='local')
-    def iterFaceCenters(self, *args):
+    def iterFaceCenters(self, *indices):
         """
         Returns a generator that yields face centers.
         If no arguments are supplied then all face centers will be yielded.
@@ -223,22 +300,32 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
 
         # Evaluate arguments
         #
-        numArgs = len(args)
+        numIndices = len(indices)
 
-        if numArgs == 0:
+        if numIndices == 0:
 
-            args = self.range(self.numFaces())
+            indices = self.range(self.numFaces())
 
         # Iterate through vertices
         #
-        obj = self.object()
+        obj = self.baseObject()
 
-        for arg in args:
+        if self.isEditablePoly():
 
-            point = pymxs.runtime.polyOp.getFaceCenter(obj, arg)
-            yield point.x, point.y, point.z
+            for index in indices:
 
-    def iterFaceNormals(self, *args):
+                point = pymxs.runtime.polyOp.getFaceCenter(obj, index)
+                yield point.x, point.y, point.z
+
+        else:
+
+            for index in indices:
+
+                point = pymxs.runtime.meshOp.getFaceCenter(obj, index)
+                yield point.x, point.y, point.z
+
+    @coordsysoverride.coordSysOverride(mode='local')
+    def iterFaceNormals(self, *indices):
         """
         Returns a generator that yields face normals.
         If no arguments are supplied then all face normals will be yielded.
@@ -248,47 +335,30 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
 
         # Evaluate arguments
         #
-        numArgs = len(args)
+        numIndices = len(indices)
 
-        if numArgs == 0:
+        if numIndices == 0:
 
-            args = self.range(self.numFaces())
+            indices = self.range(self.numFaces())
 
         # Iterate through vertices
         #
-        obj = self.object()
+        obj = self.baseObject()
 
-        with pymxs.runtime.toolMode.coordsys(pymxs.runtime.Name("local")):
+        if self.isEditablePoly():
 
-            for arg in args:
+            for index in indices:
 
-                normal = pymxs.runtime.polyOp.getFaceNormal(obj, arg)
+                normal = pymxs.runtime.polyOp.getFaceNormal(obj, index)
                 yield normal.x, normal.y, normal.z
 
-    def iterTriangleVertexIndices(self, *args):
-        """
-        Returns a generator that yields face triangle vertex/point pairs.
+        else:
 
-        :rtype: iter
-        """
+            for index in indices:
 
-        # Evaluate arguments
-        #
-        mesh = self.object()
-        triMesh = mesh.mesh
-
-        numArgs = len(args)
-
-        if numArgs == 0:
-
-            args = self.range(triMesh.numFaces)
-
-        # Iterate through triangles
-        #
-        for arg in args:
-
-            indices = pymxs.runtime.getFace(triMesh, arg)
-            yield tuple(arrayutils.iterElements(indices))
+                normals = pymxs.runtime.meshOp.getFaceRNormals(obj, index)
+                normal = sum(normals) / len(normals)
+                yield normal.x, normal.y, normal.z
 
     def iterConnectedVertices(self, *args, **kwargs):
         """
@@ -376,3 +446,13 @@ class FnMesh(afnmesh.AFnMesh, fnnode.FnNode):
         else:
 
             raise TypeError('iterConnectedFaces() expects a valid component type (%s given)' % componentType)
+
+    @classmethod
+    def iterInstances(cls):
+        """
+        Returns a generator that yields texture instances.
+
+        :rtype: iter
+        """
+
+        return iter(pymxs.runtime.getClassInstances(pymxs.runtime.Editable_Poly))

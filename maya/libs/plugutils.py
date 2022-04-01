@@ -1,8 +1,9 @@
-import maya.cmds as mc
-import maya.api.OpenMaya as om
 import re
 
+from maya import cmds as mc
+from maya.api import OpenMaya as om
 from collections import deque
+from dcc.maya.libs import attributeutils
 
 import logging
 logging.basicConfig()
@@ -13,7 +14,7 @@ log.setLevel(logging.INFO)
 __plugparser__ = re.compile(r'([a-zA-Z_]+)(?:\[([0-9]+)\])?')
 
 
-def getAttributeType(plug):
+def getPlugApiType(plug):
     """
     Gets the attribute type from the supplied plug.
 
@@ -22,25 +23,6 @@ def getAttributeType(plug):
     """
 
     return plug.attribute().apiType()
-
-
-def iterParentAttributes(attribute):
-    """
-    Returns a generator that can iterate over all of the parent attributes.
-
-    :type attribute: om.MObject
-    :rtype: iter
-    """
-
-    fnAttribute = om.MFnAttribute(attribute)
-    current = fnAttribute.parent
-
-    while not current.isNull():
-
-        yield current
-
-        fnAttribute.setObject(current)
-        current = fnAttribute.parent
 
 
 def findPlug(dependNode, plugName):
@@ -74,7 +56,7 @@ def findPlug(dependNode, plugName):
 
         raise TypeError('findPlug() expects a valid attribute (%s given)!' % attributeName)
 
-    attributes = list(reversed(list(iterParentAttributes(attribute))))
+    attributes = list(attributeutils.traceAttribute(attribute))
     attributes.append(attribute)
 
     # Collect all indices in path
@@ -847,7 +829,7 @@ def getValue(plug, context=om.MDGContext.kNormal):
 
     else:
 
-        attributeType = getAttributeType(plug)
+        attributeType = getPlugApiType(plug)
         return __getvalue__[attributeType](plug)
 
 
@@ -1464,7 +1446,7 @@ def setValue(plug, value, force=False):
 
     else:
 
-        return __setvalue__[getAttributeType(plug)](plug, value, force=force)
+        return __setvalue__[getPlugApiType(plug)](plug, value, force=force)
 
 
 def resetValue(plug):

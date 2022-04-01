@@ -1,3 +1,5 @@
+from abc import ABCMeta
+from six import with_metaclass
 from dcc.json import psonobject
 
 import logging
@@ -6,7 +8,7 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-class FbxBase(psonobject.PSONObject):
+class FbxBase(with_metaclass(ABCMeta, psonobject.PSONObject)):
     """
     Overload of PSONObject used as a base class for all fbx data objects.
     """

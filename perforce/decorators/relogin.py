@@ -3,6 +3,7 @@ import os
 from functools import partial
 from dcc.perforce import cmds
 from dcc.perforce.dialogs import qlogindialog
+from dcc.decorators import abstractdecorator
 
 import logging
 logging.basicConfig()
@@ -10,68 +11,13 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-class Relogin(object):
+class Relogin(abstractdecorator.AbstractDecorator):
     """
     Base class used to evaluate the time before the user's perforce session expires.
     """
 
     # region Dunderscores
-    __slots__ = ('_name', '_instance', '_owner', '_func')
-
-    def __init__(self, *args, **kwargs):
-        """
-        Private method called after a new instance has been created.
-
-        :rtype: None
-        """
-
-        # Call parent method
-        #
-        super(Relogin, self).__init__()
-
-        # Declare public variables
-        #
-        self._instance = None
-        self._owner = None
-        self._func = None
-
-        # Inspect arguments
-        #
-        numArgs = len(args)
-
-        if numArgs == 1:
-
-            self._func = args[0]
-
-    def __get__(self, instance, owner):
-        """
-        Private method called whenever this object is accessed via attribute lookup.
-
-        :type instance: object
-        :type owner: type
-        :rtype: Undo
-        """
-
-        self._instance = instance
-        self._owner = owner
-
-        return self
-
-    def __call__(self, *args, **kwargs):
-        """
-        Private method that is called whenever this instance is evoked.
-
-        :type func: function
-        :rtype: function
-        """
-
-        # Execute order of operations
-        #
-        self.__enter__()
-        results = self.func(*args, **kwargs)
-        self.__exit__(None, None, None)
-
-        return results
+    __slots__ = ()
 
     def __enter__(self, *args):
         """
@@ -131,25 +77,6 @@ class Relogin(object):
         pass
     # endregion
 
-    # region Properties
-    @property
-    def func(self):
-        """
-        Getter method used to return the wrapped function.
-        If this is a descriptor then the function will be bound.
-
-        :rtype: function
-        """
-
-        if self._instance is not None:
-
-            return self._func.__get__(self._instance, self._owner)
-
-        else:
-
-            return self._func
-    # endregion
-
     # region Methods
     def tryRememberedPassword(self):
         """
@@ -186,14 +113,17 @@ class Relogin(object):
 
             # Check if password should be remembered
             #
-            if dialog.rememberPassword:
+            password = dialog.password()
+            rememberPassword = dialog.rememberPassword()
 
-                os.environ['P4PASSWD'] = dialog.password
+            if rememberPassword:
+
+                os.environ['P4PASSWD'] = password
 
             # Return decoded password
             #
             log.info('Successfully logged in!')
-            return dialog.password
+            return password
 
         else:
 
@@ -224,5 +154,5 @@ def relogin(*args, **kwargs):
 
     else:
 
-        raise TypeError('undo() expects at most 1 argument (%s given)!' % numArgs)
+        raise TypeError('relogin() expects at most 1 argument (%s given)!' % numArgs)
 

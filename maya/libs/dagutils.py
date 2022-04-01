@@ -114,6 +114,7 @@ def getMObjectByName(name):
     """
     Method used to retrieve an MObject based on the given node name.
     If a plug is included in the name then a tuple will be returned instead.
+    There's a better plug lookup method inside plugutils!
 
     :type name: str
     :rtype: om.MObject
@@ -145,7 +146,8 @@ def getMObjectByName(name):
 
     else:
 
-        # Check node and attribute exist
+        # Try and add node and attribute name to selection list
+        # If it fails then a RuntimeError will be raised
         #
         try:
 
@@ -159,7 +161,7 @@ def getMObjectByName(name):
         except RuntimeError as exception:
 
             log.warning(exception)
-            return om.MObject.kNullObj
+            return om.MObject.kNullObj, om.MPlug()
 
 
 def getMObjectByMUuid(uuid):
