@@ -1,8 +1,9 @@
 import os
-import win32api
+import string
 
 from abc import ABCMeta, abstractmethod
 from six import with_metaclass
+from ctypes import windll
 from fnmatch import fnmatch
 from dcc import fntexture
 from dcc.abstract import afnbase
@@ -210,7 +211,18 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
         :rtype: List[str]
         """
 
-        return win32api.GetLogicalDriveStrings().split('\000')[:-1]
+        drives = []
+        bitmask = windll.kernel32.GetLogicalDrives()
+
+        for letter in string.uppercase:
+
+            if bitmask & 1:
+
+                drives.append(letter)
+
+            bitmask >>= 1
+
+        return drives
 
     @classmethod
     def isPathRelative(cls, path):
