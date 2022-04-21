@@ -6,7 +6,7 @@ log.setLevel(logging.INFO)
 
 class ClassProperty(object):
     """
-    Class decorator used to define class properties.
+    Base class used to decorate class properties.
     See the following for details:
     https://stackoverflow.com/questions/5189699/how-to-make-a-class-property
     """
@@ -72,7 +72,6 @@ class ClassProperty(object):
         Dunderscore method called whenever the user attempts to delete a property.
 
         :type instance: object
-        :type value: Any
         :rtype: None
         """
 
@@ -86,7 +85,7 @@ class ClassProperty(object):
 
     def setter(self, func):
         """
-        Decorator hook used to override the fset function.
+        Decorator hook used to override the setter function.
 
         :type func: function
         :rtype: object
@@ -105,7 +104,7 @@ class ClassProperty(object):
 
     def deleter(self, func):
         """
-        Decorator hook used to override the fdel function.
+        Decorator hook used to override the delete function.
 
         :type func: function
         :rtype: object
