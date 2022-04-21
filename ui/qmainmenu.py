@@ -23,18 +23,20 @@ class QMainMenu(QtWidgets.QMenu):
         # Call parent method
         #
         parent = kwargs.get('parent', None)
-        super(QMainMenu, self).__init__(title, parent)
+        super(QMainMenu, self).__init__(title, parent=parent)
 
         # Modify menu properties
         #
         self.setObjectName(title.replace(' ', '_'))
+        self.setWindowTitle(title)
         self.setSeparatorsCollapsible(False)
         self.setTearOffEnabled(kwargs.get('tearOff', True))
-        self.setWindowTitle(title)
 
-        # Install event filter onto parent
+        # Install event filter on parent
         #
-        parent.installEventFilter(self)
+        if isinstance(parent, QtCore.QObject):
+
+            parent.installEventFilter(self)
 
     def eventFilter(self, source, event):
         """
@@ -69,19 +71,8 @@ class QMainMenu(QtWidgets.QMenu):
 
             if self.menuAction() not in actions and lastAction.text().endswith('Help'):
 
-                log.info('Re-inserting menu: %s' % self.title())
+                log.debug('Re-inserting menu: %s' % self.title())
                 menuBar.insertMenu(lastAction, self)
-
-        elif eventType == QtCore.QEvent.ActionRemoved:
-
-            # Check if this menu has been removed
-            #
-            menuBar = self.parentWidget()  # type: QtWidgets.QMenuBar
-            actions = menuBar.actions()
-
-            if self.menuAction() not in actions:
-
-                log.warning('Main menu has been removed: %s' % self.title())
 
         else:
 
@@ -91,10 +82,36 @@ class QMainMenu(QtWidgets.QMenu):
         #
         return super(QMainMenu, self).eventFilter(source, event)
 
+    def setParent(self, parent):
+        """
+        Makes the object a child of parent.
+
+        :type parent: QtCore.QObject
+        :rtype: None
+        """
+
+        # Remove event filter from current parent
+        #
+        oldParent = self.parent()
+
+        if isinstance(oldParent, QtCore.QObject):
+
+            oldParent.removeEventFilter(self)
+
+        # Install event filter onto new parent
+        #
+        if isinstance(parent, QtCore.QObject):
+
+            parent.installEventFilter(self)
+
+        # Call parent method
+        #
+        super(QMainMenu, self).setParent(parent)
+
     def deleteLater(self, *args, **kwargs):
         """
         Marks this object for delete.
-        Overloading this method to cleanup any references.
+        Overloading this method to clean up any references.
 
         :rtype: None
         """
@@ -108,7 +125,6 @@ class QMainMenu(QtWidgets.QMenu):
         # Cleanup references
         #
         self.setParent(None)
-        del self.__instances__[self.title()]
 
         # Call parent method
         #

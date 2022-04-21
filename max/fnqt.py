@@ -1,15 +1,8 @@
-try:
-
-    import qtmax  # max_version >= 2021
-
-except ImportError:
-
-    import MaxPlus as qtmax  # max_version < 2021
-
 import pymxs
 
 from functools import partial
 from dcc.abstract import afnqt
+from dcc.python import importutils
 
 import logging
 logging.basicConfig()
@@ -17,10 +10,16 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
+MaxPlus = importutils.tryImport('MaxPlus')
+qtmax = importutils.tryImport('qtmax', default=MaxPlus)
+
+
 class FnQt(afnqt.AFnQt):
     """
     Overload of AFnQt that interfaces with Qt objects in 3DS Max.
     """
+
+    __slots__ = ()
 
     def getMainWindow(self):
         """

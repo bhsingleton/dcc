@@ -1,5 +1,7 @@
-from PySide2 import QtCore, QtWidgets, QtGui
+# -*- coding: utf-8 -*-
+from Qt import QtCore, QtWidgets, QtGui
 from six import string_types
+from dcc import fnqt
 
 import logging
 logging.basicConfig()
@@ -29,6 +31,7 @@ class QDropDownButton(QtWidgets.QAbstractButton):
         # Declare private variables
         #
         self._menu = None
+        self._qt = fnqt.FnQt()
 
         # Edit widget properties
         #
@@ -342,7 +345,7 @@ class QDropDownButton(QtWidgets.QAbstractButton):
         painter = QtGui.QPainter(self)
         self.initPainter(painter)
 
-        style = QtWidgets.QApplication.instance().style()
+        style = self._qt.getApplication().style()
 
         # Paint push button control
         #

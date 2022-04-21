@@ -1,5 +1,4 @@
-from PySide2 import QtWidgets
-
+from Qt import QtWidgets
 from .qmainmenu import QMainMenu
 from .qseparator import QSeparator
 

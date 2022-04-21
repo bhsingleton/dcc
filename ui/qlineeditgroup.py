@@ -1,4 +1,4 @@
-from PySide2 import QtCore, QtWidgets
+from Qt import QtCore, QtWidgets
 
 import logging
 logging.basicConfig()

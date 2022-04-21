@@ -1,4 +1,5 @@
 import os
+import getpass
 
 from functools import partial
 from dcc.perforce import cmds
@@ -106,24 +107,24 @@ class Relogin(abstractdecorator.AbstractDecorator):
 
         # Prompt user for password
         #
-        dialog = qlogindialog.QLoginDialog()
+        username = os.environ.get('P4USER', getpass.getuser())
+        port = os.environ.get('P4PORT', 'localhost:1666')
+
+        dialog = qlogindialog.QLoginDialog(username=username, port=port)
         result = dialog.exec_()
 
         if result:
 
             # Check if password should be remembered
             #
-            password = dialog.password()
-            rememberPassword = dialog.rememberPassword()
+            if dialog.rememberPassword:
 
-            if rememberPassword:
-
-                os.environ['P4PASSWD'] = password
+                os.environ['P4PASSWD'] = dialog.password
 
             # Return decoded password
             #
             log.info('Successfully logged in!')
-            return password
+            return dialog.password
 
         else:
 

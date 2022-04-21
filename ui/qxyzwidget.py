@@ -1,4 +1,4 @@
-from PySide2 import QtCore, QtWidgets, QtGui
+from Qt import QtCore, QtWidgets, QtGui
 
 import logging
 logging.basicConfig()
@@ -55,7 +55,7 @@ class QXyzWidget(QtWidgets.QWidget):
         self.matchButtonGroup.addButton(self.matchXPushButton, id=0)
         self.matchButtonGroup.addButton(self.matchYPushButton, id=1)
         self.matchButtonGroup.addButton(self.matchZPushButton, id=2)
-        self.matchButtonGroup.idToggled.connect(self.on_matchButtonGroup_idToggled)
+        self.matchButtonGroup.buttonClicked.connect(self.on_matchButtonGroup_buttonClicked)
 
         # Assign horizontal layout
         #
@@ -94,6 +94,7 @@ class QXyzWidget(QtWidgets.QWidget):
     # endregion
 
     # region Slots
+    @QtCore.Slot(bool)
     def on_matchPushButton_toggled(self, state):
         """
         Toggled slot method responsible for overriding the button group state.
@@ -106,7 +107,8 @@ class QXyzWidget(QtWidgets.QWidget):
 
             button.setChecked(state)
 
-    def on_matchButtonGroup_idToggled(self, index):
+    @QtCore.Slot(int)
+    def on_matchButtonGroup_buttonClicked(self, index):
         """
         Id toggled slot method responsible for syncing the master button with the button group.
 

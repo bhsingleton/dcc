@@ -14,11 +14,11 @@ class QProxyWindow(QtWidgets.QMainWindow):
     Overload of QMainWindow used to provide an interface for tracking all derived windows.
     """
 
+    # region Dunderscores
     __instances__ = {}
     __icon__ = QtGui.QIcon()
     __author__ = 'Ben Singleton'
 
-    # region Dunderscores
     def __new__(cls, *args, **kwargs):
         """
         Private method called before a new instance has been created.
@@ -55,8 +55,8 @@ class QProxyWindow(QtWidgets.QMainWindow):
 
         # Call parent method
         #
-        parent = kwargs.get('parent', fnqt.FnQt().getMainWindow())
-        flags = kwargs.get('flags', QtCore.Qt.WindowFlags())
+        parent = kwargs.pop('parent', fnqt.FnQt().getMainWindow())
+        flags = kwargs.pop('flags', QtCore.Qt.WindowFlags())
 
         super(QProxyWindow, self).__init__(parent=parent, flags=flags)
 
@@ -78,10 +78,11 @@ class QProxyWindow(QtWidgets.QMainWindow):
         self.setObjectName(self.className)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
 
-        if not self.overrideIcon.isNull():
+        # Check if custom icon exists
+        #
+        if not self.customIcon.isNull():
 
-            self.setWindowIcon(self.overrideIcon)
-
+            self.setWindowIcon(self.customIcon)
     # endregion
 
     # region Properties
@@ -96,14 +97,25 @@ class QProxyWindow(QtWidgets.QMainWindow):
         return cls.__name__
 
     @classproperty
-    def overrideIcon(cls):
+    def customIcon(cls):
         """
-        Getter method that returns the override icon for this class.
+        Getter method that returns the custom icon for this class.
 
         :rtype: QtGui.QIcon
         """
 
         return cls.__icon__
+
+    @customIcon.setter
+    def customIcon(cls, customIcon):
+        """
+        Setter method that updates the custom icon for this class.
+
+        :type customIcon: QtGui.QIcon
+        :rtype: None
+        """
+
+        cls.__icon__ = customIcon
 
     @property
     def settings(self):

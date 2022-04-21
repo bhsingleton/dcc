@@ -1,5 +1,6 @@
 <RCC>
   <qresource prefix="dcc">
+    <file>icons/no.png</file>
     <file>icons/check.svg</file>
     <file>icons/uncheck.svg</file>
     <file>icons/end_time.svg</file>

@@ -1,5 +1,6 @@
-from PySide2 import QtCore, QtWidgets, QtGui
+from Qt import QtCore, QtWidgets, QtGui
 from six import string_types
+from dcc import fnqt
 from dcc.ui import qdivider, qseparator
 
 import logging
@@ -36,6 +37,7 @@ class QRollout(QtWidgets.QAbstractButton):
 
         # Declare private variables
         #
+        self._qt = fnqt.FnQt()
         self._thickness = 24
         self._alignment = QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter
         self._flat = False
@@ -381,19 +383,19 @@ class QRollout(QtWidgets.QAbstractButton):
         :rtype: None
         """
 
-        expandAction = QtWidgets.QAction('&Expand', parent=menu)
+        expandAction = QtWidgets.QAction('&Expand', menu)
         expandAction.setObjectName('expandAction')
         expandAction.triggered.connect(self.on_expandAction_triggered)
 
-        collapseAction = QtWidgets.QAction('&Collapse', parent=menu)
+        collapseAction = QtWidgets.QAction('&Collapse', menu)
         collapseAction.setObjectName('collapseAction')
         collapseAction.triggered.connect(self.on_collapseAction_triggered)
 
-        expandAllAction = QtWidgets.QAction('&Expand All', parent=menu)
+        expandAllAction = QtWidgets.QAction('&Expand All', menu)
         expandAllAction.setObjectName('expandAllAction')
         expandAllAction.triggered.connect(self.on_expandAllAction_triggered)
 
-        collapseAllAction = QtWidgets.QAction('&Collapse All', parent=menu)
+        collapseAllAction = QtWidgets.QAction('&Collapse All', menu)
         collapseAllAction.setObjectName('collapseAllAction')
         collapseAllAction.triggered.connect(self.on_collapseAllAction_triggered)
 
@@ -402,7 +404,7 @@ class QRollout(QtWidgets.QAbstractButton):
             [
                 expandAction,
                 collapseAction,
-                qseparator.QSeparator('', parent=menu),
+                qseparator.QSeparator('', menu),
                 expandAllAction,
                 collapseAllAction
             ]
@@ -851,7 +853,7 @@ class QRollout(QtWidgets.QAbstractButton):
             options = QtWidgets.QStyleOptionButton()
             self.initCheckBoxStyleOption(options)
 
-            style = QtWidgets.QApplication.instance().style()
+            style = self._qt.getApplication().style()
             style.drawControl(QtWidgets.QStyle.CE_CheckBox, options, painter)
 
         else:

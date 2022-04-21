@@ -1,9 +1,7 @@
 import os
 import sys
-import shiboken2
 
-from PySide2 import QtCore, QtWidgets
-from dcc.ui import quicloader
+from Qt import QtCore, QtWidgets, QtCompat
 
 import logging
 logging.basicConfig()
@@ -11,7 +9,7 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-class QUicInterface(object):
+class QUicMixin(object):
     """
     Abstract class used with Qt widgets to create layouts at runtime via .ui files.
     This class must come first when declaring your base classes!
@@ -29,13 +27,13 @@ class QUicInterface(object):
 
         # Call parent method
         #
-        obj = super(QUicInterface, self).__getattribute__(item)
+        obj = super(QUicMixin, self).__getattribute__(item)
 
         if isinstance(obj, QtWidgets.QWidget):
 
             # Check if cpp pointer is still valid
             #
-            if not shiboken2.isValid(obj):
+            if not QtCompat.isValid(obj):
 
                 obj = self.findChild(QtWidgets.QWidget, item)
                 setattr(self, item, obj)
@@ -54,19 +52,17 @@ class QUicInterface(object):
         :rtype: QtWidgets.QWidget
         """
 
-        # Initialize qt loader
+        # Concatenate ui path
         #
-        customWidgets = kwargs.get('customWidgets', self.customWidgets())
+        filename = self.filename()
         workingDirectory = kwargs.get('workingDirectory', self.workingDirectory())
 
-        loader = quicloader.QUicLoader(self, customWidgets=customWidgets, workingDirectory=workingDirectory)
+        filePath = os.path.join(workingDirectory, filename)
 
-        # Load the .ui file
+        # Load ui from file
         #
-        filePath = os.path.join(self.workingDirectory(), self.filename())
-
         log.info('Loading UI file: %s' % filePath)
-        return loader.load(filePath)
+        return QtCompat.loadUi(uifile=filePath, baseinstance=self)
     # endregion
 
     # region Methods
@@ -84,17 +80,6 @@ class QUicInterface(object):
         name, ext = os.path.splitext(filename)
 
         return '{name}.ui'.format(name=name)
-
-    @classmethod
-    def customWidgets(cls):
-        """
-        Returns a dictionary of custom widgets used by this class.
-        Overload this method to extend this dictionary!
-
-        :rtype: dict[str:type]
-        """
-
-        return {}
 
     @classmethod
     def workingDirectory(cls):

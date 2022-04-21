@@ -1,7 +1,5 @@
-import os
-import getpass
-
 from PySide2 import QtCore, QtWidgets, QtGui
+from dcc.ui.dialogs import quicdialog
 
 import logging
 logging.basicConfig()
@@ -9,7 +7,7 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-class QLoginDialog(QtWidgets.QDialog):
+class QLoginDialog(quicdialog.QUicDialog):
     """
     Overload of QDialog use to renew the user's perforce login ticket.
     """
@@ -24,106 +22,14 @@ class QLoginDialog(QtWidgets.QDialog):
         :rtype: None
         """
 
-        # Call parent method
-        #
-        parent = kwargs.get('parent', QtWidgets.QApplication.activeWindow())
-        f = kwargs.get('f', QtCore.Qt.WindowFlags())
-
-        super(QLoginDialog, self).__init__(parent=parent, f=f)
-
         # Declare private variables
         #
-        self._username = kwargs.get('username', '')
-        self._port = kwargs.get('port', 'localhost:1666')
+        self._username = ''
+        self._port = ''
 
-        # Build user interface
+        # Call parent method
         #
-        self.__build__(*args, **kwargs)
-
-        # Check if any arguments were supplied
-        #
-        numArgs = len(args)
-
-        if numArgs == 0:
-
-            self.username = os.environ.get('P4USER', getpass.getuser())
-            self.port = os.environ.get('P4PORT', 'localhost:1666')
-
-        elif numArgs == 1:
-
-            self.username = args[0]
-            self.port = os.environ.get('P4PORT', 'localhost:1666')
-
-        else:
-
-            self.username = args[0]
-            self.port = args[1]
-
-    def __build__(self, *args, **kwargs):
-        """
-        Private method that builds the user interface.
-
-        :rtype: None
-        """
-
-        # Edit dialog properties
-        #
-        self.setObjectName('loginDialog')
-        self.setWindowFlags(QtCore.Qt.Dialog)
-        self.setMinimumSize(QtCore.QSize(600, 150))
-        self.setWindowTitle('Perforce Password Required')
-
-        # Create password widgets
-        #
-        self.usernameLabel = QtWidgets.QLabel('')
-        self.usernameLabel.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
-        self.usernameLabel.setFixedHeight(24)
-
-        self.passwordLabel = QtWidgets.QLabel('Please enter the password:')
-        self.passwordLabel.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
-        self.passwordLabel.setFixedHeight(24)
-
-        self.passwordLineEdit = QtWidgets.QLineEdit('')
-        self.passwordLineEdit.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
-        self.passwordLineEdit.setFixedHeight(24)
-        self.passwordLineEdit.setEchoMode(QtWidgets.QLineEdit.Password)
-
-        self.rememberPasswordCheckBox = QtWidgets.QCheckBox('Remember Password')
-        self.rememberPasswordCheckBox.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Fixed)
-        self.rememberPasswordCheckBox.setFixedHeight(24)
-
-        self.passwordLayout = QtWidgets.QHBoxLayout()
-        self.passwordLayout.addWidget(self.passwordLineEdit)
-        self.passwordLayout.addWidget(self.rememberPasswordCheckBox)
-
-        # Create buttons
-        #
-        self.buttonSpacerItem = QtWidgets.QSpacerItem(0, 24, hData=QtWidgets.QSizePolicy.Expanding, vData=QtWidgets.QSizePolicy.Fixed)
-
-        self.okayPushButton = QtWidgets.QPushButton('Okay')
-        self.okayPushButton.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
-        self.okayPushButton.setFixedHeight(24)
-        self.okayPushButton.pressed.connect(self.accept)
-
-        self.cancelPushButton = QtWidgets.QPushButton('Cancel')
-        self.cancelPushButton.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
-        self.cancelPushButton.setFixedHeight(24)
-        self.cancelPushButton.pressed.connect(self.reject)
-
-        self.buttonLayout = QtWidgets.QHBoxLayout()
-        self.buttonLayout.addSpacerItem(self.buttonSpacerItem)
-        self.buttonLayout.addWidget(self.okayPushButton)
-        self.buttonLayout.addWidget(self.cancelPushButton)
-
-        # Assign central layout
-        #
-        centralLayout = QtWidgets.QVBoxLayout()
-        centralLayout.addWidget(self.usernameLabel)
-        centralLayout.addWidget(self.passwordLabel)
-        centralLayout.addLayout(self.passwordLayout)
-        centralLayout.addLayout(self.buttonLayout)
-
-        self.setLayout(centralLayout)
+        super(QLoginDialog, self).__init__(*args, **kwargs)
     # endregion
 
     # region Properties
@@ -170,21 +76,21 @@ class QLoginDialog(QtWidgets.QDialog):
 
         self._port = port
         self.invalidate()
-    # endregion
 
-    # region Methods
+    @property
     def password(self):
         """
-        Returns the current password.
+        Getter method that returns the current password.
 
         :rtype: str
         """
 
         return self.passwordLineEdit.text()
 
-    def setPassword(self, password):
+    @password.setter
+    def password(self, password):
         """
-        Updates the current password.
+        Setter method that updates the current password.
 
         :type password: str
         :rtype: None
@@ -192,25 +98,29 @@ class QLoginDialog(QtWidgets.QDialog):
 
         self.passwordLineEdit.setText(password)
 
+    @property
     def rememberPassword(self):
         """
-        Returns the remember-password flag.
+        Getter method that returns the remember-password flag.
 
         :rtype: bool
         """
 
         return self.rememberPasswordCheckBox.isChecked()
 
-    def setRememberPassword(self, rememberPassword):
+    @rememberPassword.setter
+    def rememberPassword(self, rememberPassword):
         """
-        Updates the remember-password flag.
+        Setter method that updates the remember-password flag.
 
         :type rememberPassword: bool
         :rtype: None
         """
 
         self.rememberPasswordCheckBox.setChecked(rememberPassword)
+    # endregion
 
+    # region Methods
     def invalidate(self):
         """
         Forces the dialog to re-concatenate its display text.
