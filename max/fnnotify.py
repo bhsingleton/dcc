@@ -2,15 +2,16 @@ import pymxs
 
 from functools import partial
 from uuid import uuid4
-from dcc.python import pythonutils
+from dcc.python import importutils
 from dcc.abstract.afnnotify import AFnNotify, AbstractNotification, Notifications
-
-MaxPlus = pythonutils.tryImport('MaxPlus')
 
 import logging
 logging.basicConfig()
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
+
+
+MaxPlus = importutils.tryImport('MaxPlus')
 
 
 class Callback(AbstractNotification):
