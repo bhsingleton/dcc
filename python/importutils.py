@@ -4,32 +4,12 @@ import inspect
 
 from six import iteritems
 from six.moves import reload_module
+from . import stringutils
 
 import logging
 logging.basicConfig()
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
-
-
-def isNullOrEmpty(value):
-    """
-    Evaluates if the supplied value is null or empty.
-
-    :type value: Any
-    :rtype: bool
-    """
-
-    if hasattr(value, '__len__'):
-
-        return len(value) == 0
-
-    elif value is None:
-
-        return True
-
-    else:
-
-        raise TypeError('isNullOrEmpty() expects a sequence (%s given)!' % type(value).__name__)
 
 
 def filePathToModulePath(filePath):
@@ -137,7 +117,7 @@ def iterPackage(packagePath, forceReload=False):
 
 def iterModule(module, includeAbstract=False, classFilter=object):
     """
-    Returns a generator that yields all the classes inside a module.
+    Returns a generator that yields all the classes from the given module.
     An optional subclass filter can be provided to ignore certain types.
 
     :type module: module
@@ -173,41 +153,41 @@ def iterModule(module, includeAbstract=False, classFilter=object):
             log.debug('Skipping %s class...' % key)
 
 
-def findClass(className, modulePath, locals=None, globals=None):
+def findClass(className, modulePath, __locals__=None, __globals__=None):
     """
     Returns the class associated with the given string.
     To improve the results be sure to provide a class name complete with module path.
 
     :type className: str
     :type modulePath: str
-    :type locals: dict
-    :type globals: dict
+    :type __locals__: dict
+    :type __globals__: dict
     :rtype: class
     """
 
     # Check if class name is valid
     #
-    if isNullOrEmpty(className):
+    if stringutils.isNullOrEmpty(className):
 
         return None
 
     # Split string using delimiter
     #
     fromlist = modulePath.split('.', 1)
-    module = __import__(modulePath, locals=locals, globals=globals, fromlist=fromlist, level=0)
+    module = __import__(modulePath, locals=__locals__, globals=__globals__, fromlist=fromlist, level=0)
 
     return getattr(module, className)
 
 
-def tryImport(path, default=None, locals=None, globals=None):
+def tryImport(path, default=None, __locals__=None, __globals__=None):
     """
     Tries to import the given module path.
     If no module exists then the default value is returned instead.
 
     :type path: str
     :type default: Any
-    :type locals: dict
-    :type globals: dict
+    :type __locals__: dict
+    :type __globals__: dict
     :rtype: module
     """
 
@@ -216,7 +196,7 @@ def tryImport(path, default=None, locals=None, globals=None):
     try:
 
         fromlist = path.split('.', 1)
-        return __import__(path, locals=locals, globals=globals, fromlist=fromlist, level=0)
+        return __import__(path, locals=__locals__, globals=__globals__, fromlist=fromlist, level=0)
 
     except ImportError as exception:
 

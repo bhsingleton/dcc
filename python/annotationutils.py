@@ -1,6 +1,8 @@
 import re
+import inspect
 
-from typing import *  # Used for eval operations!
+from typing import Any, Union, List, Tuple, Dict
+from dcc.python import stringutils
 
 import logging
 logging.basicConfig()
@@ -11,27 +13,61 @@ log.setLevel(logging.INFO)
 __type__ = re.compile(r'(?:(?::type\s)|(?::key\s))([a-zA-Z0-9_]+)(?:\:\s)([a-zA-Z._]+[\[a-zA-Z_.,\s\]]*)\n')
 __rtype__ = re.compile(r'(?:\:rtype:\s)([a-zA-Z._]+[\[a-zA-Z_.,\s\]]*)\n')
 __index__ = re.compile(r'([a-zA-Z._]+)(?:\[([a-zA-Z_.,\s]+)\])?')
+__builtins__ = (bool, int, float, str, list, dict)
 
 
-def isNullOrEmpty(value):
+def isParameterizedAlias(obj):
     """
-    Evaluates if the supplied value is null or empty.
+    Evaluates if the supplied type represents a parameterized alias.
 
-    :type value: Any
+    :type obj: Any
     :rtype: bool
     """
 
-    if hasattr(value, '__len__'):
+    return hasattr(obj, '__origin__') and hasattr(obj, '__args__')
 
-        return len(value) == 0
 
-    elif value is None:
+def decomposeAlias(alias):
+    """
+    Breaks apart the supplied alias into its origin and parameter components.
 
-        return True
+    :type alias: Any
+    :rtype: type, tuple
+    """
+
+    if isParameterizedAlias(alias):
+
+        return alias.__origin__, alias.__args__
+
+    elif inspect.isclass(alias):
+
+        return alias, tuple()
 
     else:
 
-        raise TypeError('isNullOrEmpty() expects a sequence (%s given)!' % type(value).__name__)
+        return type(alias), tuple()
+
+
+def isBuiltinType(T):
+    """
+    Evaluates if the supplied type is JSON compatible.
+
+    :type T: Any
+    :rtype: bool
+    """
+
+    if isParameterizedAlias(T):
+
+        origin, parameters = decomposeAlias(T)
+        return isBuiltinType(origin) and all([isBuiltinType(x) for x in parameters])
+
+    elif inspect.isclass(T):
+
+        return issubclass(T, __builtins__)
+
+    else:
+
+        return isBuiltinType(type(T))
 
 
 def getTypeFromString(string, __globals__=None, __locals__=None):
@@ -108,3 +144,15 @@ def getAnnotations(func):
         annotations['return'] = getTypeFromString(returnType[0], __locals__=__locals__)
 
     return annotations
+
+
+def getReturnType(func):
+    """
+    Returns the return type for the given function.
+
+    :type func: function
+    :rtype: type
+    """
+
+    typeHints = getAnnotations(func)
+    return typeHints.get('return', None)
