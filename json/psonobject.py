@@ -4,9 +4,10 @@ import copy
 
 from abc import ABCMeta
 from six import with_metaclass
-from typing import *
+from six.moves import collections_abc
+from typing import Any, Union, Tuple, List, Dict
+from dcc.python import annotationutils, stringutils
 from dcc.decorators.classproperty import classproperty
-from dcc.python import annotationutils
 
 import logging
 logging.basicConfig()
@@ -14,18 +15,20 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-class PSONObject(with_metaclass(ABCMeta, MutableMapping)):
+class PSONObject(with_metaclass(ABCMeta, collections_abc.MutableMapping)):
     """
-    Overload of MutableMapping used to provide a serialization routine for json.
+    Overload of MutableMapping that acts as a serializable object using python properties.
     """
 
     # region Dunderscores
     __slots__ = ('__weakref__',)
-    __builtins__ = (bool, int, float, str, MutableSequence, MutableMapping)
+    __builtins__ = (bool, int, float, str, collections_abc.MutableSequence, collections_abc.MutableMapping)
 
     def __init__(self, *args, **kwargs):
         """
         Private method called after a new instance is created.
+
+        :rtype: None
         """
 
         # Call parent method
@@ -91,7 +94,7 @@ class PSONObject(with_metaclass(ABCMeta, MutableMapping)):
 
     def __getstate__(self):
         """
-        Private method that returns a screenshot of this collection.
+        Private method that returns a pickled object from this collection.
 
         :rtype: dict
         """
@@ -127,7 +130,7 @@ class PSONObject(with_metaclass(ABCMeta, MutableMapping)):
 
     def __setstate__(self, state):
         """
-        Private method that updates this collection from the supplied screenshot.
+        Private method that inherits the contents of the pickled object.
 
         :type state: dict
         :rtype: None
@@ -154,11 +157,11 @@ class PSONObject(with_metaclass(ABCMeta, MutableMapping)):
             #
             value = func.fget(self)
 
-            if isinstance(value, MutableSequence):
+            if isinstance(value, collections_abc.MutableSequence):
 
                 setattr(instance, name, [copy.copy(x) for x in value])
 
-            elif isinstance(value, MutableMapping):
+            elif isinstance(value, collections_abc.MutableMapping):
 
                 setattr(instance, name, {key: copy.copy(value) for (key, value) in value.items()})
 
@@ -263,56 +266,7 @@ class PSONObject(with_metaclass(ABCMeta, MutableMapping)):
         :rtype: bool
         """
 
-        if hasattr(value, '__len__'):
-
-            return len(value) == 0
-
-        elif value is None:
-
-            return True
-
-        else:
-
-            raise TypeError('isNullOrEmpty() expects a sequence (%s given)!' % type(value).__name__)
-
-    @classmethod
-    def isBuiltinType(cls, T):
-        """
-        Evaluates whether the supplied type is derived from a builtin type.
-
-        :type T: Any
-        :rtype: bool
-        """
-
-        if inspect.isclass(T):
-
-            return issubclass(T, cls.__builtins__)
-
-        else:
-
-            return cls.isBuiltinType(type(T))
-
-    @staticmethod
-    def isTypeAlias(T):
-        """
-        Evaluates if the given object represents a type alias.
-
-        :type T: Any
-        :rtype: bool
-        """
-
-        return hasattr(T, '__origin__')
-
-    @classmethod
-    def isSequenceAlias(cls, T):
-        """
-        Evaluates if the given object represents a sequence alias.
-
-        :type T: Any
-        :rtype: bool
-        """
-
-        return cls.isTypeAlias(T) and hasattr(T, '__args__')
+        return stringutils.isNullOrEmpty(value)
 
     @classmethod
     def isJsonCompatible(cls, T):
@@ -323,19 +277,7 @@ class PSONObject(with_metaclass(ABCMeta, MutableMapping)):
         :rtype: bool
         """
 
-        # Evaluate type object
-        #
-        if cls.isSequenceAlias(T):
-
-            return all([cls.isJsonCompatible(x) for x in T.__args__])
-
-        elif isinstance(T, (tuple, list)):
-
-            return all([cls.isJsonCompatible(x) for x in T])
-
-        else:
-
-            return cls.isBuiltinType(T) or hasattr(T, '__getstate__')
+        return annotationutils.isBuiltinType(T) or hasattr(T, '__getstate__')
 
     def weakReference(self):
         """
@@ -350,7 +292,7 @@ class PSONObject(with_metaclass(ABCMeta, MutableMapping)):
         """
         Returns a key view for this collection.
 
-        :rtype: collections.abc.KeysView
+        :rtype: collections_abc.KeysView
         """
 
         for (name, obj) in self.iterProperties(readable=True, writable=True):
@@ -361,7 +303,7 @@ class PSONObject(with_metaclass(ABCMeta, MutableMapping)):
         """
         Returns a values view for this collection.
 
-        :rtype: collections.abc.ValuesView
+        :rtype: collections_abc.ValuesView
         """
 
         for (name, obj) in self.iterProperties(readable=True, writable=True):
@@ -372,7 +314,7 @@ class PSONObject(with_metaclass(ABCMeta, MutableMapping)):
         """
         Returns an items view for this collection.
 
-        :rtype: collections.abc.ItemsView
+        :rtype: collections_abc.ItemsView
         """
 
         for (name, obj) in self.iterProperties(readable=True, writable=True):
@@ -383,7 +325,7 @@ class PSONObject(with_metaclass(ABCMeta, MutableMapping)):
         """
         Copies any items from the supplied dictionary to this collection.
 
-        :type obj: dict
+        :type obj: Dict[str, Any]
         :rtype: None
         """
 

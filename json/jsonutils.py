@@ -1,11 +1,48 @@
 import json
+import zlib
 
-from dcc.json import psonparser
+from . import psonparser
 
 import logging
 logging.basicConfig()
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
+
+
+def compress(string):
+    """
+    Compresses the supplied string.
+
+    :type string: str
+    :rtype: str
+    """
+
+    try:
+
+        return zlib.compress(string.encode('utf-8')).decode()
+
+    except zlib.error as exception:
+
+        log.debug(exception)
+        return string
+
+
+def decompress(string):
+    """
+    Decompresses the supplied string.
+
+    :type string: str
+    :rtype: str
+    """
+
+    try:
+
+        return zlib.decompress(string.encode('utf-8')).decode()
+
+    except zlib.error as exception:
+
+        log.debug(exception)
+        return string
 
 
 def load(filePath, **kwargs):
@@ -31,6 +68,14 @@ def loads(string, default=None, **kwargs):
     :type default: Any
     :rtype: Any
     """
+
+    # Check if string needs decompressing
+    #
+    isCompressed = kwargs.get('decompress', False)
+
+    if isCompressed:
+
+        string = decompress(string)
 
     # Try and load json string
     #
@@ -66,4 +111,18 @@ def dumps(obj, **kwargs):
     :rtype: str
     """
 
-    return json.dumps(obj, cls=psonparser.PSONEncoder, **kwargs)
+    # Serialize python object
+    #
+    string = json.dumps(obj, cls=psonparser.PSONEncoder, **kwargs)
+
+    # Check if string should be compressed
+    #
+    isCompressed = kwargs.get('compress', False)
+
+    if isCompressed:
+
+        return compress(string)
+
+    else:
+
+        return string

@@ -2,7 +2,7 @@ import json
 import sys
 
 from six.moves.collections_abc import MutableSequence, MutableMapping
-from dcc.python import pythonutils
+from dcc.python import importutils
 
 import logging
 logging.basicConfig()
@@ -132,4 +132,4 @@ class PSONDecoder(json.JSONDecoder):
 
         else:
 
-            return pythonutils.findClass(className, moduleName)
+            return importutils.findClass(className, moduleName)
