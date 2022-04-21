@@ -65,7 +65,8 @@ def currentDirectory():
 
 def removeUserAttributes():
     """
-    Convenience method used to removed any user attributes that have carried over using fbx.
+    Removes all user attributes from the selected nodes.
+    Useful for any garbage created by the FBX importer.
 
     :rtype: None
     """
@@ -92,7 +93,7 @@ def removeUserAttributes():
 
 def unloadTurtlePlugin():
     """
-    Convenience method used to unload the turtle plugin from the open scene file.
+    Unloads the turtle plugin from the open scene file.
 
     :rtype: None
     """
@@ -144,7 +145,7 @@ def unloadTurtlePlugin():
 
 def resetWindowPositions():
     """
-    Method used to move all of the active maya windows to the top left corner.
+    Resets all child windows to the top left corner.
 
     :rtype: None
     """
@@ -161,7 +162,7 @@ def resetWindowPositions():
 
 def resetStartupCameras():
     """
-    Method used to fix the startup cameras when they're thrown out of wack.
+    Fixes the startup cameras when they're thrown out of wack.
 
     :rtype: None
     """
