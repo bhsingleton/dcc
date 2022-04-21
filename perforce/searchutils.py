@@ -68,11 +68,11 @@ class SearchEngine(object):
 
         if os.path.isabs(filePath):
 
-            search = '/'.join([client.view[0].clientPath, '...', *segments[-2:]])  # Include filename and parent directory
+            search = '/'.join([client.view[0].clientPath, '...'] + segments[-2:])  # Include filename and parent directory
 
         else:
 
-            search = '/'.join([client.view[0].clientPath, '...', *segments])  # Include all relative directories
+            search = '/'.join([client.view[0].clientPath, '...'] + segments)  # Include all relative directories
 
         return self.searchClient(search, client=client)
 
