@@ -197,6 +197,40 @@ class FnScene(afnscene.AFnScene):
 
         pymxs.runtime.animateMode = False
 
+    def playblast(self, filePath=None, startFrame=None, endFrame=None):
+        """
+        Creates a playblast using the supplied path.
+        If no path is supplied then the default project path should be used instead!
+
+        :type filePath: str
+        :type startFrame: int
+        :type endFrame: int
+        :rtype: None
+        """
+
+        # Check if a file path was supplied
+        #
+        if filePath is None:
+
+            projectPath = self.currentProjectDirectory()
+            filePath = os.path.join(projectPath, 'previews', 'playblast.avi')
+
+        # Check if start and end frame was supplied
+        #
+        startFrame = startFrame if not self.isNullOrEmpty(startFrame) else self.getStartTime()
+        endFrame = endFrame if not self.isNullOrEmpty(endFrame) else self.getEndTime()
+
+        # Create playblast
+        #
+        pymxs.runtime.createPreview(
+            filename=filePath,
+            outputAVI=True,
+            start=startFrame,
+            end=endFrame
+        )
+
+        self.transcodePlayblast(filePath)
+
     def iterFileProperties(self):
         """
         Generator method used to iterate through the file properties.

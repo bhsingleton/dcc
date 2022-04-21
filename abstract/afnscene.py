@@ -1,5 +1,6 @@
 import os
 import string
+import subprocess
 
 from abc import ABCMeta, abstractmethod
 from six import with_metaclass
@@ -457,6 +458,89 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
             fnTexture.next()
             fnTexture.fix()
+
+    @staticmethod
+    def findFFmpeg():
+        """
+        Locates the FFmpeg installation from the user's machine.
+        If FFmpeg cannot be found then an empty string is returned!
+        If multiple installations are found then a TypeError will be raised!
+
+        :rtype: str
+        """
+
+        paths = os.environ.get('PATH', '').split(';')
+
+        found = [os.path.join(x, 'ffmpeg.exe') for x in paths if os.path.exists(os.path.join(x, 'ffmpeg.exe'))]
+        numFound = len(found)
+
+        if numFound == 0:
+
+            return ''
+
+        elif numFound == 1:
+
+            return found[0]
+
+        else:
+
+            raise TypeError('findFFmpeg() multiple installations found: %s' % found)
+
+    def hasFFmpeg(self):
+        """
+        Evaluates if the user has FFmpeg installed.
+
+        :rtype: bool
+        """
+
+        return os.path.exists(self.findFFmpeg())
+
+    @abstractmethod
+    def playblast(self, filePath=None, startFrame=None, endFrame=None):
+        """
+        Creates a playblast using the supplied path.
+        If no path is supplied then the default project path should be used instead!
+
+        :type filePath: str
+        :type startFrame: int
+        :type endFrame: int
+        :rtype: None
+        """
+
+        pass
+
+    def transcodePlayblast(self, filePath):
+        """
+        Converts the supplied playblast to an MPEG w/H.264 encoding.
+
+        :type filePath: str
+        :rtype: None
+        """
+
+        # Check FFmpeg is installed
+        #
+        if not self.hasFFmpeg():
+
+            log.warning('Unable to locate FFmpeg!')
+            return
+
+        # Concatenate save path
+        #
+        directory, filename = os.path.split(filePath)
+        name, extension = os.path.splitext(filename)
+
+        savePath = os.path.join(directory, '{name}.mp4'.format(name=name))
+
+        # Execute shell command
+        #
+        command = '{ffmpeg} -y -i {input} -c:v libx264 -preset slow -crf 20 -c:a aac -b:a 160k -vf format=yuv420p -movflags +faststart {output}'.format(
+            ffmpeg=self.findFFmpeg(),
+            input=filePath,
+            output=savePath
+        )
+
+        log.info('Transcoding playblast to: %s' % savePath)
+        subprocess.call(command, shell=True)
 
     @abstractmethod
     def iterFileProperties(self):

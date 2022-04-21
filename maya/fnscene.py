@@ -162,6 +162,19 @@ class FnScene(afnscene.AFnScene):
 
         mc.autoKeyframe(state=False)
 
+    def playblast(self, filePath=None, startFrame=None, endFrame=None):
+        """
+        Creates a playblast using the supplied path.
+        If no path is supplied then the default project path should be used instead!
+
+        :type filePath: str
+        :type startFrame: int
+        :type endFrame: int
+        :rtype: None
+        """
+
+        pass
+
     def iterFileProperties(self):
         """
         Returns a generator that yields file properties as key-value pairs.
