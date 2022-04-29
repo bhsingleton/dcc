@@ -103,6 +103,18 @@ class QRollout(QtWidgets.QAbstractButton):
             pass
     # endregion
 
+    # region Properties
+    @property
+    def qt(self):
+        """
+        Getter method that returns the qt function set.
+
+        :rtype: fnqt.FnQt
+        """
+
+        return self._qt
+    # endregion
+
     # region Methods
     def setLayout(self, layout):
         """
@@ -670,22 +682,16 @@ class QRollout(QtWidgets.QAbstractButton):
         #
         if watched is self.layout() and isinstance(event, QtCore.QChildEvent):
 
-            # Check if child object is a widget
+            # Connect signal to child
             #
             child = event.child()
 
-            if not isinstance(child, QtWidgets.QWidget):
-
-                return super(QRollout, self).eventFilter(watched, event)
-
-            # Connect signal to child
-            #
-            if event.added():
+            if isinstance(child, QtWidgets.QWidget) and event.added():
 
                 log.info('Adding child: %s' % child)
                 self.expandedChanged.connect(child.setVisible)
 
-            elif event.removed():
+            elif isinstance(child, QtWidgets.QWidget) and event.removed():
 
                 log.debug('Removing child: %s' % child)
                 self.expandedChanged.disconnect(child.setVisible)
@@ -853,7 +859,7 @@ class QRollout(QtWidgets.QAbstractButton):
             options = QtWidgets.QStyleOptionButton()
             self.initCheckBoxStyleOption(options)
 
-            style = self._qt.getApplication().style()
+            style = self.qt.getApplication().style()
             style.drawControl(QtWidgets.QStyle.CE_CheckBox, options, painter)
 
         else:
