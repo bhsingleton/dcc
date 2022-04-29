@@ -80,6 +80,18 @@ class QDropDownButton(QtWidgets.QAbstractButton):
             pass
     # endregion
 
+    # region Properties
+    @property
+    def qt(self):
+        """
+        Getter method that returns the qt function set.
+
+        :rtype: fnqt.FnQt
+        """
+
+        return self._qt
+    # endregion
+
     # region Methods
     def pushButtonRect(self):
         """
@@ -345,7 +357,7 @@ class QDropDownButton(QtWidgets.QAbstractButton):
         painter = QtGui.QPainter(self)
         self.initPainter(painter)
 
-        style = self._qt.getApplication().style()
+        style = self.qt.getApplication().style()
 
         # Paint push button control
         #
