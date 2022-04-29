@@ -3,6 +3,7 @@ import os
 import sys
 
 from dcc.abstract import afnscene
+from dcc.max.libs import sceneutils
 
 import logging
 logging.basicConfig()
@@ -42,7 +43,7 @@ class FnScene(afnscene.AFnScene):
         :rtype: bool
         """
 
-        return os.path.split(sys.executable)[-1] == '3dsmaxbatch.exe'
+        return sceneutils.isBatchMode()
 
     def currentFilename(self):
         """
@@ -103,22 +104,11 @@ class FnScene(afnscene.AFnScene):
         #
         paths = super(FnScene, self).paths()
 
-        # Append map paths
+        # Append scene paths
         #
-        numMapPaths = pymxs.runtime.MapPaths.count()
-        paths.extend([os.path.normpath(pymxs.runtime.MapPaths.get(i)) for i in range(1, numMapPaths + 1, 1)])
-
-        # Append xref paths
-        #
-        numXRefPaths = pymxs.runtime.XRefPaths.count()
-        paths.extend([os.path.normpath(pymxs.runtime.XRefPaths.get(i)) for i in range(1, numXRefPaths + 1, 1)])
-
-        # Append session paths
-        #
-        for sessionType in (pymxs.runtime.Name('map'), pymxs.runtime.Name('xref')):
-
-            numPaths = pymxs.runtime.SessionPaths.count(sessionType)
-            paths.extend([os.path.normpath(pymxs.runtime.SessionPaths.get(sessionType, i)) for i in range(1, numPaths + 1, 1)])
+        paths.extend(list(sceneutils.iterBitmapPaths(expand=True)))
+        paths.extend(list(sceneutils.iterXRefPaths(expand=True)))
+        paths.extend(list(sceneutils.iterSessionPaths(maps=True, xrefs=True)))
 
         return list(set(paths))
 
@@ -213,7 +203,7 @@ class FnScene(afnscene.AFnScene):
         if filePath is None:
 
             projectPath = self.currentProjectDirectory()
-            filePath = os.path.join(projectPath, 'previews', 'playblast.avi')
+            filePath = os.path.join(projectPath, 'previews', '_scene.avi')
 
         # Check if start and end frame was supplied
         #
@@ -239,17 +229,7 @@ class FnScene(afnscene.AFnScene):
         :rtype: iter
         """
 
-        # Iterate through properties
-        #
-        category = pymxs.runtime.name('custom')
-        numProperties = pymxs.runtime.fileProperties.getNumProperties(category)
-
-        for i in range(numProperties):
-
-            key = pymxs.runtime.fileProperties.getPropertyName(category, i + 1)
-            value = pymxs.runtime.fileProperties.getPropertyValue(category, i + 1)
-
-            yield key, value
+        return sceneutils.iterFileProperties()
 
     def getFileProperty(self, key, default=None):
         """

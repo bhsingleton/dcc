@@ -212,6 +212,16 @@ def extendSessionPaths(*args, **kwargs):
                 continue
 
 
+def projectPath():
+    """
+    Returns the current project path.
+
+    :rtype: str
+    """
+
+    return os.path.normpath(pymxs.runtime.PathConfig.getCurrentProjectFolder())
+
+
 def setProjectPath(directory):
     """
     Updates the current project directory.
@@ -267,3 +277,23 @@ def resetProjectPath():
 
     defaultPath = os.path.expandvars(os.path.join('%USERPROFILE%', 'Documents', '3dsMax'))
     setProjectPath(defaultPath)
+
+
+def iterFileProperties():
+    """
+    Returns a generator that yields file properties as key-value pairs.
+
+    :rtype: iter
+    """
+
+    # Iterate through properties
+    #
+    category = pymxs.runtime.name('custom')
+    numProperties = pymxs.runtime.fileProperties.getNumProperties(category)
+
+    for i in range(numProperties):
+
+        key = pymxs.runtime.fileProperties.getPropertyName(category, i + 1)
+        value = pymxs.runtime.fileProperties.getPropertyValue(category, i + 1)
+
+        yield key, value
