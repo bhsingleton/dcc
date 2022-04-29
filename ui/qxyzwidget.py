@@ -55,7 +55,7 @@ class QXyzWidget(QtWidgets.QWidget):
         self.matchButtonGroup.addButton(self.matchXPushButton, id=0)
         self.matchButtonGroup.addButton(self.matchYPushButton, id=1)
         self.matchButtonGroup.addButton(self.matchZPushButton, id=2)
-        self.matchButtonGroup.buttonClicked.connect(self.on_matchButtonGroup_buttonClicked)
+        self.matchButtonGroup.buttonToggled.connect(self.on_matchButtonGroup_buttonToggled)
 
         # Assign horizontal layout
         #
@@ -108,7 +108,7 @@ class QXyzWidget(QtWidgets.QWidget):
             button.setChecked(state)
 
     @QtCore.Slot(int)
-    def on_matchButtonGroup_buttonClicked(self, index):
+    def on_matchButtonGroup_buttonToggled(self, index):
         """
         Id toggled slot method responsible for syncing the master button with the button group.
 
