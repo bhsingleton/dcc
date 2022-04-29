@@ -1,6 +1,6 @@
 from Qt import QtCore, QtWidgets, QtGui
 from enum import IntEnum
-from dcc import fnscene
+from dcc import fnscene, fnqt
 
 import logging
 logging.basicConfig()
@@ -36,20 +36,31 @@ class QTimeSpinBox(QtWidgets.QSpinBox):
 
         # Declare public variables
         #
-        self._fnScene = fnscene.FnScene()
+        self._scene = fnscene.FnScene()
+        self._qt = fnqt.FnQt()
         self._defaultType = kwargs.get('defaultType', DefaultType.StartTime)
     # endregion
 
     # region Properties
     @property
-    def fnScene(self):
+    def scene(self):
         """
         Getter method that returns the scene function set.
 
         :rtype: fnscene.FnScene
         """
 
-        return self._fnScene
+        return self._scene
+
+    @property
+    def qt(self):
+        """
+        Getter method that returns the qt function set.
+
+        :rtype: fnqt.FnQt
+        """
+
+        return self._qt
     # endregion
 
     # region Methods
@@ -64,15 +75,15 @@ class QTimeSpinBox(QtWidgets.QSpinBox):
 
         if defaultType == DefaultType.StartTime:
 
-            return self.fnScene.getStartTime()
+            return self.scene.getStartTime()
 
         elif defaultType == DefaultType.EndTime:
 
-            return self.fnScene.getEndTime()
+            return self.scene.getEndTime()
 
         elif defaultType == DefaultType.CurrentTime:
 
-            return self.fnScene.getTime()
+            return self.scene.getTime()
 
         else:
 
@@ -104,7 +115,7 @@ class QTimeSpinBox(QtWidgets.QSpinBox):
         :rtype: int
         """
 
-        return self.fnScene.getStartTime()
+        return self.scene.getStartTime()
 
     def maximum(self):
         """
@@ -113,7 +124,7 @@ class QTimeSpinBox(QtWidgets.QSpinBox):
         :rtype: int
         """
 
-        return self.fnScene.getEndTime()
+        return self.scene.getEndTime()
 
     def contextMenuEvent(self, event):
         """
@@ -136,7 +147,7 @@ class QTimeSpinBox(QtWidgets.QSpinBox):
             # Check if either arrows were clicked
             # If they were then ignore this event and reset the value
             #
-            style = QtWidgets.QApplication.instance().style()
+            style = self.qt.getApplication().style()
 
             upRect = style.subControlRect(QtWidgets.QStyle.CC_SpinBox, options, QtWidgets.QStyle.SC_SpinBoxUp, widget=self)
             downRect = style.subControlRect(QtWidgets.QStyle.CC_SpinBox, options, QtWidgets.QStyle.SC_SpinBoxDown, widget=self)
