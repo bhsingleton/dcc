@@ -14,11 +14,13 @@ __maxproperties__ = {}
 
 
 BASE_TYPES = {
+    'floatController': pymxs.runtime.floatController,
+    'point3Controller': pymxs.runtime.point3Controller,
     'Matrix3Controller': pymxs.runtime.Matrix3Controller,
     'positionController': pymxs.runtime.positionController,
     'rotationController': pymxs.runtime.rotationController,
     'scaleController': pymxs.runtime.scaleController,
-    'floatController': pymxs.runtime.floatController,
+    'MorphController': pymxs.runtime.MorphController
 }
 
 
@@ -27,7 +29,9 @@ CONSTRAINT_TYPES = {
     'Position_Constraint': pymxs.runtime.Position_Constraint,
     'Path_Constraint': pymxs.runtime.Path_Constraint,
     'Orientation_Constraint': pymxs.runtime.Orientation_Constraint,
-    'LookAt_Constraint': pymxs.runtime.LookAt_Constraint
+    'LookAt_Constraint': pymxs.runtime.LookAt_Constraint,
+    'Surface_position': pymxs.runtime.Surface_position,
+    'Attachment': pymxs.runtime.Attachment,
 }
 
 
@@ -142,7 +146,7 @@ def isValidSubAnim(obj):
     :rtype: bool
     """
 
-    return pymxs.runtime.classOf(obj) == pymxs.runtime.SubAnim
+    return pymxs.runtime.isKindOf(obj, pymxs.runtime.SubAnim)
 
 
 def isSerializableValue(value):
