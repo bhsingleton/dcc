@@ -65,6 +65,26 @@ LIST_TYPES = {
 }
 
 
+SCRIPT_TYPES = {
+    'float_script': pymxs.runtime.float_script,
+    'transform_script': pymxs.runtime.transform_script,
+    'point3_script': pymxs.runtime.point3_script,
+    'position_script': pymxs.runtime.position_script,
+    'rotation_script': pymxs.runtime.rotation_script,
+    'scale_script': pymxs.runtime.scale_script,
+}
+
+
+WIRE_TYPES = {
+    'Float_Wire': pymxs.runtime.Float_Wire,
+    'Point3_Wire': pymxs.runtime.Point3_Wire,
+    'Point4_Wire': pymxs.runtime.Point4_Wire,
+    'Position_Wire': pymxs.runtime.Position_Wire,
+    'Rotation_Wire': pymxs.runtime.Rotation_Wire,
+    'Scale_Wire': pymxs.runtime.Scale_Wire
+}
+
+
 DUMMY_TYPES = {
     'position_ListDummyEntry': pymxs.runtime.position_ListDummyEntry,
     'rotation_ListDummyEntry': pymxs.runtime.rotation_ListDummyEntry,
@@ -114,6 +134,28 @@ def isListController(obj):
     """
 
     return pymxs.runtime.classOf(obj) in LIST_TYPES.values()
+
+
+def isScriptController(obj):
+    """
+    Evaluates if the supplied object is a script controller.
+
+    :type obj: pymxs.MXSWrapperBase
+    :rtype: bool
+    """
+
+    return pymxs.runtime.classOf(obj) in SCRIPT_TYPES.values()
+
+
+def isWireParameter(obj):
+    """
+    Evaluates if the supplied object is a wire parameter.
+
+    :type obj: pymxs.MXSWrapperBase
+    :rtype: bool
+    """
+
+    return pymxs.runtime.classOf(obj) in WIRE_TYPES.values()
 
 
 def isDummyController(obj):
