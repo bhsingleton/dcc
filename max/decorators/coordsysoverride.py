@@ -1,6 +1,5 @@
 import pymxs
 
-from six import string_types
 from functools import partial
 from dcc.decorators import abstractdecorator
 
@@ -17,7 +16,7 @@ class CoordSysOverride(abstractdecorator.AbstractDecorator):
     """
 
     # region Dunderscores
-    __slots__ = ('_mode', '_previous')
+    __slots__ = ('_mode', '_revert', '_previous')
 
     def __init__(self, *args, **kwargs):
         """
@@ -31,9 +30,10 @@ class CoordSysOverride(abstractdecorator.AbstractDecorator):
         # Declare public variables
         #
         self._mode = pymxs.runtime.Name(kwargs.get('mode', 'local'))
-        self._previous = None
+        self._revert = kwargs.get('revert', False)
+        self._previous = pymxs.runtime.getRefCoordSys()
 
-    def __enter__(self):
+    def __enter__(self, *args, **kwargs):
         """
         Private method that is called when this instance is entered using a with statement.
 
@@ -41,7 +41,10 @@ class CoordSysOverride(abstractdecorator.AbstractDecorator):
         """
 
         self.previous = pymxs.runtime.getRefCoordSys()
-        pymxs.runtime.toolMode.coordsys(self.mode)
+
+        if self.previous != self.mode:
+
+            pymxs.runtime.toolMode.coordsys(self.mode)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """
@@ -53,7 +56,9 @@ class CoordSysOverride(abstractdecorator.AbstractDecorator):
         :rtype: None
         """
 
-        pymxs.runtime.setRefCoordSys(self.previous)
+        if self.revert:
+
+            pymxs.runtime.setRefCoordSys(self.previous)
     # endregion
 
     # region Properties
@@ -65,7 +70,17 @@ class CoordSysOverride(abstractdecorator.AbstractDecorator):
         :rtype: pymxs.runtime.Name
         """
 
-        return pymxs.runtime.name(self._mode)
+        return self._mode
+
+    @property
+    def revert(self):
+        """
+        Getter method that returns the revert flag.
+
+        :rtype: bool
+        """
+
+        return self._revert
 
     @property
     def previous(self):
@@ -92,7 +107,7 @@ class CoordSysOverride(abstractdecorator.AbstractDecorator):
 
 def coordSysOverride(*args, **kwargs):
     """
-    Returns an command panel override wrapper for the supplied function.
+    Returns a CoordSysOverride wrapper for the supplied function.
 
     :rtype: method
     """

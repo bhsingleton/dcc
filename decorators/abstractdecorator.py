@@ -65,14 +65,14 @@ class AbstractDecorator(with_metaclass(ABCMeta, object)):
 
         # Execute order of operations
         #
-        self.__enter__()
+        self.__enter__(*args, **kwargs)
         results = self.func(*args, **kwargs)
         self.__exit__(None, None, None)
 
         return results
 
     @abstractmethod
-    def __enter__(self, *args):
+    def __enter__(self, *args, **kwargs):
         """
         Private method that is called when this instance is entered using a with statement.
 
@@ -96,6 +96,26 @@ class AbstractDecorator(with_metaclass(ABCMeta, object)):
     # endregion
 
     # region Properties
+    @property
+    def instance(self):
+        """
+        Returns the instance currently bound to this decorator.
+
+        :rtype: object
+        """
+
+        return self._instance
+
+    @property
+    def owner(self):
+        """
+        Returns the class associated with the bound instance.
+
+        :rtype: type
+        """
+
+        return self._owner
+
     @property
     def func(self):
         """

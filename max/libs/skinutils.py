@@ -1,7 +1,9 @@
 import pymxs
 
+from dcc.python import stringutils
 from dcc.math import linearalgebra
-from dcc.max.decorators import commandpaneloverride
+from dcc.generators.inclusiverange import inclusiveRange
+from dcc.max.decorators.commandpaneloverride import commandPanelOverride
 
 import logging
 logging.basicConfig()
@@ -9,32 +11,10 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-def isNullOrEmpty(value):
-    """
-    Evaluates if the supplied value is null or empty.
-
-    :type value: Any
-    :rtype: bool
-    """
-
-    if hasattr(value, '__len__'):
-
-        return len(value) == 0
-
-    elif value is None:
-
-        return True
-
-    else:
-
-        raise TypeError('isNullOrEmpty() expects a sequence (%s given)!' % type(value).__name__)
-
-
-@commandpaneloverride.commandPanelOverride(mode='modify')
+@commandPanelOverride(mode='modify', select=0)
 def iterSelection(skin):
     """
-    Returns a generator that yields the selected vertex indices.
-    This operation is not super efficient in max...
+    Returns a generator that yields the active vertex selection from the supplied skin.
 
     :type skin: pymxs.MXSWrapperBase
     :rtype: iter
@@ -44,7 +24,7 @@ def iterSelection(skin):
     #
     numVertices = pymxs.runtime.skinOps.getNumberVertices(skin)
 
-    for i in range(1, numVertices + 1, 1):
+    for i in inclusiveRange(1, numVertices):
 
         # Check if vertex is selected
         #
@@ -57,10 +37,46 @@ def iterSelection(skin):
             continue
 
 
-@commandpaneloverride.commandPanelOverride(mode='modify')
+def getSelection(skin):
+    """
+    Returns the active vertex selection from the supplied skin.
+
+    :type skin: pymxs.MXSWrapperBase
+    :rtype: List[int]
+    """
+
+    return list(iterSelection(skin))
+
+
+@commandPanelOverride(mode='modify', select=0)
+def setSelection(skin, vertexIndices):
+    """
+    Updates the active vertex selection for the specified skin.
+
+    :type skin: pymxs.MXSWrapperBase
+    :type vertexIndices: List[int]
+    :rtype: None
+    """
+
+    pymxs.runtime.skinOps.selectVertices(skin, vertexIndices)
+
+
+@commandPanelOverride(mode='modify', select=0)
+def influenceCount(skin):
+    """
+    Evaluates the number of influences currently in use by the supplied skin.
+
+    :type skin: pymxs.MXSWrapperBase
+    :rtype: int
+    """
+
+    return pymxs.runtime.skinOps.getNumberBones(skin)
+
+
+@commandPanelOverride(mode='modify', select=0)
 def iterInfluences(skin):
     """
-    Returns a generator that yields all the influence objects from this modifier.
+    Returns a generator that yields the influence objects from the supplied skin.
 
     :rtype: iter
     """
@@ -69,7 +85,7 @@ def iterInfluences(skin):
     #
     numBones = pymxs.runtime.skinOps.getNumberBones(skin)
 
-    for i in range(1, numBones + 1, 1):
+    for i in inclusiveRange(1, numBones):
 
         # Get bone properties
         #
@@ -99,10 +115,23 @@ def iterInfluences(skin):
         yield boneId, bone
 
 
-@commandpaneloverride.commandPanelOverride(mode='modify')
+@commandPanelOverride(mode='modify', select=0)
+def selectInfluence(skin, influenceId):
+    """
+    Updates the active influence selection inside the skin modifier's list box.
+
+    :type skin: pymxs.MXSWrapperBase
+    :type influenceId: int
+    :rtype: None
+    """
+
+    pymxs.runtime.skinOps.selectBone(skin, influenceId)
+
+
+@commandPanelOverride(mode='modify', select=0)
 def iterVertexWeights(skin, vertexIndices=None):
     """
-    Returns a generator that yields weights for the supplied vertex indices.
+    Returns a generator that yields vertex weights from the specified vertex indices.
     If no vertex indices are supplied then all weights are yielded instead.
 
     :type skin: pymxs.MXSWrapperBase
@@ -112,10 +141,10 @@ def iterVertexWeights(skin, vertexIndices=None):
 
     # Inspect arguments
     #
-    if isNullOrEmpty(vertexIndices):
+    if stringutils.isNullOrEmpty(vertexIndices):
 
         numVertices = pymxs.runtime.skinOps.getNumberVertices(skin)
-        vertexIndices = range(1, numVertices + 1, 1)
+        vertexIndices = inclusiveRange(1, numVertices)
 
     # Iterate through arguments
     #
@@ -127,7 +156,7 @@ def iterVertexWeights(skin, vertexIndices=None):
 
         vertexWeights = {}
 
-        for i in range(1, numBones + 1, 1):
+        for i in inclusiveRange(1, numBones):
 
             boneId = pymxs.runtime.skinOps.getVertexWeightBoneID(skin, vertexIndex, i)
             boneWeight = pymxs.runtime.skinOps.getVertexWeight(skin, vertexIndex, i)
@@ -139,10 +168,23 @@ def iterVertexWeights(skin, vertexIndices=None):
         yield vertexIndex, vertexWeights
 
 
-@commandpaneloverride.commandPanelOverride(mode='modify')
+def getVertexWeights(skin, vertexIndices=None):
+    """
+    Returns the vertex weights from the specified vertex indices.
+    If no vertex indices are supplied then all weights are yielded instead.
+
+    :type skin: pymxs.MXSWrapperBase
+    :type vertexIndices: List[int]
+    :rtype: iter
+    """
+
+    return dict(iterVertexWeights(skin, vertexIndices=vertexIndices))
+
+
+@commandPanelOverride(mode='modify', select=0)
 def setVertexWeights(skin, vertexWeights):
     """
-    Assigns the supplied vertex weights to this modifier.
+    Updates the vertex weights for the specified skin.
 
     :type skin: pymxs.MXSWrapperBase
     :type vertexWeights: Dict[int, Dict[int, float]]
@@ -175,3 +217,64 @@ def setVertexWeights(skin, vertexWeights):
     # This prevents any zero weights from being returned to the same execution thread!
     #
     pymxs.runtime.completeRedraw()
+
+
+@commandPanelOverride(mode='modify', select=0)
+def addInfluence(skin, influence):
+    """
+    Adds an influence to the specified skin.
+
+    :type skin: pymxs.MXSWrapperBase
+    :type influence: pymxs.MXSWrapperBase
+    :rtype: None
+    """
+
+    pymxs.runtime.skinOps.addBone(skin, influence, 0)
+
+
+@commandPanelOverride(mode='modify', select=0)
+def removeInfluence(skin, influenceId):
+    """
+    Adds an influence to the specified skin.
+
+    :type skin: pymxs.MXSWrapperBase
+    :type influenceId: int
+    :rtype: None
+    """
+
+    pymxs.runtime.skinOps.removeBone(skin, influenceId)
+
+
+@commandPanelOverride(mode='modify', select=0)
+def resetPreBindMatrices(skin):
+    """
+    Resets the pre-bind matrices on the associated joints.
+
+    :rtype: None
+    """
+
+    skin.always_deforms = False
+    skin.always_deforms = True
+
+
+@commandPanelOverride(mode='modify', select=0, subObjectLevel=1)
+def showColors(skin):
+    """
+    Enables the vertex color feedback for the supplied skin.
+
+    :pymxs.MXSWrapperBase
+    :rtype: None
+    """
+
+    # Modify display settings
+    #
+    skin.drawVertices = True
+    skin.shadeWeights = True
+    skin.colorAllWeights = False
+    skin.draw_all_envelopes = False
+    skin.draw_all_vertices = False
+    skin.draw_all_gizmos = False
+    skin.showNoEnvelopes = True
+    skin.showHiddenVertices = False
+    skin.crossSectionsAlwaysOnTop = True
+    skin.envelopeAlwaysOnTop = True

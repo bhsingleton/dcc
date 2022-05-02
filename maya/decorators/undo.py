@@ -33,7 +33,7 @@ class Undo(abstractdecorator.AbstractDecorator):
         #
         self._name = kwargs.get('name')
 
-    def __enter__(self, *args):
+    def __enter__(self, *args, **kwargs):
         """
         Private method that is called when this instance is entered using a with statement.
 

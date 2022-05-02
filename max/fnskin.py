@@ -3,7 +3,6 @@ import pymxs
 from dcc import fnnode
 from dcc.abstract import afnskin
 from dcc.max.libs import modifierutils, skinutils
-from dcc.max.decorators import commandpaneloverride
 
 import logging
 logging.basicConfig()
@@ -151,7 +150,6 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
         return skinutils.iterSelection(self.object())
 
-    @commandpaneloverride.commandPanelOverride(mode='modify')
     def setSelection(self, vertices):
         """
         Updates the active selection with the supplied vertex elements.
@@ -173,7 +171,6 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
             yield vertexIndex, 1.0
 
-    @commandpaneloverride.commandPanelOverride(mode='modify')
     def showColors(self):
         """
         Enables color feedback for the associated shape.
@@ -181,25 +178,8 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         :rtype: None
         """
 
-        # Enter envelope mode
-        #
-        pymxs.runtime.subObjectLevel = 1
+        skinutils.showColors(self.object())
 
-        # Modify display settings
-        #
-        skinModifier = self.object()
-        skinModifier.drawVertices = True
-        skinModifier.shadeWeights = True
-        skinModifier.colorAllWeights = False
-        skinModifier.draw_all_envelopes = False
-        skinModifier.draw_all_vertices = False
-        skinModifier.draw_all_gizmos = False
-        skinModifier.showNoEnvelopes = True
-        skinModifier.showHiddenVertices = False
-        skinModifier.crossSectionsAlwaysOnTop = True
-        skinModifier.envelopeAlwaysOnTop = True
-
-    @commandpaneloverride.commandPanelOverride(mode='modify')
     def hideColors(self):
         """
         Disable color feedback for the associated shape.
@@ -207,8 +187,6 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         :rtype: None
         """
 
-        # Exit envelop mode
-        #
         pymxs.runtime.subObjectLevel = 0
 
     def iterInfluences(self):
@@ -220,7 +198,6 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
         return skinutils.iterInfluences(self.object())
 
-    @commandpaneloverride.commandPanelOverride(mode='modify')
     def addInfluence(self, influence):
         """
         Adds an influence to this deformer.
@@ -229,9 +206,8 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         :rtype: bool
         """
 
-        pymxs.runtime.skinOps.addBone(self.object(), influence, 0)
+        skinutils.addInfluence(self.object(), influence)
 
-    @commandpaneloverride.commandPanelOverride(mode='modify')
     def removeInfluence(self, influenceId):
         """
         Removes an influence from this deformer.
@@ -240,9 +216,8 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         :rtype: bool
         """
 
-        pymxs.runtime.skinOps.removeBone(self.object(), influenceId)
+        skinutils.removeInfluence(self.object(), influenceId)
 
-    @commandpaneloverride.commandPanelOverride(mode='modify')
     def numInfluences(self):
         """
         Returns the number of influences being use by this deformer.
@@ -250,7 +225,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         :rtype: int
         """
 
-        return pymxs.runtime.skinOps.getNumberBones(self.object())
+        return skinutils.influenceCount(self.object())
 
     def maxInfluences(self):
         """
@@ -261,7 +236,6 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
         return self.object().bone_limit
 
-    @commandpaneloverride.commandPanelOverride(mode='modify')
     def selectInfluence(self, influenceId):
         """
         Changes the color display to the specified influence id.
@@ -270,9 +244,8 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         :rtype: None
         """
 
-        pymxs.runtime.skinOps.selectBone(self.object(), influenceId)
+        skinutils.selectInfluence(self.object(), influenceId)
 
-    @commandpaneloverride.commandPanelOverride(mode='modify')
     def iterVertexWeights(self, *args):
         """
         Returns a generator that yields weights for the supplied vertex indices.
@@ -293,7 +266,6 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
         skinutils.setVertexWeights(self.object(), vertexWeights)
 
-    @commandpaneloverride.commandPanelOverride(mode='modify')
     def resetPreBindMatrices(self):
         """
         Resets the pre-bind matrices on the associated joints.
@@ -301,11 +273,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         :rtype: None
         """
 
-        # Toggle always deforms
-        #
-        skinModifier = self.object()
-        skinModifier.always_deforms = False
-        skinModifier.always_deforms = True
+        skinutils.resetPreBindMatrices(self.object())
 
     def resetIntermediateObject(self):
         """

@@ -1,8 +1,8 @@
 import pymxs
 
 from functools import partial
+from six import integer_types
 from dcc.decorators import abstractdecorator
-from dcc.max import fnnode
 
 import logging
 logging.basicConfig()
@@ -16,7 +16,7 @@ class CommandPanelOverride(abstractdecorator.AbstractDecorator):
     """
 
     # region Dunderscores
-    __slots__ = ('_mode', '_autoSelect')
+    __slots__ = ('_mode', '_revert', '_previous', '_select', '_subObjectLevel')
 
     def __init__(self, *args, **kwargs):
         """
@@ -29,10 +29,13 @@ class CommandPanelOverride(abstractdecorator.AbstractDecorator):
 
         # Declare public variables
         #
-        self._mode = kwargs.get('mode', 'create')
-        self._autoSelect = kwargs.get('autoSelect', True)
+        self._mode = pymxs.runtime.Name(kwargs.get('mode', 'create'))
+        self._revert = kwargs.get('revert', False)
+        self._previous = pymxs.runtime.getCommandPanelTaskMode()
+        self._select = kwargs.get('select', None)
+        self._subObjectLevel = kwargs.get('subObjectLevel', None)
 
-    def __enter__(self):
+    def __enter__(self, *args, **kwargs):
         """
         Private method that is called when this instance is entered using a with statement.
 
@@ -41,22 +44,26 @@ class CommandPanelOverride(abstractdecorator.AbstractDecorator):
 
         # Inspect current task mode
         #
-        currentMode = pymxs.runtime.getCommandPanelTaskMode()
+        self.previous = pymxs.runtime.getCommandPanelTaskMode()
 
-        if currentMode != self.mode:
+        if self.previous != self.mode:
 
             pymxs.runtime.setCommandPanelTaskMode(self.mode)
 
-        # Check if auto select is enabled
+        # Check if modifier should be selected
         #
-        if self.autoSelect and isinstance(self._instance, fnnode.FnNode):
+        if isinstance(self.select, integer_types):
 
-            # Check if node is selected
-            # Don't want to incur cycle checks from any selection callbacks!
-            #
-            if not self._instance.isIsolated() and self._instance.isValid():
+            modifier = args[self.select]
+            node = pymxs.runtime.refs.dependentNodes(modifier)[0]
 
-                self._instance.select(replace=True)
+            pymxs.runtime.modPanel.setCurrentObject(modifier, node=node)
+
+        # Check if the sub-object level should be changed
+        #
+        if isinstance(self.subObjectLevel, integer_types):
+
+            pymxs.runtime.subObjectLevel = self.subObjectLevel
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """
@@ -68,7 +75,11 @@ class CommandPanelOverride(abstractdecorator.AbstractDecorator):
         :rtype: None
         """
 
-        pass
+        # Check if override should be reverted
+        #
+        if self.revert:
+
+            pymxs.runtime.setCommandPanelTaskMode(self.previous)
     # endregion
 
     # region Properties
@@ -77,26 +88,67 @@ class CommandPanelOverride(abstractdecorator.AbstractDecorator):
         """
         Getter method that returns the override mode.
 
-        :rtype: str
+        :rtype: pymxs.runtime.Name
         """
 
-        return pymxs.runtime.name(self._mode)
+        return self._mode
 
     @property
-    def autoSelect(self):
+    def revert(self):
         """
-        Getter method that returns the auto select state.
+        Getter method that returns the revert flag.
 
-        :rtype: str
+        :rtype: bool
         """
 
-        return self._autoSelect
+        return self._revert
+
+    @property
+    def previous(self):
+        """
+        Getter method that returns the previous mode.
+
+        :rtype: pymxs.runtime.Name
+        """
+
+        return self._previous
+
+    @previous.setter
+    def previous(self, previous):
+        """
+        Setter method that updates the previous mode.
+
+        :type previous: pymxs.runtime.Name
+        :rtype: None
+        """
+
+        self._previous = previous
+
+    @property
+    def select(self):
+        """
+        Getter method that returns the argument index to select from.
+
+        :rtype: int
+        """
+
+        return self._select
+
+    @property
+    def subObjectLevel(self):
+        """
+        Getter method that returns the sub-object level override.
+
+        :rtype: int
+        """
+
+        return self._subObjectLevel
     # endregion
 
 
 def commandPanelOverride(*args, **kwargs):
     """
-    Returns an command panel override wrapper for the supplied function.
+    Returns a CommandPanelOverride wrapper for the supplied function.
 
     :rtype: method
     """
