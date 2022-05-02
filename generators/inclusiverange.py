@@ -1,9 +1,3 @@
-import logging
-logging.basicConfig()
-log = logging.getLogger(__name__)
-log.setLevel(logging.INFO)
-
-
 def inclusiveRange(*args, **kwargs):
     """
     Generator method used to yield an inclusive range for use with plug elements.
