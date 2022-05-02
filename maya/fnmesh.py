@@ -74,6 +74,26 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
         return om.MFnMesh(self.object()).numPolygons
 
+    def component(self):
+        """
+        Returns the selected component from this mesh.
+
+        :rtype: om.MObject
+        """
+
+        obj = self.object()
+
+        components = [component for (dagPath, component) in dagutils.iterActiveComponentSelection() if dagPath.node() == obj]
+        numComponents = len(components)
+
+        if numComponents:
+
+            return components[0]
+
+        else:
+
+            return om.MObject.kNullObj
+
     def selectedVertices(self):
         """
         Returns a list of selected vertex indices.
@@ -81,9 +101,9 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
         :rtype: list[int]
         """
 
-        dagPath, component = dagutils.getComponentSelection()
+        component = self.component()
 
-        if dagPath.object() == self.object() and component.hasFn(om.MFn.kMeshVertComponent):
+        if component.hasFn(om.MFn.kMeshVertComponent):
 
             return om.MFnSingleIndexedComponent(component).getElements()
 
@@ -98,9 +118,9 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
         :rtype: list[int]
         """
 
-        dagPath, component = dagutils.getComponentSelection()
+        component = self.component()
 
-        if dagPath.object() == self.object() and component.hasFn(om.MFn.kMeshEdgeComponent):
+        if component.hasFn(om.MFn.kMeshEdgeComponent):
 
             return om.MFnSingleIndexedComponent(component).getElements()
 
@@ -115,9 +135,9 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
         :rtype: list[int]
         """
 
-        dagPath, component = dagutils.getComponentSelection()
+        component = self.component()
 
-        if dagPath.object() == self.object() and component.hasFn(om.MFn.kMeshPolygonComponent):
+        if component.hasFn(om.MFn.kMeshPolygonComponent):
 
             return om.MFnSingleIndexedComponent(component).getElements()
 

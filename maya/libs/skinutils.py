@@ -1,5 +1,7 @@
-from maya import cmds as mc
-from maya.api import OpenMaya as om
+import maya.cmds as mc
+import maya.api.OpenMaya as om
+
+from dcc.python import stringutils
 from dcc.maya.libs import dagutils, plugutils
 
 import logging
@@ -9,27 +11,6 @@ log.setLevel(logging.INFO)
 
 
 ZERO_TOLERANCE = 1e-3
-
-
-def isNullOrEmpty(value):
-    """
-    Evaluates if the supplied value is null or empty.
-
-    :type value: Any
-    :rtype: bool
-    """
-
-    if hasattr(value, '__len__'):
-
-        return len(value) == 0
-
-    elif value is None:
-
-        return True
-
-    else:
-
-        raise TypeError('isNullOrEmpty() expects a sequence (%s given)!' % type(value).__name__)
 
 
 def numControlPoints(skinCluster):
@@ -127,7 +108,7 @@ def iterWeightList(skinCluster, vertexIndices=None):
 
     # Check number of vertices
     #
-    if isNullOrEmpty(vertexIndices):
+    if stringutils.isNullOrEmpty(vertexIndices):
 
         vertexIndices = list(range(numControlPoints(skinCluster)))
 

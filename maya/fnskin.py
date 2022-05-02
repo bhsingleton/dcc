@@ -95,7 +95,7 @@ class FnSkin(fnnode.FnNode, afnskin.AFnSkin):
 
         return range(self.numControlPoints())
 
-    def componentSelection(self):
+    def component(self):
         """
         Returns the component selection for the associated shape.
 
@@ -106,7 +106,7 @@ class FnSkin(fnnode.FnNode, afnskin.AFnSkin):
         #
         shape = self.shape()
 
-        components = [component for (dagPath, component) in self.iterActiveComponentSelection() if dagPath.node() == shape]
+        components = [component for (dagPath, component) in dagutils.iterActiveComponentSelection() if dagPath.node() == shape]
         numComponents = len(components)
 
         if numComponents == 1:
@@ -136,11 +136,11 @@ class FnSkin(fnnode.FnNode, afnskin.AFnSkin):
 
         # Inspect component selection
         #
-        component = self.componentSelection()
+        component = self.component()
 
         if not component.hasFn(om.MFn.kMeshVertComponent):
 
-            return
+            return iter([])
 
         # Iterate through component
         #
@@ -185,7 +185,7 @@ class FnSkin(fnnode.FnNode, afnskin.AFnSkin):
 
         # Inspect component selection
         #
-        component = self.componentSelection()
+        component = self.component()
 
         if not component.hasFn(om.MFn.kMeshVertComponent):
 

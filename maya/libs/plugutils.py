@@ -47,7 +47,7 @@ def findPlug(dependNode, plugName):
 
         raise TypeError('findPlug() expects a valid string (%s given)!' % plugName)
 
-    # Collect all attributes in path
+    # Find leaf attribute
     #
     attributeName = groups[-1][0]
     attribute = fnDependNode.attribute(attributeName)
@@ -56,11 +56,10 @@ def findPlug(dependNode, plugName):
 
         raise TypeError('findPlug() expects a valid attribute (%s given)!' % attributeName)
 
-    attributes = list(attributeutils.traceAttribute(attribute))
-    attributes.append(attribute)
-
-    # Collect all indices in path
+    # Trace attribute path
+    # Collect all indices in plug path
     #
+    attributes = list(attributeutils.traceAttribute(attribute))
     indices = {attribute: int(index) for (attribute, index) in groups if len(index) > 0}
 
     # Navigate through hierarchy

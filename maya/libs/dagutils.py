@@ -633,7 +633,7 @@ def getRichSelection(apiType=om.MFn.kMeshVertComponent):
         return None, None
 
 
-def getComponentSelection():
+def iterActiveComponentSelection():
     """
     Retrieves the current active component selection.
     Since multiple shape nodes can be edited at different component levels tuples must be returned in a list.
@@ -648,15 +648,12 @@ def getComponentSelection():
 
     if numSelected == 0:
 
-        return []
-
-    # Initialize selection iterator
-    #
-    iterSelection = om.MItSelectionList(selection, om.MFn.kMeshComponent)
-    componentSelection = []
+        return iter([])
 
     # Iterate through selection
     #
+    iterSelection = om.MItSelectionList(selection, om.MFn.kMeshComponent)
+
     while not iterSelection.isDone():
 
         # Check if item has a valid component
@@ -665,7 +662,7 @@ def getComponentSelection():
 
         if dagPath.isValid() and not component.isNull():
 
-            componentSelection.append(tuple([dagPath, component]))
+            yield dagPath, component
 
         else:
 
@@ -674,8 +671,6 @@ def getComponentSelection():
         # Go to next selection
         #
         iterSelection.next()
-
-    return componentSelection
 
 
 def iterChildren(transform, apiType=om.MFn.kTransform):
