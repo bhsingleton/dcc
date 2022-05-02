@@ -10,7 +10,7 @@ log.setLevel(logging.INFO)
 
 
 __propertyparser__ = re.compile(r'\.([a-zA-Z0-9_]+)')
-__maxproperties__ = {}
+__properties__ = {}
 
 
 BASE_TYPES = {
@@ -191,7 +191,7 @@ def isValidSubAnim(obj):
     return pymxs.runtime.isKindOf(obj, pymxs.runtime.SubAnim)
 
 
-def isSerializableValue(value):
+def isValueSerializable(value):
     """
     Evaluates if the supplied max value is serializable.
 
@@ -234,7 +234,7 @@ def iterSubAnims(obj, skipNonAnimated=False, skipNullControllers=False, skipComp
 
         # Check if compound values should be skipped
         #
-        if skipComplexValues and not isSerializableValue(subAnim.value):
+        if skipComplexValues and not isValueSerializable(subAnim.value):
 
             continue
 
@@ -420,6 +420,26 @@ def isPropertyAnimatable(obj, name):
         return False
 
 
+def getDefaultPropertyValue(cls, name):
+    """
+    Returns the default value for the specified property.
+
+    :type cls: pymxs.MXSWrapperBase
+    :type name: str
+    :rtype: Any
+    """
+
+    try:
+
+        default, result = pymxs.runtime.DefaultParamInterface.getDefaultParamValue(cls, name, pymxs.byref(None))
+        return default
+
+    except SystemError:
+
+        log.error('Error encountered while retrieving "%s::%s" default value!' % (cls, name))
+        return None
+
+
 def inspectClassProperties(className):
     """
     Inspects the supplied class names for writable properties.
@@ -430,7 +450,7 @@ def inspectClassProperties(className):
 
     # Check if class has already been inspected
     #
-    properties = __maxproperties__.get(className, None)
+    properties = __properties__.get(className, None)
 
     if properties is not None:
 
@@ -459,14 +479,14 @@ def inspectClassProperties(className):
 
     # Cache list for later use
     #
-    __maxproperties__[className] = properties
+    __properties__[className] = properties
     return properties
 
 
 def iterDynamicProperties(obj, skipAnimatable=False, skipComplexValues=False):
     """
-    Returns a generator that yield property name/value pairs from the supplied object.
-    This method yields both static and dynamic properties.
+    Returns a generator that yields dynamic property name-value pairs from the supplied object.
+    Unlike static properties, dynamic properties are created at runtime and cannot be found on the class definition!
 
     :type obj: pymxs.runtime.MaxObject
     :type skipAnimatable: bool
@@ -493,7 +513,7 @@ def iterDynamicProperties(obj, skipAnimatable=False, skipComplexValues=False):
         key = str(name).replace(' ', '_')
         value = pymxs.runtime.getProperty(obj, name)
 
-        if skipComplexValues and not isSerializableValue(value):
+        if skipComplexValues and not isValueSerializable(value):
 
             continue
 
@@ -505,7 +525,7 @@ def iterDynamicProperties(obj, skipAnimatable=False, skipComplexValues=False):
 def iterProperties(obj, skipAnimatable=False, skipComplexValues=False, skipDefaultValues=False):
     """
     Returns a generator that yields property name/value pairs from the supplied object.
-    This method only yields properties that are on the class definition!
+    Unlike dynamic properties, static properties can be found on the class definition!
 
     :type obj: pymxs.runtime.MaxObject
     :type skipAnimatable: bool
@@ -523,9 +543,17 @@ def iterProperties(obj, skipAnimatable=False, skipComplexValues=False, skipDefau
 
     for key in properties:
 
-        # Check if animatable properties should be skipped
+        # Check if property is accessible
+        # The class inspector can yield private properties that are not accessible!
         #
         name = pymxs.runtime.Name(key)
+
+        if not pymxs.runtime.isProperty(obj, name):
+
+            continue
+
+        # Check if animatable properties should be skipped
+        #
         isAnimatable = isPropertyAnimatable(obj, name)
 
         if skipAnimatable and isAnimatable:
@@ -536,15 +564,15 @@ def iterProperties(obj, skipAnimatable=False, skipComplexValues=False, skipDefau
         #
         value = pymxs.runtime.getProperty(obj, name)
 
-        if skipComplexValues and not isSerializableValue(value):
+        if skipComplexValues and not isValueSerializable(value):
 
             continue
 
         # Check if non-default values should be skipped
         #
-        defaultValue, result = pymxs.runtime.DefaultParamInterface.getDefaultParamValue(cls, key, pymxs.byref(None))
+        default = getDefaultPropertyValue(cls, key)
 
-        if skipDefaultValues and value == defaultValue:
+        if skipDefaultValues and (value == default):
 
             continue
 

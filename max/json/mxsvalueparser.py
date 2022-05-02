@@ -16,9 +16,10 @@ class MXSValueEncoder(json.JSONEncoder):
 
     __slots__ = ()
 
-    __types__ = {
+    __datatypes__ = {
         'Name': 'serializeName',
         'Time': 'serializeTime',
+        'Interval': 'serializeInterval',
         'Point2': 'serializePoint2',
         'Point3': 'serializePoint3',
         'Point4': 'serializePoint4',
@@ -29,6 +30,7 @@ class MXSValueEncoder(json.JSONEncoder):
         'MAXKey': 'serializeMAXKey',
         'MAXKeyArray': 'serializeArray',
         'Array': 'serializeArray',
+        'NodeChildrenArray': 'serializeArray',
         'Dictionary': 'serializeDictionary',
         'ArrayParameter': 'serializeArray'
     }
@@ -48,7 +50,7 @@ class MXSValueEncoder(json.JSONEncoder):
             # Check if mxs value is serializable
             #
             className = str(pymxs.runtime.classOf(obj))
-            func = getattr(self, self.__types__[className], None)
+            func = getattr(self, self.__datatypes__[className], None)
 
             if callable(func):
 
@@ -86,6 +88,16 @@ class MXSValueEncoder(json.JSONEncoder):
         """
 
         return int(time)
+
+    def serializeInterval(self, interval):
+        """
+        Serializes the supplied interval value into a json object.
+
+        :type interval: pymxs.runtime.Interval
+        :rtype: Tuple[int, int]
+        """
+
+        return interval.start, interval.end
 
     def serializePoint2(self, point2):
         """
