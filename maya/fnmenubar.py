@@ -73,7 +73,7 @@ class FnMenubar(afnmenubar.AFnMenubar):
 
         if mc.menu(menu, query=True, exists=True):
 
-            mc.deleteUI(menu=menu)
+            mc.deleteUI(menu, menu=True)
 
     def default(self, xmlElement, insertAt=-1, parent=None):
         """
@@ -118,13 +118,7 @@ class FnMenubar(afnmenubar.AFnMenubar):
             #
             label = xmlElement.get('text', default='')
             objectName = stringutils.slugify(label)
-
             command = xmlElement.get('command', default='')
-            language = xmlElement.get('language', default='mel')
-
-            if language == 'python':
-
-                command = partial(exec, command)
 
             return mc.menuItem(objectName, label=label, command=command, parent=parent)
 
