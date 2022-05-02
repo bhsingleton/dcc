@@ -149,6 +149,17 @@ class AFnNode(with_metaclass(ABCMeta, afnobject.AFnObject)):
 
         self.scene.setActiveSelection([self.object()], replace=replace)
 
+    def ensureSelected(self):
+        """
+        Ensures this node is selected.
+
+        :rtype: None
+        """
+
+        if not self.isSelected():
+
+            self.select(replace=True)
+
     def deselect(self):
         """
         Deselects the node associated with this function set.
