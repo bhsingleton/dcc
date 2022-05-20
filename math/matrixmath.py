@@ -253,13 +253,14 @@ def decomposeRotateMatrix(matrix, rotateOrder='xyz'):
     """
     Breaks the supplied transform matrix into its rotate component.
     See the following pdf for details: https://www.geometrictools.com/Documentation/EulerAngles.pdf
+    Don't forget to remove scale from your rotation matrices!!!
 
     :type matrix: numpy.matrix
     :type rotateOrder: str
     :rtype: List[float, float, float]
     """
 
-    return __matrixtoeuler__[rotateOrder](matrix)
+    return __matrix_to_euler__[rotateOrder](matrix)
 
 
 def matrixToEulerXYZ(matrix):
@@ -292,7 +293,7 @@ def matrixToEulerXYZ(matrix):
         x = math.atan2(matrix[1, 0], matrix[1, 1])
         z = 0.0
 
-    return [-math.degrees(x), -math.degrees(y), -math.degrees(z)]  # Why the inverse though???
+    return -math.degrees(x), -math.degrees(y), -math.degrees(z)  # Why the inverse though???
 
 
 def matrixToEulerXZY(matrix):
@@ -303,13 +304,13 @@ def matrixToEulerXZY(matrix):
     :rtype: List[float, float, float]
     """
 
-    x, y, z = 0, 0, 0
+    x, z, y = 0, 0, 0
 
     if matrix[0, 1] < 1.0:
 
         if matrix[0, 1] > -1.0:
 
-            z = math.asin(-matrix[0, 2])
+            z = math.asin(-matrix[0, 1])
             x = math.atan2(matrix[2, 1], matrix[1, 1])
             y = math.atan2(matrix[0, 2], matrix[0, 0])
 
@@ -325,7 +326,7 @@ def matrixToEulerXZY(matrix):
         x = math.atan2(-matrix[2, 0], matrix[2, 2])
         y = 0.0
 
-    return [math.degrees(x), math.degrees(y), math.degrees(z)]
+    return -math.degrees(x), -math.degrees(z), -math.degrees(y)
 
 
 def matrixToEulerYXZ(matrix):
@@ -336,7 +337,7 @@ def matrixToEulerYXZ(matrix):
     :rtype: List[float, float, float]
     """
 
-    x, y, z = 0, 0, 0
+    y, x, z = 0, 0, 0
 
     if matrix[1, 2] < 1.0:
 
@@ -358,7 +359,7 @@ def matrixToEulerYXZ(matrix):
         y = math.atan2(-matrix[0, 1], matrix[0, 0])
         z = 0.0
 
-    return [math.degrees(x), math.degrees(y), math.degrees(z)]
+    return -math.degrees(y), -math.degrees(x), -math.degrees(z)
 
 
 def matrixToEulerYZX(matrix):
@@ -369,29 +370,29 @@ def matrixToEulerYZX(matrix):
     :rtype: List[float, float, float]
     """
 
-    x, y, z = 0, 0, 0
+    y, z, x = 0, 0, 0
 
     if matrix[1, 0] < 1.0:
 
         if matrix[1, 0] > -1.0:
 
-            x = math.asin(matrix[1, 0])
+            z = math.asin(matrix[1, 0])
             y = math.atan2(-matrix[2, 0], matrix[0, 0])
-            z = math.atan2(-matrix[1, 2], matrix[1, 1])
+            x = math.atan2(-matrix[1, 2], matrix[1, 1])
 
         else:
 
-            x = -math.pi / 2.0
+            z = -math.pi / 2.0
             y = -math.atan2(matrix[2, 1], matrix[2, 2])
-            z = 0.0
+            x = 0.0
 
     else:
 
-        x = math.pi / 2.0
+        z = math.pi / 2.0
         y = math.atan2(matrix[2, 1], matrix[2, 2])
-        z = 0.0
+        x = 0.0
 
-    return [math.degrees(x), math.degrees(y), math.degrees(z)]
+    return -math.degrees(y), -math.degrees(z), -math.degrees(x)
 
 
 def matrixToEulerZXY(matrix):
@@ -402,7 +403,7 @@ def matrixToEulerZXY(matrix):
     :rtype: List[float, float, float]
     """
 
-    x, y, z = 0, 0, 0
+    z, x, y = 0, 0, 0
 
     if matrix[2, 1] < 1.0:
 
@@ -424,7 +425,7 @@ def matrixToEulerZXY(matrix):
         z = math.atan2(matrix[0, 2], matrix[0, 0])
         y = 0.0
 
-    return [math.degrees(x), math.degrees(y), math.degrees(z)]
+    return -math.degrees(z), -math.degrees(x), -math.degrees(y)
 
 
 def matrixToEulerZYX(matrix):
@@ -435,7 +436,7 @@ def matrixToEulerZYX(matrix):
     :rtype: List[float, float, float]
     """
 
-    x, y, z = 0, 0, 0
+    z, y, x = 0, 0, 0
 
     if matrix[2, 0] < 1.0:
 
@@ -454,19 +455,121 @@ def matrixToEulerZYX(matrix):
     else:
 
         y = -math.pi / 2.0
-        z = math.atan2(matrix[1, 2], matrix[1, 1])
+        z = math.atan2(-matrix[1, 2], matrix[1, 1])
         x = 0.0
 
-    return [math.degrees(x), math.degrees(y), math.degrees(z)]
+    return -math.degrees(z), -math.degrees(y), -math.degrees(x)
 
 
-__matrixtoeuler__ = {
+def matrixToEulerXYX(matrix):
+    """
+    Converts the supplied matrix to euler XYX angles.
+
+    :type matrix: numpy.matrix
+    :rtype: List[float, float, float]
+    """
+
+    x0, y, x1 = 0, 0, 0
+
+    if matrix[0, 0] < 1.0:
+
+        if matrix[0, 0] > -1.0:
+
+            y = math.acos(matrix[0, 0])
+            x0 = math.atan2(matrix[1, 0], -matrix[2, 0])
+            x1 = math.atan2(matrix[0, 1], matrix[0, 2])
+
+        else:
+
+            y = math.pi
+            x0 = -math.atan2(-matrix[1, 2], matrix[1, 1])
+            x1 = 0.0
+
+    else:
+
+        y = 0.0
+        x0 = math.atan2(-matrix[1, 2], matrix[1, 1])
+        x1 = 0.0
+
+    return math.degrees(x0), math.degrees(y), math.degrees(x1)
+
+
+def matrixToEulerYZY(matrix):
+    """
+    Converts the supplied matrix to euler YZY angles.
+
+    :type matrix: numpy.matrix
+    :rtype: List[float, float, float]
+    """
+
+    y0, z, y1 = 0, 0, 0
+
+    if matrix[1, 1] < 1.0:
+
+        if matrix[1, 1] > -1.0:
+
+            z = math.acos(matrix[1, 1])
+            y0 = math.atan2(matrix[2, 1], -matrix[0, 1])
+            y1 = math.atan2(matrix[1, 2], matrix[1, 0])
+
+        else:
+
+            z = math.pi
+            y0 = -math.atan2(-matrix[2, 0], matrix[2, 2])
+            y1 = 0.0
+
+    else:
+
+        z = 0.0
+        y0 = math.atan2(-matrix[2, 0], matrix[2, 2])
+        y1 = 0.0
+
+    return math.degrees(y0), math.degrees(z), math.degrees(y1)
+
+
+def matrixToEulerZXZ(matrix):
+    """
+    Converts the supplied matrix to euler ZXZ angles.
+
+    :type matrix: numpy.matrix
+    :rtype: List[float, float, float]
+    """
+
+    z0, x, z1 = 0, 0, 0
+
+    if matrix[2, 2] < 1.0:
+
+        if matrix[2, 2] > -1.0:
+
+            x = math.acos(matrix[2, 2])
+            z0 = math.atan2(matrix[0, 2], -matrix[1, 2])
+            z1 = math.atan2(matrix[2, 0], matrix[2, 1])
+
+        else:
+
+            x = math.pi
+            z0 = -math.atan2(-matrix[0, 1], matrix[0, 0])
+            z1 = 0.0
+
+    else:
+
+        x = 0.0
+        z0 = math.atan2(-matrix[0, 1], matrix[0, 0])
+        z1 = 0.0
+
+    return math.degrees(z0), math.degrees(x), math.degrees(z1)
+
+
+__matrix_to_euler__ = {
     'xyz': matrixToEulerXYZ,
     'xzy': matrixToEulerXZY,
     'yxz': matrixToEulerYXZ,
     'yzx': matrixToEulerYZX,
     'zxy': matrixToEulerZXY,
-    'zyx': matrixToEulerZYX
+    'zyx': matrixToEulerZYX,
+    'xyx': matrixToEulerXYX,
+    'yzy': matrixToEulerYZY,
+    'zxz': matrixToEulerZXZ
 }
 
 
