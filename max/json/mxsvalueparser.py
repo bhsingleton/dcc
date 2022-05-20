@@ -14,9 +14,10 @@ class MXSValueEncoder(json.JSONEncoder):
     Overload of JSONEncoder used to serialize mxs values.
     """
 
+    # region Dunderscores
     __slots__ = ()
 
-    __datatypes__ = {
+    __value_types__ = {
         'Name': 'serializeName',
         'Time': 'serializeTime',
         'Interval': 'serializeInterval',
@@ -30,11 +31,15 @@ class MXSValueEncoder(json.JSONEncoder):
         'MAXKey': 'serializeMAXKey',
         'MAXKeyArray': 'serializeArray',
         'Array': 'serializeArray',
+        'ObjectSet': 'serializeArray',
         'NodeChildrenArray': 'serializeArray',
+        'MaterialLibrary': 'serializeArray',
         'Dictionary': 'serializeDictionary',
-        'ArrayParameter': 'serializeArray'
+        'ArrayParameter': 'serializeArray',
     }
+    # endregion
 
+    # region Methods
     def default(self, obj):
         """
         Returns a serializable object for the supplied value.
@@ -45,12 +50,13 @@ class MXSValueEncoder(json.JSONEncoder):
 
         # Check if this is a mxs wrapper
         #
-        if isinstance(obj, pymxs.MXSWrapperBase):
+        if isinstance(obj, (pymxs.MXSWrapperBase, pymxs.MXSWrapperObjectSet)):
 
             # Check if mxs value is serializable
             #
             className = str(pymxs.runtime.classOf(obj))
-            func = getattr(self, self.__datatypes__[className], None)
+            delegate = self.__value_types__.get(className, '')
+            func = getattr(self, delegate, None)
 
             if callable(func):
 
@@ -58,7 +64,8 @@ class MXSValueEncoder(json.JSONEncoder):
 
             else:
 
-                raise TypeError('default() unable to serialize %s mxs value!' % className)
+                log.warning('Unable to serialize MXS "%s" value!' % str(pymxs.runtime.classOf(obj)))
+                return None
 
         else:
 
@@ -243,6 +250,7 @@ class MXSValueEncoder(json.JSONEncoder):
         """
 
         return {key: dictionary[key] for key in dictionary.keys}
+    # endregion
 
 
 class MXSValueDecoder(json.JSONDecoder):
@@ -250,6 +258,7 @@ class MXSValueDecoder(json.JSONDecoder):
     Overload of JSONDecoder used to deserialize mxs values.
     """
 
+    # region Dunderscores
     __slots__ = ()
     __ignore__ = ('MAXKey',)  # Values that have no constructors
 
@@ -264,7 +273,9 @@ class MXSValueDecoder(json.JSONDecoder):
         #
         kwargs['object_hook'] = self.default
         super(MXSValueDecoder, self).__init__(*args, **kwargs)
+    # endregion
 
+    # region Methods
     def default(self, obj):
         """
         Returns a deserialized object from the supplied dictionary.
@@ -333,3 +344,4 @@ class MXSValueDecoder(json.JSONDecoder):
         # Resort keys to prevent any index errors
         #
         pymxs.runtime.sortKeys(controller)
+    # endregion

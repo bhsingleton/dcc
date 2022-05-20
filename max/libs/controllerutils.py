@@ -1,7 +1,9 @@
 import pymxs
 import re
 
-from collections import deque
+from collections import deque, namedtuple
+from ...python import stringutils
+from ...generators.inclusiverange import inclusiveRange
 
 import logging
 logging.basicConfig()
@@ -9,8 +11,9 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-__propertyparser__ = re.compile(r'\.([a-zA-Z0-9_]+)')
-__properties__ = {}
+__property_parser__ = re.compile(r'\.([a-zA-Z0-9_]+)')
+__properties__ = {}  # Used with inspectClassProperties
+__dependents__ = {}  # Used with findAssociatedSubAnim
 
 
 BASE_TYPES = {
@@ -31,7 +34,7 @@ CONSTRAINT_TYPES = {
     'Orientation_Constraint': pymxs.runtime.Orientation_Constraint,
     'LookAt_Constraint': pymxs.runtime.LookAt_Constraint,
     'Surface_position': pymxs.runtime.Surface_position,
-    'Attachment': pymxs.runtime.Attachment,
+    'Attachment': pymxs.runtime.Attachment
 }
 
 
@@ -90,6 +93,9 @@ DUMMY_TYPES = {
     'rotation_ListDummyEntry': pymxs.runtime.rotation_ListDummyEntry,
     'scale_ListDummyEntry': pymxs.runtime.scale_ListDummyEntry
 }
+
+
+Dependent = namedtuple('Dependent', ('handle', 'subAnimName'))
 
 
 def isConstraint(obj):
@@ -191,7 +197,18 @@ def isValidSubAnim(obj):
     return pymxs.runtime.isKindOf(obj, pymxs.runtime.SubAnim)
 
 
-def isValueSerializable(value):
+def hasSubAnims(obj):
+    """
+    Evaluates if the supplied object is derived from an animatable.
+
+    :type obj: pymxs.MXSWrapperBase
+    :rtype: bool
+    """
+
+    return pymxs.runtime.isProperty(obj, 'numSubs')
+
+
+def isValue(value):
     """
     Evaluates if the supplied max value is serializable.
 
@@ -202,27 +219,103 @@ def isValueSerializable(value):
     return pymxs.runtime.superClassOf(value) in (pymxs.runtime.Value, pymxs.runtime.Number)
 
 
-def iterSubAnims(obj, skipNonAnimated=False, skipNullControllers=False, skipComplexValues=False):
+def cacheSubAnim(subAnim):
     """
-    Returns a generator that yields sub anims from the supplied object.
+    Caches the supplied sub-anim to optimize getAssociatedSubAnim lookups.
+
+    :type subAnim: pymxs.runtime.MXSWrapperBase
+    :rtype: Union[Dependent, None]
+    """
+
+    # Get object handles
+    #
+    parentHandle = int(pymxs.runtime.getHandleByAnim(subAnim.parent))
+    subAnimName = stringutils.slugify(subAnim.name, whitespace='_', illegal='_')
+
+    handle = None
+
+    if pymxs.runtime.isValidObj(subAnim.controller):
+
+        handle = int(pymxs.runtime.getHandleByAnim(subAnim.controller))
+
+    elif pymxs.runtime.isValidObj(subAnim.value):
+
+        handle = int(pymxs.runtime.getHandleByAnim(subAnim.value))
+
+    else:
+
+        return
+
+    # Add dependent to cache
+    #
+    dependent = Dependent(handle=parentHandle, subAnimName=subAnimName)
+    __dependents__[handle] = dependent
+
+    return dependent
+
+
+def getCachedSubAnim(obj):
+    """
+    Returns the cached sub-anim associated with the given max object.
+
+    :type obj: pymxs.MXSWrapperBase
+    :rtype: Union[pymxs.MXSWrapperBase, None]
+    """
+
+    # Check if parent was cached
+    #
+    handle = int(pymxs.runtime.getHandleByAnim(obj))
+    dependent = __dependents__.get(handle, None)
+
+    if dependent is None:
+
+        return None
+
+    # Verify max-object belongs to sub-anim
+    #
+    parent = pymxs.runtime.getAnimByHandle(dependent.handle)
+    subAnim = pymxs.runtime.getSubAnim(parent, dependent.subAnimName)
+
+    controller = getattr(subAnim, 'controller', None)
+    value = getattr(subAnim, 'value', None)
+
+    if controller == obj or value == obj:
+
+        return subAnim
+
+    else:
+
+        del __dependents__[handle]
+        return None
+
+
+def iterSubAnims(obj, skipNonAnimated=False, skipNullControllers=False, skipNonValues=False):
+    """
+    Returns a generator that yields sub-anims from the supplied object.
     Optional keywords can be used to skip particular sub-anims.
 
     :type obj: pymxs.MXSWrapperBase
     :type skipNonAnimated: bool
     :type skipNullControllers: bool
-    :type skipComplexValues: bool
+    :type skipNonValues: bool
     :rtype: iter
     """
 
-    # Iterate through sub anims
+    # Iterate through sub-anims
     #
-    for i in range(obj.numSubs):
+    numSubs = getattr(obj, 'numSubs', 0)
+
+    for i in inclusiveRange(1, numSubs, 1):
+
+        # Get indexed sub-anim
+        # Be sure to cache this to optimize reverse lookups
+        #
+        subAnim = pymxs.runtime.getSubAnim(obj, i)
+        cacheSubAnim(subAnim)
 
         # Check if non-animated sub-anims should be skipped
         #
-        subAnim = pymxs.runtime.getSubAnim(obj, i + 1)
-
-        if skipNonAnimated and not getattr(subAnim, 'isAnimated', False):
+        if skipNonAnimated and not subAnim.isAnimated:
 
             continue
 
@@ -234,7 +327,7 @@ def iterSubAnims(obj, skipNonAnimated=False, skipNullControllers=False, skipComp
 
         # Check if compound values should be skipped
         #
-        if skipComplexValues and not isValueSerializable(subAnim.value):
+        if skipNonValues and not isValue(subAnim.value):
 
             continue
 
@@ -243,43 +336,90 @@ def iterSubAnims(obj, skipNonAnimated=False, skipNullControllers=False, skipComp
             yield subAnim
 
 
-def iterMaxKeys(obj):
+def getAssociatedSubAnim(obj):
+    """
+    Returns the sub-anim associated with the given max object.
+
+    :type obj: pymxs.MXSWrapperBase
+    :rtype: Union[pymxs.MXSWrapperBase, None]
+    """
+
+    # Check if sub-anim was cached
+    #
+    subAnim = getCachedSubAnim(obj)
+
+    if subAnim is not None:
+
+        return subAnim
+
+    # Evaluate which dependent the object is derived from
+    # Dependents are returned from closest to furthest!
+    #
+    dependents = pymxs.runtime.refs.dependents(obj)
+
+    for dependent in dependents:
+
+        # Check if this is a valid object
+        #
+        if not pymxs.runtime.isValidObj(dependent):
+
+            continue
+
+        # Iterate through sub-anims
+        #
+        for subAnim in iterSubAnims(dependent):
+
+            # Check if sub-anim contains object
+            #
+            if subAnim.controller == obj or subAnim.value == obj:
+
+                cacheSubAnim(subAnim)
+                return subAnim
+
+            else:
+
+                continue
+
+    return None
+
+
+def iterMaxKeys(controller):
     """
     Returns a generator that yields max keys from the supplied controller.
     This method is more of a catch-all for null key properties.
 
-    :type obj: pymxs.MXSWrapperBase
+    :type controller: pymxs.MXSWrapperBase
     :rtype: iter
     """
 
     # Check if this is a valid controller
     #
-    if not isValidController(obj):
+    if not isValidController(controller):
 
-        log.info('Max object: %s, is not a valid controller!' % obj)
+        log.info('Max object: %s, is not a valid controller!' % controller)
         return
 
     # Check if controller has keys
     # Be aware that max can return none for empty arrays!
     #
-    keys = getattr(obj, 'keys', None)
+    keys = getattr(controller, 'keys', None)
 
     if keys is None:
 
-        log.info('Max object: %s, contains no key array!' % obj)
+        log.info('Max object: %s, contains no key array!' % controller)
         return
 
     # Iterate through keys
     # Be aware key arrays can return negative sizes which breaks for loops!
     # Also be aware that keys can be missing value properties!
     #
-    numKeys = keys.count
+    numKeys = getattr(keys, 'count', 0)
 
     for i in range(numKeys):
 
         key = keys[i]
 
-        if pymxs.runtime.isProperty(key, pymxs.runtime.Name('value')):
+        if hasattr(key, 'value'):
 
             yield key
 
@@ -304,7 +444,7 @@ def iterControllers(obj):
 
 def walkControllers(obj):
     """
-    Returns a generator that yields all of the controllers from the supplied node.
+    Returns a generator that yields all the controllers from the supplied node.
 
     :type obj: pymxs.runtime.MaxObject
     :rtype: iter
@@ -399,7 +539,7 @@ def clearListController(controller):
     for i in range(listCount, 0, -1):
         
         controller.list.delete(i)
-    
+
 
 def isPropertyAnimatable(obj, name):
     """
@@ -431,8 +571,7 @@ def getDefaultPropertyValue(cls, name):
 
     try:
 
-        default, result = pymxs.runtime.DefaultParamInterface.getDefaultParamValue(cls, name, pymxs.byref(None))
-        return default
+        return pymxs.runtime.DefaultParamInterface.getDefaultParamValue(cls, name, None)
 
     except SystemError:
 
@@ -471,7 +610,7 @@ def inspectClassProperties(className):
     while not pymxs.runtime.eof(stringStream):
 
         line = pymxs.runtime.readLine(stringStream)
-        found = __propertyparser__.findall(line)
+        found = __property_parser__.findall(line)
 
         if len(found) == 1:
 
@@ -483,14 +622,14 @@ def inspectClassProperties(className):
     return properties
 
 
-def iterDynamicProperties(obj, skipAnimatable=False, skipComplexValues=False):
+def iterDynamicProperties(obj, skipAnimatable=False, skipNonValues=False):
     """
     Returns a generator that yields dynamic property name-value pairs from the supplied object.
     Unlike static properties, dynamic properties are created at runtime and cannot be found on the class definition!
 
     :type obj: pymxs.runtime.MaxObject
     :type skipAnimatable: bool
-    :type skipComplexValues: bool
+    :type skipNonValues: bool
     :rtype: iter
     """
 
@@ -510,10 +649,10 @@ def iterDynamicProperties(obj, skipAnimatable=False, skipComplexValues=False):
 
         # Check if compound values should be skipped
         #
-        key = str(name).replace(' ', '_')
+        key = stringutils.slugify(str(name), whitespace='_')
         value = pymxs.runtime.getProperty(obj, name)
 
-        if skipComplexValues and not isValueSerializable(value):
+        if skipNonValues and not isValue(value):
 
             continue
 
@@ -522,14 +661,14 @@ def iterDynamicProperties(obj, skipAnimatable=False, skipComplexValues=False):
             yield key, value
 
 
-def iterProperties(obj, skipAnimatable=False, skipComplexValues=False, skipDefaultValues=False):
+def iterStaticProperties(obj, skipAnimatable=False, skipNonValues=False, skipDefaultValues=False):
     """
     Returns a generator that yields property name/value pairs from the supplied object.
     Unlike dynamic properties, static properties can be found on the class definition!
 
     :type obj: pymxs.runtime.MaxObject
     :type skipAnimatable: bool
-    :type skipComplexValues: bool
+    :type skipNonValues: bool
     :type skipDefaultValues: bool
     :rtype: iter
     """
@@ -564,7 +703,7 @@ def iterProperties(obj, skipAnimatable=False, skipComplexValues=False, skipDefau
         #
         value = pymxs.runtime.getProperty(obj, name)
 
-        if skipComplexValues and not isValueSerializable(value):
+        if skipNonValues and not isValue(value):
 
             continue
 

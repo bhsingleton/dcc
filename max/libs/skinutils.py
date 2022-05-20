@@ -85,7 +85,7 @@ def iterInfluences(skin):
     #
     numBones = pymxs.runtime.skinOps.getNumberBones(skin)
 
-    for i in inclusiveRange(1, numBones):
+    for i in inclusiveRange(1, numBones, 1):
 
         # Get bone properties
         #

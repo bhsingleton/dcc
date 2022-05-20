@@ -373,33 +373,51 @@ def getBoundingBox(node):
     return minPoint, maxPoint
 
 
+def isOrthogonal(matrix):
+    """
+    Evaluates if the supplied transform is orthogonal.
+
+    :type matrix: pymxs.runtime.Matrix3
+    :rtype: bool
+    """
+
+    xAxis = pymxs.runtime.copy(matrix.row1)
+    yAxis = pymxs.runtime.copy(matrix.row2)
+    zAxis = pymxs.runtime.copy(matrix.row3)
+    cross = pymxs.runtime.cross(xAxis, yAxis)
+
+    return pymxs.runtime.dot(zAxis, cross) > 0.0
+
+
 def getMatrix(node):
     """
     Returns the transform matrix for the given node.
-    Please be aware the transform controller returns the local transform matrix.
-    Whereas the transform property returns the world matrix.
+    It's not safe to access the matrix from the transform controller.
+    Any constraints in the controller stack will force the transform into world space!
 
-    :type node: pymxs.runtime.Node
+    :type node: pymxs.MXSWrapperBase
     :rtype: pymxs.runtime.Matrix3
     """
 
-    transformController = pymxs.runtime.getTMController(node)
-    return pymxs.runtime.copy(transformController.value)
+    worldMatrix = getWorldMatrix(node)
+    parentMatrix = getParentMatrix(node)
+
+    return worldMatrix * pymxs.runtime.inverse(parentMatrix)
 
 
 def getParentMatrix(node):
     """
     Returns the parent matrix for the given node.
 
-    :type node: pymxs.runtime.Node
+    :type node: pymxs.MXSWrapperBase
     :rtype: pymxs.runtime.Matrix3
     """
 
-    parent = node.parent
+    parent = getattr(node, 'parent', None)
 
     if parent is not None:
 
-        return pymxs.runtime.copy(parent.transform)
+        return getWorldMatrix(parent)
 
     else:
 
@@ -414,14 +432,8 @@ def getWorldMatrix(node):
     :rtype: pymxs.runtime.Matrix3
     """
 
-    worldMatrix = getMatrix(node)
-
-    for parent in nodeutils.iterParents(node):
-
-        matrix = getMatrix(parent)
-        worldMatrix *= matrix
-
-    return worldMatrix
+    matrix = getattr(node, 'transform', pymxs.runtime.Matrix3(1))
+    return pymxs.runtime.copy(matrix)
 
 
 def getFrozenPositionMatrix(node):

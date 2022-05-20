@@ -18,15 +18,28 @@ BASE_TYPES = {
 }
 
 
-def isAnimatable(obj):
+def isValidNode(obj):
     """
-    Evaluates if the supplied object is derived from animatable.
+    Evaluates if the supplied object is a valid scene node.
 
     :type obj: pymxs.MXSWrapperBase
     :rtype: bool
     """
 
-    return pymxs.runtime.isProperty(obj, 'numSubs')
+    return pymxs.runtime.isValidNode(obj) and not pymxs.runtime.isDeleted(obj)
+
+
+def isValidBaseObject(obj):
+    """
+    Evaluates if the supplied object is a valid base object.
+    Unlike a node, base objects do not have names or transforms.
+    Be aware that the MXS "isKindOf" method will evaluate a sub-anim object's value rather than the object itself!
+
+    :type obj: pymxs.MXSWrapperBase
+    :rtype: bool
+    """
+
+    return pymxs.runtime.isKindOf(obj, pymxs.runtime.Node) and not pymxs.runtime.isKindOf(obj, pymxs.runtime.SubAnim)
 
 
 def isValidScene(obj):
@@ -37,7 +50,7 @@ def isValidScene(obj):
     :rtype: bool
     """
 
-    return pymxs.runtime.isKindOf(obj, pymxs.runtime.Scene)
+    return pymxs.runtime.isKindOf(obj, pymxs.runtime.Scene) and not pymxs.runtime.isDeleted(obj)
 
 
 def baseObject(node):
@@ -48,13 +61,7 @@ def baseObject(node):
     :rtype: pymxs.MXSWrapperBase
     """
 
-    if pymxs.runtime.isProperty(node, 'baseObject'):
-
-        return node.baseObject
-
-    else:
-
-        return node
+    return getattr(node, 'baseObject', node)
 
 
 def iterNodesByPattern(pattern, ignoreCase=False):
@@ -73,27 +80,6 @@ def iterNodesByPattern(pattern, ignoreCase=False):
             yield obj
 
 
-def iterTopLevelNodes():
-    """
-    Returns a generator that yields top-level nodes.
-    Probably
-    :rtype: iter
-    """
-
-    return iterChildren(pymxs.runtime.rootNode)
-
-
-def dagPath(node):
-    """
-    Returns the dag path for the given object.
-
-    :type node: pymxs.MXSWrapperBase
-    :rtype: str
-    """
-
-    return '|'.join([x.name for x in trace(node)])
-
-
 def getNodesByPattern(pattern, ignoreCase=False):
     """
     Returns a list of nodes based on the supplied pattern.
@@ -104,6 +90,103 @@ def getNodesByPattern(pattern, ignoreCase=False):
     """
 
     return list(iterNodesByPattern(pattern, ignoreCase=ignoreCase))
+
+
+def iterTopLevelNodes():
+    """
+    Returns a generator that yields top-level nodes.
+    Probably
+    :rtype: iter
+    """
+
+    return iterChildren(pymxs.runtime.rootNode)
+
+
+def iterSelectionSets():
+    """
+    Returns a generator that yields selection set name-nodes pairs.
+
+    :rtype: iter
+    """
+
+    # Iterate through selection sets
+    #
+    numSelectionSets = pymxs.runtime.selectionSets.count
+
+    for i in range(numSelectionSets):
+
+        # Check if selection set still exists
+        # Deleted sets can persist between sessions!
+        #
+        selectionSet = pymxs.runtime.selectionSets[i]
+
+        if pymxs.runtime.isDeleted(selectionSet):
+
+            continue
+
+        # Yield name and nodes from selection set
+        #
+        name = str(selectionSet.name)
+        nodes = tuple([selectionSet[j] for j in range(selectionSet.count)])
+
+        yield name, nodes
+
+
+def isUniqueName(name):
+    """
+    Evaluates if the supplied name is unique.
+
+    :type name: str
+    :rtype: bool
+    """
+
+    return pymxs.runtime.getNodeByName(name, exact=True, ignoreCase=False, all=True).count <= 1
+
+
+def getPartialPathTo(node):
+    """
+    Returns the shortest path that can safely be used for name lookups.
+
+    :type node: pymxs.MXSWrapperBase
+    :rtype: str
+    """
+
+    # Check if node is valid
+    #
+    if not pymxs.runtime.isValidNode(node):
+
+        return ''
+
+    # Check if node name is unique
+    #
+    nodeName = getattr(node, 'name', '')
+
+    if isUniqueName(nodeName):
+
+        return '${nodeName}'.format(nodeName=nodeName)
+
+    else:
+
+        return getFullPathTo(node)
+
+
+def getFullPathTo(node):
+    """
+    Returns the full path for the given object.
+
+    :type node: pymxs.MXSWrapperBase
+    :rtype: str
+    """
+
+    # Check if node is valid
+    #
+    if pymxs.runtime.isValidNode(node):
+
+        return '${path}'.format(path='/'.join([x.name for x in trace(node)]))
+
+    else:
+
+        return ''
 
 
 def iterParents(node):

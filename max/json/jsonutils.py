@@ -9,23 +9,72 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-def saveScene(filePath):
+def exportScene(savePath):
     """
-    Saves the scene nodes to the specified path.
+    Exports the scene contents to the specified path.
 
-    :type filePath: str
+    :type savePath: str
     :rtype: None
     """
 
     # Open file and overwrite contents
     #
-    with open(filePath, 'w') as jsonFile:
+    with open(savePath, 'w') as jsonFile:
 
         json.dump(
             pymxs.runtime.rootScene,
             jsonFile,
             cls=mxsobjectparser.MXSObjectEncoder,
-            indent=4
+            indent=4,
+            skipkeys=True
         )
 
-    log.info('Saving scene to: %s' % filePath)
+    log.info('Exporting scene to: %s' % savePath)
+
+
+def exportSelection(savePath):
+    """
+    Exports the scene selection to the specified path.
+
+    :type savePath: str
+    :rtype: None
+    """
+
+    # Open file and overwrite contents
+    #
+    with open(savePath, 'w') as jsonFile:
+        json.dump(
+            pymxs.runtime.selection,
+            jsonFile,
+            cls=mxsobjectparser.MXSObjectEncoder,
+            indent=4,
+            skipChildren=True
+        )
+
+    log.info('Exporting selection to: %s' % savePath)
+
+
+def exportAnimation(savePath):
+    """
+    Exports the scene animation to the specified path.
+
+    :type savePath: str
+    :rtype: None
+    """
+
+    # Open file and overwrite contents
+    #
+    with open(savePath, 'w') as jsonFile:
+        json.dump(
+            pymxs.runtime.rootScene,
+            jsonFile,
+            cls=mxsobjectparser.MXSObjectEncoder,
+            indent=4,
+            skipProperties=True,
+            skipShapes=True,
+            skipLayers=True,
+            skipSelectionSets=True,
+            skipMaterials=True
+        )
+
+    log.info('Exporting animation to: %s' % savePath)

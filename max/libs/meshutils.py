@@ -150,7 +150,7 @@ def iterVertices(mesh, indices=None):
     :rtype: iter
     """
 
-    # Check if any vertex indices were supplied
+    # Check if any indices were supplied
     #
     if stringutils.isNullOrEmpty(indices):
 
@@ -184,7 +184,7 @@ def iterVertexNormals(mesh, indices=None):
     :rtype: iter
     """
 
-    # Check if any vertex indices were supplied
+    # Check if any indices were supplied
     #
     if stringutils.isNullOrEmpty(indices):
 
@@ -220,7 +220,7 @@ def iterFaceVertexIndices(mesh, indices=None):
     :rtype: iter
     """
 
-    # Check if any face indices were supplied
+    # Check if any indices were supplied
     #
     if stringutils.isNullOrEmpty(indices):
 
@@ -254,7 +254,7 @@ def iterFaceCenters(mesh, indices=None):
     :rtype: iter
     """
 
-    # Check if any face indices were supplied
+    # Check if any indices were supplied
     #
     if stringutils.isNullOrEmpty(indices):
 
@@ -288,7 +288,7 @@ def iterFaceNormals(mesh, indices=None):
     :rtype: iter
     """
 
-    # Check if any face indices were supplied
+    # Check if any indices were supplied
     #
     if stringutils.isNullOrEmpty(indices):
 
@@ -442,7 +442,7 @@ def iterSmoothingGroups(mesh, indices=None):
     :rtype: iter
     """
 
-    # Check if any face indices were supplied
+    # Check if any indices were supplied
     #
     if stringutils.isNullOrEmpty(indices):
 
@@ -492,7 +492,7 @@ def iterMapVertices(mesh, channel=0, indices=None):
     :rtype: iter
     """
 
-    # Check if any vertex indices were supplied
+    # Check if any indices were supplied
     #
     if stringutils.isNullOrEmpty(indices):
 
@@ -526,7 +526,7 @@ def iterMapFaceVertexIndices(mesh, channel=0, indices=None):
     :rtype: iter
     """
 
-    # Check if any vertex indices were supplied
+    # Check if any indices were supplied
     #
     if stringutils.isNullOrEmpty(indices):
 
@@ -547,3 +547,36 @@ def iterMapFaceVertexIndices(mesh, channel=0, indices=None):
 
             vertices = pymxs.runtime.meshOp.getMapFace(mesh, channel, index)
             yield vertices.x, vertices.y, vertices.z  # bruh?
+
+
+def iterFaceMaterialIndices(mesh, indices=None):
+    """
+    Returns a generator that yields face-material indices.
+    If no arguments are supplied then all face-material indices will be yielded.
+
+    :type mesh: pymxs.MXSWrapperBase
+    :type indices: List[int]
+    :rtype: iter
+    """
+
+    # Check if any vertex indices were supplied
+    #
+    if stringutils.isNullOrEmpty(indices):
+
+        indices = inclusiveRange(1, faceCount(mesh))
+
+    # Check if this is an editable poly
+    #
+    if isEditablePoly(mesh):
+
+        for index in indices:
+
+            index = pymxs.runtime.polyOp.getFaceMatID(mesh, index)
+            yield int(index)
+
+    else:
+
+        for index in indices:
+
+            index = pymxs.runtime.getFaceMatID(mesh, index)
+            yield int(index)

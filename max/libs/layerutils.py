@@ -1,6 +1,8 @@
 import pymxs
 
 from collections import deque
+from dcc.python import stringutils
+from dcc.generators.inclusiverange import inclusiveRange
 
 import logging
 logging.basicConfig()
@@ -16,6 +18,17 @@ def defaultLayer():
     """
 
     return pymxs.runtime.LayerManager.getLayerFromName('0')
+
+
+def isValidLayer(layer):
+    """
+    Evaluates if the supplied object is a valid layer.
+
+    :type layer: pymxs.MXSWrapperBase
+    :rtype: bool
+    """
+
+    return pymxs.runtime.isKindOf(layer, pymxs.runtime.Base_Layer)
 
 
 def resetCurrentLayer():
@@ -37,9 +50,9 @@ def iterTopLevelLayers():
 
     layerCount = pymxs.runtime.LayerManager.count
 
-    for i in range(1, layerCount + 1, 1):
+    for i in range(layerCount):
 
-        layer = pymxs.runtime.LayerManager.getLayer(i)
+        layer = pymxs.runtime.LayerManager.getLayer(i)  # These are zero based???
         parent = layer.getParent()
 
         if parent is None:
@@ -61,7 +74,7 @@ def iterChildLayers(layer):
 
     childCount = layer.getNumChildren()
 
-    for i in range(1, childCount + 1, 1):
+    for i in inclusiveRange(1, childCount):  # But these are 1 based???
 
         yield layer.getChild(i)
 
@@ -114,12 +127,13 @@ def iterNodesFromLayers(*layers):
 
     for layer in layers:
 
-        nodes = pymxs.runtime.Array()
-        success = layer.nodes(nodes)
+        success, nodes = layer.nodes(pymxs.byref(None))
 
-        if success:
+        if success and not stringutils.isNullOrEmpty(nodes):
 
-            for i in range(nodes.count):
+            numNodes = len(nodes)
+
+            for i in range(numNodes):
 
                 yield nodes[i]
 

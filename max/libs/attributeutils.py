@@ -66,6 +66,31 @@ def loadDefinition(filePath):
     return pymxs.runtime.execute(maxscriptToString(filePath))
 
 
+def getAssociatedDefinition(paramBlock):
+    """
+    Returns the attribute definition associated with the supplied parameter block.
+    Not all parameter blocks have accessible definitions!
+
+    :type paramBlock: pymxs.MXSWrapperBase
+    :rtype: Union[pymxs.MXSWrapperBase, None]
+    """
+
+    definitions = [x for x in pymxs.runtime.refs.dependents(paramBlock) if pymxs.runtime.isKindOf(x, pymxs.runtime.AttributeDef)]
+    numDefinitions = len(definitions)
+
+    if numDefinitions == 0:
+
+        return None
+
+    elif numDefinitions == 1:
+
+        return definitions[0]
+
+    else:
+
+        raise TypeError('getAssociatedDefinition() multiple definitions found for parameter block!')
+
+
 def iterSceneDefinitions():
     """
     Returns a generator that yields attribute definitions from the scene.
