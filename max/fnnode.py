@@ -50,7 +50,7 @@ class FnNode(afnnode.AFnNode):
         # Get node handle
         #
         obj = self.getMXSWrapper(obj)
-        handle = pymxs.runtime.getHandleByAnim(obj)
+        handle = int(pymxs.runtime.getHandleByAnim(obj))  # In older versions of Max this would return a float!
 
         # Call parent method
         #
@@ -296,7 +296,7 @@ class FnNode(afnnode.AFnNode):
         :rtype: iter
         """
 
-        for (key, value) in controllerutils.iterProperties(self.object()):
+        for (key, value) in controllerutils.iterStaticProperties(self.object()):
 
             yield key
 
