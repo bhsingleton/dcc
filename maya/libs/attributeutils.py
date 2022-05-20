@@ -200,9 +200,9 @@ def getAttributeTypeName(attribute):
         )
 
 
-def iterParentAttributes(attribute):
+def iterParents(attribute):
     """
-    Returns a generator that yields all the parents of the supplied attribute.
+    Returns a generator that yields the parents from the supplied attribute.
 
     :type attribute: om.MObject
     :rtype: iter
@@ -219,7 +219,23 @@ def iterParentAttributes(attribute):
         current = fnAttribute.parent
 
 
-def traceAttribute(attribute):
+def iterChildren(attribute):
+    """
+    Returns a generator that yields the children from the supplied attribute.
+
+    :type attribute: om.MObject
+    :rtype: iter
+    """
+
+    fnAttribute = om.MFnCompoundAttribute(attribute)
+    numChildren = fnAttribute.numChildren()
+
+    for i in range(numChildren):
+
+        yield fnAttribute.child(i)
+
+
+def trace(attribute):
     """
     Returns a generator that yields the all the attributes leading to the supplied attribute.
 
@@ -227,9 +243,9 @@ def traceAttribute(attribute):
     :rtype: iter
     """
 
-    for attribute in reversed(list(iterParentAttributes(attribute))):
+    for parent in reversed(list(iterParents(attribute))):
 
-        yield attribute
+        yield parent
 
     yield attribute
 

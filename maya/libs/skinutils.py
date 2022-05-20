@@ -208,22 +208,21 @@ def getInfluence(skinCluster, influenceId):
         return None
 
 
-def addInfluence(skinCluster, influence):
+def addInfluence(skinCluster, influence, index=None):
     """
     Adds the supplied influence object to the specified skin cluster.
 
     :type skinCluster: om.MObject
     :type influence: om.MObject
+    :type index: int
     :rtype: int
     """
 
     # Check if influence has already been added
     #
-    index = getInfluenceId(skinCluster, influence)
+    if hasInfluence(skinCluster, influence):
 
-    if index is not None:
-
-        return index
+        return getInfluenceId(skinCluster, influence)
 
     # Get first available index
     #
@@ -231,7 +230,10 @@ def addInfluence(skinCluster, influence):
     fnDagNode = om.MFnDagNode(influence)
 
     plug = fnDagNode.findPlug('matrix', False)
-    index = plugutils.getNextAvailableConnection(plug)
+
+    if index is None:
+
+        index = plugutils.getNextAvailableConnection(plug)
 
     # Connect joint to skin cluster
     #
@@ -394,14 +396,12 @@ def setWeightList(skinCluster, weightList):
 
     # Disable normalize weights
     #
-    fnDependNode = om.MFnDependencyNode(skinCluster)
-
-    normalizePlug = plugutils.findPlug('normalizeWeights')  # type: om.MPlug
+    normalizePlug = plugutils.findPlug(skinCluster, 'normalizeWeights')  # type: om.MPlug
     normalizePlug.setBool(False)
 
     # Iterate through vertices
     #
-    weightListPlug = fnDependNode.findPlug('weightList', False)  # type: om.MPlug
+    weightListPlug = plugutils.findPlug(skinCluster, 'weightList')  # type: om.MPlug
 
     for (vertexIndex, weights) in weightList.items():
 

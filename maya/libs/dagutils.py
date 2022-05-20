@@ -141,7 +141,7 @@ def getMObjectByName(name):
 
         except RuntimeError as exception:
 
-            log.warning(exception)
+            log.warning('"%s" node does not exist!' % name)
             return om.MObject.kNullObj
 
     else:
@@ -160,7 +160,7 @@ def getMObjectByName(name):
 
         except RuntimeError as exception:
 
-            log.warning(exception)
+            log.warning('"%s" plug does not exist!' % name)
             return om.MObject.kNullObj, om.MPlug()
 
 
@@ -198,7 +198,7 @@ def getMObjectByMUuid(uuid):
 
     except RuntimeError as exception:
 
-        log.warning(exception)
+        log.warning('"%s" UUID does not exist!' % uuid)
         return om.MObject.kNullObj
 
 
@@ -251,12 +251,12 @@ def getMObject(value):
 
     # Check value type
     #
-    typename = type(value).__name__
-    method = __getmobject__.get(typename, None)
+    typeName = type(value).__name__
+    func = __getmobject__.get(typeName, None)
 
-    if method is not None:
+    if func is not None:
 
-        return method(value)
+        return func(value)
 
     else:
 
@@ -641,14 +641,20 @@ def iterActiveComponentSelection():
     :rtype: List[tuple[om.MDagPath, om.MObject]]
     """
 
-    # Access the Maya global selection list
+    # Get active selection
+    # Unfortunately the rich selection method will raise a runtime error if the selection is empty
+    # So we have to wrap this in a try/catch in order to preserve weighted component data
     #
-    selection = om.MGlobal.getActiveSelectionList()
-    numSelected = selection.length()
+    selection = None
 
-    if numSelected == 0:
+    try:
 
-        return iter([])
+        selection = om.MGlobal.getRichSelection().getSelection()
+
+    except RuntimeError as exception:
+
+        log.debug(exception)
+        selection = om.MGlobal.getActiveSelectionList()
 
     # Iterate through selection
     #
