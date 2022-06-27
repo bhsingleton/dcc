@@ -1,8 +1,8 @@
 import pymxs
 import re
 
-from collections import deque, namedtuple
-from ...python import stringutils
+from collections import deque
+from . import propertyutils, attributeutils, wrapperutils
 from ...generators.inclusiverange import inclusiveRange
 
 import logging
@@ -13,111 +13,16 @@ log.setLevel(logging.INFO)
 
 __property_parser__ = re.compile(r'\.([a-zA-Z0-9_]+)')
 __properties__ = {}  # Used with inspectClassProperties
-__dependents__ = {}  # Used with findAssociatedSubAnim
 
 
-BASE_TYPES = {
-    'floatController': pymxs.runtime.floatController,
-    'point3Controller': pymxs.runtime.point3Controller,
-    'Matrix3Controller': pymxs.runtime.Matrix3Controller,
-    'positionController': pymxs.runtime.positionController,
-    'rotationController': pymxs.runtime.rotationController,
-    'scaleController': pymxs.runtime.scaleController,
-    'MorphController': pymxs.runtime.MorphController
-}
-
-
-CONSTRAINT_TYPES = {
-    'Link_Constraint': pymxs.runtime.Link_Constraint,
-    'Position_Constraint': pymxs.runtime.Position_Constraint,
-    'Path_Constraint': pymxs.runtime.Path_Constraint,
-    'Orientation_Constraint': pymxs.runtime.Orientation_Constraint,
-    'LookAt_Constraint': pymxs.runtime.LookAt_Constraint,
-    'Surface_position': pymxs.runtime.Surface_position,
-    'Attachment': pymxs.runtime.Attachment
-}
-
-
-XYZ_TYPES = {
-    'Color_RGB': pymxs.runtime.Color_RGB,
-    'Euler_XYZ': pymxs.runtime.Euler_XYZ,
-    'Local_Euler_XYZ': pymxs.runtime.Local_Euler_XYZ,
-    'Point3_XYZ': pymxs.runtime.Point3_XYZ,
-    'Position_XYZ': pymxs.runtime.Position_XYZ,
-    'ScaleXYZ': pymxs.runtime.ScaleXYZ
-}
-
-
-BEZIER_TYPES = {
-    'bezier_color': pymxs.runtime.bezier_color,
-    'bezier_float': pymxs.runtime.bezier_float,
-    'bezier_point2': pymxs.runtime.bezier_point2,
-    'bezier_point3': pymxs.runtime.bezier_point3,
-    'bezier_position': pymxs.runtime.bezier_position,
-    'bezier_rotation': pymxs.runtime.bezier_rotation,
-    'bezier_scale': pymxs.runtime.bezier_scale
-}
-
-
-LIST_TYPES = {
-    'float_list': pymxs.runtime.float_list,
-    'point3_list': pymxs.runtime.point3_list,
-    'position_list': pymxs.runtime.position_list,
-    'rotation_list': pymxs.runtime.rotation_list,
-    'scale_list': pymxs.runtime.scale_list
-}
-
-
-SCRIPT_TYPES = {
-    'float_script': pymxs.runtime.float_script,
-    'transform_script': pymxs.runtime.transform_script,
-    'point3_script': pymxs.runtime.point3_script,
-    'position_script': pymxs.runtime.position_script,
-    'rotation_script': pymxs.runtime.rotation_script,
-    'scale_script': pymxs.runtime.scale_script,
-}
-
-
-WIRE_TYPES = {
-    'Float_Wire': pymxs.runtime.Float_Wire,
-    'Point3_Wire': pymxs.runtime.Point3_Wire,
-    'Point4_Wire': pymxs.runtime.Point4_Wire,
-    'Position_Wire': pymxs.runtime.Position_Wire,
-    'Rotation_Wire': pymxs.runtime.Rotation_Wire,
-    'Scale_Wire': pymxs.runtime.Scale_Wire
-}
-
-
-DUMMY_TYPES = {
-    'position_ListDummyEntry': pymxs.runtime.position_ListDummyEntry,
-    'rotation_ListDummyEntry': pymxs.runtime.rotation_ListDummyEntry,
-    'scale_ListDummyEntry': pymxs.runtime.scale_ListDummyEntry
-}
-
-
-Dependent = namedtuple('Dependent', ('handle', 'subAnimName'))
-
-
-def isConstraint(obj):
-    """
-    Evaluates if the supplied object is a constraint.
-
-    :type obj: pymxs.MXSWrapperBase
-    :rtype: bool
-    """
-
-    return pymxs.runtime.classOf(obj) in CONSTRAINT_TYPES.values()
-
-
-def isXYZController(obj):
-    """
-    Evaluates if the supplied object is a XYZ controller.
-
-    :type obj: pymxs.MXSWrapperBase
-    :rtype: bool
-    """
-
-    return pymxs.runtime.classOf(obj) in XYZ_TYPES.values()
+SUPER_TYPES = dict(wrapperutils.iterClassesByPattern('*Controller', superOnly=True))
+XYZ_TYPES = dict(wrapperutils.iterClassesByPattern('*XYZ'))
+BEZIER_TYPES = dict(wrapperutils.iterClassesByPattern('bezier_*'))
+LIST_TYPES = dict(wrapperutils.iterClassesByPattern('*_list'))
+CONSTRAINT_TYPES = dict(wrapperutils.iterClassesByPattern('*_Constraint'))
+SCRIPT_TYPES = dict(wrapperutils.iterClassesByPattern('*_script'))
+WIRE_TYPES = dict(wrapperutils.iterClassesByPattern('*_Wire'))
+DUMMY_TYPES = dict(wrapperutils.iterClassesByPattern('*_ListDummyEntry'))
 
 
 def isBezierController(obj):
@@ -131,6 +36,17 @@ def isBezierController(obj):
     return pymxs.runtime.classOf(obj) in BEZIER_TYPES.values()
 
 
+def isXYZController(obj):
+    """
+    Evaluates if the supplied object is a XYZ controller.
+
+    :type obj: pymxs.MXSWrapperBase
+    :rtype: bool
+    """
+
+    return pymxs.runtime.classOf(obj) in XYZ_TYPES.values()
+
+
 def isListController(obj):
     """
     Evaluates if the supplied object is a list controller.
@@ -140,6 +56,39 @@ def isListController(obj):
     """
 
     return pymxs.runtime.classOf(obj) in LIST_TYPES.values()
+
+
+def isConstraint(obj):
+    """
+    Evaluates if the supplied object is a constraint.
+
+    :type obj: pymxs.MXSWrapperBase
+    :rtype: bool
+    """
+
+    return pymxs.runtime.classOf(obj) in CONSTRAINT_TYPES.values()
+
+
+def isConstrained(obj):
+    """
+    Evaluates if the supplied object contains any constraints.
+
+    :type obj: pymxs.MXSWrapperBase
+    :rtype: bool
+    """
+
+    return any([isConstraint(controller) for controller in walkControllers(obj)])
+
+
+def isWire(obj):
+    """
+    Evaluates if the supplied object is a wire parameter.
+
+    :type obj: pymxs.MXSWrapperBase
+    :rtype: bool
+    """
+
+    return pymxs.runtime.classOf(obj) in WIRE_TYPES.values()
 
 
 def isScriptController(obj):
@@ -153,17 +102,6 @@ def isScriptController(obj):
     return pymxs.runtime.classOf(obj) in SCRIPT_TYPES.values()
 
 
-def isWireParameter(obj):
-    """
-    Evaluates if the supplied object is a wire parameter.
-
-    :type obj: pymxs.MXSWrapperBase
-    :rtype: bool
-    """
-
-    return pymxs.runtime.classOf(obj) in WIRE_TYPES.values()
-
-
 def isDummyController(obj):
     """
     Evaluates if the supplied object is a dummy controller.
@@ -175,15 +113,97 @@ def isDummyController(obj):
     return pymxs.runtime.classOf(obj) in DUMMY_TYPES.values()
 
 
-def isValidController(obj):
+def isFrozen(node):
     """
-    Evaluates if the supplied object is a valid controller.
+    Evaluates if the supplied node is frozen.
 
-    :type obj: pymxs.MXSWrapperBase
+    :type node: pymxs.MXSWrapperBase
     :rtype: bool
     """
 
-    return pymxs.runtime.superClassOf(obj) in BASE_TYPES.values()
+    # Evaluate if this is a valid node
+    #
+    if not pymxs.runtime.isValidNode(node):
+
+        return False
+
+    # Get PRS controller
+    #
+    transformController = getPRSController(node)
+
+    if not pymxs.runtime.isKindOf(transformController, pymxs.runtime.PRS):
+
+        return False
+
+    # Evaluate if position/rotation lists exist
+    #
+    positionController, rotationController, scaleController = decomposePRSController(transformController)
+
+    positionList = ensureControllerByClass(positionController, pymxs.runtime.Position_List)
+    rotationList = ensureControllerByClass(rotationController, pymxs.runtime.Rotation_List)
+
+    return positionList is not None and rotationList is not None
+
+
+def ensureFrozenNames(controller):
+    """
+    Ensures the supplied controller has the correct frozen sub-anim names.
+    Returns a boolean that determines if the operation was a success.
+
+    :type controller: pymxs.MXSWrapperBase
+    :rtype: bool
+    """
+
+    # Evaluate controller type
+    #
+    frozenSubAnims = []
+
+    if pymxs.runtime.isKindOf(controller, pymxs.runtime.Position_List):
+
+        frozenSubAnims = [(pymxs.runtime.Bezier_Position, 'Frozen Position'), (pymxs.runtime.Position_XYZ, 'Zero Pos XYZ')]
+
+    elif pymxs.runtime.isKindOf(controller, pymxs.runtime.Rotation_List):
+
+        frozenSubAnims = [(pymxs.runtime.Euler_XYZ, 'Frozen Rotation'), (pymxs.runtime.Euler_XYZ, 'Zero Euler XYZ')]
+
+    elif pymxs.runtime.isKindOf(controller, pymxs.runtime.Scale_List):
+
+        frozenSubAnims = [(pymxs.runtime.Bezier_Scale, 'Frozen Scale'), (pymxs.runtime.ScaleXYZ, 'Zero Scale XYZ')]
+
+    else:
+
+        return False
+
+    # Check if there are enough sub-controllers
+    #
+    listCount = controller.getCount()
+
+    if len(frozenSubAnims) > listCount:
+
+        return False
+
+    # Evaluate sub-anim names
+    #
+    for (i, (maxClass, name)) in enumerate(frozenSubAnims):
+
+        # Get indexed sub-anim
+        # Evaluate sub-controller class
+        #
+        index = i + 1
+        subAnim = pymxs.runtime.getSubAnim(controller, index)
+
+        if not pymxs.runtime.isKindOf(subAnim.controller, maxClass):
+
+            return False
+
+        # Check if names match
+        #
+        if subAnim.name != name:
+
+            log.info('Renaming list sub-controller: "%s" > "%s"' % (subAnim.name, name))
+            controller.setName(index, name)
+
+    return True
 
 
 def isValidSubAnim(obj):
@@ -197,6 +217,29 @@ def isValidSubAnim(obj):
     return pymxs.runtime.isKindOf(obj, pymxs.runtime.SubAnim)
 
 
+def isValidController(obj):
+    """
+    Evaluates if the supplied obj is a valid controller.
+    This method does not accept dummy controllers as valid since they are just placeholders!
+
+    :type obj: pymxs.MXSWrapperBase
+    :rtype: bool
+    """
+
+    return pymxs.runtime.superClassOf(obj) in SUPER_TYPES.values()
+
+
+def isInstancedController(controller):
+    """
+    Evaluates if the supplied controller is instanced.
+
+    :type controller: pymxs.MXSWrapperBase
+    :rtype: bool
+    """
+
+    return pymxs.runtime.InstanceMgr.canMakeControllersUnique([], [controller])
+
+
 def hasSubAnims(obj):
     """
     Evaluates if the supplied object is derived from an animatable.
@@ -206,87 +249,6 @@ def hasSubAnims(obj):
     """
 
     return pymxs.runtime.isProperty(obj, 'numSubs')
-
-
-def isValue(value):
-    """
-    Evaluates if the supplied max value is serializable.
-
-    :type value: Any
-    :rtype: bool
-    """
-
-    return pymxs.runtime.superClassOf(value) in (pymxs.runtime.Value, pymxs.runtime.Number)
-
-
-def cacheSubAnim(subAnim):
-    """
-    Caches the supplied sub-anim to optimize getAssociatedSubAnim lookups.
-
-    :type subAnim: pymxs.runtime.MXSWrapperBase
-    :rtype: Union[Dependent, None]
-    """
-
-    # Get object handles
-    #
-    parentHandle = int(pymxs.runtime.getHandleByAnim(subAnim.parent))
-    subAnimName = stringutils.slugify(subAnim.name, whitespace='_', illegal='_')
-
-    handle = None
-
-    if pymxs.runtime.isValidObj(subAnim.controller):
-
-        handle = int(pymxs.runtime.getHandleByAnim(subAnim.controller))
-
-    elif pymxs.runtime.isValidObj(subAnim.value):
-
-        handle = int(pymxs.runtime.getHandleByAnim(subAnim.value))
-
-    else:
-
-        return
-
-    # Add dependent to cache
-    #
-    dependent = Dependent(handle=parentHandle, subAnimName=subAnimName)
-    __dependents__[handle] = dependent
-
-    return dependent
-
-
-def getCachedSubAnim(obj):
-    """
-    Returns the cached sub-anim associated with the given max object.
-
-    :type obj: pymxs.MXSWrapperBase
-    :rtype: Union[pymxs.MXSWrapperBase, None]
-    """
-
-    # Check if parent was cached
-    #
-    handle = int(pymxs.runtime.getHandleByAnim(obj))
-    dependent = __dependents__.get(handle, None)
-
-    if dependent is None:
-
-        return None
-
-    # Verify max-object belongs to sub-anim
-    #
-    parent = pymxs.runtime.getAnimByHandle(dependent.handle)
-    subAnim = pymxs.runtime.getSubAnim(parent, dependent.subAnimName)
-
-    controller = getattr(subAnim, 'controller', None)
-    value = getattr(subAnim, 'value', None)
-
-    if controller == obj or value == obj:
-
-        return subAnim
-
-    else:
-
-        del __dependents__[handle]
-        return None
 
 
 def iterSubAnims(obj, skipNonAnimated=False, skipNullControllers=False, skipNonValues=False):
@@ -307,14 +269,10 @@ def iterSubAnims(obj, skipNonAnimated=False, skipNullControllers=False, skipNonV
 
     for i in inclusiveRange(1, numSubs, 1):
 
-        # Get indexed sub-anim
-        # Be sure to cache this to optimize reverse lookups
-        #
-        subAnim = pymxs.runtime.getSubAnim(obj, i)
-        cacheSubAnim(subAnim)
-
         # Check if non-animated sub-anims should be skipped
         #
+        subAnim = pymxs.runtime.getSubAnim(obj, i)
+
         if skipNonAnimated and not subAnim.isAnimated:
 
             continue
@@ -327,7 +285,7 @@ def iterSubAnims(obj, skipNonAnimated=False, skipNullControllers=False, skipNonV
 
         # Check if compound values should be skipped
         #
-        if skipNonValues and not isValue(subAnim.value):
+        if skipNonValues and not propertyutils.isValue(subAnim.value):
 
             continue
 
@@ -336,51 +294,34 @@ def iterSubAnims(obj, skipNonAnimated=False, skipNullControllers=False, skipNonV
             yield subAnim
 
 
-def getAssociatedSubAnim(obj):
+def copySubAnims(copyFrom, copyTo):
     """
-    Returns the sub-anim associated with the given max object.
+    Copies the sub-anim controller-value pairs to the specified object.
 
-    :type obj: pymxs.MXSWrapperBase
-    :rtype: Union[pymxs.MXSWrapperBase, None]
+    :type copyFrom: pymxs.MXSWrapperBase
+    :type copyTo: pymxs.MXSWrapperBase
+    :rtype: None
     """
 
-    # Check if sub-anim was cached
+    # Iterate through sub-anims
     #
-    subAnim = getCachedSubAnim(obj)
+    subAnims = {subAnim.name: subAnim for subAnim in iterSubAnims(copyFrom)}
 
-    if subAnim is not None:
+    for subAnim in iterSubAnims(copyTo):
 
-        return subAnim
-
-    # Evaluate which dependent the object is derived from
-    # Dependents are returned from closest to furthest!
-    #
-    dependents = pymxs.runtime.refs.dependents(obj)
-
-    for dependent in dependents:
-
-        # Check if this is a valid object
+        # Check if source sub-anim exists
         #
-        if not pymxs.runtime.isValidObj(dependent):
+        otherSubAnim = subAnims.get(subAnim.name, None)
 
+        if otherSubAnim is None:
+
+            log.warning('Unable to copy "%s" sub-anim!' % subAnim.name)
             continue
 
-        # Iterate through sub-anims
+        # Copy value and controller
         #
-        for subAnim in iterSubAnims(dependent):
-
-            # Check if sub-anim contains object
-            #
-            if subAnim.controller == obj or subAnim.value == obj:
-
-                cacheSubAnim(subAnim)
-                return subAnim
-
-            else:
-
-                continue
-
-    return None
+        subAnim.value = pymxs.runtime.copy(otherSubAnim.value)
+        subAnim.controller = pymxs.runtime.copy(otherSubAnim.controller)
 
 
 def iterMaxKeys(controller):
@@ -394,9 +335,9 @@ def iterMaxKeys(controller):
 
     # Check if this is a valid controller
     #
-    if not isValidController(controller):
+    if not pymxs.runtime.isController(controller):
 
-        log.info('Max object: %s, is not a valid controller!' % controller)
+        log.warning('iterMaxKeys() expects a valid controller (%s given)!' % pymxs.runtime.getClassName(controller))
         return
 
     # Check if controller has keys
@@ -406,7 +347,7 @@ def iterMaxKeys(controller):
 
     if keys is None:
 
-        log.info('Max object: %s, contains no key array!' % controller)
+        log.warning('iterMaxKeys() expects an animatable controller (%s given)!' % pymxs.runtime.getClassName(controller))
         return
 
     # Iterate through keys
@@ -428,54 +369,107 @@ def iterMaxKeys(controller):
             continue
 
 
-def iterControllers(obj):
+def iterAMaxKeys(controller):
+    """
+    Returns a generator that yields attachment keys from the supplied controller.
+
+    :type controller: pymxs.MXSWrapperBase
+    :rtype: iter
+    """
+
+    # Check if this is a valid controller
+    #
+    if not pymxs.runtime.isKindOf(controller, pymxs.runtime.Attachment):
+
+        log.warning('iterAMaxKeys() expects an attachment controller (%s given)!' % pymxs.runtime.getClassName(controller))
+        return
+
+    # Iterate through keys
+    #
+    numKeys = controller.keys.count
+
+    for i in inclusiveRange(1, numKeys, 1):
+
+        yield pymxs.runtime.AttachCtrl.getKey(controller, i)
+
+
+def iterControllers(obj, includeCustomAttributes=False):
     """
     Returns a generator that yields controllers from the supplied object.
     This method relies on the subAnim interface for parsing.
 
     :type obj: pymxs.MXSWrapperBase
+    :type includeCustomAttributes: bool
     :rtype: iter
     """
 
+    # Iterate through sub-anims
+    #
     for subAnim in iterSubAnims(obj, skipNullControllers=True):
 
         yield subAnim.controller
 
+    # Check if custom attributes should be yielded
+    #
+    if includeCustomAttributes:
 
-def walkControllers(obj):
+        for attributeDefinition in attributeutils.iterDefinitions(obj, baseObject=False):
+
+            for subAnim in iterSubAnims(attributeDefinition):
+
+                yield subAnim.controller
+
+
+def walkControllers(obj, includeCustomAttributes=False):
     """
-    Returns a generator that yields all the controllers from the supplied node.
+    Returns a generator that yields all the sub-controllers from the supplied Max-object.
 
-    :type obj: pymxs.runtime.MaxObject
+    :type obj: pymxs.MXSWrapperBase
+    :type includeCustomAttributes: bool
     :rtype: iter
     """
 
-    queue = deque([pymxs.runtime.getTMController(obj)])
+    queue = deque([obj])
 
     while len(queue):
 
         controller = queue.popleft()
         yield controller
 
-        queue.extend(list(iterControllers(controller)))
+        queue.extendleft(list(iterControllers(controller, includeCustomAttributes=includeCustomAttributes)))
 
 
-def iterConstraints(obj):
+def walkTransformControllers(node, includeCustomAttributes=False):
     """
-    Returns a generator that yields all constraint from the supplied node.
-    Constraints do not share a common base class in Maxscript.
-    So we have to define our own collection of constraint types...
+    Returns a generator that yields all the sub-controllers from the supplied node's transform controller..
 
-    :type obj: pymxs.runtime.MaxObject
+    :type node: pymxs.MXSWrapperBase
+    :type includeCustomAttributes: bool
     :rtype: iter
     """
 
-    for controller in walkControllers(obj):
+    return walkControllers(pymxs.runtime.getTMController(node), includeCustomAttributes=includeCustomAttributes)
 
-        cls = pymxs.runtime.classOf(controller)
-        clsName = str(cls)
 
-        if clsName in CONSTRAINT_TYPES:
+def iterConstraints(node):
+    """
+    Returns a generator that yields all the constraint from the supplied node.
+    Constraints do not share a common base class in Maxscript.
+    See CONSTRAINT_TYPES constant for a collection of contraint types.
+
+    :type node: pymxs.MXSWrapperBase
+    :rtype: iter
+    """
+
+    # Iterate through controllers
+    #
+    for controller in walkTransformControllers(node):
+
+        # Evaluate controller class
+        #
+        controllerClass = pymxs.runtime.classOf(controller)
+
+        if controllerClass in CONSTRAINT_TYPES.values():
 
             yield controller
 
@@ -484,19 +478,63 @@ def iterConstraints(obj):
             continue
 
 
-def findControllerByType(node, controllerType, all=False):
+def iterListController(controller):
     """
-    Finds a controller from the transform stack based on the supplied type.
+    Returns a generator that yields controller-weight pairs from the supplied list controller.
 
-    :type node: pymxs.runtime.Node
-    :type controllerType: type
+    :type controller: pymxs.MXSWrapperBase
+    :rtype: iter
+    """
+
+    listCount = controller.getCount()
+    weights = controller.weight
+
+    for i in inclusiveRange(1, listCount, 1):
+
+        subControllerName = controller.getName(i)
+        subControllerWeight = pymxs.runtime.getSubAnim(weights, i).value
+        subController = pymxs.runtime.getPropertyController(controller, subControllerName)
+
+        yield subControllerName, subController, subControllerWeight
+
+
+def ensureControllerByClass(obj, controllerClass):
+    """
+    Returns a controller derived from the specified class on the supplied object.
+    This is useful when you know a controller should exist but is nested under something else.
+    Such as a position_list under a spring controller.
+    Otherwise, if the supplied is derived from the specified class then that object is returned.
+
+    :type obj: pymxs.MXSWrapperBase
+    :type controllerClass: pymxs.runtime.MaxClass
+    :rtype: pymxs.MXSWrapperBase
+    """
+
+    # Redundancy check
+    #
+    if pymxs.runtime.isKindOf(obj, controllerClass):
+
+        return obj
+
+    else:
+
+        return getControllerByClass(obj, controllerClass)
+
+
+def getControllerByClass(obj, controllerClass, all=False):
+    """
+    Returns a controller derived from the specified class on the supplied object.
+    An optional "all" keyword can be specified to return an array instead.
+
+    :type obj: pymxs.MXSWrapperBase
+    :type controllerClass: pymxs.runtime.MaxClass
     :type all: bool
-    :rtype: pymxs.runtime.Control
+    :rtype: Union[pymxs.MXSWrapperBase, List[pymxs.MXSWrapperBase]]
     """
 
     # Walk through transform stack
     #
-    found = [x for x in walkControllers(node) if pymxs.runtime.classOf(x) == controllerType]
+    found = [x for x in walkControllers(obj) if pymxs.runtime.isKindOf(x, controllerClass)]
     numFound = len(found)
 
     if all:
@@ -515,7 +553,33 @@ def findControllerByType(node, controllerType, all=False):
 
         else:
 
-            raise TypeError('findControllerByType() multiple controllers found!')
+            raise TypeError('getControllerByClass() expects a unique controller (%s found)!' % numFound)
+
+
+def getPRSController(node):
+    """
+    Returns the PRS controller from the supplied node.
+
+    :type node: pymxs.MXSWrapperBase
+    :rtype: pymxs.MXSWrapperBase
+    """
+
+    return ensureControllerByClass(pymxs.runtime.getTMController(node), pymxs.runtime.PRS)
+
+
+def decomposePRSController(controller):
+    """
+    Returns the position, rotation and scale sub-controllers from the supplied PRS controller.
+
+    :type controller: pymxs.MXSWrapperBase
+    :rtype: Tuple[pymxs.MXSWrapperBase, pymxs.MXSWrapperBase, pymxs.MXSWrapperBase]
+    """
+
+    positionController = pymxs.runtime.getPropertyController(controller, 'Position')
+    rotationController = pymxs.runtime.getPropertyController(controller, 'Rotation')
+    scaleController = pymxs.runtime.getPropertyController(controller, 'Scale')
+
+    return positionController, rotationController, scaleController
 
 
 def clearListController(controller):
@@ -539,182 +603,3 @@ def clearListController(controller):
     for i in range(listCount, 0, -1):
         
         controller.list.delete(i)
-
-
-def isPropertyAnimatable(obj, name):
-    """
-    Evaluates if the supplied MXS object wrapper is animatable.
-    Max will throw errors if the object isn't explicitly derived from MaxObject!
-
-    :type obj: pymxs.MXSWrapperBase
-    :type name: pymxs.runtime.Name
-    :rtype: bool
-    """
-
-    try:
-
-        return pymxs.runtime.isPropertyAnimatable(obj, name)
-
-    except RuntimeError:
-
-        return False
-
-
-def getDefaultPropertyValue(cls, name):
-    """
-    Returns the default value for the specified property.
-
-    :type cls: pymxs.MXSWrapperBase
-    :type name: str
-    :rtype: Any
-    """
-
-    try:
-
-        return pymxs.runtime.DefaultParamInterface.getDefaultParamValue(cls, name, None)
-
-    except SystemError:
-
-        log.error('Error encountered while retrieving "%s::%s" default value!' % (cls, name))
-        return None
-
-
-def inspectClassProperties(className):
-    """
-    Inspects the supplied class names for writable properties.
-
-    :type className: str
-    :rtype: list[str]
-    """
-
-    # Check if class has already been inspected
-    #
-    properties = __properties__.get(className, None)
-
-    if properties is not None:
-
-        return properties
-
-    # Concatenate class lookup pattern
-    #
-    pattern = '{className}.*'.format(className=className)
-
-    stringStream = pymxs.runtime.StringStream('')
-    pymxs.runtime.showClass(pattern, to=stringStream)
-
-    # Iterate through string stream
-    #
-    properties = []
-    pymxs.runtime.seek(stringStream, 1)
-
-    while not pymxs.runtime.eof(stringStream):
-
-        line = pymxs.runtime.readLine(stringStream)
-        found = __property_parser__.findall(line)
-
-        if len(found) == 1:
-
-            properties.append(found[0])
-
-    # Cache list for later use
-    #
-    __properties__[className] = properties
-    return properties
-
-
-def iterDynamicProperties(obj, skipAnimatable=False, skipNonValues=False):
-    """
-    Returns a generator that yields dynamic property name-value pairs from the supplied object.
-    Unlike static properties, dynamic properties are created at runtime and cannot be found on the class definition!
-
-    :type obj: pymxs.runtime.MaxObject
-    :type skipAnimatable: bool
-    :type skipNonValues: bool
-    :rtype: iter
-    """
-
-    # Iterate through property names
-    #
-    properties = pymxs.runtime.getPropNames(obj)
-
-    for name in properties:
-
-        # Check if animatable properties should be skipped
-        #
-        isAnimatable = isPropertyAnimatable(obj, name)
-
-        if skipAnimatable and isAnimatable:
-
-            continue
-
-        # Check if compound values should be skipped
-        #
-        key = stringutils.slugify(str(name), whitespace='_')
-        value = pymxs.runtime.getProperty(obj, name)
-
-        if skipNonValues and not isValue(value):
-
-            continue
-
-        else:
-
-            yield key, value
-
-
-def iterStaticProperties(obj, skipAnimatable=False, skipNonValues=False, skipDefaultValues=False):
-    """
-    Returns a generator that yields property name/value pairs from the supplied object.
-    Unlike dynamic properties, static properties can be found on the class definition!
-
-    :type obj: pymxs.runtime.MaxObject
-    :type skipAnimatable: bool
-    :type skipNonValues: bool
-    :type skipDefaultValues: bool
-    :rtype: iter
-    """
-
-    # Iterate through property names
-    #
-    cls = pymxs.runtime.classOf(obj)
-    clsName = str(cls)
-
-    properties = inspectClassProperties(clsName)
-
-    for key in properties:
-
-        # Check if property is accessible
-        # The class inspector can yield private properties that are not accessible!
-        #
-        name = pymxs.runtime.Name(key)
-
-        if not pymxs.runtime.isProperty(obj, name):
-
-            continue
-
-        # Check if animatable properties should be skipped
-        #
-        isAnimatable = isPropertyAnimatable(obj, name)
-
-        if skipAnimatable and isAnimatable:
-
-            continue
-
-        # Check if non-values should be skipped
-        #
-        value = pymxs.runtime.getProperty(obj, name)
-
-        if skipNonValues and not isValue(value):
-
-            continue
-
-        # Check if non-default values should be skipped
-        #
-        default = getDefaultPropertyValue(cls, key)
-
-        if skipDefaultValues and (value == default):
-
-            continue
-
-        else:
-
-            yield key, value
