@@ -1,7 +1,8 @@
 import pymxs
+import math
 
-from dcc.max.libs import controllerutils, nodeutils
-from dcc.naming import namingutils
+from . import controllerutils
+from ...naming import namingutils
 
 import logging
 logging.basicConfig()
@@ -13,7 +14,7 @@ def getTranslation(node):
     """
     Returns the translation values from the supplied node.
 
-    :type node: pymxs.runtime.Node
+    :type node: pymxs.MXSWrapperBase
     :rtype: pymxs.runtime.Point3
     """
 
@@ -22,7 +23,7 @@ def getTranslation(node):
     if pymxs.runtime.classOf(transformController) == pymxs.runtime.PRS:
 
         positionController = pymxs.runtime.getPropertyController(node, pymxs.runtime.Name('Position'))
-        return positionController.value
+        return pymxs.runtime.copy(positionController.value)
 
     else:
 
@@ -34,7 +35,7 @@ def setTranslation(node, translation, **kwargs):
     """
     Updates the translation values for the supplied node.
 
-    :type node: pymxs.runtime.Node
+    :type node: pymxs.MXSWrapperBase
     :type translation: pymxs.runtime.Point3
     :key skipTranslate: bool
     :key skipTranslateX: bool
@@ -104,7 +105,7 @@ def resetTranslation(node, **kwargs):
     """
     Resets the translation values for the supplied node.
 
-    :type node: pymxs.runtime.Node
+    :type node: pymxs.MXSWrapperBase
     :rtype: None
     """
 
@@ -116,7 +117,7 @@ def getRotationOrder(node):
     Returns the rotation order for the supplied node.
     Please be aware that not all controllers have an axis order property!
 
-    :type node: pymxs.runtime.Node
+    :type node: pymxs.MXSWrapperBase
     :rtype: int
     """
 
@@ -152,7 +153,7 @@ def getEulerRotation(node):
     """
     Returns the euler angles from the supplied node.
 
-    :type node: pymxs.runtime.Node
+    :type node: pymxs.MXSWrapperBase
     :rtype: pymxs.runtime.EulerAngles
     """
 
@@ -161,7 +162,7 @@ def getEulerRotation(node):
     if pymxs.runtime.classOf(transformController) == pymxs.runtime.PRS:
 
         rotationController = pymxs.runtime.getPropertyController(node, pymxs.runtime.Name('Rotation'))
-        return rotationController.value
+        return pymxs.runtime.copy(rotationController.value)
 
     else:
 
@@ -173,7 +174,7 @@ def setEulerRotation(node, eulerAngles, **kwargs):
     """
     Updates the euler angles for the supplied node.
 
-    :type node: pymxs.runtime.Node
+    :type node: pymxs.MXSWrapperBase
     :type eulerAngles: pymxs.runtime.EulerAngles
     :key skipRotate: bool
     :key skipRotateX: bool
@@ -243,7 +244,7 @@ def resetEulerRotation(node, **kwargs):
     """
     Updates the euler angles for the supplied node.
 
-    :type node: pymxs.runtime.Node
+    :type node: pymxs.MXSWrapperBase
     :rtype: None
     """
 
@@ -254,7 +255,7 @@ def getScale(node):
     """
     Returns the scale value from the supplied node.
 
-    :type node: pymxs.runtime.Node
+    :type node: pymxs.MXSWrapperBase
     :rtype: list[float, float, float]
     """
 
@@ -263,7 +264,7 @@ def getScale(node):
     if pymxs.runtime.classOf(transformController) == pymxs.runtime.PRS:
 
         scaleController = pymxs.runtime.getPropertyController(node, pymxs.runtime.Name('Scale'))
-        return scaleController.value
+        return pymxs.runtime.copy(scaleController.value)
 
     else:
 
@@ -275,7 +276,7 @@ def setScale(node, scale, **kwargs):
     """
     Updates the scale values for the supplied node.
 
-    :type node: pymxs.runtime.Node
+    :type node: pymxs.MXSWrapperBase
     :type scale: list[float, float, float]
     :key skipScale: bool
     :key skipScaleX: bool
@@ -345,7 +346,7 @@ def resetScale(node, **kwargs):
     """
     Updates the scale values for the supplied node.
 
-    :type node: pymxs.runtime.Node
+    :type node: pymxs.MXSWrapperBase
     :rtype: None
     """
 
@@ -356,7 +357,7 @@ def getBoundingBox(node):
     """
     Returns the bounding box for the supplied node.
 
-    :type node: pymxs.runtime.Node
+    :type node: pymxs.MXSWrapperBase
     :rtype: list[pymxs.runtime.Point3, pymxs.runtime.Point3]
     """
 
@@ -424,16 +425,38 @@ def getParentMatrix(node):
         return pymxs.runtime.Matrix3(1)
 
 
+def getParentInverseMatrix(node):
+    """
+    Returns the parent inverse-matrix for the given node.
+
+    :type node: pymxs.MXSWrapperBase
+    :rtype: pymxs.runtime.Matrix3
+    """
+
+    return pymxs.runtime.inverse(getParentMatrix(node))
+
+
 def getWorldMatrix(node):
     """
-    Returns the world matrix for the given node.
+    Returns the world matrix for the supplied node.
 
-    :type node: pymxs.runtime.Node
+    :type node: pymxs.MXSWrapperBase
     :rtype: pymxs.runtime.Matrix3
     """
 
     matrix = getattr(node, 'transform', pymxs.runtime.Matrix3(1))
     return pymxs.runtime.copy(matrix)
+
+
+def getWorldInverseMatrix(node):
+    """
+    Returns the world inverse-matrix for the supplied node.
+
+    :type node: pymxs.MXSWrapperBase
+    :rtype: pymxs.runtime.Matrix3
+    """
+
+    return pymxs.runtime.inverse(getWorldMatrix(node))
 
 
 def getFrozenPositionMatrix(node):
@@ -600,9 +623,9 @@ def unfreezeTransform(node):
 
     # Get transform controller
     #
-    transformController = pymxs.runtime.getTMController(node)
+    transformController = controllerutils.getPRSController(node)
 
-    if pymxs.runtime.classOf(transformController) != pymxs.runtime.PRS:
+    if not pymxs.runtime.isKindOf(transformController, pymxs.runtime.PRS):
 
         return
 
@@ -616,186 +639,443 @@ def unfreezeTransform(node):
 
     # Reset position controller
     #
-    positionController = pymxs.runtime.Position_XYZ()
-    positionController.value = position
+    positionController = pymxs.runtime.getPropertyController(transformController, 'Position')
 
-    pymxs.runtime.setPropertyController(transformController, 'Position', positionController)
+    if not pymxs.runtime.isKindOf(positionController, pymxs.runtime.Position_XYZ):
 
-    # Reset rotation controller
-    #
-    rotationController = pymxs.runtime.Euler_XYZ()
-    rotationController.value = rotation
+        positionController = pymxs.runtime.Position_XYZ()
+        positionController.value = position
 
-    pymxs.runtime.setPropertyController(transformController, 'Rotation', rotationController)
+        pymxs.runtime.setPropertyController(transformController, 'Position', positionController)
 
     # Reset rotation controller
     #
-    scaleController = pymxs.runtime.Bezier_Scale()
-    scaleController.value = scale
+    rotationController = pymxs.runtime.getPropertyController(transformController, 'Rotation')
 
-    pymxs.runtime.setPropertyController(transformController, 'Scale', scaleController)
+    if not pymxs.runtime.isKindOf(rotationController, pymxs.runtime.Euler_XYZ):
+
+        rotationController = pymxs.runtime.Euler_XYZ()
+        rotationController.value = rotation
+
+        pymxs.runtime.setPropertyController(transformController, 'Rotation', rotationController)
+
+    # Reset rotation controller
+    #
+    scaleController = pymxs.runtime.getPropertyController(transformController, 'Scale')
+
+    if not pymxs.runtime.isKindOf(scaleController, pymxs.runtime.Bezier_Scale):
+
+        scaleController = pymxs.runtime.Bezier_Scale()
+        scaleController.value = scale
+
+        pymxs.runtime.setPropertyController(transformController, 'Scale', scaleController)
 
 
 def freezeTranslation(node):
     """
     Freezes the translation on the supplied node.
-    If no position list is found then a new one is created.
+    If no position list is found then a new one is created!
 
-    :type node: pymxs.runtime.Node
+    :type node: pymxs.MXSWrapperBase
     :rtype: None
     """
 
-    # Copy transform matrix
+    # Check if position-list exists
     #
-    transformController = pymxs.runtime.getTMController(node)
-    matrix = pymxs.runtime.copy(transformController.value)
+    transformController = controllerutils.getPRSController(node)
+    positionController = controllerutils.getControllerByClass(transformController, pymxs.runtime.Position_List)
 
-    position = pymxs.runtime.copy(matrix.translationPart)
+    matrix = getMatrix(node)
 
-    if sum(position) == 0.0:
+    if controllerutils.isListController(positionController):
 
-        return
+        # Ensure sub-controllers have the correct names
+        #
+        success = controllerutils.ensureFrozenNames(positionController)
 
-    # Check if position list exists
-    #
-    positionController = pymxs.runtime.getPropertyController(transformController, 'Position')
+        if not success:
 
-    frozenController = None
-    zeroController = None
+            log.warning('Unable to freeze "$%s.position" controller!' % node.name)
+            return
 
-    if not controllerutils.isListController(positionController):
+        # Check if frozen position requires updating
+        #
+        frozenController = pymxs.runtime.getPropertyController(positionController, 'Frozen_Position')
+        zeroController = pymxs.runtime.getPropertyController(positionController, 'Zero_Pos_XYZ')
 
-        positionController = pymxs.runtime.Position_List()
-        pymxs.runtime.setPropertyController(transformController, 'Position', positionController)  # This will automatically append all current controllers to list!
-        controllerutils.clearListController(positionController)
+        if not isClose(frozenController.value, matrix.translationPart) and not controllerutils.isConstrained(positionController):
 
-        frozenController = pymxs.runtime.Bezier_Position()
-        pymxs.runtime.setPropertyController(positionController, 'Available', frozenController)
-        positionController.setName(1, 'Frozen Position')
+            log.info('Freezing "$%s.position" controller!' % node.name)
+            frozenController.value = matrix.translationPart
+            zeroController.value = pymxs.runtime.Point3(0.0, 0.0, 0.0)
 
-        zeroController = pymxs.runtime.Position_XYZ()
-        pymxs.runtime.setPropertyController(positionController, 'Available', zeroController)
-        positionController.setName(2, 'Zero Pos XYZ')
+        else:
 
-        positionController.setActive(2)
+            log.debug('Skipping "$%s.position" controller!' % node.name)
 
     else:
 
-        frozenController = pymxs.runtime.getPropertyController(positionController, 'Frozen Position')
-        zeroController = pymxs.runtime.getPropertyController(positionController, 'Zero Pos XYZ')
+        # Create new position-list
+        # This will append the current controller to the new list!
+        #
+        log.info('Freezing "$%s.position" controller!' % node.name)
 
-    # Update frozen position
-    #
-    frozenController.value = position
-    zeroController.value = pymxs.runtime.Point3(0.0, 0.0, 0.0)
+        positionController = pymxs.runtime.Position_List()
+        pymxs.runtime.setPropertyController(transformController, 'Position', positionController)
+
+        controllerutils.clearListController(positionController)  # Removes pre-existing sub-controllers
+
+        # Add frozen position sub-controller
+        #
+        frozenController = pymxs.runtime.Bezier_Position()
+        frozenController.value = matrix.translationPart
+
+        pymxs.runtime.setPropertyController(positionController, 'Available', frozenController)
+        positionController.setName(1, 'Frozen Position')
+
+        # Add zero position sub-controller
+        #
+        zeroController = pymxs.runtime.Position_XYZ()
+        zeroController.value = pymxs.runtime.Point3(0.0, 0.0, 0.0)
+
+        pymxs.runtime.setPropertyController(positionController, 'Available', zeroController)
+        positionController.setName(2, 'Zero Pos XYZ')
+
+        # Update active controller
+        #
+        positionController.setActive(2)
 
 
 def freezeRotation(node):
     """
     Freezes the rotation on the supplied node.
-    If no rotation list is found then a new one is created.
+    If no rotation list is found then a new one is created!
 
-    :type node: pymxs.runtime.Node
+    :type node: pymxs.MXSWrapperBase
     :rtype: None
     """
 
-    # Copy transform matrix
+    # Check if position-list exists
     #
-    transformController = pymxs.runtime.getTMController(node)
-    matrix = pymxs.runtime.copy(transformController.value)
+    transformController = controllerutils.getPRSController(node)
+    rotationController = controllerutils.getControllerByClass(transformController, pymxs.runtime.Rotation_List)
 
-    rotation = pymxs.runtime.copy(matrix.rotationPart)
+    matrix = getMatrix(node)
 
-    if pymxs.runtime.isIdentity(rotation):
+    if controllerutils.isListController(rotationController):
 
-        return
+        # Ensure sub-controllers have the correct names
+        #
+        success = controllerutils.ensureFrozenNames(rotationController)
 
-    # Check if rotation list exists
-    #
-    rotationController = pymxs.runtime.getPropertyController(transformController, 'Rotation')
+        if not success:
 
-    frozenController = None
-    zeroController = None
+            log.warning('Unable to freeze "$%s.rotation" controller!' % node.name)
+            return
 
-    if not controllerutils.isListController(rotationController):
+        # Check if frozen rotation requires updating
+        #
+        frozenController = pymxs.runtime.getPropertyController(rotationController, 'Frozen_Rotation')
+        zeroController = pymxs.runtime.getPropertyController(rotationController, 'Zero_Euler_XYZ')
+
+        if not isClose(frozenController.value, matrix.rotationPart) and not controllerutils.isConstrained(rotationController):
+
+            log.info('Freezing "$%s.rotation" controller!' % node.name)
+            frozenController.value = matrix.rotationPart
+            zeroController.value = pymxs.runtime.Quat(1)
+
+        else:
+
+            log.debug('Skipping "$%s.rotation" controller!' % node.name)
+
+    else:
+
+        # Create new rotation-list
+        # This will append the current controller to the new list!
+        #
+        log.info('Freezing "$%s.rotation" controller!' % node.name)
 
         rotationController = pymxs.runtime.Rotation_List()
         pymxs.runtime.setPropertyController(transformController, 'Rotation', rotationController)
-        controllerutils.clearListController(rotationController)
 
-        frozenController = pymxs.runtime.Bezier_Rotation()
+        controllerutils.clearListController(rotationController)  # Removes pre-existing sub-controllers
+
+        # Add frozen rotation sub-controller
+        #
+        frozenController = pymxs.runtime.Euler_XYZ()
         pymxs.runtime.setPropertyController(rotationController, 'Available', frozenController)
         rotationController.setName(1, 'Frozen Rotation')
 
+        # Add zero rotation sub-controller
+        #
         zeroController = pymxs.runtime.Euler_XYZ()
         pymxs.runtime.setPropertyController(rotationController, 'Available', zeroController)
         rotationController.setName(2, 'Zero Euler XYZ')
 
+        # Update active controller
+        #
         rotationController.setActive(2)
-
-    else:
-
-        frozenController = pymxs.runtime.getPropertyController(rotationController, 'Frozen Rotation')
-        zeroController = pymxs.runtime.getPropertyController(rotationController, 'Zero Euler XYZ')
-
-    # Update frozen rotation
-    #
-    frozenController.value = rotation
-    zeroController.value = pymxs.runtime.Quat(1.0)
 
 
 def freezeScale(node):
     """
     Freezes the scale on the supplied node.
-    If no scale list is found then a new one is created.
+    If no scale list is found then a new one is created!
 
-    :type node: pymxs.runtime.Node
+    :type node: pymxs.MXSWrapperBase
     :rtype: None
     """
 
-    # Copy transform matrix
+    # Check if position-list exists
     #
-    transformController = pymxs.runtime.getTMController(node)
-    matrix = pymxs.runtime.copy(transformController.value)
+    transformController = controllerutils.getPRSController(node)
+    scaleController = controllerutils.getControllerByClass(transformController, pymxs.runtime.Scale_List)
 
-    scale = pymxs.runtime.copy(matrix.scalePart)
+    matrix = getMatrix(node)
 
-    if sum(scale) == 3.0:
+    if controllerutils.isListController(scaleController):
 
-        return
+        # Ensure sub-controllers have the correct names
+        #
+        success = controllerutils.ensureFrozenNames(scaleController)
 
-    # Freeze scale controller
-    #
-    scaleController = pymxs.runtime.getPropertyController(transformController, 'Scale')
+        if not success:
 
-    frozenController = None
-    zeroController = None
+            log.warning('Unable to freeze "$%s.scale" controller!' % node.name)
+            return
 
-    if not controllerutils.isListController(scaleController):
+        # Check if frozen scale requires updating
+        #
+        frozenController = pymxs.runtime.getPropertyController(scaleController, 'Frozen_Scale')
+        zeroController = pymxs.runtime.getPropertyController(scaleController, 'Zero_Scale_XYZ')
+
+        if not isClose(frozenController.value, matrix.scalePart):
+
+            log.info('Freezing "$%s.scale" controller!' % node.name)
+            frozenController.value = matrix.scalePart
+            zeroController.value = pymxs.runtime.Point3(1.0, 1.0, 1.0)
+
+        else:
+
+            log.debug('Skipping "$%s.scale" controller!' % node.name)
+
+    else:
+
+        # Create new scale-list
+        # This will append the current controller to the new list!
+        #
+        log.info('Freezing "$%s.scale" controller!' % node.name)
 
         scaleController = pymxs.runtime.Scale_List()
         pymxs.runtime.setPropertyController(transformController, 'Scale', scaleController)
-        controllerutils.clearListController(scaleController)
 
+        controllerutils.clearListController(scaleController)  # Removes pre-existing sub-controllers
+
+        # Add frozen scale sub-controller
+        #
         frozenController = pymxs.runtime.Bezier_Scale()
         pymxs.runtime.setPropertyController(scaleController, 'Available', frozenController)
         scaleController.setName(1, 'Frozen Scale')
 
-        zeroController = pymxs.runtime.ScaleXYZ()
+        # Add zero scale sub-controller
+        #
+        zeroController = pymxs.runtime.Scale_XYZ()
         pymxs.runtime.setPropertyController(scaleController, 'Available', zeroController)
         scaleController.setName(2, 'Zero Scale XYZ')
 
+        # Update active controller
+        #
         scaleController.setActive(2)
+
+
+def requiresFreezing(node):
+    """
+    Evaluates if the supplied node requires freezing.
+
+    :type node: pymxs.MXSWrapperBase
+    :rtype: bool
+    """
+
+    # Evaluate if this is a valid node
+    #
+    if not pymxs.runtime.isValidNode(node):
+
+        return False
+
+    # Evaluate transform controller
+    # Only PRS controllers can be frozen!
+    #
+    transformController = controllerutils.getPRSController(node)
+
+    if not pymxs.runtime.isKindOf(transformController, pymxs.runtime.PRS):
+
+        return False
+
+    # Decompose PRS controller
+    #
+    positionController, rotationController, scaleController = controllerutils.decomposePRSController(transformController)
+
+    # Evaluate position controller
+    #
+    positionList = controllerutils.ensureControllerByClass(positionController, pymxs.runtime.Position_List)
+    success = controllerutils.ensureFrozenNames(positionList)
+
+    matrix = getMatrix(node)
+
+    if controllerutils.isListController(positionList) and success:
+
+        # Evaluate frozen sub-controller
+        #
+        frozenController = pymxs.runtime.getPropertyController(positionList, 'Frozen_Position')
+
+        if not isClose(frozenController.value, matrix.translationPart):
+
+            return True
 
     else:
 
-        frozenController = pymxs.runtime.getPropertyController(scaleController, 'Frozen Scale')
-        zeroController = pymxs.runtime.getPropertyController(scaleController, 'Zero Scale XYZ')
+        return True
 
-    # Update frozen scale
+    # Evaluate rotation controller
     #
-    frozenController.value = scale
-    zeroController.value = [1.0, 1.0, 1.0]
+    rotationList = controllerutils.ensureControllerByClass(rotationController, pymxs.runtime.Rotation_List)
+    success = controllerutils.ensureFrozenNames(rotationList)
+
+    if controllerutils.isListController(rotationList) and success:
+
+        # Evaluate frozen sub-controller
+        #
+        frozenController = pymxs.runtime.getPropertyController(rotationList, 'Frozen_Rotation')
+
+        if not isClose(frozenController.value, matrix.rotationPart):
+
+            return True
+
+    else:
+
+        return True
+
+    return False
+
+
+def freezePreferredRotation(controller):
+    """
+    Freezes the preferred angles on the supplied IK controller.
+
+    :type controller: pymxs.runtime.MXSWrapperBase
+    :rtype: None
+    """
+
+    # Check if this is an ik-controller
+    #
+    if not pymxs.runtime.isKindOf(controller, pymxs.runtime.IKControl):
+
+        raise TypeError('freezePreferredAngles() expects an IKControl!')
+
+    # Get local rotation
+    #
+    node = pymxs.runtime.refs.dependentNodes(controller, firstOnly=True)
+    matrix = getMatrix(node)
+
+    eulerAngles = pymxs.runtime.quatToEuler(matrix.rotationPart)
+
+    # Update preferred rotation
+    #
+    log.info('Freezing "%s" ik-control\'s preferred rotation!' % node.name)
+
+    controller.preferred_rotation_x = eulerAngles.x
+    controller.preferred_rotation_y = eulerAngles.y
+    controller.preferred_rotation_z = eulerAngles.z
+
+
+def isArray(value):
+    """
+    Evaluates if the supplied value is an array.
+
+    :type value: Any
+    :rtype: bool
+    """
+
+    return hasattr(value, '__getitem__') and hasattr(value, '__len__')
+
+
+def isClose(value, otherValue, rel_tol=1e-3, abs_tol=1e-3):
+    """
+    Evaluates if the two values are close.
+
+    :type value: Union[int, float, pymxs.MXSWrapperBase]
+    :type otherValue: Union[int, float, pymxs.MXSWrapperBase]
+    :type rel_tol: float
+    :type abs_tol: float
+    :rtype: bool
+    """
+
+    # Evaluate value type
+    #
+    if isinstance(value, (int, float)) and isinstance(otherValue, (int, float)):
+
+        return math.isclose(value, otherValue, rel_tol=rel_tol, abs_tol=abs_tol)
+
+    elif pymxs.runtime.isKindOf(value, pymxs.runtime.Point3) and pymxs.runtime.isKindOf(otherValue, pymxs.runtime.Point3):
+
+        return all(
+            [
+                isClose(value.x, otherValue.x, rel_tol=rel_tol, abs_tol=abs_tol),
+                isClose(value.y, otherValue.y, rel_tol=rel_tol, abs_tol=abs_tol),
+                isClose(value.z, otherValue.z, rel_tol=rel_tol, abs_tol=abs_tol)
+            ]
+        )
+
+    elif pymxs.runtime.isKindOf(value, pymxs.runtime.Quat) and pymxs.runtime.isKindOf(otherValue, pymxs.runtime.Quat):
+
+        return all(
+            [
+                isClose(value.x, otherValue.x, rel_tol=rel_tol, abs_tol=abs_tol),
+                isClose(value.y, otherValue.y, rel_tol=rel_tol, abs_tol=abs_tol),
+                isClose(value.z, otherValue.z, rel_tol=rel_tol, abs_tol=abs_tol),
+                isClose(value.w, otherValue.w, rel_tol=rel_tol, abs_tol=abs_tol),
+            ]
+        )
+
+    elif pymxs.runtime.isKindOf(value, pymxs.runtime.Matrix3) and pymxs.runtime.isKindOf(otherValue, pymxs.runtime.Matrix3):
+
+        return all(
+            [
+                isClose(value.row1, otherValue.row1, rel_tol=rel_tol, abs_tol=abs_tol),
+                isClose(value.row2, otherValue.row2, rel_tol=rel_tol, abs_tol=abs_tol),
+                isClose(value.row3, otherValue.row3, rel_tol=rel_tol, abs_tol=abs_tol),
+                isClose(value.row4, otherValue.row4, rel_tol=rel_tol, abs_tol=abs_tol)
+            ]
+        )
+
+    else:
+
+        raise TypeError('isClose() expects a pair of numerical values!')
+
+
+def resetTransform(node):
+    """
+    Resets the transform controller on the supplied node.
+
+    :type node: pymxs.MXSWrapperBase
+    :rtype: None
+    """
+
+    transformController = pymxs.runtime.getTMController(node)
+    transformController.value = pymxs.runtime.Matrix3(1)
+
+
+def resetObjectTransform(node):
+    """
+    Resets the object transform on the supplied node.
+
+    :type node: pymxs.MXSWrapperBase
+    :rtype: None
+    """
+
+    node.objectOffsetPos = pymxs.runtime.Point3(0.0, 0.0, 0.0)
+    node.objectOffsetRot = pymxs.runtime.Quat(1)
+    node.objectOffsetScale = pymxs.runtime.Point3(1.0, 1.0, 1.0)
 
 
 def decomposeTransformNode(node, worldSpace=False):
@@ -839,7 +1119,7 @@ def decomposeTransformMatrix(matrix, rotateOrder=1):
     return translation, eulerRotation, scale
 
 
-def decomposeMatrix(matrix, normalize=False):
+def breakMatrix(matrix, normalize=False):
     """
     Breaks the matrix down into the XYZ axis vectors.
 
