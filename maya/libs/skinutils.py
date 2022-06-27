@@ -428,7 +428,7 @@ def resetPreBindMatrices(skinCluster):
     #
     fnDependNode = om.MFnDependencyNode(skinCluster)
 
-    plug = fnDependNode.findPlug('bindPreMatrix', False)
+    plug = fnDependNode.findPlug('bindPreMatrix', True)
     numElements = plug.evaluateNumElements()
 
     for i in range(numElements):
@@ -448,11 +448,12 @@ def resetPreBindMatrices(skinCluster):
 
             continue
 
-        # Get inverse matrix from influence-
+        # Get world inverse matrix from influence
         #
-        fnDagNode = om.MFnDagNode(influence)
+        dagPath = om.MDagPath.getAPathTo(influence)
+        fnDagNode = om.MFnDagNode(dagPath)
 
-        matrixList = mc.getAttr('%s.worldInverseMatrix[0]' % fnDagNode.fullPathName())
+        matrixList = mc.getAttr('%s.worldInverseMatrix[%s]' % (fnDagNode.fullPathName(), dagPath.instanceNumber()))
         mc.setAttr(attributeName, matrixList, type='matrix')
 
 
