@@ -8,198 +8,156 @@ log.setLevel(logging.INFO)
 
 
 # region Getters
-def getBoolean(plug):
+def getBoolean(plug, context=om.MDGContext.kNormal):
     """
     Gets the boolean value from the supplied plug.
 
     :type plug: om.MPlug
+    :type context: om.MDGContext
     :rtype: bool
     """
 
-    return plug.asBool()
+    return plug.asBool(context=context)
 
 
-def getInteger(plug):
+def getInteger(plug, context=om.MDGContext.kNormal):
     """
     Gets the integer value from the supplied plug.
 
     :type plug: om.MPlug
+    :type context: om.MDGContext
     :rtype: int
     """
 
-    return plug.asInt()
+    return plug.asInt(context=context)
 
 
-def get2Integers(plug):
-    """
-    Gets the 2 integer values from the supplied plug.
-
-    :type plug: om.MPlug
-    :rtype: tuple[int, int]
-    """
-
-    return plug.child(0).asInt(), plug.child(1).asInt()
-
-
-def get3Integers(plug):
-    """
-    Gets the 3 integer values from the supplied plug.
-
-    :type plug: om.MPlug
-    :rtype: tuple[int, int, int]
-    """
-
-    return plug.child(0).asInt(), plug.child(1).asInt(), plug.child(2).asInt()
-
-
-def getFloat(plug):
+def getFloat(plug, context=om.MDGContext.kNormal):
     """
     Gets the float value from the supplied plug.
 
     :type plug: om.MPlug
+    :type context: om.MDGContext
     :rtype: float
     """
 
-    return plug.asFloat()
+    return plug.asFloat(context=context)
 
 
-def get2Floats(plug):
-    """
-    Gets the 2 float values from the supplied plug.
-
-    :type plug: om.MPlug
-    :rtype: tuple[float, float]
-    """
-
-    return plug.child(0).asFloat(), plug.child(1).asFloat()
-
-
-def get3Floats(plug):
-    """
-    Gets the 3 float values from the supplied plug.
-
-    :type plug: om.MPlug
-    :rtype: tuple[float, float, float]
-    """
-
-    return plug.child(0).asFloat(), plug.child(1).asFloat(), plug.child(2).asFloat()
-
-
-def get4Floats(plug):
-    """
-    Gets the 4 float values from the supplied plug.
-
-    :type plug: om.MPlug
-    :rtype: tuple[float, float, float, float]
-    """
-
-    return plug.child(0).asFloat(), plug.child(1).asFloat(), plug.child(2).asFloat(), plug.child(3).asFloat()
-
-
-def getMatrix(plug):
+def getMatrix(plug, context=om.MDGContext.kNormal):
     """
     Gets the matrix value from the supplied plug.
 
     :type plug: om.MPlug
+    :type context: om.MDGContext
     :rtype: om.MMatrix
     """
 
-    return om.MFnMatrixData(plug.asMObject()).matrix()
+    return om.MFnMatrixData(plug.asMObject(context=context)).matrix()
 
 
-def getMatrixArray(plug):
+def getMatrixArray(plug, context=om.MDGContext.kNormal):
     """
     Gets the matrix array from the supplied plug.
 
     :type plug: om.MPlug
+    :type context: om.MDGContext
     :rtype: om.MMatrixArray
     """
 
-    return om.MFnMatrixArrayData(plug.asMObject()).array()
+    return om.MFnMatrixArrayData(plug.asMObject(context=context)).array()
 
 
-def getDoubleArray(plug):
+def getDoubleArray(plug, context=om.MDGContext.kNormal):
     """
     Gets the float array from the supplied plug.
 
     :type plug: om.MPlug
+    :type context: om.MDGContext
     :rtype: om.MDoubleArray
     """
 
-    return om.MFnDoubleArrayData(plug.asMObject()).array()
+    return om.MFnDoubleArrayData(plug.asMObject(context=context)).array()
 
 
-def getMObject(plug):
+def getMObject(plug, context=om.MDGContext.kNormal):
     """
     Gets the MObject from the supplied plug.
 
     :type plug: om.MPlug
+    :type context: om.MDGContext
     :rtype: om.MObject
     """
 
-    return plug.asMObject()
+    return plug.asMObject(context=context)
 
 
-def getString(plug):
+def getString(plug, context=om.MDGContext.kNormal):
     """
     Gets the string value from the supplied plug.
 
     :type plug: om.MPlug
+    :type context: om.MDGContext
     :rtype: str
     """
 
-    return plug.asString()
+    return plug.asString(context=context)
 
 
-def getStringArray(plug):
+def getStringArray(plug, context=om.MDGContext.kNormal):
     """
     Gets the string array from the supplied plug.
 
     :type plug: om.MPlug
+    :type context: om.MDGContext
     :rtype: om.MStringArray
     """
 
-    return om.MFnStringArrayData(plug.asMObject()).array()
+    return om.MFnStringArrayData(plug.asMObject(context=context)).array()
 
 
-def getMAngle(plug):
+def getMAngle(plug, context=om.MDGContext.kNormal):
     """
     Gets the MAngle value from the supplied plug.
 
     :type plug: om.MPlug
+    :type context: om.MDGContext
     :rtype: om.MAngle
     """
 
-    return plug.asMAngle()
+    return plug.asMAngle(context=context)
 
 
-def getMDistance(plug):
+def getMDistance(plug, context=om.MDGContext.kNormal):
     """
     Gets the MDistance value from the supplied plug.
 
     :type plug: om.MPlug
+    :type context: om.MDGContext
     :rtype: om.MDistance
     """
 
-    return plug.asMDistance()
+    return plug.asMDistance(context=context)
 
 
-def getMTime(plug):
+def getMTime(plug, context=om.MDGContext.kNormal):
     """
     Gets the MTime value from the supplied plug.
 
     :type plug: om.MPlug
+    :type context: om.MDGContext
     :rtype: om.MTime
     """
 
-    return plug.asMTime()
+    return plug.asMTime(context=context)
 
 
-def getMessage(plug):
+def getMessage(plug, context=om.MDGContext.kNormal):
     """
     Gets the connected message plug node.
 
     :type plug: om.MPlug
+    :type context: om.MDGContext
     :rtype: om.MObject
     """
 
@@ -214,11 +172,12 @@ def getMessage(plug):
         return om.MObject.kNullObj
 
 
-def getCompound(plug):
+def getCompound(plug, context=om.MDGContext.kNormal):
     """
     Returns all the child values from the compound plug.
 
     :type plug: om.MPlug
+    :type context: om.MDGContext
     :rtype: dict
     """
 
@@ -230,7 +189,7 @@ def getCompound(plug):
         child = plug.child(i)
         childName = child.partialName(useLongNames=True)
 
-        values[childName] = getValue(child)
+        values[childName] = getValue(child, context=context)
 
     return values
 
@@ -239,21 +198,10 @@ __get_numeric_value__ = {
     om.MFnNumericData.kByte: getInteger,
     om.MFnNumericData.kBoolean: getBoolean,
     om.MFnNumericData.kShort: getInteger,
-    om.MFnNumericData.k2Short: get2Integers,
-    om.MFnNumericData.k3Short: get3Integers,
     om.MFnNumericData.kLong: getInteger,
-    om.MFnNumericData.k2Long: get2Integers,
-    om.MFnNumericData.k3Long: get3Integers,
     om.MFnNumericData.kInt: getInteger,
-    om.MFnNumericData.k2Int: get2Integers,
-    om.MFnNumericData.k3Int: get3Integers,
     om.MFnNumericData.kFloat: getFloat,
-    om.MFnNumericData.k2Float: get2Floats,
-    om.MFnNumericData.k3Float: get3Floats,
     om.MFnNumericData.kDouble: getFloat,
-    om.MFnNumericData.k2Double: get2Floats,
-    om.MFnNumericData.k3Double: get3Floats,
-    om.MFnNumericData.k4Double: get4Floats,
     om.MFnNumericData.kMatrix: getMatrix
 }
 
@@ -354,24 +302,17 @@ __get_value__ = {
     om.MFn.kMatrixAttribute: getMatrix,
     om.MFn.kMessageAttribute: getMessage,
     om.MFn.kCompoundAttribute: getCompound,
-    om.MFn.kAttribute2Double: get2Floats,
-    om.MFn.kAttribute3Double: get3Floats,
-    om.MFn.kAttribute4Double: get4Floats,
-    om.MFn.kAttribute2Float: get2Floats,
-    om.MFn.kAttribute3Float: get3Floats,
-    om.MFn.kAttribute2Int: get2Integers,
-    om.MFn.kAttribute3Int: get3Integers,
-    om.MFn.kAttribute2Short: get2Integers,
-    om.MFn.kAttribute3Short: get3Integers
+    om.MFn.kDoubleAngleAttribute: getMAngle,
+    om.MFn.kDoubleLinearAttribute: getMDistance
 }
 
 
-def getValue(plug, context=om.MDGContext.kNormal):
+def getValue(plug, convertUnits=True, context=om.MDGContext.kNormal):
     """
     Gets the value from the supplied plug.
-    TODO: Implement context flag into get value methods.
 
     :type plug: om.MPlug
+    :type convertUnits: bool
     :type context: om.MDGContext
     :rtype: object
     """
@@ -382,7 +323,7 @@ def getValue(plug, context=om.MDGContext.kNormal):
 
         return None
 
-    # Check if this is an array plug
+    # Evaluate plug type
     #
     if plug.isArray and not plug.isElement:
 
@@ -391,28 +332,76 @@ def getValue(plug, context=om.MDGContext.kNormal):
         indices = plug.getExistingArrayAttributeIndices()
         numIndices = len(indices)
 
-        values = [None] * numIndices
+        plugValues = [None] * numIndices
 
         for (physicalIndex, logicalIndex) in enumerate(indices):
 
             element = plug.elementByLogicalIndex(logicalIndex)
-            values[physicalIndex] = getValue(element)
+            plugValues[physicalIndex] = getValue(element, convertUnits=convertUnits, context=context)
 
-        return values
+        return plugValues
+
+    elif isCompoundNumeric(plug):
+
+        # Return list of values from parent plug
+        #
+        return [getValue(plug.child(i), convertUnits=convertUnits, context=context) for i in range(plug.numChildren())]
 
     else:
 
+        # Get value from plug
+        # Check if units should also be converted
+        #
         attributeType = plugutils.getApiType(plug)
-        return __get_value__[attributeType](plug)
+        plugValue = __get_value__[attributeType](plug)
+
+        if convertUnits and isinstance(plugValue, (om.MDistance, om.MAngle, om.MTime)):
+
+            return plugValue.value
+
+        else:
+
+            return plugValue
+
+
+def isCompoundNumeric(plug):
+    """
+    Evaluates if the supplied plug represents a compound numeric value.
+
+    :type plug: om.MPlug
+    :rtype: bool
+    """
+
+    # Check if the plug has children
+    #
+    if plug.isCompound:
+
+        return all([isNumeric(plug.child(i)) for i in range(plug.numChildren())])
+
+    else:
+
+        return False
+
+
+def isNumeric(plug):
+    """
+    Evaluates if the supplied plug is numeric.
+
+    :type plug: om.MPlug
+    :rtype: bool
+    """
+
+    attribute = plug.attribute()
+    return attribute.hasFn(om.MFn.kNumericAttribute) or attribute.hasFn(om.MFn.kUnitAttribute)
 
 
 def getAliases(dependNode):
     """
-    Returns a dictionary of all of the attribute aliases belonging to the supplied node.
+    Returns a dictionary of all the attribute aliases belonging to the supplied node.
     The keys represent the alias name and the values represent the original name.
 
     :type dependNode: om.MObject
-    :rtype: dict[str, str]
+    :rtype: Dict[str, str]
     """
 
     return dict(om.MFnDependencyNode(dependNode).getAliasList())
@@ -495,35 +484,6 @@ def setInteger(plug, value):
 
 
 @toggleLock
-def set2Integers(plug, values):
-    """
-    Updates the 2 integer values for the supplied plug.
-
-    :type plug: om.MPlug
-    :type values: tuple[int, int]
-    :rtype: None
-    """
-
-    plug.child(0).setInt(int(values[0]))
-    plug.child(1).setInt(int(values[1]))
-
-
-@toggleLock
-def set3Integers(plug, values):
-    """
-    Updates the 2 integer values for the supplied plug.
-
-    :type plug: om.MPlug
-    :type values: tuple[int, int, int]
-    :rtype: None
-    """
-
-    plug.child(0).setInt(int(values[0]))
-    plug.child(1).setInt(int(values[1]))
-    plug.child(2).setInt(int(values[2]))
-
-
-@toggleLock
 def setFloat(plug, value):
     """
     Updates the float value for the supplied plug.
@@ -534,51 +494,6 @@ def setFloat(plug, value):
     """
 
     plug.setFloat(float(value))
-
-
-@toggleLock
-def set2Floats(plug, values):
-    """
-    Updates the 2 float values for the supplied plug.
-
-    :type plug: om.MPlug
-    :type values: tuple[float, float]
-    :rtype: None
-    """
-
-    plug.child(0).setFloat(float(values[0]))
-    plug.child(1).setFloat(float(values[1]))
-
-
-@toggleLock
-def set3Floats(plug, values):
-    """
-    Updates the 3 float values for the supplied plug.
-
-    :type plug: om.MPlug
-    :type values: tuple[float, float, float]
-    :rtype: None
-    """
-
-    plug.child(0).setFloat(float(values[0]))
-    plug.child(1).setFloat(float(values[1]))
-    plug.child(2).setFloat(float(values[2]))
-
-
-@toggleLock
-def set4Floats(plug, values):
-    """
-    Updates the 4 float values for the supplied plug.
-
-    :type plug: om.MPlug
-    :type values: tuple[float, float, float, float]
-    :rtype: None
-    """
-
-    plug.child(0).setFloat(float(values[0]))
-    plug.child(1).setFloat(float(values[1]))
-    plug.child(2).setFloat(float(values[2]))
-    plug.child(2).setFloat(float(values[4]))
 
 
 @toggleLock
@@ -761,7 +676,7 @@ def setMAngle(plug, angle):
     #
     if not isinstance(angle, om.MAngle):
 
-        angle = om.MAngle(angle, om.MAngle.kDegrees)
+        angle = om.MAngle(angle, unit=om.MAngle.uiUnit())
 
     return plug.setMAngle(angle)
 
@@ -780,7 +695,7 @@ def setMDistance(plug, distance):
     #
     if not isinstance(distance, om.MDistance):
 
-        distance = om.MDistance(distance, om.MDistance.internalUnit())
+        distance = om.MDistance(distance, unit=om.MDistance.uiUnit())
 
     return plug.setMDistance(distance)
 
@@ -813,13 +728,6 @@ def setMessage(plug, dependNode):
     :type dependNode: om.MObject
     :rtype: None
     """
-
-    # Check for pyNodes
-    # TODO: Implement a more elegant solution!
-    #
-    if hasattr(dependNode, 'object'):
-
-        dependNode = dependNode.object()
 
     # Check api type
     #
@@ -891,21 +799,10 @@ __set_numeric_value__ = {
     om.MFnNumericData.kByte: setInteger,
     om.MFnNumericData.kBoolean: setBoolean,
     om.MFnNumericData.kShort: setInteger,
-    om.MFnNumericData.k2Short: set2Integers,
-    om.MFnNumericData.k3Short: set3Integers,
     om.MFnNumericData.kLong: setInteger,
-    om.MFnNumericData.k2Long: set2Integers,
-    om.MFnNumericData.k3Long: set3Integers,
     om.MFnNumericData.kInt: setInteger,
-    om.MFnNumericData.k2Int: set2Integers,
-    om.MFnNumericData.k3Int: set3Integers,
     om.MFnNumericData.kFloat: setFloat,
-    om.MFnNumericData.k2Float: set2Floats,
-    om.MFnNumericData.k3Float: set3Floats,
     om.MFnNumericData.kDouble: setFloat,
-    om.MFnNumericData.k2Double: set2Floats,
-    om.MFnNumericData.k3Double: set3Floats,
-    om.MFnNumericData.k4Double: set4Floats,
     om.MFnNumericData.kMatrix: setMatrix
 }
 
@@ -999,7 +896,7 @@ def setValue(plug, value, force=False):
     An optional force flag can be supplied to unlock the node before setting.
 
     :type plug: om.MPlug
-    :type value: Union[object, list]
+    :type value: Any
     :type force: bool
     :rtype: None
     """
@@ -1010,7 +907,7 @@ def setValue(plug, value, force=False):
 
         return None
 
-    # Check if this is an array plug
+    # Evaluate plug type
     #
     if plug.isArray and not plug.isElement:
 
@@ -1050,10 +947,14 @@ def setValue(plug, value, force=False):
 
             plugutils.removeMultiInstances(plug, list(range(numItems, numElements)))
 
+    elif plug.isCompound:
+
+        setCompound(plug, value)
+
     else:
 
         attributeType = plugutils.getApiType(plug)
-        return __set_value__[attributeType](plug, value, force=force)
+        __set_value__[attributeType](plug, value, force=force)
 
 
 def resetValue(plug):
