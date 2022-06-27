@@ -70,6 +70,27 @@ class Singleton(with_metaclass(ABCMeta, object)):
         return all([hasattr(self, attr) for attr in self.__class__.__slots__])
 
     @classmethod
+    def creator(cls):
+        """
+        Returns a new instance of this class.
+        Overload this method to change the way instances are created.
+
+        :rtype: Singleton
+        """
+
+        return cls()
+
+    @classmethod
+    def hasInstance(cls):
+        """
+        Evaluates if an instance of this class already exists.
+
+        :rtype: bool
+        """
+
+        return cls.className in cls.__instances__
+
+    @classmethod
     def getInstance(cls):
         """
         Returns an instance of this class.
@@ -77,7 +98,13 @@ class Singleton(with_metaclass(ABCMeta, object)):
         :rtype: Singleton
         """
 
-        return cls.__instances__.get(cls.className)
+        if cls.hasInstance():
+
+            return cls.__instances__.get(cls.className)
+
+        else:
+
+            return cls.creator()
 
     def weakReference(self):
         """
