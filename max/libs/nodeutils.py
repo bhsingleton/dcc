@@ -143,6 +143,24 @@ def isUniqueName(name):
     return pymxs.runtime.getNodeByName(name, exact=True, ignoreCase=False, all=True).count <= 1
 
 
+def getAnimHandle(obj):
+    """
+    Returns the handle for the given animatable.
+    This method exists to circumvent a bug in 3ds Max 2019 where pymxs used to return a float rather than an int.
+
+    :type obj: pymxs.MXSWrapperBase
+    :rtype: int
+    """
+
+    if pymxs.runtime.isValidObj(obj):
+
+        return int(pymxs.runtime.getHandleByAnim(obj))
+
+    else:
+
+        return None
+
+
 def getPartialPathTo(node):
     """
     Returns the shortest path that can safely be used for name lookups.
@@ -155,7 +173,7 @@ def getPartialPathTo(node):
     #
     if not pymxs.runtime.isValidNode(node):
 
-        return ''
+        return None
 
     # Check if node name is unique
     #
@@ -186,7 +204,7 @@ def getFullPathTo(node):
 
     else:
 
-        return ''
+        return None
 
 
 def iterParents(node):
