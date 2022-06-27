@@ -273,7 +273,8 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         :rtype: None
         """
 
-        skinutils.resetPreBindMatrices(self.object())
+        skinutils.resetMeshBindMatrix(self.object())
+        skinutils.resetBoneBindMatrices(self.object())
 
     def resetIntermediateObject(self):
         """
