@@ -226,12 +226,16 @@ def setEulerRotation(dagPath, rotation, **kwargs):
         raise TypeError('setEulerRotation() expects a valid dag path!')
 
     # Initialize transform function set
+    # Update rotate order
     #
     fnTransform = om.MFnTransform(dagPath)
-    skipRotate = kwargs.get('skipRotate', False)
+
+    rotateOrderPlug = fnTransform.findPlug('rotateOrder', True)
+    rotateOrderPlug.setInt(rotation.order)
 
     # Check if rotateX can be set
     #
+    skipRotate = kwargs.get('skipRotate', False)
     skipRotateX = kwargs.get('skipRotateX', skipRotate)
     rotateXPlug = fnTransform.findPlug('rotateX', True)
 
@@ -438,7 +442,7 @@ def resetScale(dagPath):
 
 def resetPivots(dagPath):
     """
-    Resets all of the pivot components for the given dag path.
+    Resets all the pivot components for the given dag path.
 
     :type dagPath: om.MDagPath
     :rtype: None
@@ -760,7 +764,7 @@ def freezeTranslation(dagPath):
 
     # Create translation matrix
     #
-    translateMatrix = createTranslateMatrix(dagPath)
+    translateMatrix = createTranslateMatrix(dagPath.inclusiveMatrix())
     resetTranslation(dagPath)
 
     # Check if offset requires compounding
@@ -786,7 +790,7 @@ def freezeRotation(dagPath):
 
     # Create rotation matrix
     #
-    rotateMatrix = createRotationMatrix(dagPath)
+    rotateMatrix = createRotationMatrix(dagPath.inclusiveMatrix())
     resetEulerRotation(dagPath)
 
     # Check if offset requires compounding
@@ -815,7 +819,7 @@ def freezeScale(dagPath):
     # Iterate through all descendants
     #
     dagPath = dagutils.getMDagPath(dagPath)
-    scaleMatrix = createScaleMatrix(dagPath)
+    scaleMatrix = createScaleMatrix(dagPath.inclusiveMatrix())
 
     for child in dagutils.iterDescendants(dagPath):
 
@@ -886,6 +890,7 @@ def freezeScale(dagPath):
             controlPoints = fnMesh.getPoints()
 
             for i in range(fnMesh.numVertices):
+
                 controlPoints[i] *= scaleMatrix
 
             fnMesh.setPoints(controlPoints)
@@ -1088,9 +1093,9 @@ def identityMatrixData():
 
 def createTranslateMatrix(value):
     """
-    Creates a position matrix based on the supplied value.
+    Creates a translation matrix based on the supplied value.
 
-    :type value: Union[str, list, tuple, om.MMatrix, om.MVector, om.MPoint]
+    :type value: Union[str, list, tuple, om.MVector, om.MPoint, om.MMatrix]
     :rtype: om.MMatrix
     """
 
@@ -1117,18 +1122,6 @@ def createTranslateMatrix(value):
 
         return createTranslateMatrix([value.getElement(3, 0), value.getElement(3, 1), value.getElement(3, 2)])
 
-    elif isinstance(value, om.MTransformationMatrix):
-
-        return createTranslateMatrix(value.asMatrix())
-
-    elif isinstance(value, string_types) or isinstance(value, (om.MObject, om.MDagPath)):
-
-        return createTranslateMatrix(getTranslation(value))
-
-    elif isinstance(value, (om.MObject, om.MDagPath)):
-
-        return createTranslateMatrix(getTranslation(value))
-
     else:
 
         raise TypeError('createTranslateMatrix() expects an MVector (%s given)!' % type(value).__name__)
@@ -1139,80 +1132,26 @@ def createRotationMatrix(value):
     Creates a rotation matrix based on the supplied value.
     Degrees should not be used for any of these methods!
 
-    :type value: Union[str, list, tuple, om.MEulerRotation, om.MMatrix, om.MTransformationMatrix]
+    :type value: Union[list, tuple, om.MEulerRotation, om.MQuaternion, om.MMatrix]
     :rtype: om.MMatrix
     """
 
-    # Check variable type
+    # Evaluate value type
     #
     if isinstance(value, om.MEulerRotation):
 
-        # Compose rotation components
-        #
-        rotateXMatrix = om.MMatrix(
-            [
-                (1.0, 0.0, 0.0, 0.0),
-                (0.0, math.cos(value.x), math.sin(value.x), 0.0),
-                (0.0, -math.sin(value.x), math.cos(value.x), 0.0),
-                (0.0, 0.0, 0.0, 1.0)
-            ]
-        )
-
-        rotateYMatrix = om.MMatrix(
-            [
-                (math.cos(value.y), 0.0, -math.sin(value.y), 0.0),
-                (0.0, 1.0, 0.0, 0.0),
-                (math.sin(value.y), 0.0, math.cos(value.y), 0.0),
-                (0.0, 0.0, 0.0, 1.0)
-            ]
-        )
-
-        rotateZMatrix = om.MMatrix(
-            [
-                (math.cos(value.z), math.sin(value.z), 0.0, 0.0),
-                (-math.sin(value.z), math.cos(value.z), 0.0, 0.0),
-                (0.0, 0.0, 1.0, 0.0),
-                (0.0, 0.0, 0.0, 1.0)
-            ]
-        )
-
-        # Multiply components based on rotation order
-        #
-        rotateMatrix = om.MMatrix.kIdentity
-
-        if value.order == om.MEulerRotation.kXYZ:  # xyz
-
-            rotateMatrix = rotateXMatrix * rotateYMatrix * rotateZMatrix
-
-        elif value.order == om.MEulerRotation.kYZX:  # yzx
-
-            rotateMatrix = rotateYMatrix * rotateZMatrix * rotateXMatrix
-
-        elif value.order == om.MEulerRotation.kZXY:  # zxy
-
-            rotateMatrix = rotateZMatrix * rotateXMatrix * rotateYMatrix
-
-        elif value.order == om.MEulerRotation.kXZY:  # xzy
-
-            rotateMatrix = rotateXMatrix * rotateZMatrix * rotateYMatrix
-
-        elif value.order == om.MEulerRotation.kYXZ:  # yxz
-
-            rotateMatrix = rotateYMatrix * rotateXMatrix * rotateZMatrix
-
-        elif value.order == om.MEulerRotation.kZYX:  # zyx
-
-            rotateMatrix = rotateZMatrix * rotateYMatrix * rotateXMatrix
-
-        else:
-
-            raise TypeError('createRotationMatrix() expects a valid rotation order (%s given)!' % value.order)
-
-        return rotateMatrix
+        return value.asMatrix()
 
     elif isinstance(value, om.MQuaternion):
 
         return value.asMatrix()
+
+    elif isinstance(value, (list, tuple)):
+
+        radians = [math.radians(x) for x in value]
+        eulerRotation = om.MEulerRotation(radians, order=EULER_ROTATE_ORDER[0])
+
+        return eulerRotation.asMatrix()
 
     elif isinstance(value, om.MMatrix):
 
@@ -1224,18 +1163,6 @@ def createRotationMatrix(value):
                 (0.0, 0.0, 0.0, 1.0)
             ]
         )
-
-    elif isinstance(value, om.MTransformationMatrix):
-
-        return createRotationMatrix(value.asMatrix())
-
-    elif isinstance(value, (list, tuple)):
-
-        return createRotationMatrix(om.MEulerRotation([math.radians(x) for x in value], EULER_ROTATE_ORDER[0]))
-
-    elif isinstance(value, string_types) or isinstance(value, (om.MObject, om.MDagPath)):
-
-        return createRotationMatrix(getEulerRotation(value))
 
     else:
 
@@ -1340,7 +1267,7 @@ def createAimMatrix(forwardAxis, forwardVector, upAxis, upVector, startPoint=om.
 
 def createAxisMatrix(axis):
     """
-    Creates a rotation matrix to get to the given axis vector.
+    Returns a rotation matrix to the specified axis vector.
 
     :type axis: om.MVector
     :rtype: om.MMatrix
@@ -1349,11 +1276,40 @@ def createAxisMatrix(axis):
     return om.MVector.kXaxisVector.rotateTo(axis).asMatrix()
 
 
+def createTwistMatrix(twist, axis=om.MVector.kXaxis):
+    """
+    Returns a twist matrix around the specified axis.
+    The twist is expected to be in degrees!
+
+    :type twist: float
+    :type axis: int
+    :rtype: om.MMatrix
+    """
+
+    # Evaluate twist axis
+    #
+    if axis == om.MVector.kXaxis:
+
+        return createRotationMatrix([twist, 0.0, 0.0])
+
+    elif axis == om.MVector.kYaxis:
+
+        return createRotationMatrix([0.0, twist, 0.0])
+
+    elif axis == om.MVector.kZaxis:
+
+        return createRotationMatrix([0.0, 0.0, twist])
+
+    else:
+
+        raise TypeError('createTwistMatrix() expects a valid axis (%s given)!' % axis)
+
+
 def createScaleMatrix(value):
     """
-    Creates a scale matrix based on the supplied value.
+    Returns a scale matrix based on the supplied value.
 
-    :type value: Union[str, list, tuple, om.MMatrix, om.MVector]
+    :type value: Union[str, list, tuple, om.MVector, om.MMatrix]
     :rtype: om.MMatrix
     """
 
@@ -1382,16 +1338,8 @@ def createScaleMatrix(value):
 
     elif isinstance(value, om.MMatrix):
 
-        x, y, z, p = decomposeMatrix(value)
+        x, y, z, p = breakMatrix(value)
         return createScaleMatrix([x.length(), y.length(), z.length()])
-
-    elif isinstance(value, om.MTransformationMatrix):
-
-        return createScaleMatrix(value.asMatrix())
-
-    elif isinstance(value, string_types) or isinstance(value, (om.MObject, om.MDagPath)):
-
-        return createScaleMatrix(getScale(value))
 
     elif isinstance(value, (int, float)):
 
@@ -1468,11 +1416,32 @@ def decomposeTransformMatrix(matrix, rotateOrder=om.MEulerRotation.kXYZ):
         raise TypeError('decomposeMatrix() expects an MMatrix (%s given)!' % type(matrix).__name__)
 
 
-def decomposeMatrix(value, normalize=False):
+def composeMatrix(xAxis, yAxis, zAxis, position):
     """
-    Breaks apart value into axis vectors and a position.
+    Returns a transform matrix using the supplied axis vectors and position.
 
-    :type value: Union[str, list, tuple, om.MTransformationMatrix, om.MFnMatrixData, om.MMatrix]
+    :type xAxis: om.MVector
+    :type yAxis: om.MVector
+    :type zAxis: om.MVector
+    :type position: Union[om.MVector, om.MPoint]
+    :rtype: om.MMatrix
+    """
+
+    return om.MMatrix(
+        [
+            (xAxis.x, xAxis.y, xAxis.z, 0.0),
+            (yAxis.x, yAxis.y, yAxis.z, 0.0),
+            (zAxis.x, zAxis.y, zAxis.z, 0.0),
+            (position.x, position.y, position.z, 1.0)
+        ]
+    )
+
+
+def breakMatrix(value, normalize=False):
+    """
+    Returns the axis vectors and position from the supplied matrix.
+
+    :type value: Union[str, list, tuple, om.MObject, om.MMatrix]
     :type normalize: bool
     :rtype: om.MVector, om.MVector, om.MVector, om.MPoint
     """
@@ -1500,23 +1469,56 @@ def decomposeMatrix(value, normalize=False):
 
     if isinstance(value, string_types):
 
-        return decomposeMatrix(om.MMatrix(mc.getAttr('%s.worldMatrix[0]' % value)))
+        return breakMatrix(om.MMatrix(mc.getAttr('%s.matrix' % value)))
 
     elif isinstance(value, (list, tuple)):
 
-        return decomposeMatrix(om.MMatrix(value))
+        return breakMatrix(om.MMatrix(value))
 
-    elif isinstance(value, om.MTransformationMatrix):
+    elif isinstance(value, om.MObject):
 
-        return decomposeMatrix(value.asMatrix())
-
-    elif isinstance(value, om.MFnMatrixData):
-
-        return decomposeMatrix(value.matrix())
+        return breakMatrix(om.MFnMatrixData(value).matrix())
 
     else:
 
         raise ValueError('getAxisVectors() expects an MMatrix (%s given)!' % type(value).__name__)
+
+
+def isArray(value):
+    """
+    Evaluates if the supplied value is an array.
+
+    :type value: Any
+    :rtype: bool
+    """
+
+    return hasattr(value, '__getitem__') and hasattr(value, '__len__')
+
+
+def isClose(value, otherValue, rel_tol=1e-3, abs_tol=1e-3):
+    """
+    Evaluates if the two values are close.
+
+    :type value: Union[int, float, list, om.MVector, om.MPoint, om.MMatrix]
+    :type otherValue: Union[int, float, list, om.MVector, om.MPoint, om.MMatrix]
+    :type rel_tol: float
+    :type abs_tol: float
+    :rtype: bool
+    """
+
+    # Evaluate value types
+    #
+    if isinstance(value, (int, float)) and isinstance(otherValue, (int, float)):
+
+        return abs(value - otherValue) <= max(rel_tol * max(abs(value), abs(otherValue)), abs_tol)
+
+    elif isArray(value) and isArray(otherValue):
+
+        return all([isClose(x, y, rel_tol=rel_tol, abs_tol=abs_tol) for (x, y) in zip(value, otherValue)])
+
+    else:
+
+        raise TypeError('isClose() expects either a float or an array!')
 
 
 def getMeshComponentCenter(dagPath, component, space=om.MSpace.kTransform):
