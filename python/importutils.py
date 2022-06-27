@@ -69,13 +69,13 @@ def iterPackage(packagePath, forceReload=False):
     #
     if not os.path.exists(packagePath):
 
-        raise TypeError('Unable to locate package: %s' % packagePath)
+        raise TypeError('iterPackage() cannot locate package: %s' % packagePath)
 
     # Check if this is a file
     #
     if os.path.isfile(packagePath):
 
-        packagePath = os.path.split(packagePath)[0]
+        packagePath = os.path.dirname(packagePath)
 
     # Iterate through module files inside package
     #
