@@ -151,8 +151,7 @@ def connectPlugs(source, destination, force=False):
 
         else:
 
-            log.debug('Unable to break connection @ %s' % destination.info)
-            return
+            raise RuntimeError('connectPlugs() "%s" plug has an incoming connection!' % destination.info)
 
     # Execute dag modifier
     #
