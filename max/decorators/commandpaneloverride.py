@@ -55,7 +55,7 @@ class CommandPanelOverride(abstractdecorator.AbstractDecorator):
         if isinstance(self.select, integer_types):
 
             modifier = args[self.select]
-            node = pymxs.runtime.refs.dependentNodes(modifier)[0]
+            node = pymxs.runtime.refs.dependentNodes(modifier, firstOnly=True)
 
             pymxs.runtime.modPanel.setCurrentObject(modifier, node=node)
 
