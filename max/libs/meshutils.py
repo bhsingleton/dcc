@@ -174,6 +174,28 @@ def iterVertices(mesh, indices=None):
 
 
 @coordsysoverride.coordSysOverride(mode='local')
+def setVertices(mesh, indices, points):
+    """
+    Updates the vertex positions for the supplied mesh.
+
+    :type mesh: pymxs.MXSWrapperBase
+    :type indices: List[int]
+    :type points: List[pymxs.runtime.Point3]
+    :rtype: None
+    """
+
+    # Check if this is an editable poly
+    #
+    if isEditablePoly(mesh):
+
+        pymxs.runtime.polyOp.setVert(mesh, indices, points)
+
+    else:
+
+        pymxs.runtime.meshOp.setVert(mesh, indices, points)
+
+
+@coordsysoverride.coordSysOverride(mode='local')
 def iterVertexNormals(mesh, indices=None):
     """
     Returns a generator that yields vertex normals.
