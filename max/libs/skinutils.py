@@ -2,6 +2,7 @@ import pymxs
 
 from dcc.python import stringutils
 from dcc.math import linearalgebra
+from dcc.max.libs import transformutils, meshutils
 from dcc.generators.inclusiverange import inclusiveRange
 from dcc.max.decorators.commandpaneloverride import commandPanelOverride
 
@@ -245,19 +246,121 @@ def removeInfluence(skin, influenceId):
     pymxs.runtime.skinOps.removeBone(skin, influenceId)
 
 
-@commandPanelOverride(mode='modify', select=0)
-def resetPreBindMatrices(skin):
+def resetSkin(skin):
     """
-    Resets the pre-bind matrices on the associated joints.
+    Resets the associated mesh's transform matrix.
 
+    :type skin: pymxs.MXSWrapperBase
     :rtype: None
     """
 
-    skin.always_deforms = False
-    skin.always_deforms = True
+    # Check if mesh has been frozen
+    #
+    node = pymxs.runtime.refs.dependentNodes(skin, firstOnly=True)
+
+    if transformutils.isFrozen(node):
+
+        log.info('Un-freezing "%s" mesh!' % node.name)
+        transformutils.unfreezeTransform(node)
+
+    # Check if reset is required
+    #
+    meshBindMatrix = pymxs.runtime.skinutils.getMeshBindTM(node)
+    objectMatrix = pymxs.runtime.copy(node.objectTransform) * transformutils.getWorldInverseMatrix(node)
+
+    identityMatrix = pymxs.runtime.Matrix3(1)
+
+    if transformutils.isClose(identityMatrix, meshBindMatrix) and transformutils.isClose(identityMatrix, objectMatrix):
+
+        return
+
+    # Bake transforms into mesh vertices
+    #
+    baseObject = getattr(node, 'baseObject', node)
+
+    verts = [pymxs.runtime.Point3(*point) * (objectMatrix * meshBindMatrix) for point in meshutils.iterVertices(baseObject)]
+    numVerts = len(verts)
+
+    log.info('Baking object-transform on "%s" node into base-object!' % node.name)
+    meshutils.setVertices(baseObject, list(inclusiveRange(1, numVerts, 1)), verts)
+
+    # Ensure mesh has no parent
+    #
+    if node.parent is not None:
+
+        node.parent = None
+
+    # Reset transform matrices
+    #
+    transformutils.resetTransform(node)
+    transformutils.resetObjectTransform(node)
+    resetMeshBindMatrix(skin)
 
 
-@commandPanelOverride(mode='modify', select=0, subObjectLevel=1)
+def resetMeshBindMatrix(skin):
+    """
+    Resets the pre-bind matrix on the associated mesh.
+
+    :type skin: pymxs.MXSWrapperBase
+    :rtype: None
+    """
+
+    # Reset mesh pre-bind matrix
+    #
+    node = pymxs.runtime.refs.dependentNodes(skin, firstOnly=True)
+    worldMatrix = transformutils.getWorldMatrix(node)
+
+    log.info('Resetting mesh-bind matrix on "%s" node!' % node.name)
+    pymxs.runtime.skinutils.setMeshBindTM(node, worldMatrix)
+
+
+def resetBoneBindMatrices(skin):
+    """
+    Resets the pre-bind matrices on the associated joints.
+
+    :type skin: pymxs.MXSWrapperBase
+    :rtype: None
+    """
+
+    # Reset influence pre-bind matrices
+    #
+    node = pymxs.runtime.refs.dependentNodes(skin, firstOnly=True)
+    log.info('Resetting bone-bind matrices on "%s" node!' % node.name)
+
+    for (influenceId, influence) in iterInfluences(skin):
+
+        worldMatrix = transformutils.getWorldMatrix(influence)
+        pymxs.runtime.skinutils.setBoneBindTM(node, influence, worldMatrix)
+
+
+def bakeBindPose(skin):
+    """
+    Bakes the current bind-pose into the skin modifier.
+
+    :type skin: pymxs.MXSWrapperBase
+    :rtype: None
+    """
+
+    # Ensure mesh has no transforms
+    #
+    resetSkin(skin)
+
+    # Bake current pose into base object
+    #
+    node = pymxs.runtime.refs.dependentNodes(skin, firstOnly=True)
+    baseObject = getattr(node, 'baseObject', node)
+
+    verts = [pymxs.runtime.Point3(*point) for point in meshutils.iterVertices(node)]
+    numVerts = len(verts)
+
+    log.info('Baking "%s" mesh changes into base-object!' % node.name)
+    meshutils.setVertices(baseObject, list(inclusiveRange(1, numVerts, 1)), verts)
+
+    # Reset bone-bind matrices
+    #
+    resetBoneBindMatrices(skin)
+
+
 def showColors(skin):
     """
     Enables the vertex color feedback for the supplied skin.
