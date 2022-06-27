@@ -103,15 +103,19 @@ class SearchEngine(object):
 
         # Collect files from client view
         #
+        log.info('Searching for: %s' % search)
         fileSpecs = cmds.files(search, client=client.name, ignoreDeleted=True)
 
         if fileSpecs is not None:
 
+            log.info('Found: %s' % fileSpecs)
             history[search] = fileSpecs
+
             return fileSpecs
 
         else:
 
+            log.warning('No results found!')
             return []
 
     def searchClients(self, search):
