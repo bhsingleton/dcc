@@ -1,7 +1,8 @@
 import json
 import pymxs
 
-from dcc.max.libs import controllerutils
+from dcc.max.libs import propertyutils
+from dcc.python import stringutils
 
 import logging
 logging.basicConfig()
@@ -29,8 +30,10 @@ class MXSValueEncoder(json.JSONEncoder):
         'Quat': 'serializeQuat',
         'Matrix3': 'serializeMatrix3',
         'MAXKey': 'serializeMAXKey',
+        'MAXAKey': 'serializeMAXKey',
         'MAXKeyArray': 'serializeArray',
         'Array': 'serializeArray',
+        'BitArray': 'serializeArray',
         'ObjectSet': 'serializeArray',
         'NodeChildrenArray': 'serializeArray',
         'MaterialLibrary': 'serializeArray',
@@ -52,10 +55,11 @@ class MXSValueEncoder(json.JSONEncoder):
         #
         if isinstance(obj, (pymxs.MXSWrapperBase, pymxs.MXSWrapperObjectSet)):
 
-            # Check if mxs value is serializable
+            # Check if mxs value delegate exists
             #
             className = str(pymxs.runtime.classOf(obj))
             delegate = self.__value_types__.get(className, '')
+
             func = getattr(self, delegate, None)
 
             if callable(func):
@@ -82,7 +86,7 @@ class MXSValueEncoder(json.JSONEncoder):
         return {
             'class': 'Name',
             'superClass': 'Value',
-            'args': [str(name).replace(' ', '_')],
+            'args': [stringutils.slugify(str(name), illegal='_')],
             'kwargs': {}
         }
 
@@ -228,7 +232,7 @@ class MXSValueEncoder(json.JSONEncoder):
             'class': 'MAXKey',
             'superClass': 'Value',
             'args': [],
-            'kwargs': {key: value for (key, value) in controllerutils.iterDynamicProperties(maxKey)}
+            'kwargs': {key: value for (key, value) in propertyutils.iterDynamicProperties(maxKey)}
         }
 
     def serializeArray(self, array):

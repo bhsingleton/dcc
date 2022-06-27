@@ -4,8 +4,8 @@ import pymxs
 from dcc.python import stringutils
 from dcc.max.json import mxsvalueparser
 from dcc.max.libs import sceneutils, nodeutils, transformutils, meshutils
-from dcc.max.libs import modifierutils, skinutils, morpherutils
-from dcc.max.libs import layerutils, attributeutils, controllerutils, wrapperutils
+from dcc.max.libs import skinutils, morpherutils
+from dcc.max.libs import layerutils, attributeutils, propertyutils, controllerutils, wrapperutils
 from dcc.max.decorators import coordsysoverride
 from dcc.generators.inclusiverange import inclusiveRange
 
@@ -34,19 +34,20 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
         'suppress'
     )
 
-    __node_types__ = {
-        'SplineShape': 'serializeEditableSpline',
-        'line': 'serializeEditableSpline',
-        'Editable_Poly': 'serializeEditablePoly',
-        'Editable_mesh': 'serializeEditablePoly'
-    }
-
     __controller_types__ = {
-        'IK_Chain_Object': 'serializeIkChainObject',
-        'lookat': 'serializeLookAt'
+        'IKChainControl': 'serializeIkChainControl',
+        'SplineIKChain': 'serializeSplineIKChain',
+        'lookat': 'serializeLookAt',
+        'Attachment': 'serializeAttachment'
     }
 
-    __modifier_types__ = {
+    __object_types__ = {
+        'ExposeTm': 'serializeExposeTm',
+        'Spline_IK_Control': 'serializeSplineIKControl',
+        'SplineShape': 'serializeSplineShape',
+        'line': 'serializeSplineShape',
+        'Editable_Poly': 'serializeEditablePoly',
+        'Editable_mesh': 'serializeEditablePoly',
         'Skin': 'serializeSkin',
         'Morpher': 'serializeMorpher'
     }
@@ -102,13 +103,13 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
             #
             if nodeutils.isValidScene(obj):
 
-                log.debug('Serializing scene: %s' % pymxs.runtime.maxFilename)
+                log.info('Serializing scene: %s' % pymxs.runtime.maxFilename)
                 return self.serializeScene(obj)
 
             elif nodeutils.isValidNode(obj):
 
                 log.info('Serializing node: $%s' % obj.name)
-                return self.delegateNode(obj)
+                return self.serializeNode(obj)
 
             elif controllerutils.isValidSubAnim(obj):
 
@@ -120,11 +121,6 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
                 log.debug('Serializing controller: %s' % obj)
                 return self.delegateController(obj)
 
-            elif modifierutils.isValidModifier(obj):
-
-                log.debug('Serializing modifier: %s' % obj)
-                return self.delegateModifier(obj)
-
             elif layerutils.isValidLayer(obj):
 
                 log.debug('Serializing layer: %s' % obj.name)
@@ -133,7 +129,7 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
             elif controllerutils.hasSubAnims(obj):
 
                 log.debug('Serializing animatable: %s' % obj)
-                return self.serializeMaxObject(obj)
+                return self.delegateMaxObject(obj)
 
             else:
 
@@ -151,10 +147,10 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
         :rtype: dict
         """
 
-        return {
-            'class': str(pymxs.runtime.classOf(referenceTarget)),
-            'superClass': str(pymxs.runtime.superClassOf(referenceTarget))
-        }
+        cls = pymxs.runtime.classOf(referenceTarget)
+        classes = [str(cls) for cls in wrapperutils.iterBases(cls)]
+
+        return {'class': str(cls), 'superClasses': classes}
 
     def serializeProperties(self, maxObject):
         """
@@ -165,7 +161,7 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
         """
 
         return dict(
-            controllerutils.iterStaticProperties(
+            propertyutils.iterStaticProperties(
                 maxObject,
                 skipAnimatable=True,
                 skipNonValues=True
@@ -180,13 +176,13 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
         :rtype: dict
         """
 
-        # Serialize reference target
+        # Serialize reference-target components
         #
         obj = self.serializeReferenceTarget(subAnim)
 
         # Serialize sub-anim components
         #
-        obj['name'] = stringutils.slugify(str(subAnim.name), illegal='_')
+        obj['name'] = stringutils.slugify(str(subAnim.name), whitespace='_', illegal='_')
         obj['index'] = subAnim.index
         obj['isAnimated'] = getattr(subAnim, 'isAnimated', False)
         obj['controller'] = subAnim.controller
@@ -201,278 +197,136 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
 
         return obj
 
-    def serializeMaxObject(self, maxObject):
+    def delegateMaxObject(self, maxObject):
+        """
+       Delegates the supplied Max object to the required serializer.
+
+       :type maxObject: pymxs.MXSWrapperBase
+       :rtype: dict
+       """
+
+        # Check if node delegate exists
+        #
+        className = str(pymxs.runtime.classOf(maxObject))
+        delegate = self.__object_types__.get(className, '')
+
+        func = getattr(self, delegate, None)
+
+        if callable(func):
+
+            return func(maxObject)
+
+        else:
+
+            return self.serializeMaxObject(maxObject)
+
+    def serializeMaxObject(self, maxObject, **kwargs):
         """
         Returns a serializable object for the supplied Max object.
 
         :type maxObject: pymxs.MXSWrapperBase
+        :key skipProperties: bool
+        :key skipSubAnims: bool
+        :key skipCustomAttributes: bool
         :rtype: dict
         """
 
-        # Serialize reference target
+        # Serialize reference-target components
         #
         obj = self.serializeReferenceTarget(maxObject)
 
         # Serialize max-object components
         #
         obj['name'] = getattr(maxObject, 'name', '')
-        obj['handle'] = int(pymxs.runtime.getHandleByAnim(maxObject))
-        obj['expression'] = wrapperutils.exprForMaxObject(maxObject)
+        obj['handle'] = nodeutils.getAnimHandle(maxObject)
+        obj['path'] = wrapperutils.exprForMaxObject(maxObject)
         obj['properties'] = {}
         obj['subAnims'] = []
         obj['customAttributes'] = []
 
         # Check if properties should be skipped
         #
-        if not self.skipProperties:
+        skipProperties = kwargs.get('skipProperties', self.skipProperties)
+
+        if not skipProperties:
 
             obj['properties'].update(self.serializeProperties(maxObject))
 
         # Check if sub-anims should be skipped
         #
-        if not self.skipSubAnims:
+        skipSubAnims = kwargs.get('skipSubAnims', self.skipSubAnims)
+
+        if not skipSubAnims:
 
             obj['subAnims'].extend(list(controllerutils.iterSubAnims(maxObject)))
 
         # Check if custom-attributes should be skipped
         #
-        if not self.skipCustomAttributes:
+        skipCustomAttributes = kwargs.get('skipCustomAttributes', self.skipCustomAttributes)
+
+        if not skipCustomAttributes:
 
             obj['customAttributes'].extend(list(attributeutils.iterDefinitions(maxObject, baseObject=False)))
 
         return obj
 
-    def delegateController(self, controller):
+    def serializeNode(self, node):
         """
-        Delegates the supplied controller to the required serializer.
+        Returns a serializable object for the supplied Max node.
+        Any class-specific properties can be found in the modifier stack!
 
-        :type controller: pymxs.MXSWrapperBase
+        :type node: pymxs.MXSWrapperBase
         :rtype: dict
         """
 
-        # Check if controller delegate exists
+        # Serialize max-object components
         #
-        className = str(pymxs.runtime.classOf(controller))
-        delegate = self.__controller_types__.get(className, '')
+        obj = self.serializeMaxObject(node, skipProperties=True, skipCustomAttributes=True)
 
-        func = getattr(self, delegate, None)
-
-        if callable(func):
-
-            return func(controller)
-
-        elif controllerutils.isConstraint(controller):
-
-            return self.serializeConstraint(controller)
-
-        elif controllerutils.isWireParameter(controller):
-
-            return self.serializeWire(controller)
-
-        else:
-
-            return self.serializeController(controller)
-
-    def serializeController(self, controller):
-        """
-        Returns a serializable object for the supplied max controller.
-
-        :type controller: pymxs.MXSWrapperBase
-        :rtype: dict
-        """
-
-        # Serialize controller
+        # Extend node properties
         #
-        obj = self.serializeReferenceTarget(controller)
-        obj['expression'] = wrapperutils.exprForMaxObject(controller)
-        obj['properties'] = {}
-        obj['subAnims'] = []
-        obj['outOfRangeTypes'] = (pymxs.runtime.getBeforeORT(controller), pymxs.runtime.getAfterORT(controller))
-        obj['value'] = controller.value
-        obj['keys'] = []
+        obj['wireColor'] = node.wireColor
+        obj['lockFlags'] = pymxs.runtime.getTransformLockFlags(node)
+        obj['inheritanceFlags'] = pymxs.runtime.getInheritanceFlags(node)
+        obj['worldTransform'] = transformutils.getWorldMatrix(node)
+        obj['objectTransform'] = node.objectTransform * pymxs.runtime.inverse(transformutils.getWorldMatrix(node))
+        obj['userPropertyBuffer'] = pymxs.runtime.getUserPropBuffer(node)
 
-        # Check if properties should be included
+        # Check if children should be skipped
         #
-        if not self.skipProperties:
+        obj['children'] = []
 
-            obj['properties'].update(self.serializeProperties(controller))
+        if not self.skipChildren:
 
-        # Check if sub-anims should be included
-        #
-        if not self.skipSubAnims:
-
-            obj['subAnims'].extend(list(controllerutils.iterSubAnims(controller)))
-
-        # Check if keys should be included
-        #
-        if not self.skipKeys and hasattr(controller, 'keys'):
-
-            obj['keys'] = list(controllerutils.iterMaxKeys(controller))
+            obj['children'] = getattr(node, 'children', [])
 
         return obj
-
-    def serializeConstraint(self, constraint):
-        """
-        Returns a serializable object for the supplied max constraint.
-
-        :type constraint: pymxs.MXSWrapperBase
-        :rtype: dict
-        """
-
-        # Serialize controller components
-        #
-        obj = self.serializeController(constraint)
-
-        # Serialize constraint targets
-        #
-        numTargets = constraint.getNumTargets()
-
-        properties = obj['properties']
-        properties['targets'] = [nodeutils.getPartialPathTo(constraint.getNode(x)) for x in inclusiveRange(1, numTargets)]
-
-        # Serialize up-node
-        #
-        if pymxs.runtime.isProperty(constraint, 'pickUpNode'):
-
-            properties['pickUpNode'] = nodeutils.getPartialPathTo(constraint.pickUpNode)
-
-        return obj
-
-    def serializeWire(self, wire):
-        """
-        Returns a serializable object for the supplied wire parameter.
-        In order to avoid cyclical dependencies Max uses a parent controller with sub-anim index to point to other wires.
-
-        :type wire: pymxs.MXSWrapperBase
-        :rtype: dict
-        """
-
-        # Serialize controller components
-        #
-        obj = self.serializeController(wire)
-
-        # Serialize wire components
-        #
-        properties = obj['properties']
-        properties['isMaster'] = wire.isMaster
-        properties['isSlave'] = wire.isSlave
-        properties['isTwoWay'] = wire.isTwoWay
-        properties['dependents'] = [None] * wire.numWires
-
-        for i in range(wire.numWires):
-
-            index = i + 1
-            parent = wire.getWireParent(index)
-            subAnim = wire.getWireSubNum(index)
-            otherWire = pymxs.runtime.getSubAnim(parent, subAnim).controller
-            expression = wire.getExprText(index)
-
-            properties['dependents'][i] = {'controller': wrapperutils.exprForMaxObject(otherWire), 'expression': expression}
-
-        return obj
-
-    def serializeIkChainObject(self, ikChainObject):
-        """
-        Returns a serializable object for the supplied max constraint.
-
-        :type ikChainObject: pymxs.MXSWrapperBase
-        :rtype: dict
-        """
-
-        # Serialize controller components
-        #
-        obj = self.serializeController(ikChainObject)
-
-        # Serialize start joint
-        #
-        properties = obj['properties']
-        properties['startJoint'] = None
-
-        if pymxs.runtime.isValidNode(ikChainObject.startJoint):
-
-            properties['startJoint'] = nodeutils.getPartialPathTo(ikChainObject.startJoint)
-
-        # Serialize end joint
-        #
-        properties['endJoint'] = None
-
-        if pymxs.runtime.isValidNode(ikChainObject.endJoint):
-
-            properties['endJoint'] = nodeutils.getPartialPathTo(ikChainObject.endJoint)
-
-        # Serialize pole target
-        #
-        properties['VHTarget'] = None
-
-        if pymxs.runtime.isValidNode(ikChainObject.VHTarget):
-
-            properties['VHTarget'] = nodeutils.getPartialPathTo(ikChainObject.VHTarget)
-
-        return obj
-
-    def serializeLookAt(self, lookAt):
-        """
-        Returns a serializable object for the supplied lookat constraint.
-
-        :type lookAt: pymxs.MXSWrapperBase
-        :rtype: dict
-        """
-
-        # Serialize controller components
-        #
-        obj = self.serializeController(lookAt)
-
-        # Serialize properties
-        # Since this controller is deprecated none of the properties are dynamically accessible
-        #
-        properties = obj['properties']
-        properties['useTargetAsUpNode'] = lookAt.useTargetAsUpNode
-        properties['axis'] = lookAt.axis
-        properties['flip'] = lookAt.flip
-
-        return obj
-
-    def delegateModifier(self, modifier):
-        """
-        Delegates the supplied modifier to the required serializer.
-
-        :type modifier: pymxs.MXSWrapperBase
-        :rtype: dict
-        """
-
-        # Check if modifier delegate exists
-        #
-        className = str(pymxs.runtime.classOf(modifier))
-        delegate = self.__modifier_types__.get(className, '')
-
-        func = getattr(self, delegate, None)
-
-        if callable(func):
-
-            return func(modifier)
-
-        else:
-
-            return self.serializeMaxObject(modifier)
 
     def serializeSkin(self, skin):
         """
         Returns a serializable object for the supplied skin modifier.
 
-        :type skin: pymxs.runtime.Skin
+        :type skin: pymxs.MXSWrapperBase
         :rtype: dict
         """
 
-        # Serialize max-object
+        # Serialize max-object components
         #
         obj = self.serializeMaxObject(skin)
 
         # Check if skin-weights should be skipped
         #
+        properties = obj['properties']
+        properties['influences'] = {}
+        properties['preBindMatrices'] = {}
+        properties['weights'] = {}
+
         if not self.skipShapes:
 
-            properties = obj['properties']
+            node = wrapperutils.getAssociatedNode(skin)
+
             properties['influences'] = {influenceId: nodeutils.getPartialPathTo(influence) for (influenceId, influence) in skinutils.iterInfluences(skin)}
+            properties['preBindMatrices'] = {influenceId: pymxs.runtime.skinutils.getBoneBindTM(node, influence) for (influenceId, influence) in skinutils.iterInfluences(skin)}
             properties['weights'] = dict(skinutils.iterVertexWeights(skin))
 
         return obj
@@ -481,77 +335,69 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
         """
         Returns a serializable object for the supplied morpher modifier.
 
-        :type morpher: pymxs.runtime.Morpher
+        :type morpher: pymxs.MXSWrapperBase
         :rtype: dict
         """
 
-        # Serialize max-object
+        # Serialize max-object components
         #
         obj = self.serializeMaxObject(morpher)
 
         # Check if morph-targets should be skipped
         #
+        properties = obj['properties']
+        properties['channels'] = []
+
         if not self.skipShapes:
 
-            properties = obj['properties']
             properties['channels'] = [{'name': name, 'target': nodeutils.getPartialPathTo(target), 'weight': weight} for (name, target, weight) in morpherutils.iterTargets(morpher)]
 
         return obj
 
-    def delegateNode(self, node):
+    def serializeExposeTm(self, exposeTransform):
         """
-        Delegates the supplied node to the required serializer.
+        Returns a serializable object for the supplied expose-transform.
 
-        :type node: pymxs.MXSWrapperBase
+        :type exposeTransform: pymxs.MXSWrapperBase
         :rtype: dict
         """
 
-        # Check if node delegate exists
+        # Serialize node components
         #
-        className = str(pymxs.runtime.classOf(node.baseObject))
-        delegate = self.__node_types__.get(className, '')
+        obj = self.serializeMaxObject(exposeTransform)
 
-        func = getattr(self, delegate, None)
+        # Extend expose-transform properties
+        #
+        properties = obj['properties']
+        properties['exposeNode'] = nodeutils.getPartialPathTo(exposeTransform.exposeNode)
+        properties['localReferenceNode'] = nodeutils.getPartialPathTo(exposeTransform.localReferenceNode)
 
-        if callable(func):
+        return obj
 
-            return func(node)
-
-        else:
-
-            return self.serializeNode(node)
-
-    def serializeNode(self, node):
+    def serializeSplineIKControl(self, splineIKControl):
         """
-        Returns a serializable object for the supplied max node.
+        Returns a serializable object for the supplied spline ik-control.
 
-        :type node: pymxs.runtime.Node
+        :type splineIKControl: pymxs.MXSWrapperBase
         :rtype: dict
         """
 
-        # Serialize max object
+        # Serialize Max-object components
         #
-        obj = self.serializeMaxObject(node)
-        obj['wireColor'] = node.wireColor
-        obj['target'] = nodeutils.getPartialPathTo(node.target)  # Deprecated
-        obj['path'] = nodeutils.getPartialPathTo(node)
-        obj['worldTransform'] = transformutils.getWorldMatrix(node)
-        obj['objectTransform'] = node.objectTransform * pymxs.runtime.inverse(transformutils.getWorldMatrix(node))
-        obj['userPropertyBuffer'] = pymxs.runtime.getUserPropBuffer(node)
-        obj['children'] = []
+        obj = self.serializeMaxObject(splineIKControl)
 
-        # Check if children should be skipped
+        # Extend spline ik-control properties
         #
-        if not self.skipChildren and hasattr(node, 'children'):
-
-            obj['children'] = node.children
+        properties = obj['properties']
+        properties['helper_list'] = [nodeutils.getPartialPathTo(x) for x in splineIKControl.helper_list]
 
         return obj
 
     @coordsysoverride.coordSysOverride(mode='world')
-    def serializeSplineKnots(self, spline, splineIndex=1):
+    def serializeKnots(self, spline, splineIndex=1):
         """
         Serializes the knots for the given spline.
+        Knots are sampled in world space in order to bypass object-transform.
 
         :type spline: pymxs.MXSWrapperBase
         :type splineIndex: int
@@ -591,7 +437,7 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
 
         return knots
 
-    def serializeSplineShape(self, spline, splineIndex=1):
+    def serializeSpline(self, spline, splineIndex=1):
         """
         Returns a serializable object for the specified spline shape.
 
@@ -602,10 +448,10 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
 
         return {
             'isClosed': pymxs.runtime.isClosed(spline, splineIndex),
-            'knots': self.serializeSplineKnots(spline, splineIndex=splineIndex)
+            'knots': self.serializeKnots(spline, splineIndex=splineIndex)
         }
 
-    def serializeEditableSpline(self, spline):
+    def serializeSplineShape(self, spline):
         """
         Returns a serializable object for the supplied spline object.
 
@@ -613,18 +459,18 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
         :rtype: dict
         """
 
-        # Serialize iNode components
+        # Serialize max-object components
         #
-        obj = self.serializeNode(spline)
+        obj = self.serializeMaxObject(spline)
 
-        # Serialize spline shapes
+        # Check if shapes should be skipped
         #
         if not self.skipShapes:
 
-            numSplines = pymxs.runtime.numSplines(spline)
+            node = wrapperutils.getAssociatedNode(spline)
+            numSplines = pymxs.runtime.numSplines(node)
 
-            properties = obj['properties']
-            properties['splines'] = [self.serializeSplineShape(spline, splineIndex=splineIndex) for splineIndex in inclusiveRange(1, numSplines)]
+            obj['properties']['splines'] = [self.serializeSpline(node, splineIndex=splineIndex) for splineIndex in inclusiveRange(1, numSplines)]
 
         return obj
 
@@ -655,11 +501,11 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
         :rtype: dict
         """
 
-        # Serialize node components
+        # Serialize max-object components
         #
-        obj = self.serializeNode(poly)
+        obj = self.serializeMaxObject(poly)
 
-        # Serialize mesh components
+        # Check if shapes should be skipped
         #
         if not self.skipShapes:
 
@@ -669,23 +515,253 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
             properties['smoothingGroups'] = list(meshutils.iterSmoothingGroups(poly))
             properties['maps'] = [self.serializeMap(poly, channel=channel) for channel in range(meshutils.mapCount(poly))]
             properties['faceMaterialIndices'] = list(meshutils.iterFaceMaterialIndices(poly))
-            properties['material'] = int(pymxs.runtime.getHandleByAnim(poly.material)) if poly.material is not None else None
+
+        return obj
+
+    def delegateController(self, controller):
+        """
+        Delegates the supplied controller to the required serializer.
+
+        :type controller: pymxs.MXSWrapperBase
+        :rtype: dict
+        """
+
+        # Check if controller delegate exists
+        #
+        className = str(pymxs.runtime.classOf(controller))
+        delegate = self.__controller_types__.get(className, '')
+
+        func = getattr(self, delegate, None)
+
+        if callable(func):
+
+            return func(controller)
+
+        elif controllerutils.isConstraint(controller):
+
+            return self.serializeConstraint(controller)
+
+        elif controllerutils.isWire(controller):
+
+            return self.serializeWire(controller)
+
+        else:
+
+            return self.serializeController(controller)
+
+    def serializeController(self, controller, **kwargs):
+        """
+        Returns a serializable object for the supplied Max controller.
+
+        :type controller: pymxs.MXSWrapperBase
+        :rtype: dict
+        """
+
+        # Serialize max-object components
+        #
+        obj = self.serializeMaxObject(controller)
+
+        # Extend controller properties
+        #
+        obj['value'] = controller.value
+        obj['outOfRangeTypes'] = (pymxs.runtime.getBeforeORT(controller), pymxs.runtime.getAfterORT(controller))
+        obj['keys'] = []
+
+        # Check if keys should be included
+        #
+        skipKeys = kwargs.get('skipKeys', self.skipKeys)
+
+        if not skipKeys and hasattr(controller, 'keys'):
+
+            obj['keys'] = list(controllerutils.iterMaxKeys(controller))
+
+        return obj
+
+    def serializeConstraint(self, constraint):
+        """
+        Returns a serializable object for the supplied max constraint.
+
+        :type constraint: pymxs.MXSWrapperBase
+        :rtype: dict
+        """
+
+        # Serialize controller components
+        #
+        obj = self.serializeController(constraint)
+
+        # Extend constraint properties
+        #
+        numTargets = constraint.getNumTargets()
+
+        properties = obj['properties']
+        properties['targets'] = [nodeutils.getPartialPathTo(constraint.getNode(i)) for i in inclusiveRange(1, numTargets, 1)]
+
+        # Serialize up-node
+        #
+        if pymxs.runtime.isProperty(constraint, 'pickUpNode'):
+
+            properties['pickUpNode'] = nodeutils.getPartialPathTo(constraint.pickUpNode)
+
+        return obj
+
+    def serializeWire(self, wire):
+        """
+        Returns a serializable object for the supplied wire parameter.
+        Be aware that a majority of the wire interface becomes useless once you introduce instanced controller dependents!
+
+        :type wire: pymxs.MXSWrapperBase
+        :rtype: dict
+        """
+
+        # Serialize controller components
+        #
+        obj = self.serializeController(wire)
+
+        # Extend wire properties
+        #
+        properties = obj['properties']
+        properties['isMaster'] = wire.isMaster
+        properties['isSlave'] = wire.isSlave
+        properties['isTwoWay'] = wire.isTwoWay
+
+        # Evaluate if master controller is instanced
+        #
+        slaveAnimation = wire.slaveAnimation
+
+        if controllerutils.isInstancedController(slaveAnimation):
+
+            expression = wire.getExprText(1)
+            properties['dependents'] = [{'controller': wrapperutils.exprForMaxObject(slaveAnimation), 'expression': expression}]
+
+        else:
+
+            # Iterate through wires
+            #
+            numWires = int(wire.numWires)
+            properties['dependents'] = [None] * numWires
+
+            for i in range(numWires):
+
+                index = i + 1
+                parent = wire.getWireParent(index)
+                subAnim = wire.getWireSubNum(index)
+                otherWire = pymxs.runtime.getSubAnim(parent, subAnim).controller
+                expression = wire.getExprText(index)
+
+                properties['dependents'][i] = {'controller': wrapperutils.exprForMaxObject(otherWire), 'expression': expression}
+
+        return obj
+
+    def serializeIkChainControl(self, ikChainControl):
+        """
+        Returns a serializable object for the supplied IK-chain controller.
+
+        :type ikChainControl: pymxs.MXSWrapperBase
+        :rtype: dict
+        """
+
+        # Serialize controller components
+        #
+        obj = self.serializeController(ikChainControl)
+
+        # Extend IK-Chain object properties
+        #
+        properties = obj['properties']
+        properties['startJoint'] = nodeutils.getPartialPathTo(ikChainControl.startJoint)
+        properties['endJoint'] = nodeutils.getPartialPathTo(ikChainControl.endJoint)
+        properties['VHTarget'] = nodeutils.getPartialPathTo(ikChainControl.VHTarget)
+
+        return obj
+
+    def serializeSplineIKChain(self, splineIKChain):
+        """
+        Returns a serializable object for the supplied spline IK-chain controller.
+
+        :type splineIKChain: pymxs.MXSWrapperBase
+        :rtype: dict
+        """
+
+        # Serialize controller components
+        #
+        obj = self.serializeController(splineIKChain)
+
+        # Extend spline ik-chain properties
+        #
+        properties = obj['properties']
+        properties['pickShape'] = nodeutils.getPartialPathTo(splineIKChain.pickShape)
+        properties['startJoint'] = nodeutils.getPartialPathTo(splineIKChain.startJoint)
+        properties['endJoint'] = nodeutils.getPartialPathTo(splineIKChain.endJoint)
+        properties['upNode'] = nodeutils.getPartialPathTo(splineIKChain.upNode)
+
+        return obj
+
+    def serializeLookAt(self, lookAt):
+        """
+        Returns a serializable object for the supplied lookat constraint.
+        Since this controller is deprecated none of the properties are dynamically accessible!
+
+        :type lookAt: pymxs.MXSWrapperBase
+        :rtype: dict
+        """
+
+        # Serialize controller components
+        #
+        obj = self.serializeController(lookAt)
+
+        # Extend look-at properties
+        #
+        node = wrapperutils.getAssociatedNode(lookAt)
+
+        properties = obj['properties']
+        properties['target'] = nodeutils.getPartialPathTo(node.target)
+        properties['useTargetAsUpNode'] = lookAt.useTargetAsUpNode
+        properties['axis'] = lookAt.axis
+        properties['flip'] = lookAt.flip
+
+        return obj
+
+    def serializeAttachment(self, attachment):
+        """
+        Returns a serializable object for the supplied attachment constraint.
+        This controller uses a special key type which is only accessible via the AttachCtrl interface.
+
+        :type attachment: pymxs.MXSWrapperBase
+        :rtype: dict
+        """
+
+        # Serialize controller components
+        #
+        obj = self.serializeController(attachment, skipKeys=True)
+
+        # Check if keys should be included
+        #
+        if not self.skipKeys:
+
+            obj['keys'].extend(list(controllerutils.iterAMaxKeys(attachment)))
 
         return obj
 
     def serializeLayer(self, layer):
         """
-        Returns a serializable object for the supplied layer target.
+        Returns a serializable object for the supplied layer object.
 
         :type layer: pymxs.MXSWrapperBase
         :rtype: dict
         """
 
-        obj = self.serializeReferenceTarget(layer)
-        obj['name'] = layer.name
-        obj['isHidden'] = layer.isHidden
-        obj['isFrozen'] = layer.isFrozen
-        obj['nodes'] = [nodeutils.getPartialPathTo(x) for x in layerutils.iterNodesFromLayers(layer)]
+        # Serialize max-object components
+        #
+        obj = self.serializeMaxObject(layer)
+
+        # Extend layer properties
+        #
+        properties = obj['properties']
+        properties['isHidden'] = layer.isHidden
+        properties['isFrozen'] = layer.isFrozen
+        properties['nodes'] = [nodeutils.getPartialPathTo(x) for x in layerutils.iterNodesFromLayers(layer)]
+
+        # Add child layers
+        #
         obj['children'] = [x.layerAsRefTarg for x in layerutils.iterChildLayers(layer)]
 
         return obj
@@ -698,11 +774,11 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
         :rtype: dict
         """
 
-        # Serialize reference target
+        # Serialize max-object components
         #
         obj = self.serializeReferenceTarget(scene)
 
-        # Serialize scene components
+        # Extend scene properties
         #
         obj['filename'] = pymxs.runtime.maxFilename
         obj['directory'] = os.path.normpath(pymxs.runtime.maxFilePath)
@@ -720,7 +796,7 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
         #
         if not self.skipSelectionSets:
 
-            obj['selectionSets'].update({name: list(map(nodeutils.getPartialPathTo, nodes)) for (name, nodes) in nodeutils.iterSelectionSets()})
+            obj['selectionSets'].update({name: list(map(nodeutils.getAnimHandle, nodes)) for (name, nodes) in nodeutils.iterSelectionSets()})
 
         # Check if layers should be skipped
         #
