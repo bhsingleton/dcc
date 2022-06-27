@@ -8,64 +8,82 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-BASE_TYPES = {'modifier': pymxs.runtime.modifier}
-
-
-def findModifierByType(obj, modifierType):
+def hasModifier(node, modifierType):
     """
-    Finds the skin modifier from the given object.
+    Evaluates if the supplied node has the specified modifier type.
 
-    :type obj: Union[str, pymxs.MXSWrapperBase]
-    :type modifierType: pymxs.MXSWrapperBase
+    :type node: pymxs.MXSWrapperBase
+    :type modifierType: pymxs.MAXClass
+    :rtype: bool
+    """
+
+    return len(findModifierByType(node, modifierType, all=True)) > 0
+
+
+def findModifierByType(node, modifierType, all=False):
+    """
+    Returns a modifier derived from the specified type from the supplied node.
+
+    :type node: Union[str, pymxs.MXSWrapperBase]
+    :type modifierType: pymxs.runtime.MAXClass
+    :type all: bool
     :rtype: pymxs.MXSWrapperBase
     """
 
-    # Check object type
+    # Evaluate node type
     #
-    if isinstance(obj, pymxs.MXSWrapperBase):
+    if isinstance(node, string_types):
 
-        # Check wrapper type
+        node = pymxs.runtime.getNodeByName(node)
+
+    # Check if node is valid
+    #
+    if pymxs.runtime.isValidNode(node):
+
+        # Collect all modifiers by type
         #
-        if pymxs.runtime.isValidNode(obj):
+        modifiers = [modifier for modifier in node.modifiers if pymxs.runtime.isKindOf(modifier, modifierType)]
 
-            # Collect all skin modifiers
+        if all:
+
+            return modifiers
+
+        else:
+
+            # Evaluate collected modifiers
             #
-            modifiers = [modifier for modifier in obj.modifiers if pymxs.runtime.classOf(modifier) == modifierType]
             numModifiers = len(modifiers)
 
-            if numModifiers == 1:
+            if numModifiers == 0:
+
+                return None
+
+            elif numModifiers == 1:
 
                 return modifiers[0]
 
             else:
 
-                raise TypeError('findModifierByType() expects 1 modifier (%s found)!' % numModifiers)
+                raise TypeError('findModifierByType() expects a unique modifier (%s found)!' % numModifiers)
 
-        elif pymxs.runtime.classOf(obj) == modifierType:
+    elif pymxs.runtime.isKindOf(node, modifierType):  # Redundancy check
 
-            return obj
-
-        else:
-
-            raise TypeError('findModifierByType() expects a node!')
-
-    elif isinstance(obj, string_types):
-
-        return findModifierByType(pymxs.runtime.getNodeByName(obj), modifierType)
+        return node
 
     else:
 
-        raise TypeError('findModifierByType() expects a MXSWrapper (%s given)!' % type(obj).__name__)
+        raise TypeError('findModifierByType() expects a valid node!')
 
 
-def isValidModifier(obj):
+def isValidModifier(modifier):
     """
     Evaluates if the supplied object is a valid modifier.
 
+    :type modifier: pymxs.MXSWrapperBase
     :rtype: bool
     """
 
-    return pymxs.runtime.superClassOf(obj) == pymxs.runtime.modifier
+    return pymxs.runtime.isKindOf(modifier, pymxs.runtime.Modifier) and pymxs.runtime.isValidObj(modifier)
 
 
 def getNodeFromModifier(modifier):
@@ -76,4 +94,4 @@ def getNodeFromModifier(modifier):
     :rtype: pymxs.MXSWrapperBase
     """
 
-    return pymxs.runtime.refs.dependentNodes(modifier)[0]
+    return pymxs.runtime.refs.dependentNodes(modifier, firstOnly=True)
