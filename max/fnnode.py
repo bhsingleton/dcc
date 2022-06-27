@@ -2,7 +2,7 @@ import pymxs
 
 from six import string_types, integer_types
 from dcc.abstract import afnnode, ArrayIndexType
-from dcc.max.libs import nodeutils, controllerutils, attributeutils
+from dcc.max.libs import nodeutils, propertyutils, attributeutils
 
 import logging
 logging.basicConfig()
@@ -296,7 +296,7 @@ class FnNode(afnnode.AFnNode):
         :rtype: iter
         """
 
-        for (key, value) in controllerutils.iterStaticProperties(self.object()):
+        for (key, value) in propertyutils.iterStaticProperties(self.object()):
 
             yield key
 
