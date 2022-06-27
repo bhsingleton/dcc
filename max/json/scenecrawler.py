@@ -15,7 +15,7 @@ log.setLevel(logging.INFO)
 
 def inspectScene():
     """
-    Evaluates the number of node/modifier/controller types from the current scene file.
+    Evaluates the contents of the open scene file.
 
     :rtype: dict
     """
@@ -49,7 +49,7 @@ def inspectScene():
 
         # Iterate through controllers
         #
-        for controller in controllerutils.walkControllers(node):
+        for controller in controllerutils.walkTransformControllers(node):
 
             className = str(pymxs.runtime.classOf(controller))
             controllers[className] += 1
@@ -58,9 +58,10 @@ def inspectScene():
 
                 scripts[node.name].append(controller.script)
 
-            elif controllerutils.isWireParameter(controller):
+            elif controllerutils.isWire(controller):
 
-                expressions[node.name].extend([controller.getExprText(i) for i in inclusiveRange(1, controller.numWires, 1)])
+                numWires = 1 if controllerutils.isInstancedController(controller.slaveAnimation) else int(controller.numWires)
+                expressions[node.name].extend([controller.getExprText(i) for i in inclusiveRange(1, numWires, 1)])
 
             else:
 
@@ -77,37 +78,21 @@ def inspectScene():
     }
 
 
-def crawlPerforce(search, savePath):
+def crawlFiles(filePaths, savePath):
     """
-    Generates a scene inspection report by crawling perforce for scenes.
+    Generates a scene inspection report for the supplied files.
 
-    :type search: str
+    :type filePaths: List[str]
     :type savePath: str
     :rtype: None
     """
 
-    # Search perforce for scenes
-    #
-    client = clientutils.getCurrentClient()
-
-    results = searchutils.findFile(search, client=client)
-    numResults = len(results)
-
     # Iterate through results
     #
-    scenes = [None] * numResults
+    numScenes = len(filePaths)
+    scenes = [None] * numScenes
 
-    for (i, result) in enumerate(results):
-
-        # Map depot file to client view
-        # If the user does not have the file then sync it!
-        #
-        depotPath = result['depotFile']
-        filePath = client.mapToView(depotPath)
-
-        if not os.path.exists(filePath):
-
-            cmds.sync(filePath)
+    for (i, filePath) in enumerate(filePaths):
 
         # Open scene file and inspect
         #
@@ -125,3 +110,69 @@ def crawlPerforce(search, savePath):
         )
 
     log.info('Saving scene reports to: %s' % savePath)
+
+
+def crawlPerforce(search, savePath):
+    """
+    Generates a scene inspection report by crawling perforce for scene files.
+
+    :type search: str
+    :type savePath: str
+    :rtype: None
+    """
+
+    # Search perforce for scenes
+    #
+    client = clientutils.getCurrentClient()
+
+    results = searchutils.findFile(search, client=client)
+    numResults = len(results)
+
+    # Iterate through results
+    #
+    filePaths = [None] * numResults
+
+    for (i, result) in enumerate(results):
+
+        # Map depot file to client view
+        # If the user does not have the file then sync it!
+        #
+        depotPath = result['depotFile']
+        filePath = client.mapToView(depotPath)
+
+        if not os.path.exists(filePath):
+
+            cmds.sync(filePath)
+
+        # Add file path to list
+        #
+        filePaths[i] = filePath
+
+    # Generate report from files
+    #
+    crawlFiles(filePaths, savePath)
+
+
+def crawlScene(savePath=None):
+    """
+    Generates a scene inspection report for the current scene files.
+    If no save path is supplied then the report is saved to the scene directory.
+
+    :type savePath: str
+    :rtype: None
+    """
+
+    # Check if a save path was supplied
+    #
+    filePath = os.path.join(pymxs.runtime.maxFilePath, pymxs.runtime.maxFilename)
+
+    if savePath is None:
+
+        directory, filename = os.path.split(filePath)
+        name, ext = os.path.splitext(filename)
+
+        savePath = os.path.join(directory, '{name}.json'.format(name=name))
+
+    # Generate report from file
+    #
+    crawlFiles([filePath], savePath)
