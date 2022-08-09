@@ -54,10 +54,31 @@ class CommandPanelOverride(abstractdecorator.AbstractDecorator):
         #
         if isinstance(self.select, integer_types):
 
-            modifier = args[self.select]
-            node = pymxs.runtime.refs.dependentNodes(modifier, firstOnly=True)
+            # Evaluate number of arguments
+            #
+            numArgs = len(args)
 
-            pymxs.runtime.modPanel.setCurrentObject(modifier, node=node)
+            if not (0 <= self.select < numArgs):
+
+                raise TypeError('__enter__() selection index is out of range!')
+
+            # Evaluate argument type
+            #
+            modifier = args[self.select]
+
+            if not pymxs.runtime.isKindOf(modifier, pymxs.runtime.Modifier):
+
+                raise TypeError('__enter__() expects a valid modifier!')
+
+            # Evaluate current modifier
+            # Calling "setCurrentObject" will evoke a selection changed callback!
+            #
+            currentModifier = pymxs.runtime.modPanel.getCurrentObject()
+
+            if modifier != currentModifier:
+
+                node = pymxs.runtime.refs.dependentNodes(modifier, firstOnly=True)
+                pymxs.runtime.modPanel.setCurrentObject(modifier, node=node)
 
         # Check if the sub-object level should be changed
         #
