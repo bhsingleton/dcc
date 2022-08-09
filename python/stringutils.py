@@ -7,7 +7,7 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-__title__ = re.compile(r'([A-Z]?[a-z0-9_]+)')
+__title__ = re.compile(r'([A-Z]?[a-z0-9]+)')
 __number__ = re.compile(r'(?:[+-])?(?:[0-9])+(?:\.{1}[0-9]+)?(?:e{1}\-{1}[0-9]+)?')
 __states__ = ('true', 'on', 'yes')
 
@@ -55,9 +55,23 @@ def isBoolean(text):
     return text.lower() in __states__
 
 
-def titleize(text, separator=''):
+def camelize(text, separator=''):
     """
-    Capitalizes the first letter of the supplied text.
+    Returns a camel cased string using the supplied text.
+    For example: "left_arm_01" > "leftArm01"
+
+    :type text: str
+    :type separator: str
+    :rtype: str
+    """
+
+    return separator.join([string.title() if i > 0 else string for (i, string) in enumerate(__title__.findall(text))])
+
+
+def pascalize(text, separator=''):
+    """
+    Returns a pascal cased string using the supplied text.
+    For example: "left_arm_01" > "LeftArm01"
 
     :type text: str
     :type separator: str

@@ -54,7 +54,7 @@ def getPropertyAccessors(obj, name):
 
     elif inspect.isfunction(func):
 
-        otherName = 'set{name}'.format(name=stringutils.titleize(func.__name__))
+        otherName = 'set{name}'.format(name=stringutils.pascalize(func.__name__))
         otherFunc = getattr(cls, otherName, None)
 
         return bindProperty(obj, func), bindProperty(obj, otherFunc)
