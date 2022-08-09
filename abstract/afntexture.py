@@ -180,9 +180,19 @@ class AFnTexture(with_metaclass(ABCMeta, afnnode.AFnNode)):
             log.warning('Unable to fix file path: %s' % filePath)
             return False
 
+        # Get file stats
+        #
+        stats = cmds.fstat(depotPath)
+        numStats = len(stats)
+
+        if numStats == 0:
+
+            log.warning('Unable to locate file stats: %s' % filePath)
+            return False
+
         # Check if file needs syncing
         #
-        stat = cmds.fstat(depotPath)[0]
+        stat = stats[0]
 
         if stat.get('haveRev', 0) != stat.get('headRev', 0):
 
