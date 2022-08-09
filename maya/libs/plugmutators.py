@@ -239,15 +239,16 @@ def getNumericType(attribute):
     return om.MFnNumericAttribute(attribute).numericType()
 
 
-def getNumericValue(plug):
+def getNumericValue(plug, context=om.MDGContext.kNormal):
     """
     Gets the numeric value from the supplied plug.
 
     :type plug: om.MPlug
+    :type context: om.MDGContext
     :rtype: Union[bool, int, float, tuple]
     """
 
-    return __get_numeric_value__[getNumericType(plug.attribute())](plug)
+    return __get_numeric_value__[getNumericType(plug.attribute())](plug, context=context)
 
 
 def getUnitType(attribute):
@@ -261,15 +262,16 @@ def getUnitType(attribute):
     return om.MFnUnitAttribute(attribute).unitType()
 
 
-def getUnitValue(plug):
+def getUnitValue(plug, context=om.MDGContext.kNormal):
     """
     Gets the unit value from the supplied plug.
 
     :type plug: om.MPlug
+    :type context: om.MDGContext
     :rtype: Union[om.MDistance, om.MAngle]
     """
 
-    return __get_unit_value__[getUnitType(plug.attribute())](plug)
+    return __get_unit_value__[getUnitType(plug.attribute())](plug, context=context)
 
 
 def getDataType(attribute):
@@ -283,15 +285,16 @@ def getDataType(attribute):
     return om.MFnTypedAttribute(attribute).attrType()
 
 
-def getTypedValue(plug):
+def getTypedValue(plug, context=om.MDGContext.kNormal):
     """
     Gets the typed value from the supplied plug.
 
     :type plug: om.MPlug
+    :type context: om.MDGContext
     :rtype: Union[om.MMatrix, om.MObject]
     """
 
-    return __get_typed_value__[getDataType(plug.attribute())](plug)
+    return __get_typed_value__[getDataType(plug.attribute())](plug, context=context)
 
 
 __get_value__ = {
@@ -353,11 +356,11 @@ def getValue(plug, convertUnits=True, context=om.MDGContext.kNormal):
         # Check if units should also be converted
         #
         attributeType = plugutils.getApiType(plug)
-        plugValue = __get_value__[attributeType](plug)
+        plugValue = __get_value__[attributeType](plug, context=context)
 
         if convertUnits and isinstance(plugValue, (om.MDistance, om.MAngle, om.MTime)):
 
-            return plugValue.value
+            return plugValue.asUnits(plugValue.uiUnit())
 
         else:
 

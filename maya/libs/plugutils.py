@@ -11,7 +11,7 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-__plugparser__ = re.compile(r'([a-zA-Z_]+)(?:\[([0-9]+)\])?')
+__plugparser__ = re.compile(r'([a-zA-Z0-9_]+)(?:\[([0-9]+)\])?')
 
 
 def getApiType(obj):
@@ -461,14 +461,13 @@ def getNextAvailableConnection(plug, child=om.MObject.kNullObj):
             element = element.child(child)
 
         # Check if physical index does not match logical index
+        # Otherwise, check if element is connected
         #
         if physicalIndex != logicalIndex:
 
             return physicalIndex
 
-        # Check if element is connected
-        #
-        if not element.isConnected:
+        elif not element.isConnected:
 
             return logicalIndex
 
