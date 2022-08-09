@@ -32,6 +32,7 @@ class AttributeDecoder(json.JSONDecoder):
     Overload of JSONDecoder used to deserialize custom Maya attributes.
     """
 
+    # region Dunderscores
     __slots__ = ('_nodeHandle', '_nodeClass')
 
     __numerictypes__ = {
@@ -110,7 +111,31 @@ class AttributeDecoder(json.JSONDecoder):
         # Call parent method
         #
         super(AttributeDecoder, self).__init__(*args, **kwargs)
+    # endregion
 
+    # region Properties
+    @property
+    def nodeHandle(self):
+        """
+        Getter method that returns the node handle for this instance.
+
+        :rtype: om.MObjectHandle
+        """
+
+        return self._nodeHandle
+
+    @property
+    def nodeClass(self):
+        """
+        Getter method that returns the node class for this instance.
+
+        :rtype: om.MNodeClass
+        """
+
+        return self._nodeClass
+    # endregion
+
+    # region Methods
     def attribute(self, name):
         """
         Returns the attribute associated with the given name.
@@ -587,6 +612,20 @@ class AttributeDecoder(json.JSONDecoder):
         #
         for child in obj['children']:
 
-            fnAttribute.addChild(child)
+            # Evaluate child type
+            #
+            if isinstance(child, om.MObject):
+
+                fnAttribute.addChild(child)
+
+            elif isinstance(child, dict):
+
+                child = self.default(child)
+                fnAttribute.addChild(child)
+
+            else:
+
+                continue
 
         return attribute
+    # endregion
