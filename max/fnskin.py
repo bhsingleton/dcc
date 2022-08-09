@@ -44,7 +44,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         # Locate skin modifier from object
         #
         obj = self.getMXSWrapper(obj)
-        skinModifier = modifierutils.findModifierByType(obj, pymxs.runtime.skin)
+        skinModifier = modifierutils.getModifierByClass(obj, pymxs.runtime.Skin)
 
         super(FnSkin, self).setObject(skinModifier)
 
