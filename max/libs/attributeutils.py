@@ -4,6 +4,7 @@ import os
 from itertools import chain
 from collections import namedtuple
 from dcc.max.libs import modifierutils
+from dcc.generators.inclusiverange import inclusiveRange
 
 import logging
 logging.basicConfig()
@@ -76,20 +77,28 @@ def iterSceneDefinitions():
     return iter(pymxs.runtime.CustAttributes.getSceneDefs())
 
 
-def iterDefinitions(obj, baseObject=True):
+def iterDefinitions(obj, baseObject=False):
     """
-    Returns a generator that yields attribute definitions from the supplied node.
+    Returns a generator that yields attribute definitions from the supplied object.
 
     :type obj: pymxs.runtime.MXSWrapperBase
     :type baseObject: bool
     :rtype: iter
     """
 
+    # Redundancy check
+    #
+    if not pymxs.runtime.isValidObj(obj):
+
+        return iter([])
+
+    # Iterate through definitions
+    #
     definitionCount = pymxs.runtime.CustAttributes.count(obj, baseObject=baseObject)
 
-    for i in range(definitionCount):
+    for i in inclusiveRange(1, definitionCount, 1):
 
-        yield pymxs.runtime.CustAttributes.get(obj, i + 1)
+        yield pymxs.runtime.CustAttributes.get(obj, i)
 
 
 def doesNodeHaveDefinition(node, name):
@@ -128,11 +137,11 @@ def getSceneDefinitionByName(name):
     found = [x for x in iterSceneDefinitions() if x.name == name]
     numFound = len(found)
 
-    if found == 0:
+    if numFound == 0:
 
         return None
 
-    elif found == 1:
+    elif numFound == 1:
 
         return found[0]
 

@@ -38,21 +38,32 @@ def copyTargets(copyFrom, copyTo):
 
     for (node, weight) in iterTargets(copyFrom):
 
+        log.debug('Copying "%s" constraint target!' % node.name)
         copyTo.appendTarget(node, weight)
 
 
-def rebuildPositionList(node, positionList):
+def rebuildPositionList(node):
     """
     Rebuilds the position-list on the supplied node.
     If the list controller has no constraints, or no relative constraints, then no changes are made.
 
     :type node: pymxs.MXSWrapperBase
-    :type positionList: pymxs.MXSWrapperBase
     :rtype: bool
     """
 
-    # Ensure frozen names
+    # Get transform controller
     #
+    prs = controllerutils.getPRSController(node)
+
+    if not pymxs.runtime.isKindOf(prs, pymxs.runtime.PRS):
+
+        log.warning('Unable to locate PRS controller from "%s" node!' % node.name)
+        return False
+
+    # Get rotation list
+    #
+    rotationController = controllerutils.decomposePRSController(prs)[0]
+    positionList = controllerutils.ensureControllerByClass(rotationController, pymxs.runtime.Position_List)
     success = controllerutils.ensureFrozenNames(positionList)
 
     if not success:
@@ -60,89 +71,90 @@ def rebuildPositionList(node, positionList):
         log.warning('Unable to rebuild "$%s.position" list controller!' % node.name)
         return False
 
-    # Check if any sub-controllers are relative
+    # Freeze rotation using current matrix
     #
     matrix = transformutils.getMatrix(node)
-    isRelative = any([getattr(subController, 'relative', False) for (name, subController, weight) in controllerutils.iterListController(positionList)])
 
-    if not isRelative:
+    frozenController = pymxs.runtime.Bezier_Position()
+    frozenController.value = matrix.translationPart
+    pymxs.runtime.setPropertyController(prs, 'Position', frozenController)
 
-        # Freeze sub-controllers
-        #
-        frozenController = pymxs.runtime.getPropertyController(positionList, 'Frozen_Position')
-        zeroController = pymxs.runtime.getPropertyController(positionList, 'Zero_Pos_XYZ')
-
-        frozenController.value = matrix.translationPart
-        zeroController.value = pymxs.runtime.Point3(0.0, 0.0, 0.0)
-
-        log.debug('No relative constraints found on "$%s.position" controller!' % node.name)
-        return True
-
-    # Clear and rebuild list sub-controllers
+    # Rebuild list sub-controllers
     #
-    positionListCopy = pymxs.runtime.copy(positionList)
+    controller = pymxs.runtime.Position_List()
+    pymxs.runtime.setPropertyController(prs, 'Position', controller)
 
-    log.info('Rebuilding "$%s.position" controller!' % node.name)
-    controllerutils.clearListController(positionList)
+    log.info('Resetting "$%s.position" list controller!' % node.name)
 
-    for (i, (name, controller, weight)) in enumerate(controllerutils.iterListController(positionListCopy)):
+    for (i, (subController, name, weight)) in enumerate(controllerutils.iterListController(positionList)):
 
-        # Create sub-controller
+        # Evaluate sub-controller
         #
         index = i + 1
-        controllerClass = pymxs.runtime.classOf(controller)
 
-        log.info('Rebuilding "%s" controller @ "$%s.position.list[%s]"' % (controllerClass, node.name, index))
+        if i == 0:  # Frozen_Position
 
-        if controllerutils.isConstraint(controller):
+            controller.setName(index, name)
 
-            # Add constraint sub-controller
+        elif i == 1:  # Zero_Pos_XYZ
+
+            subController.value = pymxs.runtime.Point3(0.0, 0.0, 0.0)
+            pymxs.runtime.setPropertyController(controller, 'Available', subController)
+            controller.setName(index, name)
+
+        elif controllerutils.isConstraint(subController):  # Constraints
+
+            # Create new constraint
             #
-            subController = controllerClass()
+            constraintClass = pymxs.runtime.classOf(subController)
+            log.info('Rebuilding "%s" controller @ "$%s.position.list[%s]"' % (constraintClass, node.name, index))
 
-            pymxs.runtime.setPropertyController(positionList, 'Available', subController)
-            positionList.setName(index, name)
+            constraint = constraintClass()
+            pymxs.runtime.setPropertyController(controller, 'Available', constraint)
+            controller.setName(index, name)
 
             # Copy constraint targets and properties
             #
-            copyTargets(controller, subController)
-            propertyutils.copyProperties(controller, subController)
-            controllerutils.copySubAnims(controller, subController)
+            copyTargets(subController, constraint)
+            propertyutils.copyProperties(subController, constraint)
+            controllerutils.copySubAnims(subController, constraint)
 
-        else:
+        else:  # Default
 
-            # Copy controller
-            #
-            subController = pymxs.runtime.copy(controller)
-            subController.value = matrix.translationPart if i == 0 else pymxs.runtime.Point3(0.0, 0.0, 0.0) if i == 1 else subController.value
-
-            pymxs.runtime.setPropertyController(positionList, 'Available', subController)
-            positionList.setName(index, name)
+            pymxs.runtime.setPropertyController(controller, 'Available', subController)
+            controller.setName(index, name)
 
     # Copy weight sub-anims
+    # Update active sub-controller
     #
-    controllerutils.copySubAnims(positionListCopy.weight, positionList.weight)
-
-    # Reset active controller
-    #
-    listCount = positionList.getCount()
-    positionList.setActive(listCount)
+    controllerutils.copySubAnims(positionList.weight, controller.weight)
+    controller.setActive(positionList.getActive())
 
     return True
 
 
-def rebuildRotationList(node, rotationList):
+def rebuildRotationList(node):
     """
     Rebuilds the rotation-list on the supplied node.
     If the list controller has no constraints, or no relative constraints, then no changes are made.
 
     :type node: pymxs.MXSWrapperBase
-    :type rotationList: pymxs.MXSWrapperBase
     :rtype: bool
     """
 
-    # Ensure frozen names
+    # Get transform controller
     #
+    prs = controllerutils.getPRSController(node)
+
+    if not pymxs.runtime.isKindOf(prs, pymxs.runtime.PRS):
+
+        log.warning('Unable to locate PRS controller from "%s" node!' % node.name)
+        return False
+
+    # Get rotation list
+    #
+    rotationController = controllerutils.decomposePRSController(prs)[1]
+    rotationList = controllerutils.ensureControllerByClass(rotationController, pymxs.runtime.Rotation_List)
     success = controllerutils.ensureFrozenNames(rotationList)
 
     if not success:
@@ -150,73 +162,64 @@ def rebuildRotationList(node, rotationList):
         log.warning('Unable to rebuild "$%s.rotation" list controller!' % node.name)
         return False
 
-    # Check if any sub-controllers are relative
+    # Freeze rotation using current matrix
     #
     matrix = transformutils.getMatrix(node)
-    isRelative = any([getattr(subController, 'relative', False) for (name, subController, weight) in controllerutils.iterListController(rotationList)])
 
-    if not isRelative:
+    frozenController = pymxs.runtime.Euler_XYZ()
+    frozenController.value = matrix.rotationPart
+    pymxs.runtime.setPropertyController(prs, 'Rotation', frozenController)
 
-        # Freeze sub-controllers
-        #
-        frozenController = pymxs.runtime.getPropertyController(rotationList, 'Frozen_Rotation')
-        zeroController = pymxs.runtime.getPropertyController(rotationList, 'Zero_Euler_XYZ')
-
-        frozenController.value = matrix.rotationPart
-        zeroController.value = pymxs.runtime.Quat(1)
-
-        log.debug('No relative constraints found on "$%s.rotation" controller!' % node.name)
-        return True
-
-    # Clear and rebuild list sub-controllers
+    # Rebuild list sub-controllers
     #
-    rotationListCopy = pymxs.runtime.copy(rotationList)
+    controller = pymxs.runtime.Rotation_List()
+    pymxs.runtime.setPropertyController(prs, 'Rotation', controller)
 
-    log.info('Rebuilding "$%s.rotation" controller!' % node.name)
-    controllerutils.clearListController(rotationList)
+    log.info('Resetting "$%s.rotation" list controller!' % node.name)
 
-    for (i, (name, controller, weight)) in enumerate(controllerutils.iterListController(rotationListCopy)):
+    for (i, (subController, name, weight)) in enumerate(controllerutils.iterListController(rotationList)):
 
-        # Create sub-controller
+        # Evaluate sub-controller
         #
         index = i + 1
-        controllerClass = pymxs.runtime.classOf(controller)
 
-        log.info('Rebuilding "%s" controller @ "$%s.rotation.list[%s]"' % (controllerClass, node.name, index))
+        if i == 0:  # Frozen_Rotation
 
-        if controllerutils.isConstraint(controller):
+            controller.setName(index, name)
 
-            # Add constraint sub-controller
+        elif i == 1:  # Zero_Euler_XYZ
+
+            subController.value = pymxs.runtime.Quat(1)
+            pymxs.runtime.setPropertyController(controller, 'Available', subController)
+            controller.setName(index, name)
+
+        elif controllerutils.isConstraint(subController):  # Constraints
+
+            # Create new constraint
             #
-            subController = controllerClass()
+            constraintClass = pymxs.runtime.classOf(subController)
+            log.info('Rebuilding "%s" controller @ "$%s.rotation.list[%s]"' % (constraintClass, node.name, index))
 
-            pymxs.runtime.setPropertyController(rotationList, 'Available', subController)
-            rotationList.setName(index, name)
+            constraint = constraintClass()
+            pymxs.runtime.setPropertyController(controller, 'Available', constraint)
+            controller.setName(index, name)
 
             # Copy constraint targets and properties
             #
-            copyTargets(controller, subController)
-            propertyutils.copyProperties(controller, subController)
-            controllerutils.copySubAnims(controller, subController)
+            copyTargets(subController, constraint)
+            propertyutils.copyProperties(subController, constraint)
+            controllerutils.copySubAnims(subController, constraint)
 
-        else:
+        else:  # Default
 
-            # Copy controller
-            #
-            subController = pymxs.runtime.copy(controller)
-            subController.value = matrix.rotationPart if i == 0 else pymxs.runtime.Quat(1) if i == 1 else subController.value
-
-            pymxs.runtime.setPropertyController(rotationList, 'Available', subController)
-            rotationList.setName(index, name)
+            pymxs.runtime.setPropertyController(controller, 'Available', subController)
+            controller.setName(index, name)
 
     # Copy weight sub-anims
+    # Update active sub-controller
     #
-    controllerutils.copySubAnims(rotationListCopy.weight, rotationList.weight)
-
-    # Reset active controller
-    #
-    listCount = rotationList.getCount()
-    rotationList.setActive(listCount)
+    controllerutils.copySubAnims(rotationList.weight, controller.weight)
+    controller.setActive(rotationList.getActive())
 
     return True
 
@@ -224,7 +227,7 @@ def rebuildRotationList(node, rotationList):
 def resetInitialOffsets(node):
     """
     Resets the initial offsets on any constraints to the supplied node.
-    Developer notes: As far as I'm aware there is no way to edit constraint offsets other than rebuilding the constraint.
+    Developer notes: As far as I'm aware there is no way to edit constraint offsets other than rebuilding the constraint...
 
     :type node: pymxs.MXSWrapperBase
     :rtype: bool
@@ -238,19 +241,9 @@ def resetInitialOffsets(node):
 
         return False
 
-    # Decompose PRS controller
+    # Rebuild PRS list controllers
     #
-    transformController = controllerutils.getPRSController(node)
-    positionController, rotationController, scaleController = controllerutils.decomposePRSController(transformController)
-
-    # Rebuild position list
-    #
-    positionList = controllerutils.ensureControllerByClass(positionController, pymxs.runtime.Position_List)
-    rebuildPositionList(node, positionList)
-
-    # Rebuild rotation list
-    #
-    rotationList = controllerutils.ensureControllerByClass(rotationController, pymxs.runtime.Rotation_List)
-    rebuildRotationList(node, rotationList)
+    rebuildPositionList(node)
+    rebuildRotationList(node)
 
     return True

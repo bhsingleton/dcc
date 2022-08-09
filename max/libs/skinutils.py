@@ -2,7 +2,7 @@ import pymxs
 
 from dcc.python import stringutils
 from dcc.math import linearalgebra
-from dcc.max.libs import transformutils, meshutils
+from dcc.max.libs import controllerutils, transformutils, meshutils
 from dcc.generators.inclusiverange import inclusiveRange
 from dcc.max.decorators.commandpaneloverride import commandPanelOverride
 
@@ -258,7 +258,7 @@ def resetSkin(skin):
     #
     node = pymxs.runtime.refs.dependentNodes(skin, firstOnly=True)
 
-    if transformutils.isFrozen(node):
+    if controllerutils.isFrozen(node):
 
         log.info('Un-freezing "%s" mesh!' % node.name)
         transformutils.unfreezeTransform(node)

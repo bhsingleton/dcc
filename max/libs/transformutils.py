@@ -888,32 +888,27 @@ def freezeScale(node):
         scaleController.setActive(2)
 
 
-def requiresFreezing(node):
+def requiresFreezing(obj):
     """
-    Evaluates if the supplied node requires freezing.
+    Evaluates if the supplied object requires freezing.
 
-    :type node: pymxs.MXSWrapperBase
+    :type obj: pymxs.MXSWrapperBase
     :rtype: bool
     """
-
-    # Evaluate if this is a valid node
-    #
-    if not pymxs.runtime.isValidNode(node):
-
-        return False
 
     # Evaluate transform controller
     # Only PRS controllers can be frozen!
     #
-    transformController = controllerutils.getPRSController(node)
+    node, controller = controllerutils.decomposeController(obj)
+    prs = controllerutils.ensureControllerByClass(controller, pymxs.runtime.PRS)
 
-    if not pymxs.runtime.isKindOf(transformController, pymxs.runtime.PRS):
+    if not pymxs.runtime.isKindOf(prs, pymxs.runtime.PRS):
 
         return False
 
     # Decompose PRS controller
     #
-    positionController, rotationController, scaleController = controllerutils.decomposePRSController(transformController)
+    positionController, rotationController, scaleController = controllerutils.decomposePRSController(prs)
 
     # Evaluate position controller
     #
@@ -928,7 +923,7 @@ def requiresFreezing(node):
         #
         frozenController = pymxs.runtime.getPropertyController(positionList, 'Frozen_Position')
 
-        if not isClose(frozenController.value, matrix.translationPart):
+        if not isClose(frozenController.value, matrix.translationPart, tolerance=1e-2):
 
             return True
 
@@ -947,7 +942,7 @@ def requiresFreezing(node):
         #
         frozenController = pymxs.runtime.getPropertyController(rotationList, 'Frozen_Rotation')
 
-        if not isClose(frozenController.value, matrix.rotationPart):
+        if not isClose(frozenController.value, matrix.rotationPart, tolerance=1e-2):
 
             return True
 
@@ -962,7 +957,7 @@ def freezePreferredRotation(controller):
     """
     Freezes the preferred angles on the supplied IK controller.
 
-    :type controller: pymxs.runtime.MXSWrapperBase
+    :type controller: pymxs.MXSWrapperBase
     :rtype: None
     """
 
@@ -970,9 +965,9 @@ def freezePreferredRotation(controller):
     #
     if not pymxs.runtime.isKindOf(controller, pymxs.runtime.IKControl):
 
-        raise TypeError('freezePreferredAngles() expects an IKControl!')
+        raise TypeError('freezePreferredRotation() expects an IKControl!')
 
-    # Get local rotation
+    # Get euler rotation
     #
     node = pymxs.runtime.refs.dependentNodes(controller, firstOnly=True)
     matrix = getMatrix(node)
@@ -999,14 +994,13 @@ def isArray(value):
     return hasattr(value, '__getitem__') and hasattr(value, '__len__')
 
 
-def isClose(value, otherValue, rel_tol=1e-3, abs_tol=1e-3):
+def isClose(value, otherValue, tolerance=1e-3):
     """
     Evaluates if the two values are close.
 
     :type value: Union[int, float, pymxs.MXSWrapperBase]
     :type otherValue: Union[int, float, pymxs.MXSWrapperBase]
-    :type rel_tol: float
-    :type abs_tol: float
+    :type tolerance: float
     :rtype: bool
     """
 
@@ -1014,26 +1008,19 @@ def isClose(value, otherValue, rel_tol=1e-3, abs_tol=1e-3):
     #
     if isinstance(value, (int, float)) and isinstance(otherValue, (int, float)):
 
-        return math.isclose(value, otherValue, rel_tol=rel_tol, abs_tol=abs_tol)
+        return abs(value - otherValue) <= tolerance
+
+    elif pymxs.runtime.isKindOf(value, pymxs.runtime.Quat) and pymxs.runtime.isKindOf(otherValue, pymxs.runtime.Quat):
+
+        return isClose(quatToMatrix3(value), quatToMatrix3(otherValue), tolerance=tolerance)
 
     elif pymxs.runtime.isKindOf(value, pymxs.runtime.Point3) and pymxs.runtime.isKindOf(otherValue, pymxs.runtime.Point3):
 
         return all(
             [
-                isClose(value.x, otherValue.x, rel_tol=rel_tol, abs_tol=abs_tol),
-                isClose(value.y, otherValue.y, rel_tol=rel_tol, abs_tol=abs_tol),
-                isClose(value.z, otherValue.z, rel_tol=rel_tol, abs_tol=abs_tol)
-            ]
-        )
-
-    elif pymxs.runtime.isKindOf(value, pymxs.runtime.Quat) and pymxs.runtime.isKindOf(otherValue, pymxs.runtime.Quat):
-
-        return all(
-            [
-                isClose(value.x, otherValue.x, rel_tol=rel_tol, abs_tol=abs_tol),
-                isClose(value.y, otherValue.y, rel_tol=rel_tol, abs_tol=abs_tol),
-                isClose(value.z, otherValue.z, rel_tol=rel_tol, abs_tol=abs_tol),
-                isClose(value.w, otherValue.w, rel_tol=rel_tol, abs_tol=abs_tol),
+                isClose(value.x, otherValue.x, tolerance=tolerance),
+                isClose(value.y, otherValue.y, tolerance=tolerance),
+                isClose(value.z, otherValue.z, tolerance=tolerance)
             ]
         )
 
@@ -1041,10 +1028,10 @@ def isClose(value, otherValue, rel_tol=1e-3, abs_tol=1e-3):
 
         return all(
             [
-                isClose(value.row1, otherValue.row1, rel_tol=rel_tol, abs_tol=abs_tol),
-                isClose(value.row2, otherValue.row2, rel_tol=rel_tol, abs_tol=abs_tol),
-                isClose(value.row3, otherValue.row3, rel_tol=rel_tol, abs_tol=abs_tol),
-                isClose(value.row4, otherValue.row4, rel_tol=rel_tol, abs_tol=abs_tol)
+                isClose(value.row1, otherValue.row1, tolerance=tolerance),
+                isClose(value.row2, otherValue.row2, tolerance=tolerance),
+                isClose(value.row3, otherValue.row3, tolerance=tolerance),
+                isClose(value.row4, otherValue.row4, tolerance=tolerance)
             ]
         )
 

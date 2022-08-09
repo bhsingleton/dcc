@@ -1,7 +1,5 @@
 import pymxs
 
-from . import nodeutils
-from ...python import stringutils
 from ...generators.inclusiverange import inclusiveRange
 
 import logging
@@ -22,7 +20,7 @@ def iterBases(cls):
     #
     if not isinstance(cls, pymxs.MXSWrapperBase):
 
-        return
+        return iter([])
 
     # Iterate until we hit the Value class
     #
@@ -47,8 +45,8 @@ def isKindOf(obj, cls):
     """
     Evaluates if the supplied object is derived from the given Max class.
     There are several improvements made to this method vs the builtin pymxs function:
-        Support for tuples with Max classes.
-        Literal Sub-Anim comparison rather than the implied value comparisons.
+        1. Support for tuples with Max classes.
+        2. Literal Sub-Anim comparison rather than an implied value comparison.
 
     :type obj: Any
     :type cls: Union[pymxs.MXSWrapperBase, Tuple[pymxs.MXSWrapperBase]]
@@ -68,6 +66,17 @@ def isKindOf(obj, cls):
         return pymxs.runtime.isKindOf(obj, cls)
 
 
+def isValidWrapper(obj):
+    """
+    Evaluates if the supplied object is a valid Max wrapper.
+
+    :type obj: Any
+    :rtype: bool
+    """
+
+    return pymxs.runtime.isValidObj(obj) and pymxs.runtime.MAXWrapper in bases(obj)
+
+
 def isParamBlock2Based(obj):
     """
     Evaluates if the supplied object is ParamBlock2 based.
@@ -80,6 +89,38 @@ def isParamBlock2Based(obj):
     return getattr(cls, 'ispb2based', False)
 
 
+def iterSubAnims(obj):
+    """
+    Returns a generator that yields sub-anims from the supplied Max object.
+
+    :type obj: pymxs.MXSWrapperBase
+    :rtype: iter
+    """
+
+    # Iterate through sub-anims
+    #
+    numSubs = getattr(obj, 'numSubs', 0)
+
+    for i in inclusiveRange(1, numSubs, 1):
+
+        subAnim = pymxs.runtime.getSubAnim(obj, i)
+        yield subAnim
+
+
+def isSubAnimNameUnique(subAnim):
+    """
+    Evaluates if the supplied sub-anim's name is unique.
+
+    :type subAnim: pymxs.MXSWrapperBase
+    :rtype: bool
+    """
+
+    obj = subAnim.parent
+    name = subAnim.name
+
+    return not any([x.name == name and x != subAnim for x in iterSubAnims(obj)])
+
+
 def isArray(obj):
     """
     Evaluates if the supplied Max-object represents an array.
@@ -89,6 +130,26 @@ def isArray(obj):
     """
 
     return pymxs.runtime.isProperty(obj, 'count')
+
+
+def hasValidExpression(obj):
+    """
+    Evaluates if the supplied object has a valid expression.
+
+    :type obj: pymxs.MXSWrapperBase
+    :rtype: bool
+    """
+
+    try:
+
+        expression = pymxs.runtime.exprForMaxObject(obj)
+        result = pymxs.runtime.execute(expression)
+
+        return obj == result
+
+    except RuntimeError as error:
+
+        return False
 
 
 def iterClassesByPattern(search, superOnly=False):
@@ -137,7 +198,7 @@ def getAssociatedNode(obj):
 def iterDependents(obj, ignore=None):
     """
     Returns a generator that yields dependents from the given object.
-    Any optional list of MXS classes can supplied to ignore specific dependents.
+    Any optional list of MXS classes can be used to ignore specific dependents.
 
     :type obj: pymxs.MXSWrapperBase
     :type ignore: Tuple[pymxs.MXSWrapperBase]
@@ -183,14 +244,10 @@ def getAssociatedSubAnim(obj, ignore=None):
 
         # Iterate through sub-anims
         #
-        numSubs = getattr(dependent, 'numSubs', 0)
-
-        for i in inclusiveRange(1, numSubs, 1):
+        for subAnim in iterSubAnims(dependent):
 
             # Check if sub-anim contains object
             #
-            subAnim = pymxs.runtime.getSubAnim(dependent, i)
-
             if subAnim.controller == obj or subAnim.value == obj:
 
                 return subAnim
@@ -202,7 +259,7 @@ def getAssociatedSubAnim(obj, ignore=None):
     return None
 
 
-def findParamBlockSource(paramBlock):
+def findAssociatedAttributeDef(paramBlock):
     """
     Returns the attribute definition associated with the supplied parameter block.
     Not all parameter blocks have accessible definitions!
@@ -219,7 +276,7 @@ def findParamBlockSource(paramBlock):
 
         # Evaluate dependent type
         #
-        if isKindOf(dependent, pymxs.runtime.AttributeDef) or isParamBlock2Based(dependent):
+        if isKindOf(dependent, pymxs.runtime.AttributeDef) and isParamBlock2Based(dependent):
 
             return dependent
 
@@ -228,142 +285,3 @@ def findParamBlockSource(paramBlock):
             continue
 
     return None
-
-
-def getNextLogicalDependent(obj):
-    """
-    Returns the next logical up-stream dependent.
-    This method will only consider sub-anims or custom attributes.
-
-    :type obj: pymxs.MXSWrapperBase
-    :rtype: pymxs.MXSWrapperBase
-    """
-
-    # Evaluate Max-object type
-    #
-    if pymxs.runtime.isvalidNode(obj) or isKindOf(obj, pymxs.runtime.Scene):
-
-        return  # Nothing left to return!
-
-    elif isKindOf(obj, pymxs.runtime.SubAnim):
-
-        return obj.parent
-
-    elif isKindOf(obj, pymxs.runtime.Material):
-
-        return getAssociatedSubAnim(obj, ignore=(pymxs.runtime.ParamBlock2, pymxs.runtime.SMENodeAttr, pymxs.runtime.Node, pymxs.runtime.MAXTVNode))
-
-    elif isKindOf(obj, pymxs.runtime.ParamBlock2):
-
-        # Find parameter-block source
-        # Otherwise default to associated sub-anim
-        #
-        source = findParamBlockSource(obj)
-
-        if source is not None:
-
-            return source
-
-        else:
-
-            return getAssociatedSubAnim(obj)
-
-    elif isKindOf(obj, pymxs.runtime.AttributeDef):
-
-        return pymxs.runtime.CustAttributes.getOwner(obj)
-
-    elif pymxs.runtime.isValidObj(obj):
-
-        return getAssociatedSubAnim(obj)
-
-    else:
-
-        return
-
-
-def iterLogicalDependents(obj):
-    """
-    Returns a generator that yields the upstream dependents from the given object.
-
-    :type obj: pymxs.MXSWrapperBase
-    :rtype: iter
-    """
-
-    dependent = getNextLogicalDependent(obj)
-
-    while dependent is not None:
-
-        yield dependent
-        dependent = getNextLogicalDependent(dependent)
-
-
-def traceLogicalDependents(obj):
-    """
-    Returns a generator that yields the dependents leading to the given object.
-
-    :type obj: pymxs.MXSWrapperBase
-    :rtype: iter
-    """
-
-    # Iterate through dependents in reverse
-    #
-    for dependent in reversed(list(iterLogicalDependents(obj))):
-
-        yield dependent
-
-    yield obj  # Don't forget to yield self!
-
-
-def exprForMaxObject(obj):
-    """
-    Returns a path to the supplied Max object.
-
-    :type obj: pymxs.MXSWrapperBase
-    :rtype: str
-    """
-
-    # Check if this is a valid max object
-    #
-    if not pymxs.runtime.isValidObj(obj):
-
-        return
-
-    # Iterate through dependency trace
-    #
-    dependents = list(traceLogicalDependents(obj))
-    expression = ''
-
-    for (i, dependent) in enumerate(dependents):
-
-        # Evaluate dependent type
-        #
-        if pymxs.runtime.isValidNode(dependent):
-
-            expression += nodeutils.getFullPathTo(dependent)
-
-        elif pymxs.runtime.isKindOf(dependent, pymxs.runtime.Scene):
-
-            expression += '::rootScene'
-
-        elif pymxs.runtime.isKindOf(dependent, pymxs.runtime.SubAnim):
-
-            subAnimName = stringutils.slugify(dependent.name, whitespace='_', illegal='_')
-            expression += '[#{subAnimName}]'.format(subAnimName=subAnimName)
-
-        elif pymxs.runtime.isController(dependent):
-
-            expression += '.controller'
-
-        elif pymxs.runtime.isKindOf(dependent, pymxs.runtime.AttributeDef):
-
-            expression += '.{definitionName}'.format(definitionName=dependent.name)
-
-        elif pymxs.runtime.isValidObj(dependent) and pymxs.runtime.isKindOf(dependents[i - 1], pymxs.runtime.SubAnim):
-
-            expression += '.value'
-
-        else:
-
-            continue
-
-    return expression

@@ -44,11 +44,12 @@ def exportSelection(savePath):
     #
     with open(savePath, 'w') as jsonFile:
         json.dump(
-            pymxs.runtime.selection,
+            pymxs.runtime.rootScene,
             jsonFile,
             cls=mxsobjectparser.MXSObjectEncoder,
             indent=4,
-            skipChildren=True
+            skipChildren=True,
+            selection=pymxs.runtime.selection
         )
 
     log.info('Exporting selection to: %s' % savePath)

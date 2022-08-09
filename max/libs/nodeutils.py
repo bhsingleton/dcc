@@ -50,7 +50,7 @@ def isValidScene(obj):
     :rtype: bool
     """
 
-    return pymxs.runtime.isKindOf(obj, pymxs.runtime.Scene) and not pymxs.runtime.isDeleted(obj)
+    return (pymxs.runtime.isKindOf(obj, pymxs.runtime.Scene) and pymxs.runtime.isValidObj(obj)) and not pymxs.runtime.isDeleted(obj)
 
 
 def baseObject(node):
@@ -64,7 +64,7 @@ def baseObject(node):
     return getattr(node, 'baseObject', node)
 
 
-def iterNodesByPattern(pattern, ignoreCase=False):
+def iterNodesByPattern(*patterns, ignoreCase=False):
     """
     Returns a generator that yields nodes based on the supplied pattern.
 
@@ -75,7 +75,7 @@ def iterNodesByPattern(pattern, ignoreCase=False):
 
     for obj in pymxs.runtime.objects:
 
-        if pymxs.runtime.matchPattern(obj.name, pattern=pattern, ignoreCase=ignoreCase):
+        if any([pymxs.runtime.matchPattern(obj.name, pattern=pattern, ignoreCase=ignoreCase) for pattern in patterns]):
 
             yield obj
 

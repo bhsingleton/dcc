@@ -1,8 +1,9 @@
 import json
 import pymxs
 
-from dcc.max.libs import propertyutils
-from dcc.python import stringutils
+from six.moves import collections_abc
+from ..libs import propertyutils, wrapperutils
+from ...python import stringutils
 
 import logging
 logging.basicConfig()
@@ -12,7 +13,7 @@ log.setLevel(logging.INFO)
 
 class MXSValueEncoder(json.JSONEncoder):
     """
-    Overload of JSONEncoder used to serialize mxs values.
+    Overload of JSONEncoder used to serialize MXS values.
     """
 
     # region Dunderscores
@@ -39,7 +40,10 @@ class MXSValueEncoder(json.JSONEncoder):
         'MaterialLibrary': 'serializeArray',
         'Dictionary': 'serializeDictionary',
         'ArrayParameter': 'serializeArray',
+        'BitMap': 'serializeBitMap'
     }
+
+    __builtin_types__ = (bool, int, float, str, collections_abc.Sequence, collections_abc.Mapping)
     # endregion
 
     # region Methods
@@ -71,9 +75,26 @@ class MXSValueEncoder(json.JSONEncoder):
                 log.warning('Unable to serialize MXS "%s" value!' % str(pymxs.runtime.classOf(obj)))
                 return None
 
+        elif isinstance(obj, self.__builtin_types__) or obj is None:
+
+            return obj
+
         else:
 
             return super(MXSValueEncoder, self).default(obj)
+
+    def serializeInheritance(self, wrapper):
+        """
+        Returns a serializable object for the supplied reference target.
+
+        :type wrapper: pymxs.MXSWrapperBase
+        :rtype: dict
+        """
+
+        maxClass = pymxs.runtime.classOf(wrapper)
+        superClasses = tuple(wrapperutils.iterBases(maxClass))
+
+        return {'__class__': str(maxClass), '__mro__': tuple(map(str, (maxClass,) + superClasses))}
 
     def serializeName(self, name):
         """
@@ -83,12 +104,11 @@ class MXSValueEncoder(json.JSONEncoder):
         :rtype: dict
         """
 
-        return {
-            'class': 'Name',
-            'superClass': 'Value',
-            'args': [stringutils.slugify(str(name), illegal='_')],
-            'kwargs': {}
-        }
+        obj = self.serializeInheritance(name)
+        obj['args'] = [stringutils.slugify(str(name), whitespace='_', illegal='_')]
+        obj['kwargs'] = {}
+
+        return obj
 
     def serializeTime(self, time):
         """
@@ -118,12 +138,11 @@ class MXSValueEncoder(json.JSONEncoder):
         :rtype: dict
         """
 
-        return {
-            'class': 'Point2',
-            'superClass': 'Value',
-            'args': [point2.x, point2.y],
-            'kwargs': {}
-        }
+        obj = self.serializeInheritance(point2)
+        obj['args'] = [point2.x, point2.y]
+        obj['kwargs'] = {}
+
+        return obj
 
     def serializePoint3(self, point3):
         """
@@ -133,12 +152,11 @@ class MXSValueEncoder(json.JSONEncoder):
         :rtype: dict
         """
 
-        return {
-            'class': 'Point3',
-            'superClass': 'Value',
-            'args': [point3.x, point3.y, point3.z],
-            'kwargs': {}
-        }
+        obj = self.serializeInheritance(point3)
+        obj['args'] = [point3.x, point3.y, point3.z]
+        obj['kwargs'] = {}
+
+        return obj
 
     def serializePoint4(self, point4):
         """
@@ -148,12 +166,11 @@ class MXSValueEncoder(json.JSONEncoder):
         :rtype: dict
         """
 
-        return {
-            'class': 'Point4',
-            'superClass': 'Value',
-            'args': [point4.x, point4.y, point4.z, point4.w],
-            'kwargs': {}
-        }
+        obj = self.serializeInheritance(point4)
+        obj['args'] = [point4.x, point4.y, point4.z, point4.w]
+        obj['kwargs'] = {}
+
+        return obj
 
     def serializeColor(self, color):
         """
@@ -163,12 +180,11 @@ class MXSValueEncoder(json.JSONEncoder):
         :rtype: dict
         """
 
-        return {
-            'class': 'Color',
-            'superClass': 'Value',
-            'args': [color.r, color.g, color.b, color.a],
-            'kwargs': {}
-        }
+        obj = self.serializeInheritance(color)
+        obj['args'] = [color.r, color.g, color.b, color.a]
+        obj['kwargs'] = {}
+
+        return obj
 
     def serializeEulerAngles(self, eulerAngles):
         """
@@ -178,12 +194,11 @@ class MXSValueEncoder(json.JSONEncoder):
         :rtype: dict
         """
 
-        return {
-            'class': 'EulerAngles',
-            'superClass': 'Value',
-            'args': [eulerAngles.x, eulerAngles.y, eulerAngles.z],
-            'kwargs': {}
-        }
+        obj = self.serializeInheritance(eulerAngles)
+        obj['args'] = [eulerAngles.x, eulerAngles.y, eulerAngles.z]
+        obj['kwargs'] = {}
+
+        return obj
 
     def serializeQuat(self, quat):
         """
@@ -193,32 +208,25 @@ class MXSValueEncoder(json.JSONEncoder):
         :rtype: dict
         """
 
-        return {
-            'class': 'Quat',
-            'superClass': 'Value',
-            'args': [quat.x, quat.y, quat.z, quat.w],
-            'kwargs': {}
-        }
+        obj = self.serializeInheritance(quat)
+        obj['args'] = [quat.x, quat.y, quat.z, quat.w]
+        obj['kwargs'] = {}
+
+        return obj
 
     def serializeMatrix3(self, matrix3):
         """
         Serializes the supplied matrix3 object into a json object.
 
-        :type matrix3: pymxs.runtime.matrix3
+        :type matrix3: pymxs.runtime.Matrix3
         :rtype: dict
         """
 
-        return {
-            'class': 'Matrix3',
-            'superClass': 'Value',
-            'args': [
-                self.serializePoint3(matrix3.row1),
-                self.serializePoint3(matrix3.row2),
-                self.serializePoint3(matrix3.row3),
-                self.serializePoint3(matrix3.row4)
-            ],
-            'kwargs': {}
-        }
+        obj = self.serializeInheritance(matrix3)
+        obj['args'] = [matrix3.row1, matrix3.row2, matrix3.row3, matrix3.row4]
+        obj['kwargs'] = {}
+
+        return obj
 
     def serializeMAXKey(self, maxKey):
         """
@@ -228,12 +236,11 @@ class MXSValueEncoder(json.JSONEncoder):
         :rtype: dict
         """
 
-        return {
-            'class': 'MAXKey',
-            'superClass': 'Value',
-            'args': [],
-            'kwargs': {key: value for (key, value) in propertyutils.iterDynamicProperties(maxKey)}
-        }
+        obj = self.serializeInheritance(maxKey)
+        obj['args'] = []
+        obj['kwargs'] = {key: value for (key, value) in propertyutils.iterDynamicProperties(maxKey)}
+
+        return obj
 
     def serializeArray(self, array):
         """
@@ -254,12 +261,26 @@ class MXSValueEncoder(json.JSONEncoder):
         """
 
         return {key: dictionary[key] for key in dictionary.keys}
+
+    def serializeBitMap(self, bitmap):
+        """
+        Serializes the supplied bitmap object into a json object.
+
+        :type bitmap: pymxs.MXSWrapperBase
+        :rtype: dict
+        """
+
+        obj = self.serializeInheritance(bitmap)
+        obj['args'] = []
+        obj['kwargs'] = {key: value for (key, value) in propertyutils.iterStaticProperties(bitmap)}
+
+        return obj
     # endregion
 
 
 class MXSValueDecoder(json.JSONDecoder):
     """
-    Overload of JSONDecoder used to deserialize mxs values.
+    Overload of JSONDecoder used to deserialize MXS values.
     """
 
     # region Dunderscores
@@ -290,10 +311,10 @@ class MXSValueDecoder(json.JSONDecoder):
 
         # Inspect class name
         #
-        className = obj.get('class', '')
-        superClassName = obj.get('superClass', '')
+        className = obj.get('__class__', '')
+        superClasses = obj.get('__mro__', [])
 
-        if (hasattr(pymxs.runtime, className) and superClassName == 'Value') and className not in MXSValueDecoder.__ignore__:
+        if (hasattr(pymxs.runtime, className) and 'Value' in superClasses) and className not in MXSValueDecoder.__ignore__:
 
             return self.deserializeValue(obj)
 
@@ -309,8 +330,25 @@ class MXSValueDecoder(json.JSONDecoder):
         :rtype: pymxs.MXSWrapperBase
         """
 
-        cls = getattr(pymxs.runtime, obj['class'])
-        return cls(*obj['args'], **obj['kwargs'])
+        # Get class name from object
+        #
+        name = obj.get('__class__', '')
+
+        if stringutils.isNullOrEmpty(name):
+
+            raise TypeError('deserializeValue() expects a compatible object!')
+
+        # Get associated class
+        #
+        cls = getattr(pymxs.runtime, name, None)
+
+        if callable(cls):
+
+            return cls(*obj['args'], **obj['kwargs'])
+
+        else:
+
+            raise TypeError('deserializeValue() expects a valid class (%s given)!' % name)
 
     def deserializeMaxKeyArray(self, maxKeyArray, controller=None):
         """

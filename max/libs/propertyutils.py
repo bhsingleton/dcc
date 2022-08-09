@@ -70,23 +70,23 @@ def getDefaultPropertyValue(cls, name):
 
         return pymxs.runtime.DefaultParamInterface.getDefaultParamValue(cls, name, None)
 
-    except SystemError:
+    except (SystemError, RuntimeError):
 
         log.error('Error encountered while retrieving "%s::%s" default value!' % (cls, name))
         return None
 
 
-def inspectClassProperties(className):
+def inspectClassProperties(maxClassName):
     """
     Inspects the supplied class names for writable properties.
 
-    :type className: str
+    :type maxClassName: str
     :rtype: list[str]
     """
 
     # Check if class has already been inspected
     #
-    properties = __properties__.get(className, None)
+    properties = __properties__.get(maxClassName, None)
 
     if properties is not None:
 
@@ -94,7 +94,7 @@ def inspectClassProperties(className):
 
     # Concatenate class lookup pattern
     #
-    pattern = '{className}.*'.format(className=className)
+    pattern = '{maxClassName}.*'.format(maxClassName=maxClassName)
 
     stringStream = pymxs.runtime.StringStream('')
     pymxs.runtime.showClass(pattern, to=stringStream)
@@ -115,7 +115,7 @@ def inspectClassProperties(className):
 
     # Cache list for later use
     #
-    __properties__[className] = properties
+    __properties__[maxClassName] = properties
     return properties
 
 
@@ -172,10 +172,10 @@ def iterStaticProperties(obj, skipAnimatable=False, skipNonValues=False, skipDef
 
     # Iterate through property names
     #
-    cls = pymxs.runtime.classOf(obj)
-    clsName = str(cls)
+    maxClass = pymxs.runtime.classOf(obj)
+    maxClassName = str(maxClass)
 
-    properties = inspectClassProperties(clsName)
+    properties = inspectClassProperties(maxClassName)
 
     for key in properties:
 
@@ -206,7 +206,7 @@ def iterStaticProperties(obj, skipAnimatable=False, skipNonValues=False, skipDef
 
         # Check if non-default values should be skipped
         #
-        default = getDefaultPropertyValue(cls, key)
+        default = getDefaultPropertyValue(maxClass, key)
 
         if skipDefaultValues and (value == default):
 

@@ -17,15 +17,15 @@ def hasModifier(node, modifierType):
     :rtype: bool
     """
 
-    return len(findModifierByType(node, modifierType, all=True)) > 0
+    return len(getModifierByClass(node, modifierType, all=True)) > 0
 
 
-def findModifierByType(node, modifierType, all=False):
+def getModifierByClass(node, modifierClass, all=False):
     """
     Returns a modifier derived from the specified type from the supplied node.
 
     :type node: Union[str, pymxs.MXSWrapperBase]
-    :type modifierType: pymxs.runtime.MAXClass
+    :type modifierClass: pymxs.runtime.MAXClass
     :type all: bool
     :rtype: pymxs.MXSWrapperBase
     """
@@ -42,7 +42,7 @@ def findModifierByType(node, modifierType, all=False):
 
         # Collect all modifiers by type
         #
-        modifiers = [modifier for modifier in node.modifiers if pymxs.runtime.isKindOf(modifier, modifierType)]
+        modifiers = [modifier for modifier in node.modifiers if pymxs.runtime.isKindOf(modifier, modifierClass)]
 
         if all:
 
@@ -64,15 +64,15 @@ def findModifierByType(node, modifierType, all=False):
 
             else:
 
-                raise TypeError('findModifierByType() expects a unique modifier (%s found)!' % numModifiers)
+                raise TypeError('getModifierByClass() expects a unique modifier (%s found)!' % numModifiers)
 
-    elif pymxs.runtime.isKindOf(node, modifierType):  # Redundancy check
+    elif pymxs.runtime.isKindOf(node, modifierClass):  # Redundancy check
 
         return node
 
     else:
 
-        raise TypeError('findModifierByType() expects a valid node!')
+        raise TypeError('getModifierByClass() expects a valid node!')
 
 
 def isValidModifier(modifier):
@@ -83,7 +83,7 @@ def isValidModifier(modifier):
     :rtype: bool
     """
 
-    return pymxs.runtime.isKindOf(modifier, pymxs.runtime.Modifier) and pymxs.runtime.isValidObj(modifier)
+    return (pymxs.runtime.isKindOf(modifier, pymxs.runtime.Modifier) and pymxs.runtime.isValidObj(modifier)) and not pymxs.runtime.isDeleted(modifier)
 
 
 def getNodeFromModifier(modifier):

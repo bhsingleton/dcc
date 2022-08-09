@@ -11,10 +11,6 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-__property_parser__ = re.compile(r'\.([a-zA-Z0-9_]+)')
-__properties__ = {}  # Used with inspectClassProperties
-
-
 SUPER_TYPES = dict(wrapperutils.iterClassesByPattern('*Controller', superOnly=True))
 XYZ_TYPES = dict(wrapperutils.iterClassesByPattern('*XYZ'))
 BEZIER_TYPES = dict(wrapperutils.iterClassesByPattern('bezier_*'))
@@ -113,32 +109,26 @@ def isDummyController(obj):
     return pymxs.runtime.classOf(obj) in DUMMY_TYPES.values()
 
 
-def isFrozen(node):
+def isFrozen(obj):
     """
-    Evaluates if the supplied node is frozen.
+    Evaluates if the supplied object is frozen.
 
-    :type node: pymxs.MXSWrapperBase
+    :type obj: pymxs.MXSWrapperBase
     :rtype: bool
     """
 
-    # Evaluate if this is a valid node
-    #
-    if not pymxs.runtime.isValidNode(node):
-
-        return False
-
     # Get PRS controller
     #
-    transformController = getPRSController(node)
+    node, controller = decomposeController(obj)
+    prs = ensureControllerByClass(controller, pymxs.runtime.PRS)
 
-    if not pymxs.runtime.isKindOf(transformController, pymxs.runtime.PRS):
+    if not pymxs.runtime.isKindOf(prs, pymxs.runtime.PRS):
 
         return False
 
     # Evaluate if position/rotation lists exist
     #
-    positionController, rotationController, scaleController = decomposePRSController(transformController)
-
+    positionController, rotationController, scaleController = decomposePRSController(prs)
     positionList = ensureControllerByClass(positionController, pymxs.runtime.Position_List)
     rotationList = ensureControllerByClass(rotationController, pymxs.runtime.Rotation_List)
 
@@ -220,13 +210,12 @@ def isValidSubAnim(obj):
 def isValidController(obj):
     """
     Evaluates if the supplied obj is a valid controller.
-    This method does not accept dummy controllers as valid since they are just placeholders!
 
     :type obj: pymxs.MXSWrapperBase
     :rtype: bool
     """
 
-    return pymxs.runtime.superClassOf(obj) in SUPER_TYPES.values()
+    return pymxs.runtime.isController(obj) and pymxs.runtime.isValidObj(obj)
 
 
 def isInstancedController(controller):
@@ -240,6 +229,37 @@ def isInstancedController(controller):
     return pymxs.runtime.InstanceMgr.canMakeControllersUnique([], [controller])
 
 
+def decomposeController(obj):
+    """
+    Returns the node and controller from the supplied object.
+    This is useful for functions that require both objects but don't want the overhead of extra arguments.
+
+    :type obj: pymxs.MXSWrapperBase
+    :rtype: Tuple[pymxs.MXSWrapperBase, pymxs.MXSWrapperBase]
+    """
+
+    # Evaluate supplied object
+    #
+    node = None
+    controller = None
+
+    if pymxs.runtime.isValidNode(obj):
+
+        node = obj
+        controller = pymxs.runtime.getTMController(node)
+
+    elif pymxs.runtime.isController(obj):
+
+        node = pymxs.runtime.refs.dependentNodes(obj, firstOnly=True)
+        controller = obj
+
+    else:
+
+        raise TypeError('decomposeController() expects a valid node or controller!')
+
+    return node, controller
+
+
 def hasSubAnims(obj):
     """
     Evaluates if the supplied object is derived from an animatable.
@@ -248,7 +268,7 @@ def hasSubAnims(obj):
     :rtype: bool
     """
 
-    return pymxs.runtime.isProperty(obj, 'numSubs')
+    return getattr(obj, 'numSubs', 0) > 0
 
 
 def iterSubAnims(obj, skipNonAnimated=False, skipNullControllers=False, skipNonValues=False):
@@ -303,25 +323,38 @@ def copySubAnims(copyFrom, copyTo):
     :rtype: None
     """
 
+    # Evaluate if objects are valid
+    #
+    if not pymxs.runtime.isValidObj(copyFrom) or not pymxs.runtime.isValidObj(copyTo):
+
+        raise TypeError('copySubAnims() expects two valid MXS objects!')
+
+    # Evaluate if sub-anim counts are identical
+    #
+    if copyFrom.numSubs != copyTo.numSubs:
+
+        raise TypeError('copySubAnims() expects matching sub-anim counts!')
+
     # Iterate through sub-anims
     #
-    subAnims = {subAnim.name: subAnim for subAnim in iterSubAnims(copyFrom)}
+    numSubs = copyFrom.numSubs
 
-    for subAnim in iterSubAnims(copyTo):
+    for i in inclusiveRange(1, numSubs, 1):  # Unlike indices, string names run the risk of duplicate name conflicts!
 
-        # Check if source sub-anim exists
+        # Evaluate if sub-anim names match
         #
-        otherSubAnim = subAnims.get(subAnim.name, None)
+        subAnim = pymxs.runtime.getSubAnim(copyTo, i)
+        otherSubAnim = pymxs.runtime.getSubAnim(copyFrom, i)
 
-        if otherSubAnim is None:
+        if subAnim.name != otherSubAnim.name:
 
-            log.warning('Unable to copy "%s" sub-anim!' % subAnim.name)
+            log.warning('Unable to copy "%s" to "%s"!' % (otherSubAnim.name, subAnim.name))
             continue
 
         # Copy value and controller
         #
-        subAnim.value = pymxs.runtime.copy(otherSubAnim.value)
-        subAnim.controller = pymxs.runtime.copy(otherSubAnim.controller)
+        subAnim.value = otherSubAnim.value
+        subAnim.controller = otherSubAnim.controller
 
 
 def iterMaxKeys(controller):
@@ -480,7 +513,7 @@ def iterConstraints(node):
 
 def iterListController(controller):
     """
-    Returns a generator that yields controller-weight pairs from the supplied list controller.
+    Returns a generator that yields sub-controller and name-weight pairs from the supplied list controller.
 
     :type controller: pymxs.MXSWrapperBase
     :rtype: iter
@@ -491,11 +524,11 @@ def iterListController(controller):
 
     for i in inclusiveRange(1, listCount, 1):
 
+        subController = pymxs.runtime.getSubAnim(controller, i).controller
         subControllerName = controller.getName(i)
         subControllerWeight = pymxs.runtime.getSubAnim(weights, i).value
-        subController = pymxs.runtime.getPropertyController(controller, subControllerName)
 
-        yield subControllerName, subController, subControllerWeight
+        yield subController, subControllerName, subControllerWeight
 
 
 def ensureControllerByClass(obj, controllerClass):
@@ -575,11 +608,41 @@ def decomposePRSController(controller):
     :rtype: Tuple[pymxs.MXSWrapperBase, pymxs.MXSWrapperBase, pymxs.MXSWrapperBase]
     """
 
-    positionController = pymxs.runtime.getPropertyController(controller, 'Position')
-    rotationController = pymxs.runtime.getPropertyController(controller, 'Rotation')
-    scaleController = pymxs.runtime.getPropertyController(controller, 'Scale')
+    # Evaluate object type
+    #
+    if pymxs.runtime.isKindOf(controller, pymxs.runtime.PRS):
 
-    return positionController, rotationController, scaleController
+        positionController = pymxs.runtime.getPropertyController(controller, 'Position')
+        rotationController = pymxs.runtime.getPropertyController(controller, 'Rotation')
+        scaleController = pymxs.runtime.getPropertyController(controller, 'Scale')
+
+        return positionController, rotationController, scaleController
+
+    else:
+
+        return None, None, None
+
+
+def getActiveController(controller):
+    """
+    Returns the active sub-controller from the supplied list controller.
+
+    :type controller: pymxs.MXSWrapperBase
+    :rtype: pymxs.MXSWrapperBase
+    """
+
+    # Evaluate controller type
+    #
+    if isListController(controller):
+
+        active = controller.getActive()
+        subAnim = pymxs.runtime.getSubAnim(controller, active)
+
+        return subAnim.controller
+
+    else:
+
+        return None
 
 
 def clearListController(controller):
