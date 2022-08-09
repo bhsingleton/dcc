@@ -16,13 +16,21 @@ log.setLevel(logging.INFO)
 def getNodeName(dependNode):
     """
     Retrieves the name of the given node object.
-    This name will not contains pipes or namespaces.
+    This method will remove any hierarchical or namespace delimiters.
 
     :type dependNode: om.MObject
     :rtype: str
     """
 
-    return stripAll(om.MFnDependencyNode(dependNode).name())
+    dependNode = getMObject(dependNode)
+
+    if dependNode.hasFn(om.MFn.kDependencyNode):
+
+        return stripAll(om.MFnDependencyNode(dependNode).name())
+
+    else:
+
+        return ''
 
 
 def demoteMObject(dependNode):
@@ -811,8 +819,8 @@ def iterFunctionSets():
 
 def iterNodes(apiType=om.MFn.kDependencyNode):
     """
-    Generator method used to iterate through dependency nodes.
-    These nodes can be limited to a specific type by changing the "apiType" keyword.
+    Returns a generator that yields dependency nodes with the specified API type.
+    The default API type will yield ALL nodes derived from "kDependencyNode".
 
     :type apiType: int
     :rtype: iter
@@ -867,7 +875,7 @@ def iterPluginNodes(typeName):
 
 def iterNodesByNamespace(namespace, recurse=False):
     """
-    Generator method used to retrieve the nodes that reside within the supplied namespace.
+    Returns a generator that yields dependency nodes from the supplied namespace.
 
     :type namespace: str
     :type recurse: bool
@@ -892,10 +900,7 @@ def iterNodesByNamespace(namespace, recurse=False):
 
 def iterNodesByUuid(uuid):
     """
-    Generator method used to retrieve all of dependency nodes with the given UUID.
-    If you're looking to take advantage of unique identifiers then there are alternate methods.
-    The base "getNodeByUuid" method will limit its search to the parent namespace.
-    Whereas the overload method from the reference class will limit its scope to referenced nodes only
+    Returns a generator that yields dependency nodes with the specified UUID.
 
     :type uuid: str
     :rtype: iter
