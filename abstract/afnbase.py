@@ -44,14 +44,26 @@ class AFnBase(with_metaclass(ABCMeta, object)):
 
         if numArgs == 0:
 
-            pass
+            pass  # Nothing to do here
 
         elif numArgs == 1:
 
-            self.setObject(args[0])
+            # Evaluate argument
+            #
+            arg = args[0]
+
+            if inspect.isgenerator(arg):
+
+                self.setQueue(arg)
+
+            else:
+
+                self.setObject(arg)
 
         else:
 
+            # Pass arguments to queue
+            #
             self.setQueue(args)
 
     def __getattribute__(self, name):
