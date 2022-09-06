@@ -13,7 +13,6 @@ log.setLevel(logging.INFO)
 __type__ = re.compile(r'(?:(?::type\s)|(?::key\s))([a-zA-Z0-9_]+)(?:\:\s)([a-zA-Z._]+[\[a-zA-Z_.,\s\]]*)\n')
 __rtype__ = re.compile(r'(?:\:rtype:\s)([a-zA-Z._]+[\[a-zA-Z_.,\s\]]*)\n')
 __index__ = re.compile(r'([a-zA-Z._]+)(?:\[([a-zA-Z_.,\s]+)\])?')
-__builtins__ = (bool, int, float, str, list, dict)
 
 
 def isParameterizedAlias(obj):
@@ -63,7 +62,7 @@ def isBuiltinType(T):
 
     elif inspect.isclass(T):
 
-        return issubclass(T, __builtins__)
+        return issubclass(T, (bool, int, float, str, list, dict))
 
     else:
 
@@ -98,9 +97,9 @@ def getTypeFromString(string, __globals__=None, __locals__=None):
 
         return eval(string, __globals__, __locals__)
 
-    except TypeError:
+    except (NameError, TypeError):
 
-        log.error('getTypeFromString() error while parsing string: %s' % string)
+        log.error('Unable to parse type from string: %s' % string)
         return object
 
 
