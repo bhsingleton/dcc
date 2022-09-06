@@ -1,5 +1,6 @@
 import os
 import sys
+import inspect
 
 from Qt import QtCore, QtWidgets, QtCompat
 
@@ -11,8 +12,9 @@ log.setLevel(logging.INFO)
 
 class QUicMixin(object):
     """
-    Abstract class used with Qt widgets to create layouts at runtime via .ui files.
+    Abstract base class used with Qt widgets to create layouts at runtime via .ui files.
     This class must come first when declaring your base classes!
+    For connections Qt expects the following slot syntax: on_{objectName}_{signal} complete with a slot decorator!
     """
 
     # region Dunderscores
@@ -33,12 +35,18 @@ class QUicMixin(object):
 
             # Check if cpp pointer is still valid
             #
-            if not QtCompat.isValid(obj):
+            if QtCompat.isValid(obj):
+
+                return obj
+
+            # Update cpp pointer
+            #
+            func = getattr(self.__class__, item)
+
+            if not inspect.isfunction(func):
 
                 obj = self.findChild(QtWidgets.QWidget, item)
                 setattr(self, item, obj)
-
-            return obj
 
         else:
 
@@ -109,14 +117,4 @@ class QUicMixin(object):
         """
 
         pass
-
-    def connectSlots(self):
-        """
-        Called after the user interface has been loaded to form signal/slot connections.
-        For automation Qt expects the following slot syntax: on_{objectName}_{signal} complete with a slot decorator!
-
-        :rtype: None
-        """
-
-        QtCore.QMetaObject.connectSlotsByName(self)
     # endregion
