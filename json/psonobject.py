@@ -21,8 +21,8 @@ class PSONObject(with_metaclass(ABCMeta, collections_abc.MutableMapping)):
     """
 
     # region Dunderscores
-    __slots__ = ('__weakref__',)
-    __builtins__ = (bool, int, float, str, collections_abc.MutableSequence, collections_abc.MutableMapping)
+    __slots__ = ()
+    __builtins__ = (bool, int, float, str, collections_abc.Sequence, collections_abc.Mapping)
 
     def __init__(self, *args, **kwargs):
         """
@@ -104,7 +104,7 @@ class PSONObject(with_metaclass(ABCMeta, collections_abc.MutableMapping)):
         #
         state = {'__name__': self.className, '__module__': self.moduleName}
 
-        for (name, func) in self.iterProperties(readable=True, writable=True):
+        for (name, func) in self.iterProperties(readable=False, writable=True):
 
             # Inspect return type
             # If it doesn't have a return hint then ignore it
@@ -206,7 +206,7 @@ class PSONObject(with_metaclass(ABCMeta, collections_abc.MutableMapping)):
 
     # region Methods
     @classmethod
-    def iterProperties(cls, readable=True, writable=False, deletable=False):
+    def iterProperties(cls, readable=False, writable=True, deletable=False):
         """
         Returns a generator for iterating over properties derived from this class.
 
@@ -224,28 +224,27 @@ class PSONObject(with_metaclass(ABCMeta, collections_abc.MutableMapping)):
 
             # Check if property is readable
             #
-            if readable and member.fget is None:
+            if readable and callable(member.fget):
 
+                yield name, member
                 continue
 
             # Check if property is writable
             #
-            if writable and member.fset is None:
+            if writable and callable(member.fset):
 
+                yield name, member
                 continue
 
             # Check if property is deletable
             #
-            if deletable and member.fdel is None:
+            if deletable and callable(member.fdel):
 
+                yield name, member
                 continue
 
-            # Yield property
-            #
-            yield name, member
-
     @classmethod
-    def properties(cls, readable=True, writable=False, deletable=False):
+    def properties(cls, readable=False, writable=True, deletable=False):
         """
         Returns a dictionary of properties derived from this class.
 
@@ -288,36 +287,45 @@ class PSONObject(with_metaclass(ABCMeta, collections_abc.MutableMapping)):
 
         return weakref.ref(self)
 
-    def keys(self):
+    def keys(self, readable=False, writable=True, deletable=False):
         """
         Returns a key view for this collection.
 
+        :type readable: bool
+        :type writable: bool
+        :type deletable: bool
         :rtype: collections_abc.KeysView
         """
 
-        for (name, obj) in self.iterProperties(readable=True, writable=True):
+        for (name, obj) in self.iterProperties(readable=readable, writable=writable, deletable=deletable):
 
             yield name
 
-    def values(self):
+    def values(self, readable=False, writable=True, deletable=False):
         """
         Returns a values view for this collection.
 
+        :type readable: bool
+        :type writable: bool
+        :type deletable: bool
         :rtype: collections_abc.ValuesView
         """
 
-        for (name, obj) in self.iterProperties(readable=True, writable=True):
+        for (name, obj) in self.iterProperties(readable=readable, writable=writable, deletable=deletable):
 
             yield obj.fget(self)
 
-    def items(self):
+    def items(self, readable=False, writable=True, deletable=False):
         """
         Returns an items view for this collection.
 
+        :type readable: bool
+        :type writable: bool
+        :type deletable: bool
         :rtype: collections_abc.ItemsView
         """
 
-        for (name, obj) in self.iterProperties(readable=True, writable=True):
+        for (name, obj) in self.iterProperties(readable=readable, writable=writable, deletable=deletable):
 
             yield name, obj.fget(self)
 
