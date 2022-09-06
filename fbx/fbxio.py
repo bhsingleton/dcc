@@ -1,9 +1,10 @@
-from abc import ABCMeta, abstractmethod
-from six import with_metaclass
-from dcc import fnscene, fnreference
-from dcc.abstract import afnscene, afnreference
-from dcc.json import jsonutils
-from dcc.decorators.classproperty import classproperty
+import os
+
+from collections import namedtuple
+from . import fbxasset
+from .. import fnscene
+from ..abstract import singleton
+from ..json import jsonutils
 
 import logging
 logging.basicConfig()
@@ -11,88 +12,90 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-class FbxIO(with_metaclass(ABCMeta, object)):
+FBX_ASSET_KEY = 'fbxAsset'
+FBX_SEQUENCER_KEY = 'fbxSequencer'
+
+
+Cache = namedtuple('Cache', ['item', 'lastModified'])
+
+
+class FbxIO(singleton.Singleton):
     """
-    Abstract base class that outlines fbx asset interfaces.
-    Different save/load routines can be registered to support a studio's needs.
+    Singleton class that interfaces with fbx assets.
     """
 
     # region Dunderscores
-    __slots__ = ()
-    __scene__ = fnscene.FnScene()
-    __reference__ = fnreference.FnReference()
+    __slots__ = ('_scene', '_assets')
 
     def __init__(self, *args, **kwargs):
         """
-        Private method called after a new instance has been created.
+        Private method called after a new instance is created.
 
         :rtype: None
         """
 
         # Call parent method
         #
-        super(FbxIO, self).__init__()
+        super(FbxIO, self).__init__(*args, **kwargs)
+
+        # Declare private variables
+        #
+        self._scene = fnscene.FnScene()
+        self._assets = {}
     # endregion
 
     # region Properties
-    @classproperty
-    def scene(cls):
+    @property
+    def scene(self):
         """
-        Getter method that returns the scene function set.
+        Getter method that returns the scene interface.
 
         :rtype: fnscene.FnScene
         """
 
-        return cls.__scene__
+        return self._scene
 
-    @scene.setter
-    def scene(cls, scene):
+    @property
+    def assets(self):
         """
-        Setter method that overrides the scene function set.
+        Getter method that returns the asset cache.
 
-        :type scene: fnscene.FnScene
-        :rtype: None
-        """
-
-        if issubclass(scene.__class__, afnscene.AFnScene):
-
-            cls.__scene__ = scene
-
-        else:
-
-            raise TypeError('scene.setter() expects a scene function set (%s given)!' % type(scene).__name__)
-
-    @classproperty
-    def reference(cls):
-        """
-        Getter method that returns the reference function set.
-
-        :rtype: fnreference.FnReference
+        :rtype: Dict[int, Cache]
         """
 
-        return cls.__reference__
-
-    @reference.setter
-    def reference(cls, reference):
-        """
-        Setter method that overrides the reference function set.
-        Use this in case you work in a godforsaken program like 3ds Max...
-
-        :type fnReference: fnreference.FnReference
-        :rtype: None
-        """
-
-        if issubclass(reference.__class__, afnreference.AFnReference):
-
-            cls.__reference__ = reference
-
-        else:
-
-            raise TypeError('reference.setter() expects a reference function set (%s given)!' % type(reference).__name__)
+        return self._assets
     # endregion
 
     # region Methods
-    @abstractmethod
+    def getCachedAsset(self, filePath):
+        """
+        Returns a cached asset using the supplied file's iNode id.
+
+        :type filePath: str
+        :rtype: fbxasset.FbxAsset
+        """
+
+        # Check if cache exists
+        #
+        stats = os.stat(filePath)
+        fileId = stats.st_ino
+
+        cache = self.assets.get(fileId)
+
+        if cache is None:
+
+            return None
+
+        # Check if cache is up-to-date
+        #
+        if stats.st_mtime != cache.lastModified:
+
+            return cache.item
+
+        else:
+
+            return None
+
     def loadAsset(self):
         """
         Returns an asset from the scene file.
@@ -100,9 +103,35 @@ class FbxIO(with_metaclass(ABCMeta, object)):
         :rtype: fbxasset.FbxAsset
         """
 
-        pass
+        # Check if this is a new scene
+        #
+        if self.scene.isNewScene():
 
-    @abstractmethod
+            return None
+
+        # Check if asset has been cached
+        #
+        scenePath = self.scene.currentFilePath()
+        asset = self.getCachedAsset(scenePath)
+
+        if asset is not None:
+
+            return asset
+
+        # Inspect file properties for asset
+        #
+        sceneProperties = self.scene.fileProperties()
+        jsonString = sceneProperties.get(FBX_ASSET_KEY, '')
+
+        asset = jsonutils.loads(jsonString)
+
+        if asset is not None:
+
+            stats = os.stat(scenePath)
+            self.assets[stats.st_ino] = Cache(item=asset, lastModified=stats.st_mtime)
+
+        return asset
+
     def saveAsset(self, asset):
         """
         Commits any changes made to the scene asset.
@@ -111,7 +140,10 @@ class FbxIO(with_metaclass(ABCMeta, object)):
         :rtype: None
         """
 
-        pass
+        jsonString = jsonutils.dumps(asset)
+
+        self.scene.setFileProperty(FBX_ASSET_KEY, jsonString)
+        self.scene.markDirty()
 
     def saveAssetAs(self, asset, filePath):
         """
@@ -133,25 +165,4 @@ class FbxIO(with_metaclass(ABCMeta, object)):
         """
 
         return jsonutils.load(filePath)
-
-    @abstractmethod
-    def loadSequencers(self):
-        """
-        Returns a list of sequencers from the scene file.
-
-        :rtype: List[fbxsequencer.FbxSequencer]
-        """
-
-        pass
-
-    @abstractmethod
-    def saveSequencers(self, sequencers):
-        """
-        Commits any changes made to the scene sequencers
-
-        :type sequencers: List[fbxsequencer.FbxSequencer]
-        :rtype: None
-        """
-
-        pass
     # endregion

@@ -1,6 +1,6 @@
 import os
 
-from dcc.fbx import fbxobject
+from . import fbxbase, fbxskeleton, fbxmesh, fbxscript
 from dcc import fnfbx, fnnode
 
 import logging
@@ -9,7 +9,7 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-class FbxExportSet(fbxobject.FbxObject):
+class FbxExportSet(fbxbase.FbxBase):
     """
     Overload of FbxObject that outlines fbx export set data.
     """
@@ -18,6 +18,8 @@ class FbxExportSet(fbxobject.FbxObject):
     __slots__ = (
         '_asset',
         '_directory',
+        '_skeleton',
+        '_meshes',
         '_customScripts',
         '_scale',
         '_moveToOrigin',
@@ -36,15 +38,13 @@ class FbxExportSet(fbxobject.FbxObject):
         :rtype: None
         """
 
-        # Call parent method
-        #
-        super(FbxExportSet, self).__init__(*args, **kwargs)
-
         # Declare private variables
         #
         self._asset = self.nullWeakReference
-        self._customScripts = []
         self._directory = kwargs.get('directory', '')
+        self._skeleton = kwargs.get('skeleton', fbxskeleton.FbxSkeleton())
+        self._meshes = []
+        self._customScripts = []
         self._scale = kwargs.get('scale', 1.0)
         self._moveToOrigin = kwargs.get('moveToOrigin', False)
         self._includeNormals = kwargs.get('includeNormals', True)
@@ -53,6 +53,10 @@ class FbxExportSet(fbxobject.FbxObject):
         self._includeColorSets = kwargs.get('includeColorSets', False)
         self._includeSkins = kwargs.get('includeSkins', False)
         self._includeBlendshapes = kwargs.get('includeBlendshapes', False)
+
+        # Call parent method
+        #
+        super(FbxExportSet, self).__init__(*args, **kwargs)
     # endregion
 
     # region Properties
@@ -88,11 +92,53 @@ class FbxExportSet(fbxobject.FbxObject):
         self._directory = directory
 
     @property
+    def skeleton(self):
+        """
+        Getter method that returns the skeleton for this export set.
+
+        :rtype: fbxskeleton.FbxSkeleton
+        """
+
+        return self._meshes
+
+    @skeleton.setter
+    def skeleton(self, skeleton):
+        """
+        Setter method that updates the skeleton for this export set.
+
+        :type skeleton: fbxskeleton.FbxSkeleton
+        :rtype: None
+        """
+
+        self._skeleton = skeleton
+
+    @property
+    def meshes(self):
+        """
+        Getter method that returns the meshes for this export set.
+
+        :rtype: List[fbxmesh.FbxMesh]
+        """
+
+        return self._meshes
+
+    @meshes.setter
+    def meshes(self, meshes):
+        """
+        Setter method that updates the meshes for this export set.
+
+        :type meshes: List[fbxmesh.FbxMesh]
+        :rtype: None
+        """
+
+        self._meshes = meshes
+
+    @property
     def customScripts(self):
         """
         Getter method that returns the custom scripts for this export set.
 
-        :rtype: list
+        :rtype: List[fbxscript.FbxScript]
         """
 
         return self._customScripts
@@ -102,7 +148,7 @@ class FbxExportSet(fbxobject.FbxObject):
         """
         Setter method that updates the custom scripts for this export set.
 
-        :type customScripts: list
+        :type customScripts: List[fbxscript.FbxScript]
         :rtype: None
         """
 
@@ -130,7 +176,7 @@ class FbxExportSet(fbxobject.FbxObject):
         self._scale = scale
 
     @property
-    def moveToOrigin(self) -> bool:
+    def moveToOrigin(self):
         """
         Getter method that returns the move to origin flag for this export set.
 
@@ -140,7 +186,7 @@ class FbxExportSet(fbxobject.FbxObject):
         return self._moveToOrigin
 
     @moveToOrigin.setter
-    def moveToOrigin(self, moveToOrigin: bool):
+    def moveToOrigin(self, moveToOrigin):
         """
         Setter method that updates the move to origin flag for this export set.
 
@@ -151,9 +197,9 @@ class FbxExportSet(fbxobject.FbxObject):
         self._moveToOrigin = moveToOrigin
 
     @property
-    def includeNormals(self) -> bool:
+    def includeNormals(self):
         """
-        Getter method that returns the include normals flag for this export set.
+        Getter method that returns the normals flag for this export set.
 
         :rtype: bool
         """
@@ -161,9 +207,9 @@ class FbxExportSet(fbxobject.FbxObject):
         return self._includeNormals
 
     @includeNormals.setter
-    def includeNormals(self, includeNormals: bool):
+    def includeNormals(self, includeNormals):
         """
-        Setter method that updates the include normals flag for this export set.
+        Setter method that updates the normals flag for this export set.
 
         :type includeNormals: bool
         :rtype: None
@@ -174,7 +220,7 @@ class FbxExportSet(fbxobject.FbxObject):
     @property
     def includeTangentsAndBinormals(self):
         """
-        Getter method that returns the include tangents and binormals flag for this export set.
+        Getter method that returns the tangents and binormals flag for this export set.
 
         :rtype: bool
         """
@@ -184,7 +230,7 @@ class FbxExportSet(fbxobject.FbxObject):
     @includeTangentsAndBinormals.setter
     def includeTangentsAndBinormals(self, includeTangentsAndBinormals):
         """
-        Setter method that updates the include tangents and binormals flag for this export set.
+        Setter method that updates the tangents and binormals flag for this export set.
 
         :type includeTangentsAndBinormals: bool
         :rtype: None
@@ -195,7 +241,7 @@ class FbxExportSet(fbxobject.FbxObject):
     @property
     def includeSmoothings(self):
         """
-        Getter method that returns the include smoothings flag for this export set.
+        Getter method that returns the smoothings flag for this export set.
 
         :rtype: bool
         """
@@ -205,7 +251,7 @@ class FbxExportSet(fbxobject.FbxObject):
     @includeSmoothings.setter
     def includeSmoothings(self, includeSmoothings):
         """
-        Setter method that updates the include smoothings flag for this export set.
+        Setter method that updates the smoothings flag for this export set.
 
         :type includeSmoothings: bool
         :rtype: None
@@ -216,7 +262,7 @@ class FbxExportSet(fbxobject.FbxObject):
     @property
     def includeColorSets(self):
         """
-        Getter method that returns the include color sets flag for this export set.
+        Getter method that returns the color sets flag for this export set.
 
         :rtype: bool
         """
@@ -226,7 +272,7 @@ class FbxExportSet(fbxobject.FbxObject):
     @includeColorSets.setter
     def includeColorSets(self, includeColorSets):
         """
-        Setter method that updates the include color sets flag for this export set.
+        Setter method that updates the color sets flag for this export set.
 
         :type includeColorSets: bool
         :rtype: None
@@ -237,7 +283,7 @@ class FbxExportSet(fbxobject.FbxObject):
     @property
     def includeSkins(self):
         """
-        Getter method that returns the include skins flag for this export set.
+        Getter method that returns the skins flag for this export set.
 
         :rtype: bool
         """
@@ -247,7 +293,7 @@ class FbxExportSet(fbxobject.FbxObject):
     @includeSkins.setter
     def includeSkins(self, includeSkins):
         """
-        Setter method that updates the include skins flag for this export set.
+        Setter method that updates the skins flag for this export set.
 
         :type includeSkins: bool
         :rtype: None
@@ -258,7 +304,7 @@ class FbxExportSet(fbxobject.FbxObject):
     @property
     def includeBlendshapes(self):
         """
-        Getter method that returns the include blend shapes flag for this export set.
+        Getter method that returns the blend shapes flag for this export set.
 
         :rtype: bool
         """
@@ -268,7 +314,7 @@ class FbxExportSet(fbxobject.FbxObject):
     @includeBlendshapes.setter
     def includeBlendshapes(self, includeBlendshapes):
         """
-        Setter method that updates the include blend shapes flag for this export set.
+        Setter method that updates the blend shapes flag for this export set.
 
         :type includeBlendshapes: bool
         :rtype: None
@@ -285,12 +331,11 @@ class FbxExportSet(fbxobject.FbxObject):
         :rtype: fbxfactory.FbxFactory
         """
 
-        fnNode = fnnode.FnNode()
-        fnNode.clearActiveSelection()
+        self.skeleton.select()
 
-        for obj in self.walk():
+        for mesh in self.meshes:
 
-            obj.selectNode()
+            pass
 
     def exportPath(self):
         """

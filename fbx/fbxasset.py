@@ -1,5 +1,5 @@
-from dcc.fbx import fbxbase, fbxexportset, FbxFileType, FbxFileVersion
-from dcc.collections import notifylist
+from . import fbxbase, fbxexportset, FbxFileType, FbxFileVersion
+from ..collections import notifylist
 
 import logging
 logging.basicConfig()
@@ -9,7 +9,7 @@ log.setLevel(logging.INFO)
 
 class FbxAsset(fbxbase.FbxBase):
     """
-    Overload of FbxBase that interfaces with fbx export set data.
+    Overload of FbxBase that stores export information related to an asset.
     """
 
     # region Dunderscores
@@ -37,7 +37,7 @@ class FbxAsset(fbxbase.FbxBase):
         self._directory = kwargs.get('directory', '')
         self._frameRate = kwargs.get('frameRate', 30)
         self._fileType = kwargs.get('fileType', FbxFileType.Binary)
-        self._fileVersion = kwargs.get('fileVersion', FbxFileVersion.FBX201600)
+        self._fileVersion = kwargs.get('fileVersion', FbxFileVersion.FBX202000)
         self._exportSets = notifylist.NotifyList()
 
         # Setup notifies
@@ -152,28 +152,6 @@ class FbxAsset(fbxbase.FbxBase):
 
         self._exportSets.clear()
         self._exportSets.extend(exportSets)
-    # endregion
-
-    # region Methods
-    def initializeSequences(self):
-
-        self.reference.guid()
-
-    def save(self):
-        """
-        Saves any changes made to this asset.
-
-        :rtype: None
-        """
-
-        if self.reference.isValid():
-
-            pass
-
-        else:
-
-            pass
-
     # endregion
 
     # region Callbacks

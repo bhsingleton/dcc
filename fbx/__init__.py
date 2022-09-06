@@ -18,3 +18,16 @@ class FbxFileVersion(IntEnum):
     FBX201600 = 6
     FBX201800 = 7
     FBX202000 = 8
+
+
+class FbxMeshComponent(IntEnum):
+
+    Vertex = 0
+    Edge = 1
+    Polygon = 3
+
+
+class FbxOrigin(IntEnum):
+
+    Reference = 0
+    Container = 1

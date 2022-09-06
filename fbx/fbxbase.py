@@ -1,6 +1,7 @@
 from abc import ABCMeta
 from six import with_metaclass
-from dcc.json import psonobject
+from .. import fnscene, fnreference
+from ..json import psonobject
 
 import logging
 logging.basicConfig()
@@ -10,24 +11,30 @@ log.setLevel(logging.INFO)
 
 class FbxBase(with_metaclass(ABCMeta, psonobject.PSONObject)):
     """
-    Overload of PSONObject used as a base class for all fbx data objects.
+    Overload of PSONObject that acts as a base class for all fbx data objects.
+    The dunderscore function set constructors are exposed for DCCs that require custom bindings.
+    Especially, for instance, 3ds Max where XRef hasn't worked for over 20 years.
     """
 
     # region Dunderscores
-    __slots__ = ('_name',)
+    __slots__ = ('_name', '__weakref__')
+    __scene__ = fnscene.FnScene
+    __reference__ = fnreference.FnReference
 
     def __init__(self, *args, **kwargs):
         """
         Private method called after a new instance has been created.
-        """
 
-        # Call parent method
-        #
-        super(FbxBase, self).__init__(*args, **kwargs)
+        :rtype: None
+        """
 
         # Declare private variables
         #
         self._name = kwargs.get('name', '')
+
+        # Call parent method
+        #
+        super(FbxBase, self).__init__(*args, **kwargs)
     # endregion
 
     # region Properties
@@ -50,23 +57,5 @@ class FbxBase(with_metaclass(ABCMeta, psonobject.PSONObject)):
         :rtype: None
         """
 
-        oldName = self._name
-
-        if oldName != newName:
-
-            self._name = newName
-            self.nameChanged(oldName, newName)
-    # endregion
-
-    # region Callbacks
-    def nameChanged(self, oldName, newName):
-        """
-        Callback to whenever the name of this object changes.
-
-        :type oldName: str
-        :type newName: str
-        :rtype: None
-        """
-
-        pass
+        self._name = newName
     # endregion
