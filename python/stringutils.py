@@ -1,6 +1,8 @@
 import re
 import unicodedata
 
+from six.moves import collections_abc
+
 import logging
 logging.basicConfig()
 log = logging.getLogger(__name__)
@@ -20,17 +22,13 @@ def isNullOrEmpty(value):
     :rtype: bool
     """
 
-    if hasattr(value, '__len__'):
+    if isinstance(value, collections_abc.Sequence):
 
         return len(value) == 0
 
-    elif value is None:
-
-        return True
-
     else:
 
-        raise TypeError('isNullOrEmpty() expects a sequence (%s given)!' % type(value).__name__)
+        return value is None
 
 
 def isNumber(text):
