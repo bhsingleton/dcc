@@ -1,4 +1,4 @@
-from PySide2 import QtCore, QtWidgets, QtGui
+from Qt import QtCore, QtWidgets, QtGui, QtCompat
 from dcc import fnqt
 from dcc.ui import resources  # Initializes dcc resources!
 from dcc.decorators.classproperty import classproperty
@@ -17,6 +17,7 @@ class QProxyWindow(QtWidgets.QMainWindow):
     # region Dunderscores
     __instances__ = {}
     __icon__ = QtGui.QIcon()
+    __qt__ = fnqt.FnQt()
     __author__ = 'Ben Singleton'
 
     def __new__(cls, *args, **kwargs):
@@ -55,7 +56,7 @@ class QProxyWindow(QtWidgets.QMainWindow):
 
         # Call parent method
         #
-        parent = kwargs.pop('parent', fnqt.FnQt().getMainWindow())
+        parent = kwargs.pop('parent', self.qt.getMainWindow())
         flags = kwargs.pop('flags', QtCore.Qt.WindowFlags())
 
         super(QProxyWindow, self).__init__(parent=parent, flags=flags)
@@ -95,6 +96,16 @@ class QProxyWindow(QtWidgets.QMainWindow):
         """
 
         return cls.__name__
+
+    @classproperty
+    def qt(cls):
+        """
+        Getter method that returns the QT interface.
+
+        :rtype: fnqt.FnQt
+        """
+
+        return cls.__qt__
 
     @classproperty
     def customIcon(cls):
@@ -171,11 +182,11 @@ class QProxyWindow(QtWidgets.QMainWindow):
         :rtype: None
         """
 
-        cls.__icon__ = QtGui.QIcon(icon)
+        cls.customIcon = QtGui.QIcon(icon)
 
     def hideTearOffMenus(self):
         """
-        Closes all of the separated menus from the menu bar.
+        Closes all the separated menus from the menu bar.
 
         :rtype: None
         """
@@ -223,11 +234,19 @@ class QProxyWindow(QtWidgets.QMainWindow):
 
         if len(args) == 0:
 
-            return cls.__instances__.get(cls.className, None) is not None
+            return cls.hasInstance(cls.className)
 
         elif len(args) == 1:
 
-            return cls.__instances__.get(args[0], None) is not None
+            window = cls.__instances__.get(args[0], None)
+
+            if window is not None:
+
+                return QtCompat.isValid(window)
+
+            else:
+
+                return False
 
         else:
 
@@ -244,7 +263,7 @@ class QProxyWindow(QtWidgets.QMainWindow):
 
         if len(args) == 0:
 
-            return cls.__instances__.get(cls.className, None)
+            return cls.getInstance(cls.className)
 
         elif len(args) == 1:
 
@@ -288,7 +307,7 @@ class QProxyWindow(QtWidgets.QMainWindow):
     @classmethod
     def closeWindows(cls):
         """
-        Closes all of the open windows.
+        Closes all the open windows.
         Only the windows that inherit from this class will be closed!
 
         :rtype: None
@@ -296,13 +315,37 @@ class QProxyWindow(QtWidgets.QMainWindow):
 
         # Iterate through windows
         #
-        for (name, window) in cls.__instances__.items():
+        names = list(cls.__instances__.keys())
 
-            log.info('Closing window: %s' % name)
-            window.close()
+        for name in names:
+
+            # Check if instance is valid
+            #
+            window = cls.__instances__[name]
+
+            if QtCompat.isValid(window):
+
+                log.info('Closing window: %s' % name)
+                window.close()
+
+            else:
+
+                log.debug('Cleaning up dead pointer: %s' % name)
+                del cls.__instances__[name]
     # endregion
 
     # region Events
+    def keyPressEvent(self, event):
+        """
+        This event handler can be reimplemented in a subclass to receive key press events for the widget.
+        This implementation prevents and hotkeys from propagating to the DCC of choice.
+
+        :type event: QtGui.QKeyEvent
+        :rtype: None
+        """
+
+        pass
+
     def showEvent(self, event):
         """
         Event method called after the window has been shown.
