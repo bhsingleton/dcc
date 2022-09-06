@@ -91,20 +91,35 @@ class Singleton(with_metaclass(ABCMeta, object)):
         return cls.className in cls.__instances__
 
     @classmethod
-    def getInstance(cls):
+    def getInstance(cls, asWeakReference=False):
         """
         Returns an instance of this class.
 
-        :rtype: Singleton
+        :type asWeakReference: bool
+        :rtype: Union[Singleton, weakref.ref]
         """
+
+        # Check if instance exists
+        #
+        instance = None
 
         if cls.hasInstance():
 
-            return cls.__instances__.get(cls.className)
+            instance = cls.__instances__.get(cls.className)
 
         else:
 
-            return cls.creator()
+            instance = cls.creator()
+
+        # Check if weak reference should be returned
+        #
+        if asWeakReference:
+
+            return instance.weakReference()
+
+        else:
+
+            return instance
 
     def weakReference(self):
         """
