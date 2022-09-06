@@ -1,8 +1,8 @@
 import os
-import string
 import subprocess
 
 from abc import ABCMeta, abstractmethod
+from string import ascii_uppercase
 from six import with_metaclass
 from ctypes import windll
 from fnmatch import fnmatch
@@ -43,9 +43,51 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
         pass
 
     @abstractmethod
+    def new(self):
+        """
+        Opens a new scene file.
+
+        :rtype: None
+        """
+
+        pass
+
+    @abstractmethod
+    def save(self):
+        """
+        Saves any changes to the current scene file.
+
+        :rtype: None
+        """
+
+        pass
+
+    @abstractmethod
+    def saveAs(self, filePath):
+        """
+        Saves the current scene to the specified path.
+
+        :type filePath: str
+        :rtype: None
+        """
+
+        pass
+
+    @abstractmethod
+    def open(self, filePath):
+        """
+        Opens the supplied scene file.
+
+        :type filePath: str
+        :rtype: bool
+        """
+
+        pass
+
+    @abstractmethod
     def isBatchMode(self):
         """
-        Evaluates if the the scene is running in batch mode.
+        Evaluates if the scene is running in batch mode.
 
         :rtype: bool
         """
@@ -215,7 +257,7 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
         drives = []
         bitmask = windll.kernel32.GetLogicalDrives()
 
-        for letter in string.uppercase:
+        for letter in ascii_uppercase:
 
             if bitmask & 1:
 
@@ -628,6 +670,46 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
 
         pass
+
+    @abstractmethod
+    def execute(self, string, asPython=True):
+        """
+        Executes the supplied string.
+        Be sure to specify if the string is in python or the native embedded language.
+
+        :type string: str
+        :type asPython: bool
+        :rtype: None
+        """
+
+        pass
+
+    def executeFile(self, filePath):
+        """
+        Executes the supplied script file.
+
+        :rtype: None
+        """
+
+        # Check if file exists
+        #
+        if not os.path.exists(filePath):
+
+            log.warning('Cannot locate file: %s' % filePath)
+            return
+
+        # Evaluate file extension
+        #
+        directory, filename = os.path.split(filePath)
+        name, extension = os.path.splitext(filename)
+
+        asPython = extension.endswith('py')
+
+        # Execute file
+        #
+        with open(filePath, 'r') as file:
+
+            self.execute(file.read(), asPython=asPython)
 
     @abstractmethod
     def iterNodes(self):

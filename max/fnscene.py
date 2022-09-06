@@ -36,6 +36,44 @@ class FnScene(afnscene.AFnScene):
 
         return pymxs.runtime.getSaveRequired()
 
+    def new(self):
+        """
+        Opens a new scene file.
+
+        :rtype: None
+        """
+
+        pymxs.runtime.resetMaxFile(pymxs.runtime.Name('noPrompt'))
+
+    def save(self):
+        """
+        Saves any changes to the current scene file.
+
+        :rtype: None
+        """
+
+        self.saveAs(self.currentFilePath())
+
+    def saveAs(self, filePath):
+        """
+        Saves the current scene to the specified path.
+
+        :type filePath: str
+        :rtype: None
+        """
+
+        pymxs.runtime.saveMaxFile(filePath, quiet=True)
+
+    def open(self, filePath):
+        """
+        Opens the supplied scene file.
+
+        :type filePath: str
+        :rtype: bool
+        """
+
+        return pymxs.runtime.loadMaxFile(filePath, useFileUnits=True, quiet=True)
+
     def isBatchMode(self):
         """
         Evaluates if the the scene is running in batch mode.
@@ -281,6 +319,24 @@ class FnScene(afnscene.AFnScene):
         """
 
         pymxs.runtime.setSaveRequired(False)
+
+    def execute(self, string, asPython=True):
+        """
+        Executes the supplied string.
+        Be sure to specify if the string is in python or the native embedded language.
+
+        :type string: str
+        :type asPython: bool
+        :rtype: None
+        """
+
+        if asPython:
+
+            exec(string)
+
+        else:
+
+            pymxs.runtime.execute(string)
 
     def iterNodes(self):
         """

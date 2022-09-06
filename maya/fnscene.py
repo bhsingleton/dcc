@@ -36,6 +36,51 @@ class FnScene(afnscene.AFnScene):
 
         return mc.file(query=True, modified=True)
 
+    def new(self):
+        """
+        Opens a new scene file.
+
+        :rtype: None
+        """
+
+        mc.file(newFile=True)
+
+    def save(self):
+        """
+        Saves any changes to the current scene file.
+
+        :rtype: None
+        """
+
+        mc.file(save=True)
+
+    def saveAs(self, filePath):
+        """
+        Saves the current scene to the specified path.
+
+        :type filePath: str
+        :rtype: None
+        """
+
+        mc.file(filePath, save=True, prompt=False)
+
+    def open(self, filePath):
+        """
+        Opens the supplied scene file.
+
+        :type filePath: str
+        :rtype: bool
+        """
+
+        try:
+
+            mc.file(filePath, open=True, prompt=False)
+            return True
+
+        except RuntimeError:
+
+            return False
+
     def isBatchMode(self):
         """
         Evaluates if the scene is running in batch mode.
@@ -227,6 +272,24 @@ class FnScene(afnscene.AFnScene):
         """
 
         mc.file(modified=False)
+
+    def execute(self, string, asPython=True):
+        """
+        Executes the supplied string.
+        Be sure to specify if the string is in python or the native embedded language.
+
+        :type string: str
+        :type asPython: bool
+        :rtype: None
+        """
+
+        if asPython:
+
+            exec(string)
+
+        else:
+
+            mc.eval(string)
 
     def iterNodes(self):
         """
