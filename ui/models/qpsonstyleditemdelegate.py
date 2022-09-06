@@ -3,8 +3,8 @@ import inspect
 from PySide2 import QtCore, QtWidgets, QtGui
 from six import string_types, integer_types
 from six.moves import collections_abc
-from typing import *
-from enum import IntEnum
+from enum import Enum, IntEnum
+from dcc.python import annotationutils
 
 import logging
 logging.basicConfig()
@@ -12,20 +12,35 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-class QPropertyItemDelegate(QtWidgets.QStyledItemDelegate):
+class QPSONStyledItemDelegate(QtWidgets.QStyledItemDelegate):
     """
-    Overload of QStyledItemDelegate used to interface with QPropertyItemModels.
+    Overload of QStyledItemDelegate used to edit python data.
     """
 
     __builtins__ = (bool, int, float, str)
+
+    __getter__ = {
+        'QLineEdit': lambda widget: widget.text(),
+        'QSpinBox': lambda widget: widget.value(),
+        'QDoubleSpinBox': lambda widget: widget.value(),
+        'QCheckBox': lambda widget: widget.isChecked(),
+        'QComboBox': lambda widget: widget.currentIndex()
+    }
+
+    __setter__ = {
+        'QLineEdit': lambda widget, value: widget.setText(value),
+        'QSpinBox': lambda widget, value: widget.setValue(value),
+        'QDoubleSpinBox': lambda widget, value: widget.setValue(value),
+        'QCheckBox': lambda widget, value: widget.setChecked(value),
+        'QComboBox': lambda widget, value: widget.setCurrentIndex(value)
+    }
 
     __types__ = {
         'str': QtWidgets.QLineEdit,
         'unicode': QtWidgets.QLineEdit,  # Legacy
         'int': QtWidgets.QSpinBox,
         'float': QtWidgets.QDoubleSpinBox,
-        'bool': QtWidgets.QCheckBox,
-        'IntEnum': QtWidgets.QComboBox
+        'bool': QtWidgets.QCheckBox
     }
 
     def createEditor(self, parent, option, index):
@@ -39,19 +54,15 @@ class QPropertyItemDelegate(QtWidgets.QStyledItemDelegate):
         :rtype: QtWidget.QWidget
         """
 
-        # Get internal id from index
+        # Create widget associated with return type
         #
         model = index.model()
         internalId = model.decodeInternalId(index.internalId())
-
-        # Create widget associated with return type
-        #
-        getter, setter = model.propertyFromInternalId(internalId)
-        returnType = model.getPropertyTypeHint(getter)
+        returnType = internalId.type()
 
         return self.createEditorByType(returnType, parent=parent, index=internalId[-1])
 
-    def createEditorByType(self, T, parent=None, index=None):
+    def createEditorByType(self, T, index=None, parent=None):
         """
         Returns the widget used to edit the type specified for editing.
 
@@ -63,7 +74,7 @@ class QPropertyItemDelegate(QtWidgets.QStyledItemDelegate):
 
         # Evaluate type hint
         #
-        if hasattr(T, '__args__'):  # Reserved for typing objects
+        if annotationutils.isParameterizedAlias(T):  # Reserved for typing objects
 
             # Check if this is an indexed item
             #
@@ -86,6 +97,13 @@ class QPropertyItemDelegate(QtWidgets.QStyledItemDelegate):
 
                 return cls(parent=parent)
 
+            elif issubclass(T, (Enum, IntEnum)):
+
+                editor = QtWidgets.QComboBox(parent=parent)
+                editor.addItems(list(T.__members__.keys()))
+
+                return editor
+
             else:
 
                 return None
@@ -102,25 +120,16 @@ class QPropertyItemDelegate(QtWidgets.QStyledItemDelegate):
         :rtype: Any
         """
 
-        if isinstance(editor, QtWidgets.QLineEdit):
+        typeName = type(editor).__name__
+        func = self.__getter__.get(typeName, None)
 
-            return editor.text()
+        if callable(func):
 
-        elif isinstance(editor, (QtWidgets.QSpinBox, QtWidgets.QDoubleSpinBox)):
-
-            return editor.value()
-
-        elif isinstance(editor, QtWidgets.QCheckBox):
-
-            return editor.isChecked()
-
-        elif isinstance(editor, QtWidgets.QComboBox):
-
-            return editor.currentIndex()
+            return func(editor)
 
         else:
 
-            raise TypeError('getEditorData() expects a supported widget (%s given)!' % type(editor).__name__)
+            raise TypeError('getEditorData() expects a supported widget (%s given)!' % typeName)
 
     def setEditorData(self, editor, index):
         """
@@ -152,7 +161,6 @@ class QPropertyItemDelegate(QtWidgets.QStyledItemDelegate):
 
         elif isinstance(editor, QtWidgets.QComboBox):
 
-            editor.addItems(list(value.__members__.keys()))
             editor.setCurrentIndex(value)
 
         else:
