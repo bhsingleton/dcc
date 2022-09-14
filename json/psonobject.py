@@ -104,7 +104,7 @@ class PSONObject(with_metaclass(ABCMeta, collections_abc.MutableMapping)):
         #
         state = {'__name__': self.className, '__module__': self.moduleName}
 
-        for (name, func) in self.iterProperties(readable=False, writable=True):
+        for (name, func) in self.iterProperties():
 
             # Inspect return type
             # If it doesn't have a return hint then ignore it
@@ -276,7 +276,14 @@ class PSONObject(with_metaclass(ABCMeta, collections_abc.MutableMapping)):
         :rtype: bool
         """
 
-        return annotationutils.isBuiltinType(T) or hasattr(T, '__getstate__')
+        if annotationutils.isParameterizedAlias(T):
+
+            origin, parameters = annotationutils.decomposeAlias(T)
+            return all([cls.isJsonCompatible(parameter) for parameter in parameters])
+
+        else:
+
+            return annotationutils.isBuiltinType(T) or hasattr(T, '__getstate__')
 
     def weakReference(self):
         """
