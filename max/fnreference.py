@@ -145,7 +145,7 @@ class FnReference(afnreference.AFnReference):
 
         return self.object().srcFileName
 
-    def getFileProperties(self):
+    def fileProperties(self):
         """
         Returns the file properties from the source file.
 

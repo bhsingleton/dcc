@@ -83,7 +83,7 @@ class AFnReference(with_metaclass(ABCMeta, afnobject.AFnObject)):
         return os.path.exists(self.filePath())
 
     @abstractmethod
-    def getFileProperties(self):
+    def fileProperties(self):
         """
         Returns the file properties from the source file.
 
