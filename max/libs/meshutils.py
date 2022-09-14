@@ -162,15 +162,13 @@ def iterVertices(mesh, indices=None):
 
         for index in indices:
 
-            point = pymxs.runtime.polyOp.getVert(mesh, index)
-            yield point.x, point.y, point.z
+            yield pymxs.runtime.polyOp.getVert(mesh, index)
 
     else:
 
         for index in indices:
 
-            point = pymxs.runtime.meshOp.getVert(mesh, index)
-            yield point.x, point.y, point.z
+            yield pymxs.runtime.meshOp.getVert(mesh, index)
 
 
 @coordsysoverride.coordSysOverride(mode='local')
@@ -222,14 +220,13 @@ def iterVertexNormals(mesh, indices=None):
             normals = [pymxs.runtime.polyOp.getFaceNormal(mesh, x) for x in arrayutils.iterBitArray(bits)]
             normal = sum(normals) / len(normals)
 
-            yield normal.x, normal.y, normal.z
+            yield normal
 
     else:
 
         for index in indices:
 
-            normal = pymxs.runtime.getNormal(mesh, index)
-            yield normal.x, normal.y, normal.z
+            yield pymxs.runtime.getNormal(mesh, index)
 
 
 def iterFaceVertexIndices(mesh, indices=None):
@@ -288,15 +285,13 @@ def iterFaceCenters(mesh, indices=None):
 
         for index in indices:
 
-            point = pymxs.runtime.polyOp.getFaceCenter(mesh, index)
-            yield point.x, point.y, point.z
+            yield pymxs.runtime.polyOp.getFaceCenter(mesh, index)
 
     else:
 
         for index in indices:
 
-            point = pymxs.runtime.meshOp.getFaceCenter(mesh, index)
-            yield point.x, point.y, point.z
+            yield pymxs.runtime.meshOp.getFaceCenter(mesh, index)
 
 
 @coordsysoverride.coordSysOverride(mode='local')
@@ -322,8 +317,7 @@ def iterFaceNormals(mesh, indices=None):
 
         for index in indices:
 
-            normal = pymxs.runtime.polyOp.getFaceNormal(mesh, index)
-            yield normal.x, normal.y, normal.z
+            yield pymxs.runtime.polyOp.getFaceNormal(mesh, index)
 
     else:
 
@@ -331,7 +325,8 @@ def iterFaceNormals(mesh, indices=None):
 
             normals = pymxs.runtime.meshOp.getFaceRNormals(mesh, index)
             normal = sum(normals) / len(normals)
-            yield normal.x, normal.y, normal.z
+
+            yield normal
 
 
 def getSelectedVertices(mesh):
