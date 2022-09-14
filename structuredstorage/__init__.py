@@ -1,3 +1,4 @@
+import win32api  # Required for pythoncom to import!
 import pythoncom
 
 from win32com import storagecon
