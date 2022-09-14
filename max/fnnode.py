@@ -27,17 +27,17 @@ class FnNode(afnnode.AFnNode):
 
         # Call parent method
         #
-        obj = super(FnNode, self).object()
+        handle = super(FnNode, self).object()
 
-        # Inspect object type
+        # Inspect handle type
         #
-        if isinstance(obj, integer_types):
+        if isinstance(handle, integer_types):
 
-            return self.getNodeByHandle(obj)
+            return self.getNodeByHandle(handle)
 
         else:
 
-            return obj
+            return None
 
     def setObject(self, obj):
         """
