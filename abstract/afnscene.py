@@ -4,6 +4,7 @@ import subprocess
 from abc import ABCMeta, abstractmethod
 from string import ascii_uppercase
 from six import with_metaclass
+from six.moves import collections_abc
 from ctypes import windll
 from fnmatch import fnmatch
 from dcc import fntexture
@@ -235,7 +236,7 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
         :rtype: bool
         """
 
-        if hasattr(value, '__len__'):
+        if isinstance(value, collections_abc.Sequence):
 
             return len(value) == 0
 
@@ -245,7 +246,7 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         else:
 
-            raise TypeError('isNullOrEmpty() expects a sequence (%s given)!' % type(value).__name__)
+            return False
 
     def getDriveLetters(self):
         """
@@ -312,7 +313,7 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
         #
         if cls.isNullOrEmpty(path) or cls.isNullOrEmpty(directory):
 
-            return ''
+            return False
 
         # Normalize and compare paths
         #
