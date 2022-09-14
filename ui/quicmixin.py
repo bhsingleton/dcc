@@ -3,6 +3,7 @@ import sys
 import inspect
 
 from Qt import QtCore, QtWidgets, QtCompat
+from dcc.decorators.classproperty import classproperty
 
 import logging
 logging.basicConfig()
@@ -41,12 +42,18 @@ class QUicMixin(object):
 
             # Update cpp pointer
             #
-            func = getattr(self.__class__, item)
+            func = getattr(self.__class__, item, None)
 
             if not inspect.isfunction(func):
 
                 obj = self.findChild(QtWidgets.QWidget, item)
                 setattr(self, item, obj)
+
+                return obj
+
+            else:
+
+                return None
 
         else:
 
