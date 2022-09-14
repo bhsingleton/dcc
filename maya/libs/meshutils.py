@@ -10,6 +10,23 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
+def package(counts, indices):
+    """
+    Returns a generator that yields groups of indices based on the associated counts.
+
+    :type counts: List[int]
+    :type indices: List[int]
+    :rtype: iter
+    """
+
+    position = 0
+
+    for count in counts:
+
+        yield indices[position:(position + count)]
+        position += count
+
+
 def nullMeshData():
     """
     Returns a null mesh data object.
