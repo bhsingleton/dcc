@@ -15,6 +15,9 @@ log.setLevel(logging.INFO)
 
 
 class ViewDetails(IntEnum):
+    """
+    Overload of IntEnum that contains all the displayable data.
+    """
 
     Name = 0
     Type = 1
@@ -651,7 +654,7 @@ class QPSONItemModel(QtCore.QAbstractItemModel):
         :type size: int
         :type T: type
         :type parent: QtCore.QModelIndex
-        :rtype: None
+        :rtype: bool
         """
 
         # Resize parent row
@@ -660,16 +663,16 @@ class QPSONItemModel(QtCore.QAbstractItemModel):
 
         if size < numRows:
 
-            self.removeRows(numRows - size, size, parent=parent)
+            return self.removeRows(numRows - size, size, parent=parent)
 
         elif size > numRows:
 
             items = [T() for x in range(numRows, size, 1)]
-            self.extendRow(items, parent=parent)
+            return self.extendRow(items, parent=parent)
 
         else:
 
-            pass
+            return False
 
     def supportedDragActions(self):
         """
@@ -791,6 +794,7 @@ class QPSONItemModel(QtCore.QAbstractItemModel):
         # Evaluate data role
         #
         column = index.column()
+        path = self.decodeInternalId(index.internalId())
 
         if role == QtCore.Qt.DisplayRole:
 
@@ -798,13 +802,46 @@ class QPSONItemModel(QtCore.QAbstractItemModel):
 
         elif role == QtCore.Qt.EditRole:
 
-            path = self.decodeInternalId(index.internalId())
-            return path.value()
+            # Verify this is the value column
+            #
+            isValueColumn = self.viewDetails.index(ViewDetails.Value) == column
 
-        elif role == QtCore.Qt.DecorationRole and column == 0:
+            if isValueColumn:
 
-            path = self.decodeInternalId(index.internalId())
-            return path.icon()
+                return path.value()
+
+            else:
+
+                return None
+
+        elif role == QtCore.Qt.DecorationRole:
+
+            # Verify this is the name column
+            #
+            isNameColumn = self.viewDetails.index(ViewDetails.Name) == column
+
+            if isNameColumn:
+
+                return path.icon()
+
+            else:
+
+                return None
+
+        elif role == QtCore.Qt.CheckStateRole:
+
+            # Verify this is the value column and accepts booleans
+            #
+            isValueColumn = self.viewDetails.index(ViewDetails.Value) == column
+            acceptsBoolean = path.acceptsType(bool)
+
+            if isValueColumn and acceptsBoolean:
+
+                return QtCore.Qt.Checked if path.value() else QtCore.Qt.Unchecked
+
+            else:
+
+                return None
 
         else:
 
@@ -831,7 +868,10 @@ class QPSONItemModel(QtCore.QAbstractItemModel):
             #
             if internalId.isArray() and not internalId.isElement():
 
-                return False
+                internalId = self.decodeInternalId(index.internalId())
+                origin, parameters = internalId.type(decomposeAliases=True)
+
+                return self.resizeRow(value, parameters[0], index)
 
             else:
 
@@ -839,6 +879,13 @@ class QPSONItemModel(QtCore.QAbstractItemModel):
                 internalId.setValue(value)
 
                 return True
+
+        elif role == QtCore.Qt.CheckStateRole:
+
+            boolean = True if value == QtCore.Qt.Checked else False
+            internalId.setValue(boolean)
+
+            return True
 
         else:
 

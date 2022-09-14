@@ -19,13 +19,13 @@ class QPSONPath(collections_abc.Sequence):
 
     # region Dunderscores
     __slots__ = ('_path', '_model')
-    __editables__ = (bool, int, float, str)
+    __builtin_types__ = (bool, int, float, str, collections_abc.MutableSequence, collections_abc.MutableMapping)
 
     def __init__(self, *args, **kwargs):
         """
         Private method that is called after a new instance is created.
 
-        :key model: dcc.ui.models.qpsonitemmodel.QPSONItemModel
+        :key model: qpsonitemmodel.QPSONItemModel
         :rtype: None
         """
 
@@ -120,7 +120,7 @@ class QPSONPath(collections_abc.Sequence):
         """
         Getter method that returns the associated item model.
 
-        :rtype: dcc.ui.models.qpsonitemmodel.QPSONItemModel
+        :rtype: qpsonitemmodel.QPSONItemModel
         """
 
         return self._model()
@@ -256,10 +256,22 @@ class QPSONPath(collections_abc.Sequence):
         :rtype: QtGui.QIcon
         """
 
+        # Check if type is valid
+        #
         alias = self.type()
         origin, parameters = annotationutils.decomposeAlias(alias)
 
-        if hasattr(origin, '__name__'):
+        if origin is None:
+
+            return QtGui.QIcon()
+
+        # Check if this is a mapping object
+        #
+        if issubclass(origin, collections_abc.Mapping):
+
+            return QtGui.QIcon(':data/icons/dict.svg')
+
+        elif hasattr(origin, '__name__'):
 
             return QtGui.QIcon(':data/icons/{type}.svg'.format(type=origin.__name__))
 
@@ -267,22 +279,33 @@ class QPSONPath(collections_abc.Sequence):
 
             return QtGui.QIcon()
 
-    def type(self):
+    def type(self, decomposeAliases=False):
         """
         Returns the value type from this path.
 
+        :type decomposeAliases: bool
         :rtype: type
         """
 
+        # Check if getter is valid
+        #
         getter, setter = self.accessors()
 
-        if callable(getter):
+        if not callable(getter):
 
-            return annotationutils.getReturnType(getter)
+            return type(None)
+
+        # Check if return type requires decomposing
+        #
+        returnType = annotationutils.getReturnType(getter)
+
+        if decomposeAliases and annotationutils.isParameterizedAlias(returnType):
+
+            return annotationutils.decomposeAlias(returnType)
 
         else:
 
-            return type(None)
+            return returnType
 
     def acceptsType(self, otherType):
         """
@@ -338,15 +361,27 @@ class QPSONPath(collections_abc.Sequence):
         :rtype: None
         """
 
+        # Check if setter is callable
+        #
         getter, setter = self.accessors()
 
-        if callable(setter):
+        if not callable(setter):
 
-            return setter(value)
+            log.warning('Unable to set value @ %s' % self)
+            return
+
+        # Check if indexer is required
+        #
+        if self.isElement():
+
+            array = getter()
+            index = self._path[-1]
+
+            array[index] = value
 
         else:
 
-            return None
+            setter(value)
 
     def isArray(self):
         """
@@ -358,7 +393,7 @@ class QPSONPath(collections_abc.Sequence):
         alias = self.type()
         origin, parameters = annotationutils.decomposeAlias(alias)
 
-        return issubclass(origin, collections_abc.Sequence) and not issubclass(origin, string_types)
+        return issubclass(origin, collections_abc.MutableSequence) and not issubclass(origin, string_types)
 
     def isMapping(self):
         """
@@ -370,7 +405,7 @@ class QPSONPath(collections_abc.Sequence):
         alias = self.type()
         origin, parameters = annotationutils.decomposeAlias(alias)
 
-        return issubclass(origin, collections_abc.Mapping)
+        return issubclass(origin, collections_abc.MutableMapping)
 
     def isElement(self):
         """
@@ -379,7 +414,13 @@ class QPSONPath(collections_abc.Sequence):
         :rtype: bool
         """
 
-        return isinstance(self._path[-1], integer_types)
+        if len(self._path) > 0:
+
+            return isinstance(self._path[-1], integer_types)
+
+        else:
+
+            return False
 
     def isResizable(self):
         """
@@ -393,7 +434,7 @@ class QPSONPath(collections_abc.Sequence):
 
         if issubclass(origin, collections_abc.MutableSequence) and len(parameters) == 1:
 
-            return issubclass(parameters[0], self.__editables__)
+            return issubclass(parameters[0], self.__builtin_types__)
 
         else:
 
@@ -419,13 +460,13 @@ class QPSONPath(collections_abc.Sequence):
         alias = annotationutils.getReturnType(getter)
         origin, parameters = annotationutils.decomposeAlias(alias)
 
-        if issubclass(origin, collections_abc.MutableSequence) and len(parameters) == 1:
+        if issubclass(origin, collections_abc.MutableSequence):
 
-            return issubclass(parameters[0], self.__editables__)
+            return self.isResizable()
 
         else:
 
-            return issubclass(origin, self.__editables__)
+            return issubclass(origin, self.__builtin_types__)
 
     @classmethod
     def flatten(cls, *items):
@@ -510,6 +551,6 @@ class QPSONPath(collections_abc.Sequence):
 
         except (IndexError, KeyError, TypeError) as exception:
 
-            log.warning(exception)
+            log.debug(exception)
             return default
     # endregion

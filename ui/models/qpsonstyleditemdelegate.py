@@ -4,7 +4,8 @@ from PySide2 import QtCore, QtWidgets, QtGui
 from six import string_types, integer_types
 from six.moves import collections_abc
 from enum import Enum, IntEnum
-from dcc.python import annotationutils
+from collections import defaultdict
+from ...python import annotationutils
 
 import logging
 logging.basicConfig()
@@ -19,16 +20,20 @@ class QPSONStyledItemDelegate(QtWidgets.QStyledItemDelegate):
 
     __builtins__ = (bool, int, float, str)
 
-    __getter__ = {
+    __getters__ = {
         'QLineEdit': lambda widget: widget.text(),
+        'QFileEdit': lambda widget: widget.text(),
+        'QDirectoryEdit': lambda widget: widget.text(),
         'QSpinBox': lambda widget: widget.value(),
         'QDoubleSpinBox': lambda widget: widget.value(),
         'QCheckBox': lambda widget: widget.isChecked(),
         'QComboBox': lambda widget: widget.currentIndex()
     }
 
-    __setter__ = {
+    __setters__ = {
         'QLineEdit': lambda widget, value: widget.setText(value),
+        'QFileEdit': lambda widget, value: widget.setText(value),
+        'QDirectoryEdit': lambda widget, value: widget.setText(value),
         'QSpinBox': lambda widget, value: widget.setValue(value),
         'QDoubleSpinBox': lambda widget, value: widget.setValue(value),
         'QCheckBox': lambda widget, value: widget.setChecked(value),
@@ -43,6 +48,24 @@ class QPSONStyledItemDelegate(QtWidgets.QStyledItemDelegate):
         'bool': QtWidgets.QCheckBox
     }
 
+    def __init__(self, parent=None):
+        """
+        Private method called after a new instance has been created.
+
+        :type parent: QtWidgets.QWidget
+        :rtype: None
+        """
+
+        # Call parent method
+        #
+        super(QPSONStyledItemDelegate, self).__init__(parent=parent)
+
+        # Declare private variables
+        #
+        self._delegates = defaultdict(dict)
+        self._getters = dict(self.__getters__)
+        self._setters = dict(self.__setters__)
+
     def createEditor(self, parent, option, index):
         """
         Returns the widget used to edit the item specified by index for editing.
@@ -54,19 +77,33 @@ class QPSONStyledItemDelegate(QtWidgets.QStyledItemDelegate):
         :rtype: QtWidget.QWidget
         """
 
-        # Create widget associated with return type
+        # Get parent object
         #
         model = index.model()
         internalId = model.decodeInternalId(index.internalId())
-        returnType = internalId.type()
+        parentId = internalId.parent()
 
-        return self.createEditorByType(returnType, parent=parent, index=internalId[-1])
+        obj = parentId.value()
 
-    def createEditorByType(self, T, index=None, parent=None):
+        # Check if parent has a delegate
+        #
+        cls = type(obj)
+        editor = self._delegates[cls.__name__].get(internalId[-1], None)
+
+        if callable(editor):
+
+            return editor(parent=parent)
+
+        else:
+
+            returnType = internalId.type()
+            return self.createEditorByType(returnType, parent=parent, index=internalId[-1])
+
+    def createEditorByType(self, cls, index=None, parent=None):
         """
         Returns the widget used to edit the type specified for editing.
 
-        :type T: type
+        :type cls: type
         :type parent: QtWidgets.QWidget
         :type index: Union[str, int]
         :rtype: QtWidget.QWidget
@@ -74,33 +111,33 @@ class QPSONStyledItemDelegate(QtWidgets.QStyledItemDelegate):
 
         # Evaluate type hint
         #
-        if annotationutils.isParameterizedAlias(T):  # Reserved for typing objects
+        if annotationutils.isParameterizedAlias(cls):  # Reserved for typing objects
 
             # Check if this is an indexed item
             #
             if isinstance(index, integer_types):
 
-                return self.createEditorByType(T.__args__[0], parent=parent)
+                return self.createEditorByType(cls.__args__[0], parent=parent)
 
             else:
 
                 return QtWidgets.QSpinBox(parent=parent)
 
-        elif inspect.isclass(T):
+        elif inspect.isclass(cls):
 
             # Get widget associated with type name
             #
-            typeName = T.__name__
-            cls = self.__types__.get(typeName, None)
+            typeName = cls.__name__
+            editor = self.__types__.get(typeName, None)
 
-            if callable(cls):
+            if callable(editor):
 
                 return cls(parent=parent)
 
-            elif issubclass(T, (Enum, IntEnum)):
+            elif issubclass(cls, (Enum, IntEnum)):
 
                 editor = QtWidgets.QComboBox(parent=parent)
-                editor.addItems(list(T.__members__.keys()))
+                editor.addItems(list(cls.__members__.keys()))
 
                 return editor
 
@@ -110,7 +147,7 @@ class QPSONStyledItemDelegate(QtWidgets.QStyledItemDelegate):
 
         else:
 
-            return self.createEditorByType(type(T))
+            return self.createEditorByType(type(cls))
 
     def getEditorData(self, editor):
         """
@@ -121,7 +158,7 @@ class QPSONStyledItemDelegate(QtWidgets.QStyledItemDelegate):
         """
 
         typeName = type(editor).__name__
-        func = self.__getter__.get(typeName, None)
+        func = self._getters.get(typeName, None)
 
         if callable(func):
 
@@ -192,3 +229,31 @@ class QPSONStyledItemDelegate(QtWidgets.QStyledItemDelegate):
 
         value = self.getEditorData(editor)
         model.setData(index, value, role=QtCore.Qt.EditRole)
+
+    def registerEditor(self, editor, getter, setter):
+        """
+        Registers a custom editor for data entry.
+        The getter should return the value from the editor.
+        Whereas the setter should update the editor with the passed value.
+
+        :type editor: class
+        :type getter: lambda
+        :type setter: lambda
+        :rtype: None
+        """
+
+        typeName = editor.__name__
+        self._getters[typeName] = getter
+        self._setters[typeName] = setter
+
+    def registerDelegate(self, cls, item, editor):
+        """
+        Associates an editor with the specified class-property pair.
+
+        :type cls: class
+        :type item: str
+        :type editor: class
+        :rtype: None
+        """
+
+        self._delegates[cls.__name__][item] = editor
