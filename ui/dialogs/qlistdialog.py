@@ -1,4 +1,5 @@
 from PySide2 import QtCore, QtWidgets, QtGui
+from . import quicdialog
 from six import string_types
 
 import logging
@@ -7,7 +8,7 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-class QListDialog(QtWidgets.QDialog):
+class QListDialog(quicdialog.QUicDialog):
     """
     Overload of QDialog used to edit string list data.
     """
@@ -44,69 +45,6 @@ class QListDialog(QtWidgets.QDialog):
         if numArgs == 1:
 
             self.setWindowTitle(args[0])
-
-    def __build__(self, *args, **kwargs):
-        """
-        Private method that builds the user interface.
-
-        :rtype: None
-        """
-
-        # Edit dialog properties
-        #
-        self.setObjectName('listDialog')
-        self.setWindowFlags(QtCore.Qt.Dialog)
-        self.setMinimumSize(QtCore.QSize(300, 300))
-        self.setWindowTitle('Reorder Items')
-
-        # Create list view
-        #
-        self.listWidget = QtWidgets.QListWidget()
-        self.listWidget.setStyleSheet('QListWidget::item { Height: 24px; }')
-        self.listWidget.setUniformItemSizes(True)
-
-        # Create manipulate buttons
-        #
-        self.addPushButton = QtWidgets.QPushButton('Add')
-        self.addPushButton.setObjectName('addPushButton')
-        self.addPushButton.clicked.connect(self.on_addPushButton_clicked)
-
-        self.removePushButton = QtWidgets.QPushButton('Remove')
-        self.removePushButton.setObjectName('removePushButton')
-        self.removePushButton.clicked.connect(self.on_removePushButton_clicked)
-
-        self.upPushButton = QtWidgets.QPushButton('⯅')
-        self.upPushButton.setObjectName('upPushButton')
-        self.upPushButton.clicked.connect(self.on_upPushButton_clicked)
-
-        self.downPushButton = QtWidgets.QPushButton('⯆')
-        self.downPushButton.setObjectName('downPushButton')
-        self.downPushButton.clicked.connect(self.on_downPushButton_clicked)
-
-        self.okayPushButton = QtWidgets.QPushButton('OK')
-        self.okayPushButton.setObjectName('okayPushButton')
-        self.okayPushButton.clicked.connect(self.accept)
-
-        self.cancelButton = QtWidgets.QPushButton('Cancel')
-        self.cancelButton.setObjectName('cancelButton')
-        self.cancelButton.clicked.connect(self.reject)
-
-        self.buttonLayout = QtWidgets.QGridLayout()
-        self.buttonLayout.addWidget(self.addButton, 0, 0)
-        self.buttonLayout.addWidget(self.removeButton, 1, 0)
-        self.buttonLayout.addWidget(self.upButton, 2, 0)
-        self.buttonLayout.addWidget(self.downButton, 3, 0)
-        self.buttonLayout.setRowStretch(4, 100)
-        self.buttonLayout.addWidget(self.okButton, 5, 0)
-        self.buttonLayout.addWidget(self.cancelButton, 6, 0)
-
-        # Edit central layout
-        #
-        layout = QtWidgets.QHBoxLayout()
-        layout.addWidget(self.listWidget)
-        layout.addLayout(self.buttonLayout)
-
-        self.setLayout(layout)
     # endregion
 
     # region Methods
