@@ -1,7 +1,7 @@
 import os
 
 from . import fbxbase, fbxskeleton, fbxmesh, fbxscript
-from dcc import fnfbx, fnnode
+from ... import fnfbx
 
 import logging
 logging.basicConfig()
@@ -89,6 +89,14 @@ class FbxExportSet(fbxbase.FbxBase):
         :rtype: None
         """
 
+        # Check if directory is relative to cwd
+        #
+        cwd = self.cwd()
+
+        if self.scene.isPathRelativeTo(directory, cwd):
+
+            directory = self.scene.makePathRelativeTo(directory, cwd)
+
         self._directory = directory
 
     @property
@@ -99,7 +107,7 @@ class FbxExportSet(fbxbase.FbxBase):
         :rtype: fbxskeleton.FbxSkeleton
         """
 
-        return self._meshes
+        return self._skeleton
 
     @skeleton.setter
     def skeleton(self, skeleton):
@@ -324,18 +332,20 @@ class FbxExportSet(fbxbase.FbxBase):
     # endregion
 
     # region Methods
-    def selectNodes(self):
+    def cwd(self):
         """
-        Serializes the contents of this export set.
+        Returns the current working directory from the parent asset.
 
-        :rtype: fbxfactory.FbxFactory
+        :rtype: str
         """
 
-        self.skeleton.select()
+        if self.asset is not None:
 
-        for mesh in self.meshes:
+            return self.asset.directory
 
-            pass
+        else:
+
+            return ''
 
     def exportPath(self):
         """
@@ -344,11 +354,51 @@ class FbxExportSet(fbxbase.FbxBase):
         :rtype: str
         """
 
-        return os.path.join(
-            os.path.expandvars(self.asset.directory),
-            self.directory,
-            '{name}.fbx'.format(name=self.name)
-        )
+        # Check if asset exists
+        #
+        fileName = '{name}.fbx'.format(name=self.name)
+        path = os.path.join(os.path.expandvars(self.directory), fileName)
+        cwd = self.cwd()
+
+        if not self.scene.isNullOrEmpty(cwd):
+
+            return os.path.join(os.path.expandvars(cwd), path)
+
+        else:
+
+            return path
+
+    def select(self, animationOnly=False, namespace=''):
+        """
+        Selects the nodes associated with this export set.
+
+        :type animationOnly: bool
+        :type namespace: str
+        :rtype: None
+        """
+
+        # Select skeleton
+        #
+        self.skeleton.select(namespace=namespace)
+
+        # Check if meshes should be selected
+        #
+        if not animationOnly:
+
+            for mesh in self.meshes:
+
+                mesh.select(namespace=namespace)
+
+    def serialize(self, animationOnly=False, namespace=''):
+        """
+        Serializes the nodes associated with this export set.
+
+        :type animationOnly: bool
+        :type namespace: str
+        :rtype: Any
+        """
+
+        pass
 
     def preExport(self):
         """
@@ -363,16 +413,18 @@ class FbxExportSet(fbxbase.FbxBase):
 
             customScript.preExport()
 
-    def export(self):
+    def export(self, animationOnly=False, namespace=''):
         """
         Outputs this export set to the user defined path.
 
-        :rtype: bool
+        :type animationOnly: bool
+        :type namespace: str
+        :rtype: None
         """
 
         # Select nodes and execute pre-scripts
         #
-        self.selectNodes()
+        self.select(animationOnly=animationOnly, namespace=namespace)
         self.preExport()
 
         # Export fbx using selection

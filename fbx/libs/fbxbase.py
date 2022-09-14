@@ -1,7 +1,7 @@
 from abc import ABCMeta
 from six import with_metaclass
-from .. import fnscene, fnreference
-from ..json import psonobject
+from ... import fnscene, fnreference
+from ...json import psonobject
 
 import logging
 logging.basicConfig()
@@ -17,7 +17,7 @@ class FbxBase(with_metaclass(ABCMeta, psonobject.PSONObject)):
     """
 
     # region Dunderscores
-    __slots__ = ('_name', '__weakref__')
+    __slots__ = ('_scene', '_name', '__weakref__')
     __scene__ = fnscene.FnScene
     __reference__ = fnreference.FnReference
 
@@ -30,6 +30,7 @@ class FbxBase(with_metaclass(ABCMeta, psonobject.PSONObject)):
 
         # Declare private variables
         #
+        self._scene = self.__scene__()
         self._name = kwargs.get('name', '')
 
         # Call parent method
@@ -38,6 +39,16 @@ class FbxBase(with_metaclass(ABCMeta, psonobject.PSONObject)):
     # endregion
 
     # region Properties
+    @property
+    def scene(self):
+        """
+        Getter method that returns the scene interface.
+
+        :rtype: fnscene.FnScene
+        """
+
+        return self._scene
+
     @property
     def name(self):
         """
@@ -58,4 +69,23 @@ class FbxBase(with_metaclass(ABCMeta, psonobject.PSONObject)):
         """
 
         self._name = newName
+    # endregion
+
+    # region Methods
+    def absolutify(self, name, namespace):
+        """
+        Returns an absolute name using the supplied namespace.
+
+        :type name: str
+        :type namespace: str
+        :rtype: str
+        """
+
+        if self.scene.isNullOrEmpty(namespace):
+
+            return name
+
+        else:
+
+            return '{namespace}:{name}'.format(namespace=namespace, name=name)
     # endregion

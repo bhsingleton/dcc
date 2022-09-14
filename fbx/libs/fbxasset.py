@@ -1,5 +1,5 @@
 from . import fbxbase, fbxexportset, FbxFileType, FbxFileVersion
-from ..collections import notifylist
+from ...collections import notifylist
 
 import logging
 logging.basicConfig()
@@ -28,10 +28,6 @@ class FbxAsset(fbxbase.FbxBase):
         :rtype: None
         """
 
-        # Call parent method
-        #
-        super(FbxAsset, self).__init__(*args, **kwargs)
-
         # Declare private variables
         #
         self._directory = kwargs.get('directory', '')
@@ -44,6 +40,10 @@ class FbxAsset(fbxbase.FbxBase):
         #
         self._exportSets.addCallback('itemAdded', self.exportSetAdded)
         self._exportSets.addCallback('itemRemoved', self.exportSetRemoved)
+
+        # Call parent method
+        #
+        super(FbxAsset, self).__init__(*args, **kwargs)
     # endregion
 
     # region Properties

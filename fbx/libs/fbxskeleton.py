@@ -1,6 +1,5 @@
 from . import fbxbase
-from .. import fnscene, fnnode, fnlayer
-from ..python import stringutils
+from ... import fnnode, fnlayer
 
 import logging
 logging.basicConfig()
@@ -15,7 +14,6 @@ class FbxSkeleton(fbxbase.FbxBase):
 
     # region Dunderscores
     __slots__ = (
-        '_scene',
         '_includeDescendants',
         '_includeJoints',
         '_includeLayers',
@@ -32,7 +30,6 @@ class FbxSkeleton(fbxbase.FbxBase):
 
         # Declare private variables
         #
-        self._scene = self.__scene__()
         self._includeDescendants = kwargs.get('includeDescendants', True)
         self._includeJoints = kwargs.get('includeJoints', [])
         self._includeLayers = kwargs.get('includeLayers', [])
@@ -41,20 +38,10 @@ class FbxSkeleton(fbxbase.FbxBase):
 
         # Call parent method
         #
-        super(FbxSkeleton, self).__init__(*args, name='Root', **kwargs)
+        super(FbxSkeleton, self).__init__(*args, **kwargs)
     # endregion
 
     # region Properties
-    @property
-    def scene(self):
-        """
-        Getter method that returns the scene interface.
-
-        :rtype: fnscene.FnScene
-        """
-
-        return self._scene
-
     @property
     def includeDescendants(self):
         """
@@ -95,7 +82,8 @@ class FbxSkeleton(fbxbase.FbxBase):
         :rtype: None
         """
 
-        self._includeJoints = includeJoints
+        self._includeJoints.clear()
+        self._includeJoints.extend(includeJoints)
 
     @property
     def includeLayers(self):
@@ -116,7 +104,8 @@ class FbxSkeleton(fbxbase.FbxBase):
         :rtype: None
         """
 
-        self._includeLayers = includeLayers
+        self._includeLayers.clear()
+        self._includeLayers.extend(includeLayers)
 
     @property
     def includeSelectionSets(self):
@@ -126,7 +115,7 @@ class FbxSkeleton(fbxbase.FbxBase):
         :rtype: List[str]
         """
 
-        return self._includeLayers
+        return self._includeSelectionSets
 
     @includeSelectionSets.setter
     def includeSelectionSets(self, includeSelectionSets):
@@ -137,7 +126,8 @@ class FbxSkeleton(fbxbase.FbxBase):
         :rtype: None
         """
 
-        self._includeSelectionSets = includeSelectionSets
+        self._includeSelectionSets.clear()
+        self._includeSelectionSets.extend(includeSelectionSets)
 
     @property
     def includeRegex(self):
@@ -162,31 +152,33 @@ class FbxSkeleton(fbxbase.FbxBase):
     # endregion
 
     # region Methods
-    def select(self):
+    def select(self, namespace=''):
         """
-        Selects the associated node from the scene file.
+        Selects the associated nodes from the scene file.
 
+        :type namespace: str
         :rtype: None
         """
 
         self.scene.clearActiveSelection()
-        self.selectRoot()
-        self.selectIncludeJoints()
-        self.selectIncludeLayers()
-        self.selectIncludeSelectionSets()
-        self.selectIncludeRegex()
+        self.selectRoot(namespace=namespace)
+        self.selectIncludeJoints(namespace=namespace)
+        self.selectIncludeLayers(namespace=namespace)
+        self.selectIncludeSelectionSets(namespace=namespace)
+        self.selectIncludeRegex(namespace=namespace)
 
-    def selectRoot(self):
+    def selectRoot(self, namespace=''):
         """
         Selects the associated root node from the scene file.
 
+        :type namespace: str
         :rtype: None
         """
 
         # Check if root node is valid
         #
         node = fnnode.FnNode()
-        success = node.trySetObject(self.name)
+        success = node.trySetObject(self.absolutify(self.name, namespace))
 
         if not success:
 
@@ -205,28 +197,33 @@ class FbxSkeleton(fbxbase.FbxBase):
                 descendant.next()
                 descendant.select(replace=False)
 
-    def selectIncludeJoints(self):
+    def selectIncludeJoints(self, namespace=''):
         """
         Selects the associated nodes from the scene.
 
+        :type namespace: str
         :rtype: None
         """
 
-        node = fnnode.FnNode(iter(self.includeJoints))
+        jointNames = [self.absolutify(name, namespace) for name in self.includeJoints]
+        node = fnnode.FnNode(iter(jointNames))
 
         while not node.isDone():
 
             node.next()
             node.select(replace=False)
 
-    def selectIncludeLayers(self):
+    def selectIncludeLayers(self, namespace=''):
         """
         Selects the nodes from the associated layers.
 
+        :type namespace: str
         :rtype: None
         """
 
-        layer = fnlayer.FnLayer(iter(self.includeLayers))
+        layerNames = [self.absolutify(name, namespace) for name in self.includeLayers]
+        layer = fnlayer.FnLayer(iter(layerNames))
+
         node = fnnode.FnNode()
 
         while not layer.isDone():
@@ -238,19 +235,21 @@ class FbxSkeleton(fbxbase.FbxBase):
                 node.setObject(obj)
                 node.select(replace=False)
 
-    def selectIncludeSelectionSets(self):
+    def selectIncludeSelectionSets(self, namespace=''):
         """
         Selects the nodes from the associated selection-sets.
 
+        :type namespace: str
         :rtype: None
         """
 
         pass
 
-    def selectIncludeRegex(self):
+    def selectIncludeRegex(self, namespace=''):
         """
         Selects the nodes that match the specified name pattern/regex.
 
+        :type namespace: str
         :rtype: None
         """
 
@@ -260,4 +259,14 @@ class FbxSkeleton(fbxbase.FbxBase):
 
             fnNode.next()
             fnNode.select(replace=False)
+
+    def serialize(self, fbxScene):
+        """
+        Serializes the associated mesh for fbx.
+
+        :type fbxScene: Any
+        :rtype: None
+        """
+
+        pass
     # endregion

@@ -25,4 +25,3 @@ class FbxMeshComponent(IntEnum):
     Vertex = 0
     Edge = 1
     Polygon = 3
-

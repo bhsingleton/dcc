@@ -1,4 +1,5 @@
 from . import fbxbase, FbxMeshComponent
+from ... import fnnode
 
 import logging
 logging.basicConfig()
@@ -33,6 +34,16 @@ class FbxMesh(fbxbase.FbxBase):
     # endregion
 
     # region Properties
+    @property
+    def scene(self):
+        """
+        Getter method that returns the scene interface.
+
+        :rtype: fnscene.FnScene
+        """
+
+        return self._scene
+
     @property
     def extract(self):
         """
@@ -98,9 +109,26 @@ class FbxMesh(fbxbase.FbxBase):
     # endregion
 
     # region Methods
-    def select(self):
+    def select(self, namespace=''):
+        """
+        Selects the associated node from the scene file.
 
-        pass
+        :type namespace: str
+        :rtype: None
+        """
+
+        # Check if root node is valid
+        #
+        node = fnnode.FnNode()
+        success = node.trySetObject(self.absolutify(self.name, namespace))
+
+        if not success:
+
+            return
+
+        # Select root and descendants
+        #
+        node.select(replace=False)
 
     def serialize(self, fbxScene):
         """
