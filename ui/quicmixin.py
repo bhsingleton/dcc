@@ -3,7 +3,6 @@ import sys
 import inspect
 
 from Qt import QtCore, QtWidgets, QtCompat
-from dcc.decorators.classproperty import classproperty
 
 import logging
 logging.basicConfig()
