@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 from Qt import QtCore, QtWidgets, QtGui
 from six import string_types
-from dcc import fnqt
 
 import logging
 logging.basicConfig()
@@ -15,7 +14,7 @@ class QDropDownButton(QtWidgets.QAbstractButton):
     """
 
     # region Dunderscores
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, parent=None):
         """
         Private method called after a new instance has been created.
 
@@ -25,13 +24,11 @@ class QDropDownButton(QtWidgets.QAbstractButton):
 
         # Call parent method
         #
-        parent = kwargs.get('parent', None)
         super(QDropDownButton, self).__init__(parent=parent)
 
         # Declare private variables
         #
         self._menu = None
-        self._qt = fnqt.FnQt()
 
         # Edit widget properties
         #
@@ -78,18 +75,6 @@ class QDropDownButton(QtWidgets.QAbstractButton):
         else:
 
             pass
-    # endregion
-
-    # region Properties
-    @property
-    def qt(self):
-        """
-        Getter method that returns the qt function set.
-
-        :rtype: fnqt.FnQt
-        """
-
-        return self._qt
     # endregion
 
     # region Methods
@@ -165,8 +150,12 @@ class QDropDownButton(QtWidgets.QAbstractButton):
         """
 
         fontMetric = self.fontMetrics()
-        width = fontMetric.width(self.text())
-        height = fontMetric.height()
+        fontWidth = fontMetric.width(self.text())
+        fontHeight = fontMetric.height()
+
+        margins = self.contentsMargins()
+        width = fontWidth + (margins.left() + margins.right()) + self.pushButtonRect().width()
+        height = fontHeight + (margins.top() + margins.bottom())
 
         return QtCore.QSize(width, height)
 
@@ -199,7 +188,11 @@ class QDropDownButton(QtWidgets.QAbstractButton):
         #
         if self.isEnabled():
 
-            styleOption.state |= QtWidgets.QStyle.State_Enabled
+            styleOption.state = QtWidgets.QStyle.State_Active | QtWidgets.QStyle.State_Enabled
+
+        else:
+
+            styleOption.state = QtWidgets.QStyle.State_None
 
         # Edit focus state
         #
@@ -245,7 +238,11 @@ class QDropDownButton(QtWidgets.QAbstractButton):
         #
         if self.isEnabled():
 
-            styleOption.state |= QtWidgets.QStyle.State_Enabled
+            styleOption.state = QtWidgets.QStyle.State_Active | QtWidgets.QStyle.State_Enabled
+
+        else:
+
+            styleOption.state = QtWidgets.QStyle.State_None
 
         # Edit focus state
         #
@@ -357,21 +354,19 @@ class QDropDownButton(QtWidgets.QAbstractButton):
         painter = QtGui.QPainter(self)
         self.initPainter(painter)
 
-        style = self.qt.getApplication().style()
-
         # Paint push button control
         #
         pushButtonStyleOption = QtWidgets.QStyleOptionButton()
         self.initPushButtonStyleOption(pushButtonStyleOption)
 
-        style.drawControl(QtWidgets.QStyle.CE_PushButton, pushButtonStyleOption, painter)
+        self.style().drawControl(QtWidgets.QStyle.CE_PushButton, pushButtonStyleOption, painter)
 
         # Paint drop-down menu control
         #
         dropDownMenuButtonStyleOption = QtWidgets.QStyleOptionButton()
         self.initDropDownMenuButtonStyleOption(dropDownMenuButtonStyleOption)
 
-        style.drawControl(QtWidgets.QStyle.CE_PushButton, dropDownMenuButtonStyleOption, painter)
+        self.style().drawControl(QtWidgets.QStyle.CE_PushButton, dropDownMenuButtonStyleOption, painter)
     # endregion
 
     # region Slots
