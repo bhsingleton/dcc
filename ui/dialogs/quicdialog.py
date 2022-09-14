@@ -71,15 +71,14 @@ class QUicDialog(quicmixin.QUicMixin, QtWidgets.QDialog):
         # Modify window properties
         #
         self.setObjectName(self.className)
-        self.setWindowFlags(QtCore.Qt.Dialog)
+        self.setWindowFlags(self.windowFlags() | QtCore.Qt.Dialog)
         self.setModal(True)
 
         # Load user interface
         #
         self.preLoad()
-        self.__load__()
+        self.__load__(*args, **kwargs)
         self.postLoad()
-        self.connectSlots()
     # endregion
 
     # region Properties
