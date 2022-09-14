@@ -3,6 +3,7 @@ import maya.api.OpenMaya as om
 
 from six import integer_types, string_types
 from dcc.abstract import afnreference
+from dcc.maya import fnnode
 from dcc.maya.libs import dagutils
 
 import logging
@@ -11,112 +12,12 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-class FnReference(afnreference.AFnReference):
+class FnReference(fnnode.FnNode, afnreference.AFnReference):
     """
     Overload of AFnReference that defines the function set behavior for Maya references.
     """
 
     __slots__ = ()
-    __handles__ = {}
-
-    def object(self):
-        """
-        Returns the object assigned to this function set.
-
-        :rtype: om.MObject
-        """
-
-        # Call parent method
-        #
-        handle = super(FnReference, self).object()
-
-        # Inspect object type
-        #
-        if isinstance(handle, integer_types):
-
-            return self.getReferenceByHandle(handle)
-
-        else:
-
-            return None
-
-    def setObject(self, obj):
-        """
-        Assigns an object to this function set for manipulation.
-
-        :type obj: Union[str, om.MObject, om.MDagPath]
-        :rtype: None
-        """
-
-        # Get maya object
-        #
-        obj = dagutils.getMObject(obj)
-        handle = om.MObjectHandle(obj)
-
-        self.__handles__[handle.hashCode()] = handle
-
-        # Assign node handle
-        #
-        super(FnReference, self).setObject(handle.hashCode())
-
-    def name(self):
-        """
-        Returns the name of this reference node.
-
-        :rtype: str
-        """
-
-        return om.MFnReference(self.object()).name()
-
-    def namespace(self):
-        """
-        Returns the namespace for this reference.
-
-        :rtype: str
-        """
-
-        return om.MFnReference(self.object()).namespace
-
-
-
-    def parent(self):
-        """
-        Returns the parent of this node.
-
-        :rtype: Any
-        """
-
-        fnReference = om.MFnReference(self.object())
-        parentReference = fnReference.parentReference()
-
-        return parentReference if not parentReference.isNull() else None
-
-    def setParent(self, parent):
-        """
-        Updates the parent of this object.
-
-        :type parent: object
-        :rtype: None
-        """
-
-        raise NotImplementedError('setParent() references cannot be re-parented!')
-
-    def iterChildren(self):
-        """
-        Returns a generator that yields all the children from this object.
-
-        :rtype: iter
-        """
-
-        for node in self.iterReferencedNodes():
-
-            if node.hasFn(om.MFn.kReference):
-
-                yield node
-
-            else:
-
-                continue
 
     def filePath(self):
         """
@@ -125,9 +26,9 @@ class FnReference(afnreference.AFnReference):
         :rtype: str
         """
 
-        return om.MFnReference(self.object()).fileName(True, True, False)
+        return om.MFnReference(self.object()).fileName(True, False, False)  # includePath variable is inversed???
 
-    def getFileProperties(self):
+    def fileProperties(self):
         """
         Returns the file properties from the source file.
 
@@ -138,15 +39,6 @@ class FnReference(afnreference.AFnReference):
         numProperties = len(properties)
 
         return {properties[i]: properties[i + 1].encode('ascii').decode('unicode-escape') for i in range(0, numProperties, 2)}
-
-    def handle(self):
-        """
-        Returns the handle to this reference.
-
-        :rtype: int
-        """
-
-        return om.MObjectHandle(self.object()).hashCode()
 
     def uid(self):
         """
@@ -174,20 +66,30 @@ class FnReference(afnreference.AFnReference):
         :rtype: iter
         """
 
+        # Iterate through reference nodes
+        #
         fnReference = om.MFnReference()
 
         for dependNode in dagutils.iterNodes(om.MFn.kReference):
 
-            fnReference.setObject(dependNode)
-            parent = fnReference.parentReference()
+            # Check if this is a top-level reference
+            #
+            try:
 
-            if parent.isNull():
+                fnReference.setObject(dependNode)
+                parent = fnReference.parentReference()
 
-                yield dependNode
+                if parent.isNull():
 
-            else:
+                    yield dependNode
 
-                continue
+                else:
+
+                    continue
+
+            except RuntimeError:
+
+                continue  # Reserved for shared reference nodes!
 
     @classmethod
     def getReferenceByHandle(cls, handle):
@@ -199,15 +101,7 @@ class FnReference(afnreference.AFnReference):
         :rtype: object
         """
 
-        handle = cls.__handles__.get(handle, om.MObjectHandle())
-
-        if handle.isAlive():
-
-            return handle.object()
-
-        else:
-
-            return None
+        return cls.getNodeByHandle(handle)
 
     @classmethod
     def getReferenceByUid(cls, uid, parentReference=None):
@@ -250,4 +144,3 @@ class FnReference(afnreference.AFnReference):
         else:
 
             raise TypeError('getReferenceByUid() expects a unique UUID (%s given)!' % uid)
-
