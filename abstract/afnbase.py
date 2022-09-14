@@ -66,6 +66,18 @@ class AFnBase(with_metaclass(ABCMeta, object)):
             #
             self.setQueue(args)
 
+    def __call__(self, obj):
+        """
+        Private method that is evoked when this instance is called.
+        This method will perform an in-place update of the internal object.
+
+        :type obj: Any
+        :rtype: self
+        """
+
+        self.setObject(obj)
+        return self
+
     def __getattribute__(self, name):
         """
         Private method that provides attribute access for instances of the class.
