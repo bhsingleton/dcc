@@ -3,6 +3,7 @@ import maya.api.OpenMaya as om
 
 from dcc.python import stringutils
 from dcc.maya.libs import dagutils, plugutils
+from dcc.maya.decorators import undo
 
 import logging
 logging.basicConfig()
@@ -68,7 +69,7 @@ def iterInfluences(skinCluster):
 
 def iterWeights(skinCluster, vertexIndex, plug=None):
     """
-    Return a generator that yields all of the weights for the specified vertex.
+    Returns a generator that yields the weights for the specified vertex.
     The plug keyword is used for optimization purposes when yielding a list of vertices.
 
     :type skinCluster: om.MObject
@@ -98,7 +99,7 @@ def iterWeights(skinCluster, vertexIndex, plug=None):
 
 def iterWeightList(skinCluster, vertexIndices=None):
     """
-    Returns a generator that yields all the vertex weights from the supplied skin cluster.
+    Returns a generator that yields the vertex weights from the supplied skin cluster.
     An optional list of vertex indices can be supplied to limit the generator.
 
     :type skinCluster: om.MObject
@@ -208,6 +209,7 @@ def getInfluence(skinCluster, influenceId):
         return None
 
 
+@undo.undo(name='Add Influence')
 def addInfluence(skinCluster, influence, index=None):
     """
     Adds the supplied influence object to the specified skin cluster.
@@ -269,6 +271,7 @@ def addInfluence(skinCluster, influence, index=None):
     mc.setAttr('%s.bindPreMatrix[%s]' % (fnDependNode.name(), index), matrixList, type='matrix')
 
 
+@undo.undo(name='Remove Influence')
 def removeInfluence(skinCluster, influenceId):
     """
     Removes the specified influence.
@@ -385,6 +388,7 @@ def setWeights(skinCluster, vertexIndex, weights, plug=None):
             element.setFloat(weight)
 
 
+@undo.undo(name='Set Skin Weights')
 def setWeightList(skinCluster, weightList):
     """
     Updates the weights for all the specified vertices.
@@ -417,6 +421,7 @@ def setWeightList(skinCluster, weightList):
     normalizePlug.setBool(True)
 
 
+@undo.undo(name='Reset Pre-Bind Matrices')
 def resetPreBindMatrices(skinCluster):
     """
     Resets the pre-bind matrices on the associated joints.
@@ -457,6 +462,7 @@ def resetPreBindMatrices(skinCluster):
         mc.setAttr(attributeName, matrixList, type='matrix')
 
 
+@undo.undo(name='Reset Intermediate Object')
 def resetIntermediateObject(skinCluster):
     """
     Resets the control points on the associated intermediate object.

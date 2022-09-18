@@ -33,6 +33,32 @@ class Undo(abstractdecorator.AbstractDecorator):
         #
         self._name = kwargs.get('name')
 
+    def __call__(self, *args, **kwargs):
+        """
+        Private method that is called whenever this instance is evoked.
+
+        :type func: function
+        :rtype: function
+        """
+
+        # Execute order of operations
+        #
+        results = None
+
+        try:
+
+            self.__enter__(*args, **kwargs)
+            results = self.func(*args, **kwargs)
+            self.__exit__(None, None, None)
+
+        except RuntimeError as exception:
+
+            log.error(exception)
+
+        finally:
+
+            return results
+
     def __enter__(self, *args, **kwargs):
         """
         Private method that is called when this instance is entered using a with statement.
