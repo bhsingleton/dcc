@@ -316,7 +316,7 @@ class FnScene(afnscene.AFnScene):
         """
         Updates the active selection.
 
-        :type selection: list
+        :type selection: List[om.MObject]
         :type replace: bool
         :rtype: None
         """
@@ -329,7 +329,8 @@ class FnScene(afnscene.AFnScene):
 
         # Update selection global
         #
-        om.MGlobal.setActiveSelectionList(selection)
+        selectionList = dagutils.createSelectionList(selection)
+        om.MGlobal.setActiveSelectionList(selectionList)
 
     def clearActiveSelection(self):
         """
