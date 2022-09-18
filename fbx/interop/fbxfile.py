@@ -16,7 +16,7 @@ class FbxFile(object):
     """
 
     # region Dunderscores
-    __slots__ = ('_filePath', '_fbxManager', '_fbxScene', '_searchHistory')
+    __slots__ = ('_filePath', '_fbxManager', '_fbxScene', '_fbxNodes')
 
     def __init__(self, filePath, **kwargs):
         """
@@ -48,7 +48,7 @@ class FbxFile(object):
         #
         self._filePath = filePath
         self._fbxManager, self._fbxScene = FbxCommon.InitializeSdkObjects()
-        self._searchHistory = {}
+        self._fbxNodes = {}
 
         # Load fbx scene file
         #
@@ -221,7 +221,7 @@ class FbxFile(object):
 
         # Check if node has already been found
         #
-        fbxNode = self._searchHistory.get(name, None)
+        fbxNode = self._fbxNodes.get(name, None)
 
         if fbxNode is not None:
 
@@ -234,24 +234,24 @@ class FbxFile(object):
 
         if numFbxNodes == 0:
 
-            self._searchHistory[name] = None
+            self._fbxNodes[name] = None
 
         elif numFbxNodes == 1:
 
-            self._searchHistory[name] = fbxNodes[0]
+            self._fbxNodes[name] = fbxNodes[0]
 
         else:
 
             raise TypeError('Multiple nodes found with the name: "%s"' % name)
 
-        return self._searchHistory[name]
+        return self._fbxNodes[name]
 
     def getNodesByType(self, typeName):
         """
         Returns a list of nodes derived from the given type name.
 
         :type typeName: str
-        :rtype: list[fbx.FbxNode]
+        :rtype: List[fbx.FbxNode]
         """
 
         return [x for x in self.walk() if x.GetTypeName() == typeName]
@@ -261,7 +261,7 @@ class FbxFile(object):
         Returns a list of objects derived from the given type name.
 
         :type typeName: str
-        :rtype: list[fbx.FbxObject]
+        :rtype: List[fbx.FbxObject]
         """
 
         return [x for x in self.iterObjects() if x.GetTypeName() == typeName]
@@ -275,6 +275,47 @@ class FbxFile(object):
         """
 
         return self.getNodeByName(name) is not None
+
+    def resetTransform(self, node):
+        """
+        Resets the local transform components on the supplied node.
+
+        :type node: fbx.FbxNode
+        :rtype: None
+        """
+
+        node.LclTranslation.Set(fbx.FbxDouble3(0.0, 0.0, 0.0))
+        node.RotationPivot.Set(fbx.FbxDouble3(0.0, 0.0, 0.0))
+        node.PreRotation.Set(fbx.FbxDouble3(0.0, 0.0, 0.0))
+        node.LclRotation.Set(fbx.FbxDouble3(0.0, 0.0, 0.0))
+        node.PostRotation.Set(fbx.FbxDouble3(0.0, 0.0, 0.0))
+        node.LclScaling.Set(fbx.FbxDouble3(1.0, 1.0, 1.0))
+
+    def clearTransformKeys(self, node):
+        """
+        Removes all keyframes from the supplied node.
+
+        :type node: fbx.FbxNode
+        :rtype: None
+        """
+
+        # Iterate through transform components
+        #
+        animStack = self.fbxScene.GetCurrentAnimationStack()  # type: fbx.FbxAnimStack
+        animLayer = animStack.GetMember(0)  # TODO: Add support for all layers
+
+        for component in (node.LclTranslation, node.LclRotation, node.LclScaling):
+
+            # Iterate through component axes
+            #
+            for axis in ('X', 'Y', 'Z'):
+
+                # Clear anim curve keys
+                #
+                animCurve = component.GetCurve(animLayer, axis, True)  # type: fbx.FbxAnimCurve
+                animCurve.KeyModifyBegin()
+                animCurve.KeyClear()
+                animCurve.KeyModifyEnd()
 
     def removeDisplayLayers(self):
         """
@@ -307,6 +348,20 @@ class FbxFile(object):
 
             log.info('Destroying "%s" container.' % container.GetName())
             container.Destroy()
+
+    def moveToOrigin(self):
+        """
+        Moves all root nodes to the origin.
+
+        :rtype: None
+        """
+
+        # Iterate through root nodes
+        #
+        for child in self.iterChildren(self.rootNode()):
+
+            self.clearTransformKeys(child)
+            self.resetTransform(child)
 
     @staticmethod
     def stripDagPath(name):
