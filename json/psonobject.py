@@ -206,6 +206,16 @@ class PSONObject(with_metaclass(ABCMeta, collections_abc.MutableMapping)):
 
     # region Methods
     @classmethod
+    def iterBases(cls):
+        """
+        Returns a generator that yields all subclasses that make up this class.
+
+        :rtype: Iterator[class]
+        """
+
+        return reversed(inspect.getmro(cls))
+
+    @classmethod
     def iterProperties(cls, readable=False, writable=True, deletable=False):
         """
         Returns a generator for iterating over properties derived from this class.
@@ -213,35 +223,43 @@ class PSONObject(with_metaclass(ABCMeta, collections_abc.MutableMapping)):
         :type readable: bool
         :type writable: bool
         :type deletable: bool
-        :rtype: iter
+        :rtype: Iterator[str, property]
         """
 
-        # Iterate through members
+        # Iterate through subclasses
         #
-        members = inspect.getmembers(cls, predicate=(lambda x: isinstance(x, property)))
+        for base in cls.iterBases():
 
-        for (name, member) in reversed(members):
-
-            # Check if property is readable
+            # Iterate through members
             #
-            if readable and callable(member.fget):
+            for (name, member) in base.__dict__.items():
 
-                yield name, member
-                continue
+                # Inspect member
+                #
+                if not isinstance(member, property):
 
-            # Check if property is writable
-            #
-            if writable and callable(member.fset):
+                    continue
 
-                yield name, member
-                continue
+                # Check if property is readable
+                #
+                if readable and callable(member.fget):
 
-            # Check if property is deletable
-            #
-            if deletable and callable(member.fdel):
+                    yield name, member
+                    continue
 
-                yield name, member
-                continue
+                # Check if property is writable
+                #
+                if writable and callable(member.fset):
+
+                    yield name, member
+                    continue
+
+                # Check if property is deletable
+                #
+                if deletable and callable(member.fdel):
+
+                    yield name, member
+                    continue
 
     @classmethod
     def properties(cls, readable=False, writable=True, deletable=False):
