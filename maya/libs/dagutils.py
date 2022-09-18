@@ -149,7 +149,7 @@ def getMObjectByName(name):
 
         except RuntimeError as exception:
 
-            log.warning('"%s" node does not exist!' % name)
+            log.debug('"%s" node does not exist!' % name)
             return om.MObject.kNullObj
 
     else:
@@ -168,7 +168,7 @@ def getMObjectByName(name):
 
         except RuntimeError as exception:
 
-            log.warning('"%s" plug does not exist!' % name)
+            log.debug('"%s" plug does not exist!' % name)
             return om.MObject.kNullObj, om.MPlug()
 
 
@@ -206,7 +206,7 @@ def getMObjectByMUuid(uuid):
 
     except RuntimeError as exception:
 
-        log.warning('"%s" UUID does not exist!' % uuid)
+        log.debug('"%s" UUID does not exist!' % uuid)
         return om.MObject.kNullObj
 
 
@@ -268,7 +268,7 @@ def getMObject(value):
 
     else:
 
-        raise TypeError('getMObject() expects %s (%s given)!' % (__getmobject__.keys(), type(value).__name__))
+        raise TypeError('getMObject() expects %s (%s given)!' % (tuple(__getmobject__.keys()), type(value).__name__))
 
 
 def getMObjectHandle(value):
@@ -541,6 +541,42 @@ def getComponentFromString(value):
     selection.add(value)
 
     return selection.getComponent(0)
+
+
+def createSelectionList(items):
+    """
+    Returns a selection list from the supplied objects.
+
+    :type items: List[Any]
+    :rtype: om.MSelectionList
+    """
+
+    # Iterate through items
+    #
+    selection = om.MSelectionList()
+
+    for item in items:
+
+        # Get object
+        #
+        dependNode = getMObject(item)
+
+        if dependNode.isNull():
+
+            continue
+
+        # Check if this is a dag node
+        #
+        if dependNode.hasFn(om.MFn.kDagNode):
+
+            dagPath = om.MDagPath.getAPathTo(dependNode)
+            selection.add(dagPath)
+
+        else:
+
+            selection.add(dependNode)
+
+    return selection
 
 
 def getActiveSelection(apiType=om.MFn.kDependencyNode):
