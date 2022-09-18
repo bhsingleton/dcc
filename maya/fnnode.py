@@ -48,16 +48,24 @@ class FnNode(afnnode.AFnNode):
         :rtype: None
         """
 
-        # Get maya object
+        # Get object
         #
-        obj = dagutils.getMObject(obj)
-        handle = om.MObjectHandle(obj)
+        dependNode = dagutils.getMObject(obj)
 
-        self.__handles__[handle.hashCode()] = handle
+        if not dependNode.isNull():
 
-        # Assign node handle
-        #
-        super(FnNode, self).setObject(handle.hashCode())
+            # Get object handle
+            #
+            handle = om.MObjectHandle(dependNode)
+            self.__handles__[handle.hashCode()] = handle
+
+            # Assign node handle
+            #
+            super(FnNode, self).setObject(handle.hashCode())
+
+        else:
+
+            raise TypeError('setObject() expects a valid object (%s given)!' % obj)
 
     def acceptsObject(self, obj):
         """
