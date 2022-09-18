@@ -1,10 +1,10 @@
 import inspect
 
 from PySide2 import QtCore, QtWidgets, QtGui
-from six import string_types, integer_types
 from six.moves import collections_abc
 from enum import Enum, IntEnum
 from collections import defaultdict
+from . import qpsonpath
 from ...python import annotationutils
 
 import logging
@@ -26,6 +26,7 @@ class QPSONStyledItemDelegate(QtWidgets.QStyledItemDelegate):
         'QDirectoryEdit': lambda widget: widget.text(),
         'QSpinBox': lambda widget: widget.value(),
         'QDoubleSpinBox': lambda widget: widget.value(),
+        'QTimeSpinBox': lambda widget: widget.value(),
         'QCheckBox': lambda widget: widget.isChecked(),
         'QComboBox': lambda widget: widget.currentIndex()
     }
@@ -36,6 +37,7 @@ class QPSONStyledItemDelegate(QtWidgets.QStyledItemDelegate):
         'QDirectoryEdit': lambda widget, value: widget.setText(value),
         'QSpinBox': lambda widget, value: widget.setValue(value),
         'QDoubleSpinBox': lambda widget, value: widget.setValue(value),
+        'QTimeSpinBox': lambda widget, value: widget.setValue(value),
         'QCheckBox': lambda widget, value: widget.setChecked(value),
         'QComboBox': lambda widget, value: widget.setCurrentIndex(value)
     }
@@ -45,7 +47,8 @@ class QPSONStyledItemDelegate(QtWidgets.QStyledItemDelegate):
         'unicode': QtWidgets.QLineEdit,  # Legacy
         'int': QtWidgets.QSpinBox,
         'float': QtWidgets.QDoubleSpinBox,
-        'bool': QtWidgets.QCheckBox
+        'bool': QtWidgets.QCheckBox,
+        'list': QtWidgets.QSpinBox
     }
 
     def __init__(self, parent=None):
@@ -62,7 +65,6 @@ class QPSONStyledItemDelegate(QtWidgets.QStyledItemDelegate):
 
         # Declare private variables
         #
-        self._delegates = defaultdict(dict)
         self._getters = dict(self.__getters__)
         self._setters = dict(self.__setters__)
 
@@ -77,77 +79,108 @@ class QPSONStyledItemDelegate(QtWidgets.QStyledItemDelegate):
         :rtype: QtWidget.QWidget
         """
 
-        # Get parent object
-        #
         model = index.model()
         internalId = model.decodeInternalId(index.internalId())
-        parentId = internalId.parent()
 
-        obj = parentId.value()
+        return self.createEditorByInternalId(internalId, parent)
 
-        # Check if parent has a delegate
+    def createEditorByInternalId(self, internalId, parent=None):
+        """
+        Returns a widget from the supplied model internal ID.
+
+        :type internalId: qpsonpath.QPSONPath
+        :type parent: QtWidget.QWidget
+        :rtype: QtWidget.QWidget
+        """
+
+        # Get parent ID
         #
-        cls = type(obj)
-        editor = self._delegates[cls.__name__].get(internalId[-1], None)
+        parentId = None
+        isElement = internalId.isElement()
 
-        if callable(editor):
+        if isElement:
 
-            return editor(parent=parent)
+            parentId = internalId[:-2]  # Skips the array
 
         else:
 
-            returnType = internalId.type()
-            return self.createEditorByType(returnType, parent=parent, index=internalId[-1])
+            parentId = internalId[:-1]
 
-    def createEditorByType(self, cls, index=None, parent=None):
+        # Get associated object and accessor
+        #
+        obj = parentId.value()
+        getter, setter = internalId.accessors()
+
+        return self.createEditorByProperty(obj, getter, isElement, parent=parent)
+
+    def createEditorByProperty(self, obj, func, isElement=False, parent=None):
+        """
+        Returns a widget from the supplied object and property.
+
+        :type obj: object
+        :type func: function
+        :type isElement: bool
+        :type parent: QtWidgets.QWidget
+        :rtype: QtWidgets.QWidget
+        """
+
+        # Evaluate return type
+        #
+        returnType = annotationutils.getReturnType(func)
+
+        if annotationutils.isParameterizedAlias(returnType):
+
+            # Decompose alias
+            #
+            alias, parameters = annotationutils.decomposeAlias(returnType)
+            numParameters = len(parameters)
+
+            if numParameters == 1 and isElement:
+
+                return self.createEditorByType(parameters[0], parent=parent)
+
+            else:
+
+                return self.createEditorByType(alias, parent=parent)
+
+        else:
+
+            return self.createEditorByType(returnType, parent=parent)
+
+    def createEditorByType(self, cls, parent=None):
         """
         Returns the widget used to edit the type specified for editing.
 
         :type cls: type
         :type parent: QtWidgets.QWidget
-        :type index: Union[str, int]
         :rtype: QtWidget.QWidget
         """
 
-        # Evaluate type hint
+        # Verify this is a class
         #
-        if annotationutils.isParameterizedAlias(cls):  # Reserved for typing objects
+        if not inspect.isclass(cls):
 
-            # Check if this is an indexed item
-            #
-            if isinstance(index, integer_types):
+            return self.createEditorByType(type(cls), parent=parent)
 
-                return self.createEditorByType(cls.__args__[0], parent=parent)
+        # Get widget associated with type name
+        #
+        typeName = cls.__name__
+        editor = self.__types__.get(typeName, None)
 
-            else:
+        if callable(editor):
 
-                return QtWidgets.QSpinBox(parent=parent)
+            return editor(parent=parent)
 
-        elif inspect.isclass(cls):
+        elif issubclass(cls, (Enum, IntEnum)):
 
-            # Get widget associated with type name
-            #
-            typeName = cls.__name__
-            editor = self.__types__.get(typeName, None)
+            editor = QtWidgets.QComboBox(parent=parent)
+            editor.addItems(list(cls.__members__.keys()))
 
-            if callable(editor):
-
-                return cls(parent=parent)
-
-            elif issubclass(cls, (Enum, IntEnum)):
-
-                editor = QtWidgets.QComboBox(parent=parent)
-                editor.addItems(list(cls.__members__.keys()))
-
-                return editor
-
-            else:
-
-                return None
+            return editor
 
         else:
 
-            return self.createEditorByType(type(cls))
+            return None
 
     def getEditorData(self, editor):
         """
@@ -177,14 +210,26 @@ class QPSONStyledItemDelegate(QtWidgets.QStyledItemDelegate):
         :rtype: None
         """
 
+        # Evaluate widget type
+        #
         model = index.model()
         value = model.itemFromIndex(index)
 
-        if isinstance(editor, QtWidgets.QSpinBox) and isinstance(value, collections_abc.MutableSequence):
+        if isinstance(editor, QtWidgets.QSpinBox):
 
-            editor.setValue(len(value))
+            # Inspect value type
+            #
+            editor.setRange(-9999, 9999)  # Default range is -99:99
 
-        elif isinstance(editor, (QtWidgets.QSpinBox, QtWidgets.QDoubleSpinBox)):
+            if isinstance(value, collections_abc.MutableSequence):
+
+                editor.setValue(len(value))
+
+            else:
+
+                editor.setValue(value)
+
+        elif isinstance(editor, QtWidgets.QDoubleSpinBox):
 
             editor.setValue(value)
 
@@ -245,15 +290,3 @@ class QPSONStyledItemDelegate(QtWidgets.QStyledItemDelegate):
         typeName = editor.__name__
         self._getters[typeName] = getter
         self._setters[typeName] = setter
-
-    def registerDelegate(self, cls, item, editor):
-        """
-        Associates an editor with the specified class-property pair.
-
-        :type cls: class
-        :type item: str
-        :type editor: class
-        :rtype: None
-        """
-
-        self._delegates[cls.__name__][item] = editor
