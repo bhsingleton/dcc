@@ -1,11 +1,12 @@
 import inspect
 
 from abc import ABCMeta, abstractmethod
-from six import with_metaclass
+from six import with_metaclass, string_types
 from six.moves import collections_abc
 from collections import deque
 from dcc.abstract import ArrayIndexType
 from dcc.decorators.classproperty import classproperty
+from dcc.generators.flatten import flatten
 
 import logging
 logging.basicConfig()
@@ -15,7 +16,7 @@ log.setLevel(logging.INFO)
 
 class AFnBase(with_metaclass(ABCMeta, object)):
     """
-    Base class for all DCC function sets.
+    Abstract base class for all DCC function sets.
     """
 
     # region Dunderscores
@@ -52,7 +53,7 @@ class AFnBase(with_metaclass(ABCMeta, object)):
             #
             arg = args[0]
 
-            if inspect.isgenerator(arg):
+            if isinstance(arg, collections_abc.Iterable) and not isinstance(arg, string_types):
 
                 self.setQueue(arg)
 
@@ -238,13 +239,9 @@ class AFnBase(with_metaclass(ABCMeta, object)):
         :rtype: None
         """
 
-        if isinstance(queue, collections_abc.MutableSequence):
+        if isinstance(queue, (collections_abc.MutableSequence, collections_abc.Iterable)) and not isinstance(queue, string_types):
 
-            self._queue = deque(queue)
-
-        elif isinstance(queue, collections_abc.Iterable):
-
-            self._queue = deque(queue)
+            self._queue = deque(flatten(queue))
 
         else:
 
