@@ -1,5 +1,6 @@
 from . import fbxbase
-from ... import fnnode, fnlayer
+from ... import fnscene, fnnode
+from ...generators.uniquify import uniquify
 
 import logging
 logging.basicConfig()
@@ -9,16 +10,21 @@ log.setLevel(logging.INFO)
 
 class FbxSkeleton(fbxbase.FbxBase):
     """
-    Overload of FbxNode used to store skeleton properties.
+    Overload of FbxBase used to store skeleton properties.
     """
 
     # region Dunderscores
     __slots__ = (
+        '_scene',
         '_includeDescendants',
         '_includeJoints',
         '_includeLayers',
         '_includeSelectionSets',
-        '_includeRegex'
+        '_includeRegex',
+        '_excludeJoints',
+        '_excludeLayers',
+        '_excludeSelectionSets',
+        '_excludeRegex'
     )
 
     def __init__(self, *args, **kwargs):
@@ -30,11 +36,16 @@ class FbxSkeleton(fbxbase.FbxBase):
 
         # Declare private variables
         #
+        self._scene = fnscene.FnScene()
         self._includeDescendants = kwargs.get('includeDescendants', True)
         self._includeJoints = kwargs.get('includeJoints', [])
         self._includeLayers = kwargs.get('includeLayers', [])
         self._includeSelectionSets = kwargs.get('includeSelectionSets', [])
         self._includeRegex = kwargs.get('includeRegex', '')
+        self._excludeJoints = kwargs.get('excludeJoints', [])
+        self._excludeLayers = kwargs.get('excludeLayers', [])
+        self._excludeSelectionSets = kwargs.get('excludeSelectionSets', [])
+        self._excludeRegex = kwargs.get('excludeRegex', '')
 
         # Call parent method
         #
@@ -42,6 +53,16 @@ class FbxSkeleton(fbxbase.FbxBase):
     # endregion
 
     # region Properties
+    @property
+    def scene(self):
+        """
+        Getter method that returns the scene interface.
+
+        :rtype: fnscene.FnScene
+        """
+
+        return self._scene
+
     @property
     def includeDescendants(self):
         """
@@ -149,9 +170,145 @@ class FbxSkeleton(fbxbase.FbxBase):
         """
 
         self._includeRegex = includeRegex
+    
+    @property
+    def excludeJoints(self):
+        """
+        Getter method that returns the list of joints to be excluded.
+
+        :rtype: List[str]
+        """
+
+        return self._excludeJoints
+
+    @excludeJoints.setter
+    def excludeJoints(self, excludeJoints):
+        """
+        Setter method that updates the list of joints to be excluded.
+
+        :type excludeJoints: List[str]
+        :rtype: None
+        """
+
+        self._excludeJoints.clear()
+        self._excludeJoints.extend(excludeJoints)
+
+    @property
+    def excludeLayers(self):
+        """
+        Getter method that returns the list of layers to be excluded.
+
+        :rtype: List[str]
+        """
+
+        return self._excludeLayers
+
+    @excludeLayers.setter
+    def excludeLayers(self, excludeLayers):
+        """
+        Setter method that updates the list of layers to be excluded.
+
+        :type excludeLayers: List[str]
+        :rtype: None
+        """
+
+        self._excludeLayers.clear()
+        self._excludeLayers.extend(excludeLayers)
+
+    @property
+    def excludeSelectionSets(self):
+        """
+        Getter method that returns the list of layers to be excluded.
+
+        :rtype: List[str]
+        """
+
+        return self._excludeSelectionSets
+
+    @excludeSelectionSets.setter
+    def excludeSelectionSets(self, excludeSelectionSets):
+        """
+        Setter method that updates the list of layers to be excluded.
+
+        :type excludeSelectionSets: List[str]
+        :rtype: None
+        """
+
+        self._excludeSelectionSets.clear()
+        self._excludeSelectionSets.extend(excludeSelectionSets)
+
+    @property
+    def excludeRegex(self):
+        """
+        Getter method that returns the regex pattern for including joints.
+
+        :rtype: str
+        """
+
+        return self._excludeRegex
+
+    @excludeRegex.setter
+    def excludeRegex(self, excludeRegex):
+        """
+        Setter method that updates the regex pattern for including joints.
+
+        :type excludeRegex: str
+        :rtype: None
+        """
+
+        self._excludeRegex = excludeRegex
     # endregion
 
     # region Methods
+    def iterIncludeJoints(self, namespace=''):
+        """
+        Returns a generator that yields joints that should be included.
+
+        :type namespace: str
+        :rtype: Iterator[Any]
+        """
+
+        # Get root joint
+        #
+        root = self.iterNodesFromNames(self.name, namespace=namespace)
+        descendants = []
+
+        if self.includeDescendants:
+
+            descendants = self.iterDescendantsFromName(self.name, namespace=namespace)
+
+        # Get joints from sets
+        #
+        includeJoints = self.iterNodesFromNames(*self.includeJoints, namespace=namespace)
+        includeLayers = self.iterNodesFromLayers(*self.includeLayers, namespace=namespace)
+        includeSelectionSets = self.iterNodesFromSelectionSets(*self.includeSelectionSets, namespace=namespace)
+        includeRegex = self.iterNodesFromRegex(self.includeRegex, namespace=namespace)
+
+        return uniquify(root, descendants, includeJoints, includeLayers, includeSelectionSets, includeRegex)
+
+    def iterExcludeJoints(self, namespace=''):
+        """
+        Returns a generator that yields joints that should be excluded.
+
+        :type namespace: str
+        :rtype: Iterator[Any]
+        """
+
+        return self.iterNodesFromLayers(*self.excludeJoints, namespace=namespace)
+
+    def getJoints(self, namespace=''):
+        """
+        Returns a list of joints from this skeleton.
+
+        :type namespace: str
+        :rtype: List[Any]
+        """
+
+        includeJoints = list(self.iterIncludeJoints(namespace=namespace))
+        excludeJoints = list(self.iterExcludeJoints(namespace=namespace))
+
+        return [joint for joint in includeJoints if joint not in excludeJoints]
+
     def select(self, namespace=''):
         """
         Selects the associated nodes from the scene file.
@@ -160,113 +317,6 @@ class FbxSkeleton(fbxbase.FbxBase):
         :rtype: None
         """
 
-        self.scene.clearActiveSelection()
-        self.selectRoot(namespace=namespace)
-        self.selectIncludeJoints(namespace=namespace)
-        self.selectIncludeLayers(namespace=namespace)
-        self.selectIncludeSelectionSets(namespace=namespace)
-        self.selectIncludeRegex(namespace=namespace)
-
-    def selectRoot(self, namespace=''):
-        """
-        Selects the associated root node from the scene file.
-
-        :type namespace: str
-        :rtype: None
-        """
-
-        # Check if root node is valid
-        #
-        node = fnnode.FnNode()
-        success = node.trySetObject(self.absolutify(self.name, namespace))
-
-        if not success:
-
-            return
-
-        # Select root and descendants
-        #
-        node.select(replace=False)
-
-        if self.includeDescendants:
-
-            descendant = fnnode.FnNode(node.iterDescendants())
-
-            while not descendant.isDone():
-
-                descendant.next()
-                descendant.select(replace=False)
-
-    def selectIncludeJoints(self, namespace=''):
-        """
-        Selects the associated nodes from the scene.
-
-        :type namespace: str
-        :rtype: None
-        """
-
-        jointNames = [self.absolutify(name, namespace) for name in self.includeJoints]
-        node = fnnode.FnNode(iter(jointNames))
-
-        while not node.isDone():
-
-            node.next()
-            node.select(replace=False)
-
-    def selectIncludeLayers(self, namespace=''):
-        """
-        Selects the nodes from the associated layers.
-
-        :type namespace: str
-        :rtype: None
-        """
-
-        layerNames = [self.absolutify(name, namespace) for name in self.includeLayers]
-        layer = fnlayer.FnLayer(iter(layerNames))
-
-        node = fnnode.FnNode()
-
-        while not layer.isDone():
-
-            layer.next()
-
-            for obj in layer.iterNodes():
-
-                node.setObject(obj)
-                node.select(replace=False)
-
-    def selectIncludeSelectionSets(self, namespace=''):
-        """
-        Selects the nodes from the associated selection-sets.
-
-        :type namespace: str
-        :rtype: None
-        """
-
-        pass
-
-    def selectIncludeRegex(self, namespace=''):
-        """
-        Selects the nodes that match the specified name pattern/regex.
-
-        :type namespace: str
-        :rtype: None
-        """
-
-        fnNode = fnnode.FnNode(fnnode.FnNode.iterInstancesByRegex(self.includeRegex))
-
-        while not fnNode.isDone():
-
-            fnNode.next()
-            fnNode.select(replace=False)
-
-    def serialize(self, fbxScene):
-        """
-        Serializes the associated mesh for fbx.
-
-        :type fbxScene: Any
-        :rtype: None
-        """
-
-        pass
+        joints = self.getJoints(namespace=namespace)
+        self.scene.setActiveSelection(joints, replace=False)
     # endregion

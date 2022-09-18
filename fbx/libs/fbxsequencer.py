@@ -1,5 +1,7 @@
 from . import fbxbase, fbxio, fbxasset, fbxsequence
+from ... import fnreference
 from ...collections import notifylist
+from ...python import stringutils
 
 import logging
 logging.basicConfig()
@@ -26,8 +28,8 @@ class FbxSequencer(fbxbase.FbxBase):
         # Declare private variables
         #
         self._manager = fbxio.FbxIO()
-        self._reference = kwargs.get('reference', self.__reference__())
         self._guid = kwargs.get('guid', '')
+        self._reference = fnreference.FnReference()
         self._asset = kwargs.get('asset', self.nullWeakReference)
         self._sequences = notifylist.NotifyList()
 
@@ -43,20 +45,6 @@ class FbxSequencer(fbxbase.FbxBase):
     # endregion
 
     # region Properties
-    @property
-    def reference(self):
-        """
-        Getter method that returns the associated reference for this asset.
-
-        :rtype: fnreference.FnReference
-        """
-
-        if not self._reference.isValid() and not self.scene.isNullOrEmpty(self.guid):
-
-            self.invalidateReference()  # This ensures the reference interface is always up-to-date!
-
-        return self._reference
-
     @property
     def manager(self):
         """
@@ -87,6 +75,20 @@ class FbxSequencer(fbxbase.FbxBase):
 
         self._guid = guid
         self.invalidate()
+
+    @property
+    def reference(self):
+        """
+        Getter method that returns the associated reference for this asset.
+
+        :rtype: fnreference.FnReference
+        """
+
+        if not self._reference.isValid() and not stringutils.isNullOrEmpty(self.guid):
+
+            self.invalidateReference()  # This ensures the reference interface is always up-to-date!
+
+        return self._reference
 
     @property
     def asset(self):

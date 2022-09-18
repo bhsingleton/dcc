@@ -25,3 +25,11 @@ class FbxMeshComponent(IntEnum):
     Vertex = 0
     Edge = 1
     Polygon = 3
+
+
+class FbxExportSetType(IntEnum):
+
+    Skeleton = 0
+    StaticMesh = 1
+    SkeletalMesh = 2
+    Camera = 3

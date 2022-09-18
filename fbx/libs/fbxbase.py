@@ -1,7 +1,8 @@
 from abc import ABCMeta
 from six import with_metaclass
-from ... import fnscene, fnreference
+from ... import fnnode, fnlayer, fnselectionset
 from ...json import psonobject
+from ...python import stringutils
 
 import logging
 logging.basicConfig()
@@ -17,9 +18,7 @@ class FbxBase(with_metaclass(ABCMeta, psonobject.PSONObject)):
     """
 
     # region Dunderscores
-    __slots__ = ('_scene', '_name', '__weakref__')
-    __scene__ = fnscene.FnScene
-    __reference__ = fnreference.FnReference
+    __slots__ = ('_name', '__weakref__')
 
     def __init__(self, *args, **kwargs):
         """
@@ -30,7 +29,6 @@ class FbxBase(with_metaclass(ABCMeta, psonobject.PSONObject)):
 
         # Declare private variables
         #
-        self._scene = self.__scene__()
         self._name = kwargs.get('name', '')
 
         # Call parent method
@@ -39,16 +37,6 @@ class FbxBase(with_metaclass(ABCMeta, psonobject.PSONObject)):
     # endregion
 
     # region Properties
-    @property
-    def scene(self):
-        """
-        Getter method that returns the scene interface.
-
-        :rtype: fnscene.FnScene
-        """
-
-        return self._scene
-
     @property
     def name(self):
         """
@@ -72,7 +60,8 @@ class FbxBase(with_metaclass(ABCMeta, psonobject.PSONObject)):
     # endregion
 
     # region Methods
-    def absolutify(self, name, namespace):
+    @staticmethod
+    def absolutify(name, namespace):
         """
         Returns an absolute name using the supplied namespace.
 
@@ -81,11 +70,133 @@ class FbxBase(with_metaclass(ABCMeta, psonobject.PSONObject)):
         :rtype: str
         """
 
-        if self.scene.isNullOrEmpty(namespace):
+        if stringutils.isNullOrEmpty(namespace):
 
             return name
 
         else:
 
             return '{namespace}:{name}'.format(namespace=namespace, name=name)
+
+    @classmethod
+    def iterNodesFromNames(cls, *names, namespace=''):
+        """
+        Returns a generator that yields nodes from the supplied names and namespace.
+
+        :type namespace: str
+        :rtype: Iterator[Any]
+        """
+
+        node = fnnode.FnNode()
+
+        for name in names:
+
+            success = node.trySetObject(cls.absolutify(name, namespace))
+
+            if success:
+
+                yield node.object()
+
+            else:
+
+                continue
+
+    @classmethod
+    def iterDescendantsFromName(cls, name, namespace=''):
+        """
+        Returns a generator that yields descendants from the specified names and namespace.
+
+        :type name: str
+        :type namespace: str
+        :rtype: Iterator[Any]
+        """
+
+        # Check if name is valid
+        #
+        if stringutils.isNullOrEmpty(name):
+
+            return iter([])
+
+        # Try and initialize function set
+        #
+        node = fnnode.FnNode()
+        success = node.trySetObject(cls.absolutify(name, namespace))
+
+        if success:
+
+            yield from node.iterDescendants()
+
+        else:
+
+            return iter([])
+
+    @classmethod
+    def iterNodesFromLayers(cls, *names, namespace=''):
+        """
+        Returns a generator that yields nodes from the supplied names and namespace.
+
+        :type namespace: str
+        :rtype: Iterator[Any]
+        """
+
+        layer = fnlayer.FnLayer()
+
+        for name in names:
+
+            success = layer.trySetObject(cls.absolutify(name, namespace))
+
+            if success:
+
+                yield from layer.iterNodes()
+
+            else:
+
+                continue
+
+    @classmethod
+    def iterNodesFromSelectionSets(cls, *names, namespace=''):
+        """
+        Returns a generator that yields nodes from the supplied names and namespace.
+
+        :type namespace: str
+        :rtype: Iterator[Any]
+        """
+
+        selectionSet = fnselectionset.FnSelectionSet()
+
+        for name in names:
+
+            success = selectionSet.trySetObject(cls.absolutify(name, namespace))
+
+            if success:
+
+                yield from selectionSet.iterNodes()
+
+            else:
+
+                continue
+
+    @classmethod
+    def iterNodesFromRegex(cls, regex, namespace=''):
+        """
+        Returns a generator that yields nodes from the supplied regex.
+
+        :type regex: str
+        :type namespace: str
+        :rtype: Iterator[Any]
+        """
+
+        # Check if regex is valid
+        #
+        if stringutils.isNullOrEmpty(regex):
+
+            return iter([])
+
+        # Check if namespace was supplied
+        #
+        if not stringutils.isNullOrEmpty(namespace):
+
+            regex = r'(?:{namespace}\:)?{regex}'.format(namespace=namespace, regex=regex)
+
+        return fnnode.FnNode.iterInstancesByRegex(regex)
     # endregion

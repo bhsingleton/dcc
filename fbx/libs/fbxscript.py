@@ -2,6 +2,7 @@ import os
 
 from enum import IntEnum
 from . import fbxbase
+from ... import fnscene
 
 import logging
 logging.basicConfig()
@@ -24,7 +25,7 @@ class FbxScript(fbxbase.FbxBase):
     """
 
     # region Dunderscores
-    __slots__ = ('_filePath', '_language', '_script')
+    __slots__ = ('_scene', '_filePath', '_language', '_script')
 
     def __init__(self, *args, **kwargs):
         """
@@ -33,6 +34,7 @@ class FbxScript(fbxbase.FbxBase):
 
         # Declare private variables
         #
+        self._scene = fnscene.FnScene()
         self._filePath = kwargs.get('filePath', '')
         self._language = kwargs.get('language', Language.Python)
         self._script = kwargs.get('script', '')
@@ -43,6 +45,16 @@ class FbxScript(fbxbase.FbxBase):
     # endregion
 
     # region Properties
+    @property
+    def scene(self):
+        """
+        Getter method that returns the scene interface.
+
+        :rtype: fnscene.FnScene
+        """
+
+        return self._scene
+
     @property
     def filePath(self):
         """
@@ -126,14 +138,14 @@ class FbxScript(fbxbase.FbxBase):
 
         # Check if file path exists
         #
-        if not stringutils.isNullOrEmpty(self.filePath):
+        if not self.scene.isNullOrEmpty(self.filePath):
 
             log.info('Executing file: %s' % self.filePath)
             self.scene.executeFile(self.filePath)
 
         # Check if script is valid
         #
-        if not stringutils.isNullOrEmpty(self.script):
+        if not self.scene.isNullOrEmpty(self.script):
 
             log.info('Executing custom script.')
 
@@ -149,14 +161,14 @@ class FbxScript(fbxbase.FbxBase):
 
         # Check if file path exists
         #
-        if not stringutils.isNullOrEmpty(self.filePath):
+        if not self.scene.isNullOrEmpty(self.filePath):
 
             log.info('Executing file: %s' % self.filePath)
             self.scene.executeFile(self.filePath)
 
         # Check if script is valid
         #
-        if not stringutils.isNullOrEmpty(self.script):
+        if not self.scene.isNullOrEmpty(self.script):
 
             log.info('Executing custom script.')
 

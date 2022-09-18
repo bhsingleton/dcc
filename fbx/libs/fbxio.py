@@ -1,10 +1,9 @@
 import os
-import inspect
 
 from collections import namedtuple
-from . import fbxbase, fbxasset, fbxsequencer
+from . import fbxasset, fbxsequencer
 from ... import fnscene
-from ...abstract import afnscene, afnreference, singleton
+from ...abstract import singleton
 from ...json import jsonutils
 
 import logging
@@ -21,7 +20,7 @@ AssetCache = namedtuple('AssetCache', ['item', 'lastModified'])
 SequencerCache = namedtuple('SequencerCache', ['items', 'lastModified'])
 
 
-class FbxIO(fbxbase.FbxBase, singleton.Singleton):
+class FbxIO(singleton.Singleton):
     """
     Singleton class that interfaces with fbx assets and sequencers.
     The class also provides methods for changing the function set constructor for references.
@@ -44,7 +43,7 @@ class FbxIO(fbxbase.FbxBase, singleton.Singleton):
 
         # Declare private variables
         #
-        self._scene = self.__scene__()
+        self._scene = fnscene.FnScene()
         self._assets = {}
         self._sequencers = {}
     # endregion
@@ -305,47 +304,4 @@ class FbxIO(fbxbase.FbxBase, singleton.Singleton):
         """
 
         jsonutils.dump(filePath, sequencers)
-
-    @classmethod
-    def overrideSceneConstructor(cls, T):
-        """
-        Overrides the scene constructor used by any classes derived from FbxBase.
-
-        :type T: class
-        :rtype: None
-        """
-
-        # Inspect type
-        #
-        if not inspect.isclass(T) and not issubclass(cls, afnscene.AFnScene):
-
-            raise TypeError('overrideSceneConstructor() expects a sub-class of AFnScene (%s given)!' % cls.__name__)
-
-        # Update dunderscore constructor
-        #
-        cls.__scene__ = T
-
-        # Reinitialize instance
-        #
-        instance = cls.getInstance()
-        instance.__init__()
-
-    @classmethod
-    def overrideReferenceConstructor(cls, T):
-        """
-        Overrides the reference constructor used by any classes derived from FbxBase.
-
-        :type T: class
-        :rtype: None
-        """
-
-        # Inspect type
-        #
-        if not inspect.isclass(T) and not issubclass(cls, afnreference.AFnReference):
-
-            raise TypeError('overrideReferenceConstructor() expects a sub-class of AFnReference (%s given)!' % cls.__name__)
-
-        # Update dunderscore constructor
-        #
-        cls.__reference__ = T
     # endregion

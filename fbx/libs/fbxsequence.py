@@ -2,6 +2,8 @@ import os
 
 from enum import Enum, IntEnum
 from . import fbxbase
+from ... import fnfbx
+from ...python import stringutils
 
 import logging
 logging.basicConfig()
@@ -34,6 +36,7 @@ class FbxSequence(fbxbase.FbxBase):
 
         # Declare private variables
         #
+        self._fbx = fnfbx.FnFbx()
         self._sequencer = self.nullWeakReference
         self._directory = kwargs.get('directory', '')
         self._startFrame = kwargs.get('startFrame', 0)
@@ -186,6 +189,15 @@ class FbxSequence(fbxbase.FbxBase):
     # endregion
 
     # region Methods
+    def isValid(self):
+        """
+        Evaluates if this sequence is valid.
+
+        :rtype: bool
+        """
+
+        return self.exportSet() is not None
+
     def asset(self):
         """
         Returns the asset associated with this sequence.
@@ -233,7 +245,7 @@ class FbxSequence(fbxbase.FbxBase):
         path = os.path.join(os.path.expandvars(self.directory), fileName)
         cwd = self.cwd()
 
-        if not self.scene.isNullOrEmpty(cwd):
+        if not stringutils.isNullOrEmpty(cwd):
 
             return os.path.join(os.path.expandvars(cwd), path)
 
@@ -275,7 +287,19 @@ class FbxSequence(fbxbase.FbxBase):
         :rtype: bool
         """
 
-        pass
+        # Check if sequence is valid
+        #
+        if self.isValid():
+
+            exportSet = self.exportSet()
+            namespace = self.sequencer.namespace()
+
+            return exportSet.exportAnimation(self, namespace=namespace)
+
+        else:
+
+            log.error('Cannot locate export set from "%s" sequence!' % self.name)
+            return False
 
     def refresh(self):
         """

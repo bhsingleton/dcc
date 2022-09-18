@@ -1,12 +1,22 @@
 import os
 
-from . import fbxbase, fbxskeleton, fbxmesh, fbxscript
-from ... import fnfbx
+from enum import IntEnum
+from . import fbxbase, fbxskeleton, fbxmesh, fbxcamera, fbxscript
+from ..interop import fbxfile
+from ... import fnscene, fnfbx
 
 import logging
 logging.basicConfig()
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
+
+
+class FbxExportStatus(IntEnum):
+
+    Pending = 0
+    Pre = 1
+    Post = 2
+    Complete = 2
 
 
 class FbxExportSet(fbxbase.FbxBase):
@@ -16,20 +26,22 @@ class FbxExportSet(fbxbase.FbxBase):
 
     # region Dunderscores
     __slots__ = (
+        '_scene',
+        '_fbx',
         '_asset',
         '_directory',
-        '_skeleton',
-        '_meshes',
-        '_customScripts',
         '_scale',
         '_moveToOrigin',
-        '_includeNormals',
-        '_includeTangentsAndBinormals',
-        '_includeSmoothings',
-        '_includeColorSets',
-        '_includeSkins',
-        '_includeBlendshapes'
+        '_removeDisplayLayers',
+        '_removeContainers',
+        '_skeleton',
+        '_mesh',
+        '_camera',
+        '_customScripts'
     )
+
+    __exporting__ = None
+    __status__ = FbxExportStatus.Pending
 
     def __init__(self, *args, **kwargs):
         """
@@ -40,19 +52,18 @@ class FbxExportSet(fbxbase.FbxBase):
 
         # Declare private variables
         #
+        self._scene = fnscene.FnScene()
+        self._fbx = fnfbx.FnFbx()
         self._asset = self.nullWeakReference
         self._directory = kwargs.get('directory', '')
-        self._skeleton = kwargs.get('skeleton', fbxskeleton.FbxSkeleton())
-        self._meshes = []
-        self._customScripts = []
         self._scale = kwargs.get('scale', 1.0)
         self._moveToOrigin = kwargs.get('moveToOrigin', False)
-        self._includeNormals = kwargs.get('includeNormals', True)
-        self._includeTangentsAndBinormals = kwargs.get('includeTangentsAndBinormals', True)
-        self._includeSmoothings = kwargs.get('includeSmoothings', True)
-        self._includeColorSets = kwargs.get('includeColorSets', False)
-        self._includeSkins = kwargs.get('includeSkins', False)
-        self._includeBlendshapes = kwargs.get('includeBlendshapes', False)
+        self._removeDisplayLayers = kwargs.get('removeDisplayLayers', True)
+        self._removeContainers = kwargs.get('removeContainers', True)
+        self._camera = kwargs.get('camera', fbxcamera.FbxCamera())
+        self._skeleton = kwargs.get('skeleton', fbxskeleton.FbxSkeleton())
+        self._mesh = kwargs.get('mesh', fbxmesh.FbxMesh())
+        self._customScripts = []
 
         # Call parent method
         #
@@ -60,6 +71,26 @@ class FbxExportSet(fbxbase.FbxBase):
     # endregion
 
     # region Properties
+    @property
+    def scene(self):
+        """
+        Getter method that returns the scene interface.
+
+        :rtype: fnscene.FnScene
+        """
+
+        return self._scene
+
+    @property
+    def fbx(self):
+        """
+        Getter method that returns the fbx interface.
+
+        :rtype: fnfbx.FnFbx
+        """
+
+        return self._fbx
+
     @property
     def asset(self):
         """
@@ -91,76 +122,13 @@ class FbxExportSet(fbxbase.FbxBase):
 
         # Check if directory is relative to cwd
         #
-        cwd = self.cwd()
+        cwd = self.cwd(expandVars=True)
 
         if self.scene.isPathRelativeTo(directory, cwd):
 
             directory = self.scene.makePathRelativeTo(directory, cwd)
 
         self._directory = directory
-
-    @property
-    def skeleton(self):
-        """
-        Getter method that returns the skeleton for this export set.
-
-        :rtype: fbxskeleton.FbxSkeleton
-        """
-
-        return self._skeleton
-
-    @skeleton.setter
-    def skeleton(self, skeleton):
-        """
-        Setter method that updates the skeleton for this export set.
-
-        :type skeleton: fbxskeleton.FbxSkeleton
-        :rtype: None
-        """
-
-        self._skeleton = skeleton
-
-    @property
-    def meshes(self):
-        """
-        Getter method that returns the meshes for this export set.
-
-        :rtype: List[fbxmesh.FbxMesh]
-        """
-
-        return self._meshes
-
-    @meshes.setter
-    def meshes(self, meshes):
-        """
-        Setter method that updates the meshes for this export set.
-
-        :type meshes: List[fbxmesh.FbxMesh]
-        :rtype: None
-        """
-
-        self._meshes = meshes
-
-    @property
-    def customScripts(self):
-        """
-        Getter method that returns the custom scripts for this export set.
-
-        :rtype: List[fbxscript.FbxScript]
-        """
-
-        return self._customScripts
-
-    @customScripts.setter
-    def customScripts(self, customScripts):
-        """
-        Setter method that updates the custom scripts for this export set.
-
-        :type customScripts: List[fbxscript.FbxScript]
-        :rtype: None
-        """
-
-        self._customScripts = customScripts
 
     @property
     def scale(self):
@@ -205,147 +173,156 @@ class FbxExportSet(fbxbase.FbxBase):
         self._moveToOrigin = moveToOrigin
 
     @property
-    def includeNormals(self):
+    def removeDisplayLayers(self):
         """
-        Getter method that returns the normals flag for this export set.
+        Getter method that returns the remove display layers flag for this export set.
 
         :rtype: bool
         """
 
-        return self._includeNormals
+        return self._removeDisplayLayers
 
-    @includeNormals.setter
-    def includeNormals(self, includeNormals):
+    @removeDisplayLayers.setter
+    def removeDisplayLayers(self, removeDisplayLayers):
         """
-        Setter method that updates the normals flag for this export set.
+        Setter method that updates the remove display layers flag for this export set.
 
-        :type includeNormals: bool
+        :type removeDisplayLayers: bool
         :rtype: None
         """
 
-        self._includeNormals = includeNormals
+        self._removeDisplayLayers = removeDisplayLayers
 
     @property
-    def includeTangentsAndBinormals(self):
+    def removeContainers(self):
         """
-        Getter method that returns the tangents and binormals flag for this export set.
+        Getter method that returns the remove containers flag for this export set.
 
         :rtype: bool
         """
 
-        return self._includeTangentsAndBinormals
+        return self._removeContainers
 
-    @includeTangentsAndBinormals.setter
-    def includeTangentsAndBinormals(self, includeTangentsAndBinormals):
+    @removeContainers.setter
+    def removeContainers(self, removeContainers):
         """
-        Setter method that updates the tangents and binormals flag for this export set.
+        Setter method that updates the remove containers flag for this export set.
 
-        :type includeTangentsAndBinormals: bool
+        :type removeContainers: bool
         :rtype: None
         """
 
-        self._includeTangentsAndBinormals = includeTangentsAndBinormals
+        self._removeContainers = removeContainers
 
     @property
-    def includeSmoothings(self):
+    def camera(self):
         """
-        Getter method that returns the smoothings flag for this export set.
+        Getter method that returns the camera settings for this export set.
 
-        :rtype: bool
+        :rtype: fbxcamera.FbxCamera
         """
 
-        return self._includeSmoothings
+        return self._camera
 
-    @includeSmoothings.setter
-    def includeSmoothings(self, includeSmoothings):
+    @camera.setter
+    def camera(self, camera):
         """
-        Setter method that updates the smoothings flag for this export set.
+        Setter method that updates the camera settings for this export set.
 
-        :type includeSmoothings: bool
+        :type camera: fbxcamera.FbxCamera
         :rtype: None
         """
 
-        self._includeSmoothings = includeSmoothings
+        self._camera = camera
 
     @property
-    def includeColorSets(self):
+    def skeleton(self):
         """
-        Getter method that returns the color sets flag for this export set.
+        Getter method that returns the skeleton settings for this export set.
 
-        :rtype: bool
+        :rtype: fbxskeleton.FbxSkeleton
         """
 
-        return self._includeColorSets
+        return self._skeleton
 
-    @includeColorSets.setter
-    def includeColorSets(self, includeColorSets):
+    @skeleton.setter
+    def skeleton(self, skeleton):
         """
-        Setter method that updates the color sets flag for this export set.
+        Setter method that updates the skeleton settings for this export set.
 
-        :type includeColorSets: bool
+        :type skeleton: fbxskeleton.FbxSkeleton
         :rtype: None
         """
 
-        self._includeColorSets = includeColorSets
+        self._skeleton = skeleton
 
     @property
-    def includeSkins(self):
+    def mesh(self):
         """
-        Getter method that returns the skins flag for this export set.
+        Getter method that returns the mesh settings for this export set.
 
-        :rtype: bool
+        :rtype: fbxmesh.FbxMesh
         """
 
-        return self._includeSkins
+        return self._mesh
 
-    @includeSkins.setter
-    def includeSkins(self, includeSkins):
+    @mesh.setter
+    def mesh(self, mesh):
         """
-        Setter method that updates the skins flag for this export set.
+        Setter method that updates the mesh settings for this export set.
 
-        :type includeSkins: bool
+        :type mesh: fbxmesh.FbxMesh
         :rtype: None
         """
 
-        self._includeSkins = includeSkins
+        self._mesh = mesh
 
     @property
-    def includeBlendshapes(self):
+    def customScripts(self):
         """
-        Getter method that returns the blend shapes flag for this export set.
+        Getter method that returns the custom scripts for this export set.
 
-        :rtype: bool
+        :rtype: List[fbxscript.FbxScript]
         """
 
-        return self._includeBlendshapes
+        return self._customScripts
 
-    @includeBlendshapes.setter
-    def includeBlendshapes(self, includeBlendshapes):
+    @customScripts.setter
+    def customScripts(self, customScripts):
         """
-        Setter method that updates the blend shapes flag for this export set.
+        Setter method that updates the custom scripts for this export set.
 
-        :type includeBlendshapes: bool
+        :type customScripts: List[fbxscript.FbxScript]
         :rtype: None
         """
 
-        self._includeBlendshapes = includeBlendshapes
+        self._customScripts = customScripts
     # endregion
 
     # region Methods
-    def cwd(self):
+    def cwd(self, expandVars=False):
         """
         Returns the current working directory from the parent asset.
 
+        :type expandVars: bool
         :rtype: str
         """
 
-        if self.asset is not None:
+        # Check if asset exists
+        #
+        if self.asset is None:
 
-            return self.asset.directory
+            return ''
+
+        # Check if variables should be expanded
+        #
+        if expandVars:
+
+            return os.path.expandvars(self.asset.directory)
 
         else:
 
-            return ''
+            return self.asset.directory
 
     def exportPath(self):
         """
@@ -358,11 +335,11 @@ class FbxExportSet(fbxbase.FbxBase):
         #
         fileName = '{name}.fbx'.format(name=self.name)
         path = os.path.join(os.path.expandvars(self.directory), fileName)
-        cwd = self.cwd()
+        cwd = self.cwd(expandVars=True)
 
         if not self.scene.isNullOrEmpty(cwd):
 
-            return os.path.join(os.path.expandvars(cwd), path)
+            return os.path.join(cwd, path)
 
         else:
 
@@ -379,26 +356,57 @@ class FbxExportSet(fbxbase.FbxBase):
 
         # Select skeleton
         #
+        self.scene.clearActiveSelection()
         self.skeleton.select(namespace=namespace)
 
         # Check if meshes should be selected
         #
         if not animationOnly:
 
-            for mesh in self.meshes:
+            self.mesh.select(namespace=namespace)
 
-                mesh.select(namespace=namespace)
+        # Select camera
+        #
+        self.camera.select(namespace=namespace)
 
-    def serialize(self, animationOnly=False, namespace=''):
+    def editExportFile(self, filePath):
         """
-        Serializes the nodes associated with this export set.
+        Performs any edits to the associated export file.
 
-        :type animationOnly: bool
-        :type namespace: str
-        :rtype: Any
+        :rtype: None
         """
 
-        pass
+        # Check if any edits are required
+        #
+        requiresEdits = any([self.moveToOrigin, self.removeDisplayLayers, self.removeContainers])
+
+        if not requiresEdits or not os.path.exists(filePath):
+
+            return
+
+        # Check if root nodes should be moved to origin
+        #
+        fbxFile = fbxfile.FbxFile(filePath)
+
+        if self.moveToOrigin:
+
+            fbxFile.moveToOrigin()
+
+        # Check if display layers should be removed
+        #
+        if self.removeDisplayLayers:
+
+            fbxFile.removeDisplayLayers()
+
+        # Check if containers should be removed
+        #
+        if self.removeContainers:
+
+            fbxFile.removeContainers()
+
+        # Commit changes to file
+        #
+        fbxFile.save()
 
     def preExport(self):
         """
@@ -407,44 +415,123 @@ class FbxExportSet(fbxbase.FbxBase):
         :rtype: None
         """
 
+        # Update export status
+        #
+        self.updateExportStatus(FbxExportStatus.Pre, self)
+
         # Execute pre-scripts
         #
         for customScript in self.customScripts:
 
             customScript.preExport()
 
-    def export(self, animationOnly=False, namespace=''):
+    def export(self, namespace=''):
         """
         Outputs this export set to the user defined path.
 
-        :type animationOnly: bool
         :type namespace: str
         :rtype: None
         """
 
         # Select nodes and execute pre-scripts
         #
-        self.select(animationOnly=animationOnly, namespace=namespace)
+        self.select(namespace=namespace)
         self.preExport()
 
         # Export fbx using selection
         #
-        fnFbx = fnfbx.FnFbx()
-        fnFbx.setMeshExportParams(**self)
-        fnFbx.exportSelection(self.exportPath())
+        self.fbx.setMeshExportParams(
+            version=self.asset.fileVersion,
+            asAscii=bool(self.asset.fileType),
+            scale=self.scale,
+            includeNormals=self.mesh.includeNormals,
+            includeSmoothings=self.mesh.includeSmoothings,
+            includeTangentsAndBinormals=self.mesh.includeTangentsAndBinormals,
+            includeSkins=self.mesh.includeSkins,
+            includeBlendshapes=self.mesh.includeBlendshapes
+        )
+
+        exportPath = self.exportPath()
+        self.fbx.exportSelection(exportPath)
 
         # Execute post-scripts
         #
+        self.editExportFile(exportPath)
+        self.postExport()
+
+    def exportAnimation(self, sequence, namespace=''):
+        """
+        Outputs the supplied sequence to the user defined path.
+
+        :type sequence: fbxsequence.FbxSequence
+        :type namespace: str
+        :rtype: None
+        """
+
+        # Select nodes and execute pre-scripts
+        #
+        self.select(animationOnly=True, namespace=namespace)
+        self.preExport()
+
+        # Export fbx using selection
+        #
+        self.fbx.setAnimExportParams(
+            version=self.asset.fileVersion,
+            asAscii=bool(self.asset.fileType),
+            scale=self.scale,
+            startFrame=sequence.startFrame,
+            endFrame=sequence.endFrame,
+            step=sequence.step,
+        )
+
+        exportPath = sequence.exportPath()
+        self.fbx.exportSelection(exportPath)
+
+        # Execute post-scripts
+        #
+        self.editExportFile(exportPath)
         self.postExport()
 
     def postExport(self):
         """
         Executes any post-export scripts.
+
+        :rtype: None
         """
+
+        # Update export status
+        #
+        self.updateExportStatus(FbxExportStatus.Post, self)
 
         # Execute post-scripts
         #
         for customScript in self.customScripts:
 
             customScript.postExport()
+
+        # Clear export status
+        #
+        self.updateExportStatus(FbxExportStatus.Pending, None)
+
+    @classmethod
+    def getExportStatus(cls):
+        """
+        Returns the export set that is currently exporting.
+
+        :rtype: Tuple[FbxExportStatus, FbxExportSet]
+        """
+
+        return cls.__status__, cls.__exporting__
+
+    @classmethod
+    def updateExportStatus(cls, status, exportSet):
+        """
+        Returns the export set that is currently exporting.
+
+        :type status: FbxExportStatus
+        :type exportSet: Union[FbxExportSet, None]
+        :rtype: None
+        """
+
+        cls.__status__, cls.__exporting__ = status, exportSet
     # endregion
