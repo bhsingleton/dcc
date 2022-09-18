@@ -21,10 +21,10 @@ class QUicMixin(object):
     def __getattribute__(self, item):
         """
         Private method used to lookup an attribute.
-        Sadly all pointers are lost from QUicLoader so we have to rebuild them on demand.
+        Sadly all pointers are lost from QUicLoader, so we have to rebuild them on demand.
 
         :type item: str
-        :rtype: QtCore.QObject
+        :rtype: Any
         """
 
         # Call parent method
@@ -35,15 +35,7 @@ class QUicMixin(object):
 
             # Check if cpp pointer is still valid
             #
-            if QtCompat.isValid(obj):
-
-                return obj
-
-            # Update cpp pointer
-            #
-            func = getattr(self.__class__, item, None)
-
-            if not inspect.isfunction(func):
+            if not QtCompat.isValid(obj):
 
                 obj = self.findChild(QtWidgets.QWidget, item)
                 setattr(self, item, obj)
@@ -52,7 +44,7 @@ class QUicMixin(object):
 
             else:
 
-                return None
+                return obj
 
         else:
 
