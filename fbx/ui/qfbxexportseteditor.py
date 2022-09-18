@@ -1,21 +1,52 @@
 import os
-import re
 import webbrowser
-import unicodedata
 
-from PySide2 import QtCore, QtWidgets, QtGui
+from Qt import QtCore, QtWidgets, QtGui
 from copy import copy
-from dcc import fnnotify
-from dcc.ui import quicwindow
+from dcc import fnscene, fnnode, fnnotify
+from dcc.ui import quicwindow, qdirectoryedit, qfileedit
 from dcc.ui.dialogs import qlistdialog
-from dcc.ui.models import qpropertyitemmodel, qpropertyitemdelegate
-from dcc.fbx import fbxasset, fbxexportset, fbxnode
-from dcc.fbx.io import fbxstructuredstorageio
+from dcc.ui.models import qpsonitemmodel, qpsonstyleditemdelegate
+from dcc.fbx.libs import fbxio, fbxasset, fbxexportset, fbxscript
+from dcc.python import stringutils
 
 import logging
 logging.basicConfig()
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
+
+
+class QFbxExportSetItemDelegate(qpsonstyleditemdelegate.QPSONStyledItemDelegate):
+    """
+    Overload of QPSONStyledItemDelegate that delegates fbx export set types.
+    """
+
+    # region Methods
+    def createEditorByProperty(self, obj, func, isElement=False, parent=None):
+        """
+        Returns a widget from the supplied object and property.
+
+        :type obj: object
+        :type func: function
+        :type isElement: bool
+        :type parent: QtWidgets.QWidget
+        :rtype: QtWidgets.QWidget
+        """
+
+        # Evaluate object type
+        #
+        if isinstance(obj, fbxexportset.FbxExportSet) and func.__name__ == 'directory':
+
+            return qdirectoryedit.QDirectoryEdit(parent=parent)
+
+        elif isinstance(obj, fbxscript.FbxScript) and func.__name__ == 'filePath':
+
+            return qfileedit.QFileEdit(parent=parent)
+
+        else:
+
+            return super(QFbxExportSetItemDelegate, self).createEditorByProperty(obj, func, isElement=isElement, parent=parent)
+    # endregion
 
 
 class QFbxExportSetEditor(quicwindow.QUicWindow):
@@ -33,20 +64,49 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
         :rtype: None
         """
 
+        # Declare private variables
+        #
+        self._manager = fbxio.FbxIO()
+        self._asset = None
+        self._currentExportSet = None
+        self._scene = fnscene.FnScene()
+        self._notifies = fnnotify.FnNotify()
+        self._notifyId = None
+
+        # Declare public variables
+        #
+        self.exportSetItemModel = None
+        self.exportSetItemDelegate = None
+        self.customContextMenu = None
+        self.clearItemsAction = None
+        self.copySelectionAction = None
+
         # Call parent method
         #
         super(QFbxExportSetEditor, self).__init__(*args, **kwargs)
-
-        # Declare class variables
-        #
-        self._manager = fbxstructuredstorageio.FbxStructuredStorageIO()
-        self._asset = None
-        self._currentExportSet = None
-        self._fnNotify = fnnotify.FnNotify()
-        self._notifyId = None
     # endregion
 
     # region Properties
+    @property
+    def manager(self):
+        """
+        Getter method that returns the fbx asset manager.
+
+        :rtype: fbxio.FbxIO
+        """
+
+        return self._manager
+
+    @property
+    def scene(self):
+        """
+        Getter method that returns the scene interface.
+
+        :rtype: fnscene.FnScene
+        """
+
+        return self._scene
+
     @property
     def asset(self):
         """
@@ -76,45 +136,36 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
         :rtype: None
         """
 
+        # Call parent method
+        #
+        super(QFbxExportSetEditor, self).postLoad()
+
         # Initialize tree view model
         #
-        self.exportSetItemModel = qpropertyitemmodel.QPropertyItemModel(parent=self.exportSetTreeView)
+        self.exportSetItemModel = qpsonitemmodel.QPSONItemModel(parent=self.exportSetTreeView)
+        self.exportSetItemModel.setObjectName('exportSetItemModel')
+
         self.exportSetTreeView.setModel(self.exportSetItemModel)
 
-        self.exportSetItemDelegate = qpropertyitemdelegate.QPropertyItemDelegate(parent=self.exportSetTreeView)
+        self.exportSetItemDelegate = QFbxExportSetItemDelegate(parent=self.exportSetTreeView)
+        self.exportSetItemDelegate.setObjectName('exportSetItemDelegate')
+
         self.exportSetTreeView.setItemDelegate(self.exportSetItemDelegate)
 
-        # Create tree view context menu
+        # Initialize custom context menu
         #
-        self.exportSetMenu = QtWidgets.QMenu(parent=self.exportSetTreeView)
-        self.exportSetMenu.setObjectName('exportSetMenu')
+        self.customContextMenu = QtWidgets.QMenu(parent=self.exportSetTreeView)
+        self.customContextMenu.setObjectName('customContextMenu')
 
-        self.addSkeletonAction = QtWidgets.QAction(QtGui.QIcon(':dcc/icons/skeleton'), 'Add Skeleton', parent=self.exportSetMenu)
-        self.addSkeletonAction.setObjectName('addSkeletonAction')
+        self.clearItemsAction = QtWidgets.QAction('Clear Items', parent=self.customContextMenu)
+        self.clearItemsAction.setObjectName('clearItemsAction')
+        self.clearItemsAction.triggered.connect(self.on_clearItemsAction_triggered)
 
-        self.addMaterialSlotAction = QtWidgets.QAction(QtGui.QIcon(':dcc/icons/material'), 'Add Material Slot', parent=self.exportSetMenu)
-        self.addMaterialSlotAction.setObjectName('addMaterialSlotAction')
+        self.copySelectionAction = QtWidgets.QAction('Copy Selection', parent=self.customContextMenu)
+        self.copySelectionAction.setObjectName('copySelectionAction')
+        self.copySelectionAction.triggered.connect(self.on_copySelectionAction_triggered)
 
-        self.addMeshAction = QtWidgets.QAction(QtGui.QIcon(':dcc/icons/mesh'), 'Add Mesh', parent=self.exportSetMenu)
-        self.addMeshAction.setObjectName('addMeshAction')
-
-        self.exportSetMenu.addActions([self.addSkeletonAction, self.addMaterialSlotAction, self.addMeshAction])
-
-    @staticmethod
-    def slugify(name):
-        """
-        Normalizes string by removing non-alpha characters and converting spaces to underscores.
-        See the following for more details: https://stackoverflow.com/questions/295135/turn-a-string-into-a-valid-filename
-
-        :type name: str
-        :rtype: str
-        """
-
-        name = unicodedata.normalize('NFKD', name).encode('ascii', 'ignore').decode('ascii')
-        name = re.sub(r'[^\w\s-]', '', name).strip()
-        name = re.sub(r'[-\s]+', '_', name)
-
-        return name
+        self.customContextMenu.addActions([self.clearItemsAction, self.copySelectionAction])
 
     def isNameUnique(self, name):
         """
@@ -163,8 +214,12 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
         #
         self.assetNameLineEdit.setText(self.asset.name)
         self.assetDirectoryLineEdit.setText(self.asset.directory)
-        #self.fileTypeComboBox.setCurrentIndex(self.asset.fileType)
+        self.fileTypeComboBox.setCurrentIndex(self.asset.fileType)
         self.fileVersionComboBox.setCurrentIndex(self.asset.fileVersion)
+
+        # Re-populate combo box
+        #
+        self.exportSetComboBox.clear()
         self.exportSetComboBox.addItems([x.name for x in self.asset.exportSets])
 
     def invalidateExportSet(self):
@@ -176,19 +231,9 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
 
         # Attach export set to item model
         #
-        self.exportSetItemModel.setInvisibleRootItem(self.currentExportSet.children)
+        if self.currentExportSet is not None:
 
-        # Synchronize export set widgets
-        #
-        self.scaleSpinBox.value = self.currentExportSet.scale
-        self.exportDirectoryLineEdit.setText(self.currentExportSet.directory)
-
-        for button in self.meshSettingsCheckBoxGroup.buttons():
-
-            name = button.whatsThis()
-            isChecked = getattr(self.currentExportSet, name, False)
-
-            button.setChecked(isChecked)
+            self.exportSetItemModel.invisibleRootItem = self.currentExportSet
 
         # Invalidate export path
         #
@@ -232,8 +277,8 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
 
         # Create post file-open notify
         #
-        self._notifyId = self._fnNotify.addPostFileOpenNotify(self.sceneChanged)
-        self.invalidateAsset()
+        self._notifyId = self._notifies.addPostFileOpenNotify(self.sceneChanged)
+        self.sceneChanged()
 
     def closeEvent(self, event):
         """
@@ -249,25 +294,26 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
 
         # Remove post file-open notify
         #
-        self._fnNotify.removeNotify(self._notifyId)
+        self._notifies.removeNotify(self._notifyId)
+        self._notifies = None  # Clean up resources
     # endregion
 
     # region Slots
     @QtCore.Slot(bool)
     def on_saveAction_triggered(self, checked=False):
         """
-        Clicked slot method that saves all recent changes.
+        Slot method for the saveAction's triggered signal.
 
         :type checked: bool
         :rtype: None
         """
 
-        self._manager.saveAsset(self.asset)  # This will mark the scene as dirty!
+        self.manager.saveAsset(self.asset)  # This will mark the scene as dirty!
 
     @QtCore.Slot(bool)
     def on_saveAsAction_triggered(self, checked=False):
         """
-        Clicked slot method that saves the current asset to a json file.
+        Slot method for the saveAsAction's triggered signal.
 
         :type checked: bool
         :rtype: None
@@ -289,7 +335,7 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
         #
         if filePath:
 
-            self._manager.saveAssetAs(self.asset, filePath)
+            self.manager.saveAssetAs(self.asset, filePath)
 
         else:
 
@@ -298,7 +344,7 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
     @QtCore.Slot(bool)
     def on_importAction_triggered(self, checked=False):
         """
-        Clicked slot method that imports asset settings from a json file.
+        Slot method for the importAction's triggered signal.
 
         :type checked: bool
         :rtype: None
@@ -306,21 +352,10 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
 
         pass
 
-    @QtCore.Slot(bool)
-    def on_usingFbxExportSetEditor_triggered(self, checked=False):
-        """
-        Clicked slot method responsible for saving all recent changes.
-
-        :type checked: bool
-        :rtype: None
-        """
-
-        webbrowser.open('https://github.com/bhsingleton/dcc')
-
     @QtCore.Slot(str)
     def on_assetNameLineEdit_textChanged(self, text):
         """
-        Text changed slot method responsible for updating the asset name.
+        Slot method for the assetNameLineEdit's textChanged signal.
 
         :type text: str
         :rtype: None
@@ -328,10 +363,21 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
 
         self.asset.name = text
 
+    @QtCore.Slot(bool)
+    def on_savePushButton_clicked(self, checked=False):
+        """
+        Slot method for the savePushButton's clicked signal.
+
+        :type checked: bool
+        :rtype: None
+        """
+
+        self.manager.saveAsset(self.asset)  # This will mark the scene as dirty!
+
     @QtCore.Slot(str)
     def on_assetDirectoryLineEdit_textChanged(self, text):
         """
-        Text changed slot method responsible for updating the asset directory.
+        Slot method for the assetDirectoryLineEdit's textChanged signal.
 
         :type text: str
         :rtype: None
@@ -343,7 +389,7 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
     @QtCore.Slot(bool)
     def on_assetDirectoryPushButton_clicked(self, checked=False):
         """
-        Clicked slot method responsible for updating the asset directory.
+        Slot method for the assetDirectoryPushButton's clicked signal.
 
         :type checked: bool
         :rtype: None
@@ -374,7 +420,7 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
     @QtCore.Slot(int)
     def on_fileTypeComboBox_currentIndexChanged(self, index):
         """
-        Clicked slot method responsible for updating the fbx file type.
+        Slot method for the fileTypeComboBox's currentIndexChanged signal.
 
         :type index: int
         :rtype: None
@@ -385,7 +431,7 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
     @QtCore.Slot(int)
     def on_fileVersionComboBox_currentIndexChanged(self, index):
         """
-        Current index changed slot method responsible for updating the fbx file version.
+        Slot method for the fileVersionComboBox's currentIndexChanged signal.
 
         :type index: int
         :rtype: None
@@ -393,10 +439,112 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
 
         self.asset.fileVersion = index
 
+    @QtCore.Slot(QtCore.QPoint)
+    def on_exportSetTreeView_customContextMenuRequested(self, point):
+        """
+        Slot method for the exportSetTreeView's customContextMenuRequested signal.
+
+        :type point: QtCore.QPoint
+        :rtype: None
+        """
+
+        # Check if index is valid
+        #
+        index = self.sender().indexAt(point)
+
+        if not index.isValid():
+
+            return
+
+        # Inspect item at index
+        #
+        model = index.model()
+        internalId = model.decodeInternalId(index.internalId())
+
+        name = internalId[-1]
+
+        if name in ('includeNodes', 'includeJoints', 'excludeJoints'):
+
+            globalPoint = self.sender().mapToGlobal(point)
+            self.customContextMenu.exec_(globalPoint)
+
+        else:
+
+            pass
+
+    @QtCore.Slot(bool)
+    def on_clearItemsAction_triggered(self, checked=False):
+        """
+        Slot method for the clearItemsAction's triggered signal.
+
+        :type checked: bool
+        :rtype: None
+        """
+
+        # Evaluate selected indices
+        #
+        indices = [index for index in self.sequencerTreeView.selectedIndexes() if index.column() == 0]
+        numIndices = len(indices)
+
+        if numIndices != 1:
+
+            return
+
+        # Remove all child row
+        #
+        index = indices[0]
+        model = index.model()
+
+        rowCount = model.rowCount(parent=index)
+
+        if rowCount > 0:
+
+            model.removeRows(0, rowCount, parent=index)
+
+    @QtCore.Slot(bool)
+    def on_copySelectionAction_triggered(self, checked=False):
+        """
+        Slot method for the copySelectionAction's triggered signal.
+
+        :type checked: bool
+        :rtype: None
+        """
+
+        # Evaluate selected indices
+        #
+        indices = [index for index in self.sequencerTreeView.selectedIndexes() if index.column() == 0]
+        numIndices = len(indices)
+
+        if numIndices != 1:
+
+            return
+
+        # Remove all child row
+        #
+        index = indices[0]
+        model = index.model()
+
+        rowCount = model.rowCount(parent=index)
+
+        if rowCount > 0:
+
+            model.removeRows(0, rowCount, parent=index)
+
+        # Extend row using selection
+        #
+        node = fnnode.FnNode()
+
+        nodeNames = [node(obj).name() for obj in self.scene.getActiveSelection()]
+        numNodeNames = len(nodeNames)
+
+        if numNodeNames > 0:
+
+            model.extendRows(nodeNames, parent=index)
+
     @QtCore.Slot(int)
     def on_exportSetComboBox_currentIndexChanged(self, index):
         """
-        Current index changed slot method responsible for updating the current fbx export set.
+        Slot method for the exportSetComboBox's currentIndexChanged signal.
 
         :type index: int
         :rtype: None
@@ -412,7 +560,7 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
     @QtCore.Slot(bool)
     def on_newExportSetPushButton_clicked(self, checked=False):
         """
-        Clicked slot method responsible for creating a new fbx export set.
+        Slot method for the newExportSetPushButton's clicked signal.
 
         :type checked: bool
         :rtype: None
@@ -435,7 +583,7 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
         # Check if name is unique
         # Be sure to slugify the name before processing!
         #
-        name = self.slugify(name)
+        name = stringutils.slugify(name)
 
         if not self.isNameUnique(name) or len(name) == 0:
 
@@ -467,7 +615,7 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
     @QtCore.Slot(bool)
     def on_duplicateExportSetPushButton_clicked(self, checked=False):
         """
-        Clicked slot method responsible for duplicating the current fbx export set.
+        Slot method for the duplicateExportSetPushButton's clicked signal.
 
         :type checked: bool
         :rtype: None
@@ -482,7 +630,7 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
 
         # Copy current export set
         #
-        fbxExportSet = copy.copy(self.currentExportSet)
+        fbxExportSet = copy(self.currentExportSet)
         fbxExportSet.name = self.uniquify(fbxExportSet.name)
 
         self.asset.exportSets.append(fbxExportSet)
@@ -494,7 +642,7 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
     @QtCore.Slot(bool)
     def on_renameExportSetPushButton_clicked(self, checked=False):
         """
-        Clicked slot method responsible for renaming the current fbx export set.
+        Slot method for the renameExportSetPushButton's clicked signal.
 
         :type checked: bool
         :rtype: None
@@ -555,7 +703,7 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
     @QtCore.Slot(bool)
     def on_reorderExportSetPushButton_clicked(self, checked=False):
         """
-        Clicked slot method responsible for reordering the fbx export sets.
+        Slot method for the reorderExportSetPushButton's clicked signal.
 
         :type checked: bool
         :rtype: None
@@ -605,7 +753,7 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
     @QtCore.Slot(bool)
     def on_deleteExportSetPushButton_clicked(self, checked=False):
         """
-        Clicked slot method responsible for deleting the current fbx export set.
+        Slot method for the deleteExportSetPushButton's clicked signal.
 
         :type checked: bool
         :rtype: None
@@ -627,145 +775,10 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
         #
         self.exportSetComboBox.removeItem(currentIndex)
 
-    @QtCore.Slot(QtCore.QPoint)
-    def on_exportSetTreeView_customContextMenuRequested(self, pos):
-        """
-        Custom context menu requested slot method responsible executing the export set menu.
-
-        :type pos: QtCore.QPoint
-        :rtype: None
-        """
-
-        sender = self.sender()
-        globalPos = sender.mapToGlobal(pos)
-
-        self.exportSetMenu.exec_(globalPos)
-
-    @QtCore.Slot(bool)
-    def on_addSkeletonAction_triggered(self, checked=False):
-        """
-        Triggered slot method responsible for adding a skeleton object.
-
-        :type checked: bool
-        :rtype: None
-        """
-
-        skeleton = fbxnode.FbxSkeleton()
-        self.exportSetItemModel.appendRow(skeleton)
-
-    @QtCore.Slot(bool)
-    def on_addMaterialSlotAction_triggered(self, checked=False):
-        """
-        Triggered slot method responsible for adding a material slot object.
-
-        :type checked: bool
-        :rtype: None
-        """
-
-        material = fbxnode.FbxMaterialSlot()
-        self.exportSetItemModel.appendRow(material)
-
-    @QtCore.Slot(bool)
-    def on_addMeshAction_triggered(self, checked=False):
-        """
-        Triggered slot method responsible for adding a mesh object.
-
-        :type checked: bool
-        :rtype: None
-        """
-
-        mesh = fbxnode.FbxMesh()
-        self.exportSetItemModel.appendRow(mesh)
-
-    @QtCore.Slot(bool)
-    def on_customScriptsPushButton_clicked(self, checked=False):
-        """
-        Clicked slot method responsible for opening the custom script dialog.
-
-        :type checked: bool
-        :rtype: None
-        """
-
-        pass
-
-    @QtCore.Slot(bool)
-    def on_exportDirectoryPushButton_clicked(self, checked=False):
-        """
-        Clicked slot method responsible for updating the export directory.
-
-        :type checked: bool
-        :rtype: None
-        """
-
-        # Prompt user for save path
-        #
-        assetDirectory = os.path.expandvars(self.asset.directory)
-
-        exportDirectory = QtWidgets.QFileDialog.getExistingDirectory(
-            parent=self,
-            caption='Select Export Directory',
-            dir=assetDirectory,
-            options=QtWidgets.QFileDialog.ShowDirsOnly
-        )
-
-        # Check if path is valid
-        #
-        if exportDirectory and self.currentExportSet is not None:
-
-            relativePath = os.path.relpath(os.path.normpath(exportDirectory), os.path.normpath(assetDirectory))
-            self.currentExportSet.directory = relativePath
-
-        else:
-
-            log.info('Operation aborted...')
-
-    @QtCore.Slot(str)
-    def on_exportDirectoryLineEdit_textChanged(self, text):
-        """
-        Text changed slot method responsible for updating the export directory.
-
-        :type text: str
-        :rtype: None
-        """
-
-        if self.currentExportSet is not None:
-
-            self.currentExportSet.directory = os.path.normpath(text)
-            self.invalidateExportPath()
-
-    @QtCore.Slot(float)
-    def on_scaleSpinBox_valueChanged(self, value):
-        """
-        Value changed slot method responsible for updating the scale value.
-
-        :type value: float
-        :rtype: None
-        """
-
-        if self.currentExportSet is not None:
-
-            self.currentExportSet.scale = value
-
-    @QtCore.Slot(int)
-    def on_meshSettingsCheckBoxGroup_idClicked(self, index):
-        """
-        Id clicked slot method responsible for updating the associated property.
-
-        :type index: int
-        :rtype: None
-        """
-
-        if self.currentExportSet is not None:
-
-            group = self.sender()
-            checkBox = group.button(index)
-
-            setattr(self.currentExportSet, checkBox.whatsThis(), checkBox.isChecked())
-
     @QtCore.Slot(bool)
     def on_exportPushButton_clicked(self, checked=False):
         """
-        Clicked slot method responsible for exporting the current fbx export set.
+        Slot method for the exportPushButton's clicked signal.
 
         :type checked: bool
         :rtype: None
@@ -778,7 +791,7 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
     @QtCore.Slot(bool)
     def on_exportAllPushButton_clicked(self, checked=False):
         """
-        Clicked slot method responsible for exporting all the fbx export sets.
+        Slot method for the exportAllPushButton's clicked signal.
 
         :type checked: bool
         :rtype: None
@@ -787,4 +800,15 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
         for exportSet in self.asset.exportSets():
 
             exportSet.export()
+
+    @QtCore.Slot(bool)
+    def on_usingFbxExportSetEditorAction_triggered(self, checked=False):
+        """
+        Slot method for the usingFbxExportSetEditorAction's triggered signal.
+
+        :type checked: bool
+        :rtype: None
+        """
+
+        webbrowser.open('https://github.com/bhsingleton/dcc')
     # endregion
