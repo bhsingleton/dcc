@@ -1,6 +1,6 @@
 from Qt import QtCore, QtWidgets, QtGui
 from enum import IntEnum
-from dcc import fnscene, fnqt
+from dcc import fnscene
 
 import logging
 logging.basicConfig()
@@ -9,6 +9,9 @@ log.setLevel(logging.INFO)
 
 
 class DefaultType(IntEnum):
+    """
+    Overload of IntEnum that contains all the valid reset types.
+    """
 
     StartTime = 0
     EndTime = 1
@@ -37,7 +40,6 @@ class QTimeSpinBox(QtWidgets.QSpinBox):
         # Declare public variables
         #
         self._scene = fnscene.FnScene()
-        self._qt = fnqt.FnQt()
         self._defaultType = kwargs.get('defaultType', DefaultType.StartTime)
     # endregion
 
@@ -51,16 +53,6 @@ class QTimeSpinBox(QtWidgets.QSpinBox):
         """
 
         return self._scene
-
-    @property
-    def qt(self):
-        """
-        Getter method that returns the qt function set.
-
-        :rtype: fnqt.FnQt
-        """
-
-        return self._qt
     # endregion
 
     # region Methods
@@ -106,7 +98,7 @@ class QTimeSpinBox(QtWidgets.QSpinBox):
         :rtype: None
         """
 
-        self._defaultType = defaultType
+        self._defaultType = DefaultType(defaultType)
 
     def minimum(self):
         """
@@ -147,10 +139,8 @@ class QTimeSpinBox(QtWidgets.QSpinBox):
             # Check if either arrows were clicked
             # If they were then ignore this event and reset the value
             #
-            style = self.qt.getApplication().style()
-
-            upRect = style.subControlRect(QtWidgets.QStyle.CC_SpinBox, options, QtWidgets.QStyle.SC_SpinBoxUp, widget=self)
-            downRect = style.subControlRect(QtWidgets.QStyle.CC_SpinBox, options, QtWidgets.QStyle.SC_SpinBoxDown, widget=self)
+            upRect = self.style().subControlRect(QtWidgets.QStyle.CC_SpinBox, options, QtWidgets.QStyle.SC_SpinBoxUp, self)
+            downRect = self.style().subControlRect(QtWidgets.QStyle.CC_SpinBox, options, QtWidgets.QStyle.SC_SpinBoxDown, self)
             mousePos = event.pos()
 
             if upRect.contains(mousePos) or downRect.contains(mousePos):
