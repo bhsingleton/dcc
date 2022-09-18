@@ -139,6 +139,55 @@ class QProxyWindow(QtWidgets.QMainWindow):
         return self.__settings__
     # endregion
 
+    # region Events
+    def keyPressEvent(self, event):
+        """
+        This event handler can be reimplemented in a subclass to receive key press events for the widget.
+        This implementation prevents any hotkeys from propagating to the DCC of choice.
+
+        :type event: QtGui.QKeyEvent
+        :rtype: None
+        """
+
+        pass
+
+    def showEvent(self, event):
+        """
+        Event method called after the window has been shown.
+
+        :type event: QtGui.QShowEvent
+        :rtype: None
+        """
+
+        # Call parent method
+        #
+        super(QProxyWindow, self).showEvent(event)
+
+        # Perform startup routines
+        #
+        if self.hasSettings():
+
+            self.loadSettings()
+
+    def closeEvent(self, event):
+        """
+        Event method called after the window has been closed.
+
+        :type event: QtGui.QCloseEvent
+        :rtype: None
+        """
+
+        # Call parent method
+        #
+        super(QProxyWindow, self).closeEvent(event)
+
+        # Perform closing routines
+        #
+        self.saveSettings()
+        self.hideTearOffMenus()
+        self.removeInstance(self)
+    # endregion
+
     # region Methods
     def hasSettings(self):
         """
@@ -332,53 +381,4 @@ class QProxyWindow(QtWidgets.QMainWindow):
 
                 log.debug('Cleaning up dead pointer: %s' % name)
                 del cls.__instances__[name]
-    # endregion
-
-    # region Events
-    def keyPressEvent(self, event):
-        """
-        This event handler can be reimplemented in a subclass to receive key press events for the widget.
-        This implementation prevents and hotkeys from propagating to the DCC of choice.
-
-        :type event: QtGui.QKeyEvent
-        :rtype: None
-        """
-
-        pass
-
-    def showEvent(self, event):
-        """
-        Event method called after the window has been shown.
-
-        :type event: QtGui.QShowEvent
-        :rtype: None
-        """
-
-        # Call parent method
-        #
-        super(QProxyWindow, self).showEvent(event)
-
-        # Perform startup routines
-        #
-        if self.hasSettings():
-
-            self.loadSettings()
-
-    def closeEvent(self, event):
-        """
-        Event method called after the window has been closed.
-
-        :type event: QtGui.QCloseEvent
-        :rtype: None
-        """
-
-        # Call parent method
-        #
-        super(QProxyWindow, self).closeEvent(event)
-
-        # Perform closing routines
-        #
-        self.saveSettings()
-        self.hideTearOffMenus()
-        self.removeInstance(self)
     # endregion
