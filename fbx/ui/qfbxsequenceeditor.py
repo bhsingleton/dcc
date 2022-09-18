@@ -1,10 +1,9 @@
-import os
-import sys
-
-from PySide2 import QtWidgets, QtCore, QtGui
-from dcc import fnnotify
-from dcc.ui import quicwindow, qrollout, qdivider, qtimespinbox
-from dcc.fbx import fbxsequence
+from Qt import QtWidgets, QtCore, QtGui
+from dcc import fnscene, fnreference, fnnotify
+from dcc.generators.consecutivepairs import consecutivePairs
+from dcc.ui import quicwindow, qtimespinbox, qdirectoryedit
+from dcc.ui.models import qpsonitemmodel, qpsonstyleditemdelegate
+from dcc.fbx.libs import fbxio, fbxsequencer, fbxsequence
 
 import logging
 logging.basicConfig()
@@ -12,369 +11,50 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-class QFbxSequenceRollout(qrollout.QRollout):
+class QFbxSequenceItemDelegate(qpsonstyleditemdelegate.QPSONStyledItemDelegate):
     """
-    Overload of QRollout used to edit fbx sequence data.
+    Overload of QPSONStyledItemDelegate that delegates fbx export set types.
     """
-
-    def __init__(self, sequence, parent=None, f=QtCore.Qt.WindowFlags()):
-        """
-        Private method called after a new instance has been created.
-
-        :type sequence: fbxsequence.FbxSequence
-        :type parent: QtWidgets.QWidget
-        :type f: int
-        :rtype: None
-        """
-
-        # Call parent method
-        #
-        super(QFbxSequenceRollout, self).__init__('', parent=parent, f=f)
-
-        # Declare private variables
-        #
-        self._sequence = sequence
-
-        # Create name widgets
-        #
-        self.nameLabel = QtWidgets.QLabel('Name:')
-        self.nameLabel.setObjectName('nameLabel')
-        self.nameLabel.setAlignment(QtCore.Qt.AlignVCenter | QtCore.Qt.AlignRight)
-        self.nameLabel.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
-        self.nameLabel.setFixedSize(QtCore.QSize(50, 24))
-
-        self.nameLineEdit = QtWidgets.QLineEdit('')
-        self.nameLineEdit.setObjectName('nameLineEdit')
-        self.nameLineEdit.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
-        self.nameLineEdit.setFixedHeight(24)
-        self.nameLineEdit.setText(self.sequence.name)
-        self.nameLineEdit.editingFinished.connect(self.on_nameLineEdit_editingFinished)
-
-        self.nameLayout = QtWidgets.QHBoxLayout()
-        self.nameLayout.setObjectName('nameLayout')
-        self.nameLayout.addWidget(self.nameLabel)
-        self.nameLayout.addWidget(self.nameLineEdit)
-
-        # Create directory widgets
-        #
-        self.directoryLabel = QtWidgets.QLabel('Directory:')
-        self.directoryLabel.setObjectName('directoryLabel')
-        self.directoryLabel.setAlignment(QtCore.Qt.AlignVCenter | QtCore.Qt.AlignRight)
-        self.directoryLabel.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
-        self.directoryLabel.setFixedSize(QtCore.QSize(50, 24))
-
-        self.directoryLineEdit = QtWidgets.QLineEdit('')
-        self.directoryLineEdit.setObjectName('directoryLineEdit')
-        self.directoryLineEdit.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
-        self.directoryLineEdit.setFixedHeight(24)
-        self.directoryLineEdit.setText(self.sequence.directory)
-        self.directoryLineEdit.editingFinished.connect(self.on_directoryLineEdit_editingFinished)
-
-        self.directoryPushButton = QtWidgets.QPushButton(QtGui.QIcon(':dcc/icons/open_file'), '')
-        self.directoryPushButton.setObjectName('directoryPushButton')
-        self.directoryPushButton.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
-        self.directoryPushButton.setFixedSize(QtCore.QSize(24, 24))
-        self.directoryPushButton.clicked.connect(self.on_directoryPushButton_clicked)
-
-        self.directoryLayout = QtWidgets.QHBoxLayout()
-        self.directoryLayout.setObjectName('directoryLayout')
-        self.directoryLayout.addWidget(self.directoryLabel)
-        self.directoryLayout.addWidget(self.directoryLineEdit)
-        self.directoryLayout.addWidget(self.directoryPushButton)
-
-        # Create path layout
-        #
-        self.pathLayout = QtWidgets.QVBoxLayout()
-        self.pathLayout.setObjectName('pathLayout')
-        self.pathLayout.addLayout(self.nameLayout)
-        self.pathLayout.addLayout(self.directoryLayout)
-
-        # Create start frame widgets
-        #
-        self.startLabel = QtWidgets.QLabel('Start:')
-        self.startLabel.setObjectName('startLabel')
-        self.startLabel.setAlignment(QtCore.Qt.AlignVCenter | QtCore.Qt.AlignRight)
-        self.startLabel.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
-        self.startLabel.setFixedHeight(24)
-
-        self.startTimeBox = qtimespinbox.QTimeSpinBox()
-        self.startTimeBox.setObjectName('startTimeBox')
-        self.startTimeBox.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
-        self.startTimeBox.setFixedSize(QtCore.QSize(40, 24))
-        self.startTimeBox.setMinimum(-sys.maxsize)
-        self.startTimeBox.setMaximum(sys.maxsize)
-        self.startTimeBox.setValue(self.sequence.startFrame)
-        self.startTimeBox.valueChanged.connect(self.on_startTimeBox_valueChanged)
-
-        self.startLayout = QtWidgets.QHBoxLayout()
-        self.startLayout.addWidget(self.startLabel)
-        self.startLayout.addWidget(self.startTimeBox)
-
-        # Create end frame widgets
-        #
-        self.endLabel = QtWidgets.QLabel('End:')
-        self.endLabel.setObjectName('endLabel')
-        self.endLabel.setAlignment(QtCore.Qt.AlignVCenter | QtCore.Qt.AlignRight)
-        self.endLabel.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
-        self.endLabel.setFixedHeight(24)
-
-        self.endTimeBox = qtimespinbox.QTimeSpinBox(defaultType=qtimespinbox.DefaultType.EndTime)
-        self.endTimeBox.setObjectName('endTimeBox')
-        self.endTimeBox.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
-        self.endTimeBox.setFixedSize(QtCore.QSize(40, 24))
-        self.endTimeBox.setMinimum(-sys.maxsize)
-        self.endTimeBox.setMaximum(sys.maxsize)
-        self.endTimeBox.setValue(self.sequence.endFrame)
-        self.endTimeBox.valueChanged.connect(self.on_endTimeBox_valueChanged)
-
-        self.endLayout = QtWidgets.QHBoxLayout()
-        self.endLayout.setObjectName('endLayout')
-        self.endLayout.addWidget(self.endLabel)
-        self.endLayout.addWidget(self.endTimeBox)
-
-        self.durationLayout = QtWidgets.QHBoxLayout()
-        self.durationLayout.setObjectName('durationLayout')
-        self.durationLayout.addLayout(self.startLayout)
-        self.durationLayout.addLayout(self.endLayout)
-
-        # Create frame step widgets
-        #
-        self.stepLabel = QtWidgets.QLabel('Step:')
-        self.stepLabel.setObjectName('stepLabel')
-        self.stepLabel.setAlignment(QtCore.Qt.AlignVCenter | QtCore.Qt.AlignRight)
-        self.stepLabel.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
-        self.stepLabel.setFixedHeight(24)
-
-        self.stepSpinBox = QtWidgets.QSpinBox()
-        self.stepSpinBox.setAlignment(QtCore.Qt.AlignCenter)
-        self.stepSpinBox.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
-        self.stepSpinBox.setFixedSize(QtCore.QSize(40, 24))
-        self.stepSpinBox.setMinimum(-sys.maxsize)
-        self.stepSpinBox.setMaximum(sys.maxsize)
-        self.stepSpinBox.setValue(self.sequence.step)
-        self.stepSpinBox.valueChanged.connect(self.on_stepSpinBox_valueChanged)
-
-        self.stepLayout = QtWidgets.QHBoxLayout()
-        self.stepLayout.setObjectName('stepLayout')
-        self.stepLayout.addWidget(self.stepLabel)
-        self.stepLayout.addWidget(self.stepLineEdit)
-
-        # Create time layout
-        #
-        self.timeLayout = QtWidgets.QVBoxLayout()
-        self.timeLayout.addLayout(self.durationLayout)
-        self.timeLayout.addLayout(self.stepLayout)
-
-        # Create export set widget
-        #
-        self.exportSetLabel = QtWidgets.QLabel('Export Set:')
-        self.exportSetLabel.setObjectName('exportSetLabel')
-        self.exportSetLabel.setAlignment(QtCore.Qt.AlignVCenter | QtCore.Qt.AlignRight)
-        self.exportSetLabel.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
-        self.exportSetLabel.setFixedSize(QtCore.QSize(60, 24))
-
-        self.exportSetComboBox = QtWidgets.QComboBox()
-        self.exportSetComboBox.setObjectName('exportSetComboBox')
-        self.exportSetComboBox.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
-        self.exportSetComboBox.setFixedHeight(24)
-        self.exportSetComboBox.addItems([x.name for x in self.sequence.asset.exportSets])
-        self.exportSetComboBox.setCurrentIndex(self.source.exportSetId)
-        self.exportSetComboBox.currentIndexChanged.connect(self.on_exportSetComboBox_currentIndexChanged)
-
-        self.exportSetLayout = QtWidgets.QHBoxLayout()
-        self.exportSetLayout.setObjectName('exportSetLayout')
-        self.exportSetLayout.addWidget(self.exportSetLabel)
-        self.exportSetLayout.addWidget(self.exportSetComboBox)
-
-        # Edit central layout
-        #
-        centralLayout = QtWidgets.QHBoxLayout()
-        centralLayout.addLayout(self.timeLayout)
-        centralLayout.addWidget(qdivider.QDivider(QtCore.Qt.Vertical))
-        centralLayout.addLayout(self.pathLayout)
-        centralLayout.addWidget(qdivider.QDivider(QtCore.Qt.Vertical))
-        centralLayout.addLayout(self.exportSetLayout)
-
-        self.setLayout(centralLayout)
-    # endregion
-
-    # region Properties
-    @property
-    def sequence(self):
-        """
-        Getter method that returns the associated fbx sequence.
-
-        :rtype: fbxsequence.FbxSequence
-        """
-
-        return self._sequence
-    # endregion
 
     # region Methods
-    def projectPath(self):
+    def createEditorByProperty(self, obj, func, isElement=False, parent=None):
         """
-        Returns the current project path.
+        Returns a widget from the supplied object and property.
 
-        :rtype: str
-        """
-
-        pass
-
-    def getExistingDirectory(self):
-        """
-        Prompts the user for an existing directory.
-
-        :rtype: str
+        :type obj: object
+        :type func: function
+        :type isElement: bool
+        :type parent: QtWidgets.QWidget
+        :rtype: QtWidgets.QWidget
         """
 
-        # Prompt user for save path
+        # Evaluate object type
         #
-        projectPath = os.path.expandvars(self.projectPath())
+        if isinstance(obj, fbxsequence.FbxSequence):
 
-        return QtWidgets.QFileDialog.getExistingDirectory(
-            parent=self,
-            caption='Select Directory',
-            dir=projectPath,
-            options=QtWidgets.QFileDialog.ShowDirsOnly
-        )
+            # Inspect property name
+            #
+            name = func.__name__
 
-    def invalidate(self):
-        """
-        Method used to preview the resolved file path.
-        This method will take the project path and join it with the relative file path.
-        All environment variables will be expanded for debugging purposes.
+            if name == 'directory':
 
-        :rtype: None
-        """
+                return qdirectoryedit.QDirectoryEdit(parent=parent)
 
-        # Concatenate path
-        #
-        self.setTitle(
-            os.path.join(
-                os.path.expandvars(self.projectPath()),
-                os.path.expandvars(self.sequence.directory),
-                '{name}.fbx'.format(name=self.sequence.name)
-            )
-        )
-    # endregion
+            elif name == 'startFrame':
 
-    # region Events
-    def eventFilter(self, watched, event):
-        """
-        Inherited method called whenever a widget event requires inspection.
-        The only events we're interested in here are child and focus events.
-        This allows us to auto-check the rollout whenever the user changes focus.
+                return qtimespinbox.QTimeSpinBox(defaultType=qtimespinbox.DefaultType.StartTime, parent=parent)
 
-        :type watched: QtWidgets.QWidget
-        :type event: QtCore.QEvent
-        :rtype: bool
-        """
+            elif name == 'endFrame':
 
-        # Inspect event type
-        #
-        if event.type() == QtCore.QEvent.ChildAdded:
+                return qtimespinbox.QTimeSpinBox(defaultType=qtimespinbox.DefaultType.EndTime, parent=parent)
 
-            event.child().installEventFilter(self)
+            else:
 
-        elif event.type() == QtCore.QEvent.ChildRemoved:
-
-            event.child().removeEventFilter(self)
-
-        elif event.type() == QtCore.QEvent.FocusIn:
-
-            self.setChecked(True)  # SUPER dirty but it gets the job done~
+                return super(QFbxSequenceItemDelegate, self).createEditorByProperty(obj, func, isElement=isElement, parent=parent)
 
         else:
 
-            pass
-
-        # Call parent method
-        #
-        return super(QFbxSequenceRollout, self).eventFilter(watched, event)
-    # endregion
-
-    # region Slots
-    @QtCore.Slot(int)
-    def on_startTimeBox_valueChanged(self, value):
-        """
-        Value changed slot method responsible for updating the start time.
-
-        :type value: int
-        :rtype: None
-        """
-
-        pass
-
-    @QtCore.Slot(int)
-    def on_endTimeBox_valueChanged(self, value):
-        """
-        Value changed slot method responsible for updating the end time.
-
-        :type value: int
-        :rtype: None
-        """
-
-        pass
-
-    @QtCore.Slot(int)
-    def on_stepSpinBox_valueChanged(self, value):
-        """
-        Value changed slot method responsible for updating the bake increment.
-
-        :type value: int
-        :rtype: None
-        """
-
-        pass
-
-    @QtCore.Slot(int)
-    def on_exportSetComboBox_currentIndexChanged(self, index):
-        """
-        Current index changed slot method responsible for updating the associated export set.
-
-        :type index: int
-        :rtype: None
-        """
-
-        self.sequence.exportSetId = index
-
-    @QtCore.Slot()
-    def on_nameLineEdit_editingFinished(self):
-        """
-        Editing finished slot method responsible for updating the sequence name.
-
-        :rtype: None
-        """
-
-        self.sequence.name = self.sender().text()
-        self.invalidate()
-
-    @QtCore.Slot()
-    def on_directoryLineEdit_editingFinished(self):
-        """
-        Editing finished slot method responsible for updating the sequence directory.
-
-        :rtype: None
-        """
-
-        self.sequence.directory = self.sender().text()
-        self.invalidate()
-
-    @QtCore.Slot(bool)
-    def on_directoryPushButton_clicked(self, checked=False):
-        """
-        Clicked slot method responsible for updating the sequence directory.
-
-        :type checked: bool
-        :rtype: None
-        """
-
-        directory = self.getExistingDirectory()
-
-        if directory:
-
-            self.sequence.directory = directory
-            self.invalidate()
+            return super(QFbxSequenceItemDelegate, self).createEditorByProperty(obj, func, isElement=isElement, parent=parent)
     # endregion
 
 
@@ -393,21 +73,149 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
         :rtype: None
         """
 
+        # Define class variables
+        #
+        self._manager = fbxio.FbxIO()
+        self._sequencers = []
+        self._currentSequencer = None
+        self._scene = fnscene.FnScene()
+        self._fnNotify = fnnotify.FnNotify()
+        self._notifyId = None
+
+        # Declare public variables
+        #
+        self.sequencerItemModel = None
+        self.sequencerItemDelegate = None
+
         # Call parent method
         #
         super(QFbxSequenceEditor, self).__init__(*args, **kwargs)
+    # endregion
 
-        # Define class variables
-        #
-        self._assets = None
-        self._currentAsset = None
-        self._sequences = None
-        self._currentSequence = None
-        self._fnNotify = fnnotify.FnNotify()
-        self._notifyId = None
+    # region Properties
+    @property
+    def manager(self):
+        """
+        Getter method that returns the fbx sequencer manager.
+
+        :rtype: fbxio.FbxIO
+        """
+
+        return self._manager
+
+    @property
+    def scene(self):
+        """
+        Getter method that returns the scene interface.
+
+        :rtype: fnscene.FnScene
+        """
+
+        return self._scene
+
+    @property
+    def sequencers(self):
+        """
+        Getter method that returns the active fbx sequencers.
+
+        :rtype: List[fbxsequencer.FbxSequencer]
+        """
+
+        return self._sequencers
+
+    @property
+    def currentSequencer(self):
+        """
+        Getter method that returns the current fbx sequencer.
+
+        :rtype: fbxsequencer.FbxSequencer
+        """
+
+        return self._currentSequencer
     # endregion
 
     # region Methods
+    def postLoad(self):
+        """
+        Called after the user interface has been loaded.
+
+        :rtype: None
+        """
+
+        # Call parent method
+        #
+        super(QFbxSequenceEditor, self).postLoad()
+
+        # Initialize sequencer tree view model
+        #
+        self.sequencerItemModel = qpsonitemmodel.QPSONItemModel(parent=self.sequencerTreeView)
+        self.sequencerItemModel.setObjectName('sequencerItemModel')
+        self.sequencerItemModel.invisibleRootProperty = 'sequences'
+
+        self.sequencerTreeView.setModel(self.sequencerItemModel)
+
+        self.sequencerItemDelegate = QFbxSequenceItemDelegate(parent=self.sequencerTreeView)
+        self.sequencerItemDelegate.setObjectName('sequencerItemDelegate')
+
+        self.sequencerTreeView.setItemDelegate(self.sequencerItemDelegate)
+
+    def getSelectedRows(self):
+        """
+        Returns the selected rows from the tree view.
+
+        :rtype: List[int]
+        """
+
+        return [self.sequencerItemModel.topLevelIndex(index).row() for index in self.sequencerTreeView.selectedIndexes() if index.column() == 0]
+
+    def invalidateSequencers(self):
+        """
+        Invalidates the sequences displayed inside the combo box.
+
+        :rtype: None
+        """
+
+        # Cache current index
+        #
+        index = self.sequencerComboBox.currentIndex()
+
+        # Re-populate combo box
+        #
+        filePaths = [sequencer.reference.filePath() for sequencer in self.sequencers]
+        numFilePaths = len(filePaths)
+
+        self.sequencerComboBox.clear()
+        self.sequencerComboBox.addItems(filePaths)
+
+        if 0 <= index < numFilePaths:
+
+            self.sequencerComboBox.setCurrentIndex(index)
+
+    def invalidateSequences(self):
+        """
+        Invalidates the sequences displayed inside the tree view.
+
+        :rtype: None
+        """
+
+        self.sequencerItemModel.invisibleRootItem = self.currentSequencer
+
+    def invalidateExportPath(self):
+        """
+        Invalidates the displayed export path.
+
+        :rtype: None
+        """
+
+        selectedRows = self.getSelectedRows()
+        numSelectedRows = len(selectedRows)
+
+        if numSelectedRows:
+
+            selectedRow = selectedRows[0]
+            exportPath = self.currentSequencer.sequences[selectedRow].exportPath()
+
+            self.exportPathLineEdit.setText(exportPath)
     # endregion
 
     # region Callbacks
@@ -418,7 +226,10 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
         :rtype: None
         """
 
-        self.invalidateAsset()
+        self.sequencers.clear()
+        self.sequencers.extend(self.manager.loadSequencers())
+
+        self.invalidateSequencers()
     # endregion
 
     # region Events
@@ -437,6 +248,7 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
         # Create post file-open notify
         #
         self._notifyId = self._fnNotify.addPostFileOpenNotify(self.sceneChanged)
+        self.sceneChanged()
 
     def closeEvent(self, event):
         """
@@ -446,112 +258,258 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
         :rtype: None
         """
 
-        # Call inherited method
+        # Call parent method
         #
         super(QFbxSequenceEditor, self).closeEvent(event)
 
         # Remove post file-open notify
         #
         self._fnNotify.removeNotify(self._notifyId)
+        self._fnNotify = None
     # endregion
 
     # region Slots
-    @QtCore.Slot(bool)
-    def on_savePushButton_clicked(self, checked=False):
+    @QtCore.Slot(int)
+    def on_sequencerComboBox_currentIndexChanged(self, index):
         """
-        Clicked slot method responsible for saving all recent changes.
+        Slot method for the sequencerComboBox's currentIndexChanged signal.
+
+        :type index: int
+        :rtype: None
+        """
+
+        numSequencers = len(self.sequencers)
+
+        if 0 <= index < numSequencers:
+
+            self._currentSequencer = self.sequencers[index]
+
+        self.invalidateSequences()
+
+    @QtCore.Slot(QtCore.QItemSelection, QtCore.QItemSelection)
+    def on_sequencerTreeView_selectionChanged(self, selected, deselected):
+        """
+        Slot method for the sequencerTreeView's selectionChanged signal.
+
+        :type selected: QtCore.QItemSelection
+        :type deselected: QtCore.QItemSelection
+        :rtype: None
+        """
+
+        self.invalidateExportPath()
+
+    @QtCore.Slot(bool)
+    def on_newSequencerAction_triggered(self, checked=False):
+        """
+        Slot method for the newSequencerAction's triggered signal.
 
         :type checked: bool
         :rtype: None
         """
 
-        pass
+        # Collect references from scene
+        #
+        reference = fnreference.FnReference()
+
+        references = list(reference.iterSceneReferences())
+        numReferences = len(references)
+
+        if numReferences == 0:
+
+            QtWidgets.QMessageBox.information(self, 'Create Sequencer', 'Scene contains no references!')
+            return
+
+        # Prompt user to select a reference
+        #
+        filePaths = [reference(obj).filePath() for obj in references]
+
+        item, okay = QtWidgets.QInputDialog.getItem(
+            self,
+            'Create Sequencer',
+            'Select a Referenced Asset:',
+            filePaths,
+            editable=False
+        )
+
+        # Evaluate user input
+        #
+        if okay:
+
+            index = filePaths.index(item)
+            guid = reference(references[index]).guid()
+
+            sequencer = fbxsequencer.FbxSequencer(guid=guid, sequences=[fbxsequence.FbxSequence()])
+            self.sequencers.append(sequencer)
+
+            self.invalidateSequencers()
+
+        else:
+
+            log.info('Operation aborted...')
 
     @QtCore.Slot(bool)
-    def on_addSequencePushButton_clicked(self, checked=False):
+    def on_saveSequencerAction_triggered(self, checked=False):
         """
-        Clicked slot method responsible for adding a new fbx sequence.
+        Slot method for the saveSequencerAction's triggered signal.
 
         :type checked: bool
         :rtype: None
         """
 
-        pass
+        self.manager.saveSequencers(self.sequencers)
 
     @QtCore.Slot(bool)
-    def on_removeSequencePushButton_clicked(self, checked=False):
+    def on_addSequenceAction_triggered(self, checked=False):
         """
-        Clicked slot method responsible for remove the current fbx sequence.
+        Slot method for the addSequenceAction's triggered signal.
 
         :type checked: bool
         :rtype: None
         """
 
-        pass
+        sequence = fbxsequence.FbxSequence()
+        self.sequencerItemModel.appendRow(sequence)
 
     @QtCore.Slot(bool)
-    def on_startTimePushButton_clicked(self, checked=False):
+    def on_removeSequenceAction_triggered(self, checked=False):
         """
-        Clicked slot method responsible for adopting the current fbx sequence's start time.
+        Slot method for the removeSequenceAction's triggered signal.
 
         :type checked: bool
         :rtype: None
         """
 
-        pass
+        selectedRows = self.getSelectedRows()
+
+        for (start, end) in reversed(tuple(consecutivePairs(selectedRows))):
+
+            numRows = (end - start) + 1
+            self.sequencerItemModel.removeRows(start, numRows)
 
     @QtCore.Slot(bool)
-    def on_endTimePushButton_clicked(self, checked=False):
+    def on_updateStartTimeAction_triggered(self, checked=False):
         """
-        Clicked slot method responsible for adopting the current fbx sequence's end time.
+        Slot method for the updateStartTimeAction's triggered signal.
 
         :type checked: bool
         :rtype: None
         """
 
-        pass
+        # Get selected rows
+        #
+        selectedRows = self.getSelectedRows()
+        numSelectedRows = len(selectedRows)
+
+        if numSelectedRows == 0:
+
+            return
+
+        # Evaluate keyboard modifiers
+        #
+        keyboardModifiers = QtWidgets.QApplication.keyboardModifiers()
+
+        if keyboardModifiers == QtCore.Qt.ShiftModifier:  # Copy start frame
+
+            for row in selectedRows:
+
+                self.currentSequencer.sequences[row].startFrame = self.scene.getStartTime()
+
+        else:
+
+            row = selectedRows[0]
+            self.scene.setStartTime(self.currentSequencer.sequences[row].startFrame)
 
     @QtCore.Slot(bool)
-    def on_timeRangePushButton_clicked(self, checked=False):
+    def on_updateEndTimeAction_triggered(self, checked=False):
         """
-        Clicked slot method responsible for adopting the current fbx sequence's time range.
+        Slot method for the updateEndTimeAction's triggered signal.
 
         :type checked: bool
         :rtype: None
         """
 
-        pass
+        # Get selected rows
+        #
+        selectedRows = self.getSelectedRows()
+        numSelectedRows = len(selectedRows)
+
+        if numSelectedRows == 0:
+
+            return
+
+        # Evaluate keyboard modifiers
+        #
+        keyboardModifiers = QtWidgets.QApplication.keyboardModifiers()
+
+        if keyboardModifiers == QtCore.Qt.ShiftModifier:  # Copy start frame
+
+            for row in selectedRows:
+
+                self.currentSequencer.sequences[row].endFrame = self.scene.getEndTime()
+
+        else:
+
+            row = selectedRows[0]
+            self.scene.setEndTime(self.currentSequencer.sequences[row].endFrame)
 
     @QtCore.Slot(bool)
-    def on_timelinePushButton_clicked(self, checked=False):
+    def on_updateTimeRangeAction_triggered(self, checked=False):
         """
-        Clicked slot method responsible for adopting the current fbx sequence's time range.
+        Slot method for the updateTimeRangeAction's triggered signal.
 
         :type checked: bool
         :rtype: None
         """
 
-        pass
+        # Get selected rows
+        #
+        selectedRows = self.getSelectedRows()
+        numSelectedRows = len(selectedRows)
+
+        if numSelectedRows == 0:
+
+            return
+
+        # Evaluate keyboard modifiers
+        #
+        keyboardModifiers = QtWidgets.QApplication.keyboardModifiers()
+
+        if keyboardModifiers == QtCore.Qt.ShiftModifier:  # Copy start frame
+
+            for row in selectedRows:
+
+                self.currentSequencer.sequences[row].startFrame = self.scene.getStartTime()
+                self.currentSequencer.sequences[row].endFrame = self.scene.getEndTime()
+
+        else:
+
+            row = selectedRows[0]
+            self.scene.setStartTime(self.currentSequencer.sequences[row].startFrame)
+            self.scene.setEndTime(self.currentSequencer.sequences[row].endFrame)
 
     @QtCore.Slot(bool)
     def on_exportPushButton_clicked(self, checked=False):
         """
-        Clicked slot method responsible for exporting the current fbx sequence.
+        Slot method for the exportPushButton's clicked signal.
 
         :type checked: bool
         :rtype: None
         """
 
-        pass
+        for row in self.getSelectedRows():
+
+            self.currentSequencer.sequences[row].export()
 
     @QtCore.Slot(bool)
     def on_exportAllPushButton_clicked(self, checked=False):
         """
-        Clicked slot method responsible for exporting all of the fbx sequences.
+        Slot method for the exportAllPushButton's clicked signal.
 
         :type checked: bool
         :rtype: None
         """
 
-        pass
+        for sequence in self.currentSequencer.sequences:
+
+            sequence.export()
     # endregion

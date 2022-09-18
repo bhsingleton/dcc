@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>fbxSequenceEditorWindow</class>
- <widget class="QMainWindow" name="fbxSequenceEditorWindow">
+ <class>QFbxSequencerEditor</class>
+ <widget class="QMainWindow" name="QFbxSequencerEditor">
   <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>707</width>
-    <height>350</height>
+    <width>400</width>
+    <height>400</height>
    </rect>
   </property>
   <property name="minimumSize">
    <size>
-    <width>700</width>
-    <height>350</height>
+    <width>400</width>
+    <height>400</height>
    </size>
   </property>
   <property name="windowTitle">
@@ -22,18 +22,18 @@
   <property name="documentMode">
    <bool>false</bool>
   </property>
-  <widget class="QWidget" name="centralwidget">
+  <widget class="QWidget" name="centralWidget">
    <layout class="QVBoxLayout" name="verticalLayout_3">
     <item>
-     <widget class="QGroupBox" name="assetsGroupBox">
+     <widget class="QGroupBox" name="sequencerGroupBox">
       <property name="title">
-       <string>Assets:</string>
+       <string>Sequences:</string>
       </property>
       <layout class="QVBoxLayout" name="assetsLayout">
        <item>
-        <layout class="QHBoxLayout" name="assetLayout">
+        <layout class="QVBoxLayout" name="verticalLayout">
          <item>
-          <widget class="QComboBox" name="assetComboBox">
+          <widget class="QComboBox" name="sequencerComboBox">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
              <horstretch>0</horstretch>
@@ -54,49 +54,65 @@
            </property>
           </widget>
          </item>
+         <item>
+          <widget class="QTreeView" name="sequencerTreeView">
+           <property name="styleSheet">
+            <string notr="true">QTreeView::item { height: 24px; }</string>
+           </property>
+           <property name="selectionMode">
+            <enum>QAbstractItemView::ExtendedSelection</enum>
+           </property>
+          </widget>
+         </item>
         </layout>
        </item>
       </layout>
      </widget>
     </item>
     <item>
-     <widget class="QScrollArea" name="scrollArea">
-      <property name="widgetResizable">
-       <bool>true</bool>
+     <widget class="QGroupBox" name="exportGroupBox">
+      <property name="title">
+       <string>Export:</string>
       </property>
-      <widget class="QWidget" name="scrollAreaContents">
-       <property name="geometry">
-        <rect>
-         <x>0</x>
-         <y>0</y>
-         <width>656</width>
-         <height>234</height>
-        </rect>
-       </property>
-      </widget>
+      <layout class="QVBoxLayout" name="exportLayout">
+       <item>
+        <layout class="QHBoxLayout" name="exportPathLayout">
+         <item>
+          <widget class="QLineEdit" name="exportPathLineEdit">
+           <property name="acceptDrops">
+            <bool>false</bool>
+           </property>
+           <property name="readOnly">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="exportButtonLayout">
+         <item>
+          <widget class="QPushButton" name="exportPushButton">
+           <property name="text">
+            <string>Export</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="exportAllPushButton">
+           <property name="text">
+            <string>Export All</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+      </layout>
      </widget>
-    </item>
-    <item>
-     <layout class="QHBoxLayout" name="buttonLayout">
-      <item>
-       <widget class="QPushButton" name="exportPushButton">
-        <property name="text">
-         <string>Export</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="exportAllPushButton">
-        <property name="text">
-         <string>Export All</string>
-        </property>
-       </widget>
-      </item>
-     </layout>
     </item>
    </layout>
   </widget>
-  <widget class="QToolBar" name="toolBar">
+  <widget class="QToolBar" name="centralToolBar">
    <property name="windowTitle">
     <string>toolBar</string>
    </property>
@@ -121,16 +137,19 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="saveSequencesAction"/>
+   <addaction name="separator"/>
+   <addaction name="newSequencerAction"/>
+   <addaction name="saveSequencerAction"/>
    <addaction name="importSequencesAction"/>
    <addaction name="exportSequencesAction"/>
    <addaction name="separator"/>
    <addaction name="addSequenceAction"/>
    <addaction name="removeSequenceAction"/>
    <addaction name="separator"/>
-   <addaction name="startTimeAction"/>
-   <addaction name="endTimeAction"/>
-   <addaction name="timeRangeAction"/>
+   <addaction name="updateStartTimeAction"/>
+   <addaction name="updateEndTimeAction"/>
+   <addaction name="updateTimeRangeAction"/>
+   <addaction name="separator"/>
   </widget>
   <action name="addSequenceAction">
    <property name="icon">
@@ -139,6 +158,9 @@
    </property>
    <property name="text">
     <string>Add Sequence</string>
+   </property>
+   <property name="toolTip">
+    <string>Adds a new sequence to the active sequencer.</string>
    </property>
   </action>
   <action name="removeSequenceAction">
@@ -149,53 +171,56 @@
    <property name="text">
     <string>Remove Sequence</string>
    </property>
+   <property name="toolTip">
+    <string>Remove the selected sequences.</string>
+   </property>
   </action>
-  <action name="startTimeAction">
+  <action name="updateStartTimeAction">
    <property name="icon">
     <iconset resource="../../ui/resources.qrc">
      <normaloff>:/dcc/icons/start_time.svg</normaloff>:/dcc/icons/start_time.svg</iconset>
    </property>
    <property name="text">
-    <string>Start Time</string>
+    <string>Update Start Time</string>
    </property>
    <property name="toolTip">
     <string>LMB adopts start frame. Shift + LMB copies start frame.</string>
    </property>
   </action>
-  <action name="endTimeAction">
+  <action name="updateEndTimeAction">
    <property name="icon">
     <iconset resource="../../ui/resources.qrc">
      <normaloff>:/dcc/icons/end_time.svg</normaloff>:/dcc/icons/end_time.svg</iconset>
    </property>
    <property name="text">
-    <string>End Time</string>
+    <string>Update End Time</string>
    </property>
    <property name="toolTip">
     <string>LMB adopts end frame. Shift + LMB copies end frame.</string>
    </property>
   </action>
-  <action name="timeRangeAction">
+  <action name="updateTimeRangeAction">
    <property name="icon">
     <iconset resource="../../ui/resources.qrc">
      <normaloff>:/dcc/icons/timeline.png</normaloff>:/dcc/icons/timeline.png</iconset>
    </property>
    <property name="text">
-    <string>Time Range</string>
+    <string>Update Time Range</string>
    </property>
    <property name="toolTip">
     <string>LMB adopts timerange. Shift + LMB copies timerange.</string>
    </property>
   </action>
-  <action name="saveSequencesAction">
+  <action name="saveSequencerAction">
    <property name="icon">
     <iconset resource="../../ui/resources.qrc">
      <normaloff>:/dcc/icons/save_file.svg</normaloff>:/dcc/icons/save_file.svg</iconset>
    </property>
    <property name="text">
-    <string>Save Sequences</string>
+    <string>Save Sequencer</string>
    </property>
    <property name="toolTip">
-    <string>Saves changes made to sequences</string>
+    <string>Saves any changes made to the active sequencer.</string>
    </property>
   </action>
   <action name="importSequencesAction">
@@ -204,10 +229,10 @@
      <normaloff>:/dcc/icons/import_file.svg</normaloff>:/dcc/icons/import_file.svg</iconset>
    </property>
    <property name="text">
-    <string>importSequences</string>
+    <string>Import Sequences</string>
    </property>
    <property name="toolTip">
-    <string>Import sequences</string>
+    <string>Import sequences into the active sequencer.</string>
    </property>
   </action>
   <action name="exportSequencesAction">
@@ -216,10 +241,22 @@
      <normaloff>:/dcc/icons/export_file.svg</normaloff>:/dcc/icons/export_file.svg</iconset>
    </property>
    <property name="text">
-    <string>exportSequences</string>
+    <string>Export Sequences</string>
    </property>
    <property name="toolTip">
-    <string>Export sequences</string>
+    <string>Export sequences from the active sequencer.</string>
+   </property>
+  </action>
+  <action name="newSequencerAction">
+   <property name="icon">
+    <iconset resource="../../ui/resources.qrc">
+     <normaloff>:/dcc/icons/new_file.svg</normaloff>:/dcc/icons/new_file.svg</iconset>
+   </property>
+   <property name="text">
+    <string>New Sequencer</string>
+   </property>
+   <property name="toolTip">
+    <string>Creates a new sequencer.</string>
    </property>
   </action>
  </widget>
