@@ -7,7 +7,7 @@ def consecutivePairs(iterable):
     Returns a generator that yields consecutive pairs from the supplied iterable.
 
     :type iterable: List[int]
-    :rtype: iter
+    :rtype: Iterator[Tuple[int, int]]
     """
 
     for (i, grouper) in groupby(enumerate(sorted(iterable)), lambda x: x[0] - x[1]):
