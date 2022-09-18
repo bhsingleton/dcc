@@ -1,4 +1,5 @@
 import pymxs
+from ..fbx.libs import FbxFileVersion
 from ..abstract import afnfbx
 
 import logging
@@ -21,17 +22,25 @@ class FnFbx(afnfbx.AFnFbx):
         :rtype: None
         """
 
+        version = kwargs.get('version', FbxFileVersion.FBX202000)
+        asAscii = kwargs.get('asAscii', False)
+        scale = kwargs.get('scale', 1.0)
+        includeSmoothings = kwargs.get('includeSmoothings', True)
+        includeTangentsAndBinormals = kwargs.get('includeTangentsAndBinormals', True)
+        includeSkins = kwargs.get('includeSkins', True)
+        includeBlendshapes = kwargs.get('includeBlendshapes', False)
+
         pymxs.runtime.FBXExporterSetParam('ResetExport', True)
         pymxs.runtime.FBXExporterSetParam('Animation', False)
         pymxs.runtime.FBXExporterSetParam('ExportAnimationOnly', False)
-        pymxs.runtime.FBXExporterSetParam('ASCII', False)
+        pymxs.runtime.FBXExporterSetParam('ASCII', asAscii)
         pymxs.runtime.FBXExporterSetParam('AxisConversionMethod', 'None')
         pymxs.runtime.FBXExporterSetParam('Cameras', True)
         pymxs.runtime.FBXExporterSetParam('CAT2HIK', False)
         pymxs.runtime.FBXExporterSetParam('Convert2Tiff', False)
         pymxs.runtime.FBXExporterSetParam('ConvertUnit', 'cm')
         pymxs.runtime.FBXExporterSetParam('EmbedTextures', False)
-        pymxs.runtime.FBXExporterSetParam('FileVersion', 'FBX201600')
+        pymxs.runtime.FBXExporterSetParam('FileVersion', version.name)
         pymxs.runtime.FBXExporterSetParam('GeomAsBone', True)
         pymxs.runtime.FBXExporterSetParam('GenerateLog', True)
         pymxs.runtime.FBXExporterSetParam('Lights', False)
@@ -41,15 +50,15 @@ class FnFbx(afnfbx.AFnFbx):
         pymxs.runtime.FBXExporterSetParam('PopSettings', False)
         pymxs.runtime.FBXExporterSetParam('Preserveinstances', False)
         pymxs.runtime.FBXExporterSetParam('PushSettings', False)
-        pymxs.runtime.FBXExporterSetParam('ScaleFactor', kwargs['scale'])
+        pymxs.runtime.FBXExporterSetParam('ScaleFactor', scale)
         pymxs.runtime.FBXExporterSetParam('SelectionSet', '')
         pymxs.runtime.FBXExporterSetParam('SelectionSetExport', False)
-        pymxs.runtime.FBXExporterSetParam('Shape', kwargs['includeBlendshapes'])
-        pymxs.runtime.FBXExporterSetParam('Skin', kwargs['includeSkins'])
+        pymxs.runtime.FBXExporterSetParam('Shape', includeBlendshapes)
+        pymxs.runtime.FBXExporterSetParam('Skin', includeSkins)
         pymxs.runtime.FBXExporterSetParam('ShowWarnings', False)
-        pymxs.runtime.FBXExporterSetParam('SmoothingGroups', kwargs['includeSmoothings'])
+        pymxs.runtime.FBXExporterSetParam('SmoothingGroups', includeSmoothings)
         pymxs.runtime.FBXExporterSetParam('SmoothMeshExport', False)
-        pymxs.runtime.FBXExporterSetParam('TangentSpaceExport', kwargs['includeTangentsAndBinormals'])
+        pymxs.runtime.FBXExporterSetParam('TangentSpaceExport', includeTangentsAndBinormals)
         pymxs.runtime.FBXExporterSetParam('Triangulate', True)
         pymxs.runtime.FBXExporterSetParam('PreserveEdgeOrientation', True)
         pymxs.runtime.FBXExporterSetParam('UpAxis', 'Z')
