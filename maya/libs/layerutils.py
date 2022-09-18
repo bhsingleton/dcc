@@ -1,7 +1,7 @@
 import maya.cmds as mc
 import maya.api.OpenMaya as om
 
-from dcc.maya.libs import dagutils, plugutils
+from . import dagutils, plugutils
 
 import logging
 logging.basicConfig()
@@ -25,7 +25,7 @@ def iterNodesFromLayers(*layers):
         layer = dagutils.getMObject(layer)
         plug = plugutils.findPlug(layer, 'drawInfo')
 
-        otherPlugs = plug.connectedTo(True, False)
+        otherPlugs = plug.connectedTo(False, True)
 
         for otherPlug in otherPlugs:
 
@@ -50,7 +50,7 @@ def iterLayersFromNodes(*nodes):
         node = dagutils.getMObject(node)
         plug = plugutils.findPlug(node, 'drawOverride')
 
-        otherPlugs = plug.connectedTo(False, True)
+        otherPlugs = plug.connectedTo(True, False)
         numOtherPlugs = len(otherPlugs)
 
         if numOtherPlugs == 0:
