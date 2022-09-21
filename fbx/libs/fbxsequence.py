@@ -2,7 +2,7 @@ import os
 
 from enum import Enum, IntEnum
 from . import fbxbase
-from ... import fnfbx
+from ... import fnfbx, fnscene
 from ...python import stringutils
 
 import logging
@@ -18,12 +18,13 @@ class FbxSequence(fbxbase.FbxBase):
 
     # region Dunderscores
     __slots__ = (
+        '_scene',
         '_sequencer',
         '_directory',
         '_startFrame',
         '_endFrame',
         '_step',
-        '_frameRate',
+        '_useTimeline',
         '_exportSetId'
     )
 
@@ -36,13 +37,14 @@ class FbxSequence(fbxbase.FbxBase):
 
         # Declare private variables
         #
+        self._scene = fnscene.FnScene()
         self._fbx = fnfbx.FnFbx()
         self._sequencer = self.nullWeakReference
         self._directory = kwargs.get('directory', '')
         self._startFrame = kwargs.get('startFrame', 0)
         self._endFrame = kwargs.get('endFrame', 1)
         self._step = kwargs.get('step', 1)
-        self._frameRate = kwargs.get('frameRate', 30)
+        self._useTimeline = kwargs.get('useTimeline', True)
         self._exportSetId = kwargs.get('exportSetId', 0)
 
         # Call parent method
@@ -52,9 +54,19 @@ class FbxSequence(fbxbase.FbxBase):
 
     # region Properties
     @property
+    def scene(self):
+        """
+        Getter method that returns the scene interface.
+
+        :rtype: fnscene.FnScene
+        """
+
+        return self._scene
+
+    @property
     def sequencer(self):
         """
-        Returns the asset associated with this sequence.
+        Getter method that returns the associated sequencer.
 
         :rtype: fbxsequencer.FbxSequencer
         """
@@ -146,25 +158,25 @@ class FbxSequence(fbxbase.FbxBase):
         self._step = step
 
     @property
-    def frameRate(self):
+    def useTimeline(self):
         """
-        Getter method that returns the frame rate for this sequence.
+        Getter method that returns the timeline flag for this sequence.
 
-        :rtype: int
+        :rtype: bool
         """
 
-        return self._frameRate
+        return self._useTimeline
 
-    @frameRate.setter
-    def frameRate(self, frameRate):
+    @useTimeline.setter
+    def useTimeline(self, useTimeline):
         """
-        Setter method that updates the frame rate for this sequence.
+        Setter method that updates the timeline flag for this sequence.
 
-        :type frameRate: int
+        :type useTimeline: bool
         :rtype: None
         """
 
-        self._frameRate = frameRate
+        self._useTimeline = useTimeline
 
     @property
     def exportSetId(self):
@@ -197,6 +209,21 @@ class FbxSequence(fbxbase.FbxBase):
         """
 
         return self.exportSet() is not None
+
+    def timeRange(self):
+        """
+        Returns the time range for this sequence.
+
+        :rtype: Tuple[int, int]
+        """
+
+        if self.useTimeline:
+
+            return self.scene.getStartTime(), self.scene.getEndTime()
+
+        else:
+
+            return self.startFrame, self.endFrame
 
     def asset(self):
         """
