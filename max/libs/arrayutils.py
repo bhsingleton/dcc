@@ -6,7 +6,7 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-__convert_bitarray__ = pymxs.runtime.execute('fn bitArrayToArray bits = ( bits as array );')
+__bits_to_array__ = pymxs.runtime.execute('fn bitArrayToArray bits = ( bits as array );')
 
 
 def convertBitArray(bits):
@@ -17,7 +17,7 @@ def convertBitArray(bits):
     :rtype: pymxs.runtime.Array
     """
 
-    return __convert_bitarray__(bits)
+    return __bits_to_array__(bits)
 
 
 def iterElements(array):
