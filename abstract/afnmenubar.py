@@ -120,7 +120,7 @@ class AFnMenubar(with_metaclass(ABCMeta, afnbase.AFnBase)):
         #
         if not os.path.exists(filePath):
 
-            log.warning('Unable to locate menu configuration: %s' % filePath)
+            log.warning('Cannot locate menu configuration: %s' % filePath)
             return
 
         # Initialize element tree
@@ -139,3 +139,28 @@ class AFnMenubar(with_metaclass(ABCMeta, afnbase.AFnBase)):
         insertAt = len(list(self.iterMenus())) - 1
 
         return self.default(root, insertAt=insertAt, parent=parent)
+
+    def unloadConfiguration(self, filePath):
+        """
+        Unloads the supplied configuration file from the main menubar.
+
+        :type filePath: str
+        :rtype: Any
+        """
+
+        # Check if file exists
+        #
+        if not os.path.exists(filePath):
+
+            log.warning('Cannot locate menu configuration: %s' % filePath)
+            return
+
+        # Initialize element tree
+        #
+        elementTree = ElementTree.parse(filePath)
+        root = elementTree.getroot()
+
+        # Remove top-level menus
+        #
+        title = root.get('title', '')
+        self.removeMenusByTitle(title)
