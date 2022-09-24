@@ -45,7 +45,8 @@ def isKindOf(obj, cls):
     """
     Evaluates if the supplied object is derived from the given Max class.
     There are several improvements made to this method vs the builtin pymxs function:
-        1. Support for tuples with Max classes.
+        1. Support for tuples of Max classes.
+        3. Support for python types.
         2. Literal Sub-Anim comparison rather than an implied value comparison.
 
     :type obj: Any
@@ -53,7 +54,16 @@ def isKindOf(obj, cls):
     :rtype: bool
     """
 
-    if isinstance(cls, tuple):
+    # Redundancy check
+    # Otherwise: isKindOf(1, int) == False, in python!
+    #
+    if not isinstance(obj, pymxs.MXSWrapperBase):
+
+        return isinstance(obj, cls)
+
+    # Inspect supplied classes
+    #
+    if isinstance(cls, (tuple, list)):
 
         return any([isKindOf(obj, x) for x in cls])
 
