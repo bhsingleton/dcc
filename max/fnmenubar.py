@@ -252,3 +252,22 @@ class FnMenubar(afnmenubar.AFnMenubar):
         # Update menubar
         #
         pymxs.runtime.MenuMan.updateMenuBar()
+
+    def unloadConfiguration(self, filePath):
+        """
+        Unloads the supplied configuration file from the main menubar.
+
+        :type filePath: str
+        :rtype: Any
+        """
+
+        # Call parent method
+        #
+        super(FnMenubar, self).unloadConfiguration(filePath)
+
+        # Save changes to menubar
+        #
+        pymxs.runtime.MenuMan.updateMenuBar()
+
+        menuFilePath = pymxs.runtime.MenuMan.getMenuFile()
+        pymxs.runtime.MenuMan.saveMenuFile(menuFilePath)
