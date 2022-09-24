@@ -107,16 +107,33 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         pass
 
-    def isValidExtension(self, extension):
+    def isValidExtension(self, path):
         """
         Evaluates if the supplied extension is supported.
 
-        :type extension: str
+        :type path: str
         :rtype: bool
         """
 
+        # Get extension from path
+        #
+        extension = ''
+
+        if os.path.isfile(path):
+
+            directory, filename = os.path.split(path)
+            name, extension = os.path.splitext(filename)
+
+        else:
+
+            extension = path
+
+        # Compare extension with enumerators
+        #
         extensions = [member.name.lower() for member in self.extensions()]
-        return extension.lstrip('.').lower() in extensions
+        extension = extension.lstrip('.').lower()
+
+        return extension in extensions
 
     @abstractmethod
     def isBatchMode(self):
