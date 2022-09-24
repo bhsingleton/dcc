@@ -139,8 +139,8 @@ class QTimeSpinBox(QtWidgets.QSpinBox):
             # Check if either arrows were clicked
             # If they were then ignore this event and reset the value
             #
-            upRect = self.style().subControlRect(QtWidgets.QStyle.CC_SpinBox, options, QtWidgets.QStyle.SC_SpinBoxUp, self)
-            downRect = self.style().subControlRect(QtWidgets.QStyle.CC_SpinBox, options, QtWidgets.QStyle.SC_SpinBoxDown, self)
+            upRect = QtWidgets.QApplication.style().subControlRect(QtWidgets.QStyle.CC_SpinBox, options, QtWidgets.QStyle.SC_SpinBoxUp, self)
+            downRect = QtWidgets.QApplication.style().subControlRect(QtWidgets.QStyle.CC_SpinBox, options, QtWidgets.QStyle.SC_SpinBoxDown, self)
             mousePos = event.pos()
 
             if upRect.contains(mousePos) or downRect.contains(mousePos):

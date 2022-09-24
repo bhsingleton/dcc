@@ -359,14 +359,14 @@ class QDropDownButton(QtWidgets.QAbstractButton):
         pushButtonStyleOption = QtWidgets.QStyleOptionButton()
         self.initPushButtonStyleOption(pushButtonStyleOption)
 
-        self.style().drawControl(QtWidgets.QStyle.CE_PushButton, pushButtonStyleOption, painter)
+        QtWidgets.QApplication.style().drawControl(QtWidgets.QStyle.CE_PushButton, pushButtonStyleOption, painter)
 
         # Paint drop-down menu control
         #
         dropDownMenuButtonStyleOption = QtWidgets.QStyleOptionButton()
         self.initDropDownMenuButtonStyleOption(dropDownMenuButtonStyleOption)
 
-        self.style().drawControl(QtWidgets.QStyle.CE_PushButton, dropDownMenuButtonStyleOption, painter)
+        QtWidgets.QApplication.style().drawControl(QtWidgets.QStyle.CE_PushButton, dropDownMenuButtonStyleOption, painter)
     # endregion
 
     # region Slots
