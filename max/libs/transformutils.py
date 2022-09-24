@@ -578,6 +578,13 @@ def applyTransformMatrix(node, matrix, **kwargs):
     :rtype: None
     """
 
+    # Check if node is valid
+    # Otherwise the undo statement will silently error!
+    #
+    if not pymxs.runtime.isValidNode(node):
+
+        raise TypeError('applyTransformMatrix() expects a valid node!')
+
     # Define undo chunk
     #
     with pymxs.undo(True, 'Apply Transform Matrix'):
@@ -588,7 +595,7 @@ def applyTransformMatrix(node, matrix, **kwargs):
         translateMatrix = matrix * pymxs.runtime.inverse(frozenPositionMatrix)
 
         translation = decomposeTransformMatrix(translateMatrix)[0]
-        print(translation)
+
         # Decompose rotation in frozen space
         #
         frozenRotationMatrix = getFrozenRotationMatrix(node)
@@ -800,7 +807,7 @@ def freezeTranslation(node, **kwargs):
         isFrozen = isClose(frozenController.value, matrix.translationPart)
         isZero = isClose(zeroController.value, pymxs.runtime.Point3(0.0, 0.0, 0.0))
 
-        if not isFrozen and not isZero:
+        if not isFrozen or not isZero:
 
             log.info('Freezing "$%s.position" controller!' % node.name)
             frozenController.value = matrix.translationPart
@@ -890,7 +897,7 @@ def freezeRotation(node, **kwargs):
         isFrozen = isClose(frozenController.value, matrix.rotationPart)
         isZero = isClose(zeroController.value, pymxs.runtime.Quat(1))
 
-        if not isFrozen and not isZero:
+        if not isFrozen or not isZero:
 
             log.info('Freezing "$%s.rotation" controller!' % node.name)
             frozenController.value = matrix.rotationPart
@@ -964,7 +971,7 @@ def freezeScale(node, **kwargs):
         isFrozen = isClose(frozenController.value, matrix.scalePart)
         isZero = isClose(zeroController.value, pymxs.runtime.Point3(1.0, 1.0, 1.0))
 
-        if not isFrozen and not isZero:
+        if not isFrozen or not isZero:
 
             log.info('Freezing "$%s.scale" controller!' % node.name)
             frozenController.value = matrix.scalePart
@@ -1119,17 +1126,19 @@ def isClose(value, otherValue, tolerance=1e-3):
     :rtype: bool
     """
 
+    # Ensure values are the same type
+    #
+    if pymxs.runtime.classOf(value) != pymxs.runtime.classOf(otherValue):
+
+        raise TypeError('isClose() expects two values of the same type!')
+
     # Evaluate value type
     #
-    if isinstance(value, (int, float)) and isinstance(otherValue, (int, float)):
+    if isinstance(value, (int, float)):
 
         return abs(value - otherValue) <= tolerance
 
-    elif pymxs.runtime.isKindOf(value, pymxs.runtime.Quat) and pymxs.runtime.isKindOf(otherValue, pymxs.runtime.Quat):
-
-        return isClose(quatToMatrix3(value), quatToMatrix3(otherValue), tolerance=tolerance)
-
-    elif pymxs.runtime.isKindOf(value, pymxs.runtime.Point3) and pymxs.runtime.isKindOf(otherValue, pymxs.runtime.Point3):
+    elif wrapperutils.isKindOf(value, pymxs.runtime.Point3):
 
         return all(
             [
@@ -1139,7 +1148,15 @@ def isClose(value, otherValue, tolerance=1e-3):
             ]
         )
 
-    elif pymxs.runtime.isKindOf(value, pymxs.runtime.Matrix3) and pymxs.runtime.isKindOf(otherValue, pymxs.runtime.Matrix3):
+    elif wrapperutils.isKindOf(value, pymxs.runtime.EulerAngles):
+
+        return isClose(eulerAnglesToMatrix3(value), eulerAnglesToMatrix3(otherValue), tolerance=tolerance)
+
+    elif wrapperutils.isKindOf(value, pymxs.runtime.Quat):
+
+        return isClose(quatToMatrix3(value), quatToMatrix3(otherValue), tolerance=tolerance)
+
+    elif wrapperutils.isKindOf(value, pymxs.runtime.Matrix3):
 
         return all(
             [
