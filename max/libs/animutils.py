@@ -96,3 +96,145 @@ def ensureKeyed(node):
             else:
 
                 continue
+
+
+def cacheTransforms(node, startFrame=None, endFrame=None):
+    """
+    Caches all transform data over the specified time range.
+
+    :type node: pymxs.MXSWrapperBase
+    :type startFrame: Union[int, None]
+    :type endFrame: Union[int, None]
+    :rtype: Dict[int, pymxs.runtime.Matrix3]
+    """
+
+    # Inspect start frame
+    #
+    if startFrame is None:
+
+        startFrame = pymxs.runtime.AnimationRange.start
+
+    # Inspect end frame
+    #
+    if endFrame is None:
+
+        endFrame = pymxs.runtime.AnimationRange.end
+
+    # Iterate through time range
+    #
+    cache = {}
+
+    for i in range(startFrame, endFrame + 1, 1):
+
+        with pymxs.attime(i):
+
+            cache = pymxs.runtime.copy(node.transform)
+
+    return cache
+
+
+def assumeCache(node, cache):
+    """
+    Applies the supplied transform cache to the specified node.
+
+    :type node: pymxs.MXSWrapperBase
+    :type cache: Dict[int, pymxs.runtime.Matrix3]
+    :rtype: None
+    """
+
+    with pymxs.animate(True):
+
+        for (time, transform) in cache.items():
+
+            with pymxs.attime(time):
+
+                node.transform = transform
+
+
+def bakeConstraints(node, startFrame=None, endFrame=None):
+    """
+    Bakes any constraints on the supplied node.
+
+    :type node: pymxs.MXSWrapperBase
+    :type startFrame: Union[int, None]
+    :type endFrame: Union[int, None]
+    :rtype: None
+    """
+
+    # Check if node is valid
+    #
+    if not pymxs.runtime.isValidNode(node):
+
+        raise TypeError('bakeConstraints() expects a valid node!')
+
+    # Check if node has been constrained
+    #
+    transformController = pymxs.runtime.getTMController(node)
+
+    if not controllerutils.isConstrained(transformController):
+
+        log.debug('Cannot find any constraints on "%s" node!' % node.name)
+        return
+
+    # Cache and decompose PRS controller
+    #
+    transformCache = cacheTransforms(node, startFrame=startFrame, endFrame=endFrame)
+
+    transformController = controllerutils.ensureControllerByClass(transformController, pymxs.runtime.PRS)
+    positionController, rotationController, scaleController = controllerutils.decomposePRSController(transformController)
+
+    # Inspect position controller
+    #
+    if controllerutils.isListController(positionController):
+
+        # Evaluate active controller
+        #
+        active = positionController.getActive()
+        subIndex = active - 1
+
+        subController = positionController[subIndex].controller
+
+        if controllerutils.isConstraint(subController):
+
+            positionController.delete(active)
+
+    elif controllerutils.isConstraint(positionController):
+
+        # Revert property controller
+        #
+        positionXYZ = pymxs.runtime.Position_XYZ()
+        pymxs.runtime.setPropertyController(transformController, 'Position', positionXYZ)
+
+    else:
+
+        pass
+
+    # Inspect rotation controller
+    #
+    if controllerutils.isListController(rotationController):
+
+        # Evaluate active controller
+        #
+        active = rotationController.getActive()
+        subIndex = active - 1
+
+        subController = rotationController[subIndex].controller
+
+        if controllerutils.isConstraint(subController):
+
+            rotationController.delete(active)
+
+    elif controllerutils.isConstraint(rotationController):
+
+        # Revert property controller
+        #
+        eulerXYZ = pymxs.runtime.Euler_XYZ()
+        pymxs.runtime.setPropertyController(transformController, 'Rotation', eulerXYZ)
+
+    else:
+
+        pass
+
+    # Assume transform cache
+    #
+    assumeCache(node, transformCache)
