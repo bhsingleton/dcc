@@ -2,13 +2,14 @@ import os
 import subprocess
 
 from abc import ABCMeta, abstractmethod
-from string import ascii_uppercase
 from six import with_metaclass
 from six.moves import collections_abc
+from string import ascii_uppercase
 from ctypes import windll
 from fnmatch import fnmatch
 from dcc import fntexture
 from dcc.abstract import afnbase
+from dcc.decorators.classproperty import classproperty
 
 import logging
 logging.basicConfig()
@@ -22,6 +23,17 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
     """
 
     __slots__ = ()
+    __extensions__ = None
+
+    @classproperty
+    def FileExtensions(cls):
+        """
+        Getter method that returns the file extension enumerators.
+
+        :rtype: Type[IntEnum]
+        """
+
+        return cls.__extensions__
 
     @abstractmethod
     def isNewScene(self):
@@ -84,6 +96,27 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
 
         pass
+
+    @abstractmethod
+    def extensions(self):
+        """
+        Returns a list of scene file extensions.
+
+        :rtype: Tuple[IntEnum]
+        """
+
+        pass
+
+    def isValidExtension(self, extension):
+        """
+        Evaluates if the supplied extension is supported.
+
+        :type extension: str
+        :rtype: bool
+        """
+
+        extensions = [member.name.lower() for member in self.extensions()]
+        return extension.lstrip('.').lower() in extensions
 
     @abstractmethod
     def isBatchMode(self):

@@ -1,5 +1,6 @@
 import os
 
+from enum import IntEnum
 from maya import cmds as mc
 from maya.api import OpenMaya as om
 from dcc.abstract import afnscene
@@ -11,12 +12,22 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
+class FileExtensions(IntEnum):
+    """
+    Overload of IntEnum that contains the file extensions for Maya.
+    """
+
+    mb = 0
+    ma = 1
+
+
 class FnScene(afnscene.AFnScene):
     """
     Overload of AFnBase used to interface with Maya scenes.
     """
 
     __slots__ = ()
+    __extensions__ = FileExtensions
 
     def isNewScene(self):
         """
@@ -80,6 +91,15 @@ class FnScene(afnscene.AFnScene):
         except RuntimeError:
 
             return False
+
+    def extensions(self):
+        """
+        Returns a list of scene file extensions.
+
+        :rtype: Tuple[FileExtensions]
+        """
+
+        return FileExtensions.mb, FileExtensions.ma
 
     def isBatchMode(self):
         """

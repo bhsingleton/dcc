@@ -1,7 +1,7 @@
 import pymxs
 import os
-import sys
 
+from enum import IntEnum
 from dcc.abstract import afnscene
 from dcc.max.libs import sceneutils
 
@@ -11,12 +11,21 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
+class FileExtensions(IntEnum):
+    """
+    Overload of IntEnum that contains the file extensions for 3ds Max.
+    """
+
+    max = 0
+
+
 class FnScene(afnscene.AFnScene):
     """
-    Overload of AFnBase used to interface with 3DS Max scenes.
+    Overload of AFnBase used to interface with 3ds Max scenes.
     """
 
     __slots__ = ()
+    __extensions__ = FileExtensions
 
     def isNewScene(self):
         """
@@ -73,6 +82,15 @@ class FnScene(afnscene.AFnScene):
         """
 
         return pymxs.runtime.loadMaxFile(filePath, useFileUnits=True, quiet=True)
+
+    def extensions(self):
+        """
+        Returns a list of scene file extensions.
+
+        :rtype: Tuple[FileExtensions]
+        """
+
+        return FileExtensions.max,
 
     def isBatchMode(self):
         """
