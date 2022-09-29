@@ -30,6 +30,17 @@ class FnQt(afnqt.AFnQt):
 
         return qtmax.GetQMaxMainWindow()
 
+    def nativizeWindow(self, window):
+        """
+        Performs any DCC required operations to the supplied window.
+        For instance, 3ds Max requires you disable accelerators in order to receive key press events.
+
+        :type window: QtWidgets.QMainWindow
+        :rtype: None
+        """
+
+        qtmax.DisableMaxAcceleratorsOnFocus(window, True)
+
     def partial(self, command):
         """
         Returns a partial object for executing commands in a DCC embedded language.

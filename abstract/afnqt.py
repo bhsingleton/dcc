@@ -75,6 +75,17 @@ class AFnQt(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
                 continue
 
+    def nativizeWindow(self, window):
+        """
+        Performs any necessary steps to nativize the supplied window with the associated DCC application.
+        For instance, 3ds Max requires you disable accelerators in order to receive key press events.
+
+        :type window: QtWidgets.QMainWindow
+        :rtype: None
+        """
+
+        pass
+
     @abstractmethod
     def partial(self, command):
         """
