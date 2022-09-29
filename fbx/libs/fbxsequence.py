@@ -4,6 +4,7 @@ from enum import Enum, IntEnum
 from . import fbxbase
 from ... import fnfbx, fnscene
 from ...python import stringutils
+from ...ui import qdirectoryedit, qtimespinbox
 
 import logging
 logging.basicConfig()
@@ -201,6 +202,32 @@ class FbxSequence(fbxbase.FbxBase):
     # endregion
 
     # region Methods
+    @classmethod
+    def createEditor(cls, name, parent=None):
+        """
+        Returns a Qt editor for the specified property.
+
+        :type name: str
+        :type parent: Union[QtWidgets.QWidget, None]
+        :rtype: Union[QtWidgets.QWidget, None]
+        """
+
+        if name == 'directory':
+
+            return qdirectoryedit.QDirectoryEdit(parent=parent)
+
+        elif name == 'startFrame':
+
+            return qtimespinbox.QTimeSpinBox(defaultType=qtimespinbox.DefaultType.StartTime, parent=parent)
+
+        elif name == 'endFrame':
+
+            return qtimespinbox.QTimeSpinBox(defaultType=qtimespinbox.DefaultType.EndTime, parent=parent)
+
+        else:
+
+            return super(FbxSequence, cls).createEditor(name, parent=parent)
+
     def isValid(self):
         """
         Evaluates if this sequence is valid.

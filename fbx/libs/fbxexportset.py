@@ -4,6 +4,7 @@ from enum import IntEnum
 from . import fbxbase, fbxskeleton, fbxmesh, fbxcamera, fbxscript
 from ..interop import fbxfile
 from ... import fnscene, fnfbx
+from ...ui import qdirectoryedit
 
 import logging
 logging.basicConfig()
@@ -300,6 +301,24 @@ class FbxExportSet(fbxbase.FbxBase):
     # endregion
 
     # region Methods
+    @classmethod
+    def createEditor(cls, name, parent=None):
+        """
+        Returns a Qt editor for the specified property.
+
+        :type name: str
+        :type parent: Union[QtWidgets.QWidget, None]
+        :rtype: Union[QtWidgets.QWidget, None]
+        """
+
+        if name == 'directory':
+
+            return qdirectoryedit.QDirectoryEdit(parent=parent)
+
+        else:
+
+            return super(FbxExportSet, cls).createEditor(name, parent=parent)
+
     def cwd(self, expandVars=False):
         """
         Returns the current working directory from the parent asset.

@@ -3,6 +3,7 @@ import os
 from enum import IntEnum
 from . import fbxbase
 from ... import fnscene
+from ...ui import qfileedit
 
 import logging
 logging.basicConfig()
@@ -120,6 +121,24 @@ class FbxScript(fbxbase.FbxBase):
     # endregion
 
     # region Methods
+    @classmethod
+    def createEditor(cls, name, parent=None):
+        """
+        Returns a Qt editor for the specified property.
+
+        :type name: str
+        :type parent: Union[QtWidgets.QWidget, None]
+        :rtype: Union[QtWidgets.QWidget, None]
+        """
+
+        if name == 'filePath':
+
+            return qfileedit.QFileEdit(filter='Script Files (*.ms *.mel *.py)', parent=parent)
+
+        else:
+
+            return super(FbxScript, cls).createEditor(name, parent=parent)
+
     def exists(self):
         """
         Evaluates whether this custom script exists.
