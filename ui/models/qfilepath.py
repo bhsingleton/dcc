@@ -1,5 +1,6 @@
 import os
 import stat
+import win32api
 
 from Qt import QtCore, QtWidgets
 
@@ -34,11 +35,17 @@ class QFilePath(object):
 
             return path
 
+        # Check if path is valid
+        #
+        absolutePath = os.path.normpath(os.path.expandvars(path))
+
+        if not os.path.exists(absolutePath):
+
+            raise TypeError('__new__() expects a valid path (%s given)!' % absolutePath)
+
         # Check if instance already exists for path
         #
-        path = os.path.normpath(os.path.expandvars(path))
-        handle = abs(hash(path.lower()))
-
+        handle = abs(hash(absolutePath.lower()))
         instance = cls.__instances__.get(handle, None)
 
         if instance is None:
@@ -68,7 +75,7 @@ class QFilePath(object):
 
         # Declare private variables
         #
-        self._path = os.path.normpath(os.path.expandvars(path))
+        self._path = win32api.GetLongPathName(win32api.GetShortPathName(path))
         self._name = os.path.basename(self._path)
         self._basename, self._extension = os.path.splitext(self._name)
         self._icon = None
@@ -302,7 +309,7 @@ class QFilePath(object):
 
     def isUpToDate(self):
         """
-        Evaluates if this instance's stats are up to date.
+        Evaluates if this instance's stats are up-to-date.
 
         :rtype: bool
         """
@@ -311,14 +318,24 @@ class QFilePath(object):
 
     def update(self):
         """
-        Forces this instance to update it's internal properties.
+        Forces this instance to update its internal properties.
 
         :rtype: None
         """
 
         self._stat = os.stat(self._path)
         self._parent = QFilePath(os.path.dirname(self._path))
-        self._children = [QFilePath(os.path.join(self._path, x)) for x in os.listdir(self._path)] if self.isDir() else []
+
+        if self.isDir():
+
+            paths = [os.path.join(self._path, filename) for filename in os.listdir(self._path)]
+            readablePaths = [path for path in paths if os.access(path, os.R_OK)]
+
+            self._children = list(map(QFilePath, readablePaths))
+
+        else:
+
+            self._children = []
 
     def toString(self):
         """
