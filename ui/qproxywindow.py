@@ -143,13 +143,13 @@ class QProxyWindow(QtWidgets.QMainWindow):
     def keyPressEvent(self, event):
         """
         This event handler can be reimplemented in a subclass to receive key press events for the widget.
-        This implementation prevents any hotkeys from propagating to the DCC of choice.
+        This implementation prevents any hotkeys from propagating to the DCC main window.
 
         :type event: QtGui.QKeyEvent
         :rtype: None
         """
 
-        pass
+        pass  # FYI this does not work in 3ds Max...
 
     def showEvent(self, event):
         """
@@ -165,6 +165,8 @@ class QProxyWindow(QtWidgets.QMainWindow):
 
         # Perform startup routines
         #
+        self.qt.nativizeWindow(self)
+
         if self.hasSettings():
 
             self.loadSettings()
