@@ -1,5 +1,6 @@
 import pymxs
 
+from collections import defaultdict
 from dcc.python import stringutils
 from dcc.generators.inclusiverange import inclusiveRange
 from dcc.max.decorators import coordsysoverride
@@ -22,7 +23,7 @@ def isEditablePoly(mesh):
     :rtype: bool
     """
 
-    return pymxs.runtime.isKindOf(nodeutils.baseObject(mesh), pymxs.runtime.Editable_Poly)
+    return wrapperutils.isKindOf(nodeutils.baseObject(mesh), pymxs.runtime.Editable_Poly)
 
 
 def isEditableMesh(mesh):
@@ -33,12 +34,12 @@ def isEditableMesh(mesh):
     :rtype: bool
     """
 
-    return pymxs.runtime.isKindOf(nodeutils.baseObject(mesh), pymxs.runtime.Editable_Mesh)
+    return wrapperutils.isKindOf(nodeutils.baseObject(mesh), (pymxs.runtime.Editable_Mesh, pymxs.runtime.TriMesh))
 
 
 def isTriMesh(mesh):
     """
-    Evaluates if the supplied object is a tri-mesh object.
+    Evaluates if the supplied object is a tri-mesh data object.
 
     :type mesh: pymxs.MXSWrapperBase
     :rtype: bool
@@ -270,7 +271,7 @@ def iterVertices(mesh, indices=None):
     #
     if stringutils.isNullOrEmpty(indices):
 
-        indices = inclusiveRange(1, vertexCount(mesh))
+        indices = inclusiveRange(1, vertexCount(mesh), 1)
 
     # Check if this is an editable poly
     #
@@ -324,7 +325,7 @@ def iterVertexNormals(mesh, indices=None):
     #
     if stringutils.isNullOrEmpty(indices):
 
-        indices = inclusiveRange(1, vertexCount(mesh))
+        indices = inclusiveRange(1, vertexCount(mesh), 1)
 
     # Iterate through vertices
     #
@@ -359,7 +360,7 @@ def iterFaceVertexIndices(mesh, indices=None):
     #
     if stringutils.isNullOrEmpty(indices):
 
-        indices = inclusiveRange(1, faceCount(mesh))
+        indices = inclusiveRange(1, faceCount(mesh), 1)
 
     # Check if this is an editable poly
     #
@@ -383,9 +384,6 @@ def iterFaceVertexNormals(mesh, indices=None):
     """
     Returns a generator that yield face-vertex normals.
     If no arguments are supplied then all face-vertex normals will be yielded.
-    For some reason 3ds Max does not provide face-vertex normal methods at this time.
-    Because of this we have to calculate them ourselves.
-    This is done by averaging the face-normals of any surrounding faces with matching smoothing groups.
 
     :type mesh: pymxs.MXSWrapperBase
     :type indices: List[int]
@@ -396,33 +394,48 @@ def iterFaceVertexNormals(mesh, indices=None):
     #
     if stringutils.isNullOrEmpty(indices):
 
-        indices = inclusiveRange(1, faceCount(mesh))
+        indices = inclusiveRange(1, faceCount(mesh), 1)
 
-    # Iterate through face indices
+    # Check if this is a tri-mesh
     #
-    smoothingGroups = dict(enumerate(iterSmoothingGroups(mesh), start=1))
+    if isTriMesh(mesh):
 
-    for faceIndex in indices:
-
-        # Get face smoothing group and vertex indices
+        # Iterate through indices
         #
-        faceVertexIndices = list(iterFaceVertexIndices(mesh, indices=[faceIndex]))[0]
-        faceGroup = smoothingGroups[faceIndex]
+        for index in indices:
 
-        # Iterate through vertices
+            normals = pymxs.runtime.meshOp.getFaceRNormals(mesh, index)
+            yield normals[0], normals[1], normals[2]
+
+    else:
+
+        # Iterate through indices
         #
-        vertexNormals = [None] * len(faceVertexIndices)
+        faceTriangleIndices = getFaceTriangleIndices(mesh)
+        triMesh = getTriMesh(mesh)
 
-        for (physicalIndex, logicalIndex) in enumerate(faceVertexIndices):
+        for index in indices:
 
-            # Calculate vertex normal
+            # Collect triangle-vertex normals
             #
-            connectedFaces = pymxs.runtime.polyOp.getFacesUsingVert(mesh, logicalIndex)
-            normals = [pymxs.runtime.polyOp.getFaceNormal(mesh, i) for i in arrayutils.iterBitArray(connectedFaces) if faceGroup == smoothingGroups[i]]
+            faceVertexIndices = list(iterFaceVertexIndices(mesh, indices=[index]))[0]
+            triangleIndices = faceTriangleIndices[index]
 
-            vertexNormals[physicalIndex] = sum(normals) / len(normals)
+            faceVertexNormals = defaultdict(list)
 
-        yield vertexNormals
+            for triangleIndex in triangleIndices:
+
+                triangleVertexIndices = list(iterFaceVertexIndices(triMesh, indices=[triangleIndex]))[0]
+                triangleVertexNormals = list(iterFaceVertexNormals(triMesh, indices=[triangleIndex]))[0]
+
+                for (vertexIndex, vertexNormal) in zip(triangleVertexIndices, triangleVertexNormals):
+
+                    faceVertexNormals[vertexNormal].append(vertexNormal)
+
+            # Average vertex normals
+            #
+            vertexNormals = tuple([sum(faceVertexNormals[vertexIndex]) / len(faceVertexNormals[vertexNormal]) for vertexIndex in faceVertexIndices])
+            yield vertexNormals
 
 
 @coordsysoverride.coordSysOverride(mode='local')
@@ -743,6 +756,17 @@ def getConnectedFaces(mesh, faces):
     return list(connectedFaces)
 
 
+def decomposeSmoothingGroups(bits):
+    """
+    Returns the smoothing group indices from the supplied integer value.
+
+    :type bits: int
+    :rtype: List[int]
+    """
+
+    return [i for i in inclusiveRange(1, 32, 1) if pymxs.runtime.Bit.get(bits, i)]
+
+
 def iterSmoothingGroups(mesh, indices=None):
     """
     Returns a generator that yields face-smoothing indices.
@@ -757,7 +781,7 @@ def iterSmoothingGroups(mesh, indices=None):
     #
     if stringutils.isNullOrEmpty(indices):
 
-        indices = inclusiveRange(1, faceCount(mesh))
+        indices = inclusiveRange(1, faceCount(mesh), 1)
 
     # Check if this is an editable poly
     #
@@ -765,13 +789,15 @@ def iterSmoothingGroups(mesh, indices=None):
 
         for index in indices:
 
-            yield pymxs.runtime.polyOp.getFaceSmoothGroup(mesh, index)
+            bits = pymxs.runtime.polyOp.getFaceSmoothGroup(mesh, index)
+            yield decomposeSmoothingGroups(bits)
 
     else:
 
         for index in indices:
 
-            yield pymxs.runtime.getFaceSmoothGroup(mesh, index)
+            bits = pymxs.runtime.getFaceSmoothGroup(mesh, index)
+            yield decomposeSmoothingGroups(bits)
 
 
 def isMapSupported(mesh, channel):
