@@ -6,6 +6,7 @@ from abc import ABCMeta
 from six import with_metaclass
 from six.moves import collections_abc
 from typing import Any, Union, Tuple, List, Dict
+from Qt import QtGui
 from dcc.python import annotationutils, stringutils
 from dcc.decorators.classproperty import classproperty
 
@@ -205,6 +206,35 @@ class PSONObject(with_metaclass(ABCMeta, collections_abc.MutableMapping)):
     # endregion
 
     # region Methods
+    @staticmethod
+    def isNullOrEmpty(value):
+        """
+        Evaluates if the supplied value is null or empty.
+
+        :type value: Any
+        :rtype: bool
+        """
+
+        return stringutils.isNullOrEmpty(value)
+
+    @classmethod
+    def isJsonCompatible(cls, T):
+        """
+        Evaluates whether the given type is json compatible.
+
+        :type T: Union[type, object, tuple]
+        :rtype: bool
+        """
+
+        if annotationutils.isParameterizedAlias(T):
+
+            origin, parameters = annotationutils.decomposeAlias(T)
+            return all([cls.isJsonCompatible(parameter) for parameter in parameters])
+
+        else:
+
+            return annotationutils.isBuiltinType(T) or hasattr(T, '__getstate__')
+
     @classmethod
     def iterBases(cls):
         """
@@ -274,34 +304,27 @@ class PSONObject(with_metaclass(ABCMeta, collections_abc.MutableMapping)):
 
         return dict(cls.iterProperties(readable=readable, writable=writable, deletable=deletable))
 
-    @staticmethod
-    def isNullOrEmpty(value):
+    @classmethod
+    def getEditor(cls, name, parent=None):
         """
-        Evaluates if the supplied value is null or empty.
+        Returns a Qt editor for the specified property.
 
-        :type value: Any
-        :rtype: bool
+        :type name: str
+        :type parent: Union[QtWidgets.QWidget, None]
+        :rtype: Union[QtWidgets.QWidget, None]
         """
 
-        return stringutils.isNullOrEmpty(value)
+        return None
 
     @classmethod
-    def isJsonCompatible(cls, T):
+    def icon(cls):
         """
-        Evaluates whether the given type is json compatible.
+        Returns a Qt icon for this class.
 
-        :type T: Union[type, object, tuple]
-        :rtype: bool
+        :rtype: Union[QtGui.QIcon, None]
         """
 
-        if annotationutils.isParameterizedAlias(T):
-
-            origin, parameters = annotationutils.decomposeAlias(T)
-            return all([cls.isJsonCompatible(parameter) for parameter in parameters])
-
-        else:
-
-            return annotationutils.isBuiltinType(T) or hasattr(T, '__getstate__')
+        return QtGui.QIcon(':data/icons/dict.svg')
 
     def weakReference(self):
         """
