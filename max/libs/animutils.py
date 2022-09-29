@@ -112,13 +112,13 @@ def cacheTransforms(node, startFrame=None, endFrame=None):
     #
     if startFrame is None:
 
-        startFrame = pymxs.runtime.AnimationRange.start
+        startFrame = int(pymxs.runtime.AnimationRange.start)
 
     # Inspect end frame
     #
     if endFrame is None:
 
-        endFrame = pymxs.runtime.AnimationRange.end
+        endFrame = int(pymxs.runtime.AnimationRange.end)
 
     # Iterate through time range
     #
@@ -128,7 +128,7 @@ def cacheTransforms(node, startFrame=None, endFrame=None):
 
         with pymxs.attime(i):
 
-            cache = pymxs.runtime.copy(node.transform)
+            cache[i] = pymxs.runtime.copy(node.transform)
 
     return cache
 
@@ -173,11 +173,12 @@ def bakeConstraints(node, startFrame=None, endFrame=None):
 
     if not controllerutils.isConstrained(transformController):
 
-        log.debug('Cannot find any constraints on "%s" node!' % node.name)
+        log.debug('Cannot find any constraints on $%s node!' % node.name)
         return
 
     # Cache and decompose PRS controller
     #
+    log.info('Baking $%s.transform' % node.name)
     transformCache = cacheTransforms(node, startFrame=startFrame, endFrame=endFrame)
 
     transformController = controllerutils.ensureControllerByClass(transformController, pymxs.runtime.PRS)
@@ -189,19 +190,20 @@ def bakeConstraints(node, startFrame=None, endFrame=None):
 
         # Evaluate active controller
         #
-        active = positionController.getActive()
-        subIndex = active - 1
+        subControllers = [subController for (subController, name, weight) in controllerutils.iterListController(positionController)]
+        indices = [(i + 1) for (i, subController) in enumerate(subControllers) if controllerutils.isConstraint(subController)]
 
-        subController = positionController[subIndex].controller
+        for index in reversed(indices):
 
-        if controllerutils.isConstraint(subController):
-
-            positionController.delete(active)
+            log.info('Deleting $%s.position.controller[%s] sub-controller.' % (node.name, index))
+            positionController.delete(index)
 
     elif controllerutils.isConstraint(positionController):
 
         # Revert property controller
         #
+        log.info('Resetting $%s.position controller.' % node.name)
+
         positionXYZ = pymxs.runtime.Position_XYZ()
         pymxs.runtime.setPropertyController(transformController, 'Position', positionXYZ)
 
@@ -215,19 +217,20 @@ def bakeConstraints(node, startFrame=None, endFrame=None):
 
         # Evaluate active controller
         #
-        active = rotationController.getActive()
-        subIndex = active - 1
+        subControllers = [subController for (subController, name, weight) in controllerutils.iterListController(positionController)]
+        indices = [i + 1 for (i, subController) in enumerate(subControllers) if controllerutils.isConstraint(subController)]
 
-        subController = rotationController[subIndex].controller
+        for index in reversed(indices):
 
-        if controllerutils.isConstraint(subController):
-
-            rotationController.delete(active)
+            log.info('Deleting $%s.rotation.controller[%s] sub-controller.' % (node.name, index))
+            rotationController.delete(index)
 
     elif controllerutils.isConstraint(rotationController):
 
         # Revert property controller
         #
+        log.info('Resetting $%s.rotation controller.' % node.name)
+
         eulerXYZ = pymxs.runtime.Euler_XYZ()
         pymxs.runtime.setPropertyController(transformController, 'Rotation', eulerXYZ)
 
