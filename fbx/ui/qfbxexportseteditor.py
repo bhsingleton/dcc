@@ -16,39 +16,6 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-class QFbxExportSetItemDelegate(qpsonstyleditemdelegate.QPSONStyledItemDelegate):
-    """
-    Overload of QPSONStyledItemDelegate that delegates fbx export set types.
-    """
-
-    # region Methods
-    def createEditorByProperty(self, obj, func, isElement=False, parent=None):
-        """
-        Returns a widget from the supplied object and property.
-
-        :type obj: object
-        :type func: function
-        :type isElement: bool
-        :type parent: QtWidgets.QWidget
-        :rtype: QtWidgets.QWidget
-        """
-
-        # Evaluate object type
-        #
-        if isinstance(obj, fbxexportset.FbxExportSet) and func.__name__ == 'directory':
-
-            return qdirectoryedit.QDirectoryEdit(parent=parent)
-
-        elif isinstance(obj, fbxscript.FbxScript) and func.__name__ == 'filePath':
-
-            return qfileedit.QFileEdit(parent=parent)
-
-        else:
-
-            return super(QFbxExportSetItemDelegate, self).createEditorByProperty(obj, func, isElement=isElement, parent=parent)
-    # endregion
-
-
 class QFbxExportSetEditor(quicwindow.QUicWindow):
     """
     Overload of QUicWindow used to edit fbx export set data.
@@ -147,7 +114,7 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
 
         self.exportSetTreeView.setModel(self.exportSetItemModel)
 
-        self.exportSetItemDelegate = QFbxExportSetItemDelegate(parent=self.exportSetTreeView)
+        self.exportSetItemDelegate = qpsonstyleditemdelegate.QPSONStyledItemDelegate(parent=self.exportSetTreeView)
         self.exportSetItemDelegate.setObjectName('exportSetItemDelegate')
 
         self.exportSetTreeView.setItemDelegate(self.exportSetItemDelegate)

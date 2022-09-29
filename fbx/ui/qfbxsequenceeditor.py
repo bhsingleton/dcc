@@ -1,7 +1,7 @@
 from Qt import QtWidgets, QtCore, QtGui
 from dcc import fnscene, fnreference, fnnotify
 from dcc.generators.consecutivepairs import consecutivePairs
-from dcc.ui import quicwindow, qtimespinbox, qdirectoryedit
+from dcc.ui import quicwindow
 from dcc.ui.models import qpsonitemmodel, qpsonstyleditemdelegate
 from dcc.fbx.libs import fbxio, fbxsequencer, fbxsequence
 
@@ -9,53 +9,6 @@ import logging
 logging.basicConfig()
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
-
-
-class QFbxSequenceItemDelegate(qpsonstyleditemdelegate.QPSONStyledItemDelegate):
-    """
-    Overload of QPSONStyledItemDelegate that delegates fbx export set types.
-    """
-
-    # region Methods
-    def createEditorByProperty(self, obj, func, isElement=False, parent=None):
-        """
-        Returns a widget from the supplied object and property.
-
-        :type obj: object
-        :type func: function
-        :type isElement: bool
-        :type parent: QtWidgets.QWidget
-        :rtype: QtWidgets.QWidget
-        """
-
-        # Evaluate object type
-        #
-        if isinstance(obj, fbxsequence.FbxSequence):
-
-            # Inspect property name
-            #
-            name = func.__name__
-
-            if name == 'directory':
-
-                return qdirectoryedit.QDirectoryEdit(parent=parent)
-
-            elif name == 'startFrame':
-
-                return qtimespinbox.QTimeSpinBox(defaultType=qtimespinbox.DefaultType.StartTime, parent=parent)
-
-            elif name == 'endFrame':
-
-                return qtimespinbox.QTimeSpinBox(defaultType=qtimespinbox.DefaultType.EndTime, parent=parent)
-
-            else:
-
-                return super(QFbxSequenceItemDelegate, self).createEditorByProperty(obj, func, isElement=isElement, parent=parent)
-
-        else:
-
-            return super(QFbxSequenceItemDelegate, self).createEditorByProperty(obj, func, isElement=isElement, parent=parent)
-    # endregion
 
 
 class QFbxSequenceEditor(quicwindow.QUicWindow):
@@ -154,7 +107,7 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
 
         self.sequencerTreeView.setModel(self.sequencerItemModel)
 
-        self.sequencerItemDelegate = QFbxSequenceItemDelegate(parent=self.sequencerTreeView)
+        self.sequencerItemDelegate = qpsonstyleditemdelegate.QPSONStyledItemDelegate(parent=self.sequencerTreeView)
         self.sequencerItemDelegate.setObjectName('sequencerItemDelegate')
 
         self.sequencerTreeView.setItemDelegate(self.sequencerItemDelegate)
