@@ -33,6 +33,9 @@ class MXSValueEncoder(json.JSONEncoder):
         'MAXKey': 'serializeMAXKey',
         'MAXAKey': 'serializeMAXKey',
         'MAXKeyArray': 'serializeArray',
+        'NoteTrack': 'serializeNoteTrack',
+        'MAXNoteKey': 'serializeMAXNoteKey',
+        'MAXNoteKeyArray': 'serializeArray',
         'Array': 'serializeArray',
         'BitArray': 'serializeArray',
         'ObjectSet': 'serializeArray',
@@ -242,12 +245,41 @@ class MXSValueEncoder(json.JSONEncoder):
 
         return obj
 
+    def serializeMAXNoteKey(self, noteKey):
+        """
+        Serializes the supplied MAXKey object into a json object.
+        For some reason the dynamic properties are not exposed for this class?
+
+        :type noteKey: pymxs.runtime.MAXNoteKey
+        :rtype: dict
+        """
+
+        obj = self.serializeInheritance(noteKey)
+        obj['args'] = []
+        obj['kwargs'] = {'time': noteKey.time, 'selected': noteKey.selected, 'value': noteKey.value}
+
+        return obj
+
+    def serializeNoteTrack(self, noteTrack):
+        """
+        Serializes the supplied NoteTrack object into a json object.
+
+        :type noteTrack: pymxs.runtime.NoteTrack
+        :rtype: dict
+        """
+
+        obj = self.serializeInheritance(noteTrack)
+        obj['args'] = []
+        obj['kwargs'] = {'name': noteTrack.name, 'keys': noteTrack.keys}
+
+        return obj
+
     def serializeArray(self, array):
         """
         Serializes the supplied array object into a json object.
 
         :type array: pymxs.runtime.Array
-        :rtype: dict
+        :rtype: List[Any]
         """
 
         return [array[i] for i in range(0, array.count, 1)]
@@ -257,7 +289,7 @@ class MXSValueEncoder(json.JSONEncoder):
         Serializes the supplied dictionary object into a json object.
 
         :type dictionary: pymxs.runtime.Dictionary
-        :rtype: dict
+        :rtype: Dict[str, Any]
         """
 
         return {key: dictionary[key] for key in dictionary.keys}
