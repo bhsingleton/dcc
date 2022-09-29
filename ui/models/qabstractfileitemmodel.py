@@ -1,10 +1,10 @@
 import os
-import stat
 
 from enum import IntEnum
 from datetime import datetime
 from Qt import QtCore, QtWidgets
 from . import qfilepath
+from ...python import stringutils
 
 import logging
 logging.basicConfig()
@@ -13,6 +13,9 @@ log.setLevel(logging.INFO)
 
 
 class FileHeaderLabels(IntEnum):
+    """
+    Overload of IntEnum that lists all available data headers.
+    """
 
     Name = 0
     Type = 1
@@ -53,6 +56,7 @@ class QAbstractFileItemModel(QtCore.QAbstractItemModel):
 
         # Declare private variables
         #
+        self._cwd = ''
         self._paths = []
         self._headerLabels = [FileHeaderLabels.Name]
 
@@ -64,14 +68,34 @@ class QAbstractFileItemModel(QtCore.QAbstractItemModel):
 
             self.setPaths(paths)
 
-        # Check if CWD was supplied
-        #
-        if os.path.exists(cwd):
+        elif not stringutils.isNullOrEmpty(cwd):
 
             self.setCwd(cwd)
+
+        else:
+
+            pass
     # endregion
 
     # region Methods
+    @staticmethod
+    def isSameFile(path, otherPath):
+        """
+        Evaluates if the two supplied paths are the same.
+
+        :type path: str
+        :type otherPath: str
+        :rtype: bool
+        """
+
+        try:
+
+            return os.path.samefile(str(path), str(otherPath))
+
+        except FileNotFoundError:
+
+            return False
+
     def paths(self):
         """
         Returns the top-level paths for this model.
@@ -93,15 +117,28 @@ class QAbstractFileItemModel(QtCore.QAbstractItemModel):
         self._paths = [qfilepath.QFilePath(path) for path in paths]
         self.endResetModel()
 
+    def cwd(self):
+        """
+        Returns the top-level directory.
+        If there are multiple directories then None is returned!
+
+        :rtype: str
+        """
+
+        return str(self._cwd)
+
     def setCwd(self, cwd):
         """
         Updates the current working directory.
 
-        :type cwd: Union[str, Path]
+        :type cwd: str
         :rtype: None
         """
 
-        self.setPaths(qfilepath.QFilePath(cwd).children)
+        if os.path.isdir(cwd) and not self.isSameFile(cwd, self._cwd):
+
+            self._cwd = qfilepath.QFilePath(cwd)
+            self.setPaths(self._cwd.children)
 
     def headerLabels(self):
         """
