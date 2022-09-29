@@ -1,5 +1,5 @@
 from PySide2 import QtCore, QtWidgets, QtGui
-from dcc.ui.models import qfileitemmodel
+from dcc.ui.models import qabstractfileitemmodel
 
 import logging
 logging.basicConfig()
@@ -12,6 +12,7 @@ class QFileItemFilterModel(QtCore.QSortFilterProxyModel):
     Overload of QSortFilterProxyModel used to filter files.
     """
 
+    # region Dunderscores
     def __init__(self, parent=None):
         """
         Private method called after a new instance has been created.
@@ -26,62 +27,64 @@ class QFileItemFilterModel(QtCore.QSortFilterProxyModel):
 
         # Declare private variables
         #
-        self._ignoreFiles = False
-        self._ignoreLinks = False
+        self._directoriesOnly = False
+        self._ignoreSymLinks = False
+    # endregion
 
-    def ignoreFiles(self):
+    # region Methods
+    def directoriesOnly(self):
         """
-        Returns the files flag.
+        Returns the "directoriesOnly" flag.
 
         :rtype: bool
         """
 
-        return self._ignoreFiles
+        return self._directoriesOnly
 
-    def setIgnoreFiles(self, ignoreFiles):
+    def setDirectoriesOnly(self, directoriesOnly):
         """
-        Updates the ignore files flag.
+        Updates the "directoriesOnly" flag.
 
-        :type ignoreFiles: bool
+        :type directoriesOnly: bool
         :rtype: None
         """
 
-        self._ignoreFiles = ignoreFiles
+        self._directoriesOnly = directoriesOnly
 
-    def ignoreLinks(self):
+    def ignoreSymLinks(self):
         """
-        Returns the symlinks flag.
+        Returns the "ignoreSymLinks" flag.
 
         :rtype: bool
         """
 
-        return self._ignoreFiles
+        return self._ignoreSymLinks
 
-    def setIgnoreLinks(self, ignoreLinks):
+    def setIgnoreSymLinks(self, ignoreSymLinks):
         """
-        Updates the ignore symlinks flag.
+        Updates the "ignoreSymLinks" flag.
 
-        :type ignoreLinks: bool
+        :type ignoreSymLinks: bool
         :rtype: None
         """
 
-        self._ignoreFiles = ignoreLinks
+        self._ignoreSymLinks = ignoreSymLinks
 
     def setSourceModel(self, sourceModel):
         """
         Updates the source model to be processed by this proxy model.
 
-        :type sourceModel: QFileItemModel
+        :type sourceModel: qabstractfileitemmodel.QAbstractFileItemModel
         :rtype: None
         """
 
-        if isinstance(sourceModel, qfileitemmodel.QFileItemModel):
+        if isinstance(sourceModel, qabstractfileitemmodel.QAbstractFileItemModel):
 
             super(QFileItemFilterModel, self).setSourceModel(sourceModel)
 
         else:
 
-            raise TypeError('setSourceModel() expects a QFileItemModel (%s given)!' % type(sourceModel).__name__)
+            raise TypeError('setSourceModel() expects a QAbstractFileItemModel subclass (%s given)!' % type(sourceModel).__name__)
 
     def filterAcceptsRow(self, row, parent):
         """
@@ -105,14 +108,15 @@ class QFileItemFilterModel(QtCore.QSortFilterProxyModel):
         index = sourceModel.index(row, 0, parent=parent)
         path = sourceModel.pathFromIndex(index)
 
-        if self._ignoreLinks and path.isLink():
+        if self.ignoreSymLinks() and path.isLink():
 
             return False
 
-        elif self._ignoreFiles and path.isFile():
+        elif self.directoriesOnly() and not path.isDir():
 
             return False
 
         else:
 
-            return True
+            return super(QFileItemFilterModel, self).filterAcceptsRow(row, parent)
+    # endregion
