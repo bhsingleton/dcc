@@ -115,7 +115,7 @@ class QPSONStyledItemDelegate(QtWidgets.QStyledItemDelegate):
 
     def createEditorByProperty(self, obj, func, isElement=False, parent=None):
         """
-        Returns a widget from the supplied object and property.
+        Returns the widget used to edit the specified object property.
 
         :type obj: object
         :type func: function
@@ -123,6 +123,14 @@ class QPSONStyledItemDelegate(QtWidgets.QStyledItemDelegate):
         :type parent: QtWidgets.QWidget
         :rtype: QtWidgets.QWidget
         """
+
+        # Check if object delegate exists
+        #
+        editor = self.createEditorByDelegate(obj, func, parent=parent)
+
+        if isinstance(editor, QtWidgets.QWidget):
+
+            return editor
 
         # Evaluate return type
         #
@@ -147,9 +155,31 @@ class QPSONStyledItemDelegate(QtWidgets.QStyledItemDelegate):
 
             return self.createEditorByType(returnType, parent=parent)
 
+    def createEditorByDelegate(self, obj, func, parent=None):
+        """
+        Returns the widget used to edit the specified object property via delegate.
+
+        :type obj: object
+        :type func: function
+        :type parent: QtWidgets.QWidget
+        :rtype: Union[QtWidgets.QWidget, None]
+        """
+
+        # Check if object has editor delegate
+        #
+        delegate = getattr(obj, 'createEditor')
+
+        if callable(delegate):
+
+            return delegate(func.__name__, parent=parent)
+
+        else:
+
+            return None
+
     def createEditorByType(self, cls, parent=None):
         """
-        Returns the widget used to edit the type specified for editing.
+        Returns the widget used to edit the specified type.
 
         :type cls: type
         :type parent: QtWidgets.QWidget
