@@ -143,6 +143,7 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
         obj['properties'] = {}
         obj['subAnims'] = []
         obj['customAttributes'] = []
+        obj['noteTracks'] = []
 
         self.objects[handle] = obj
 
@@ -265,6 +266,19 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
 
         return refs
 
+    def serializeNoteTracks(self, wrapper):
+        """
+        Returns a list serializable objects from the supplied Max object's note tracks.
+
+        :type wrapper: pymxs.MXSWrapperBase
+        :rtype: List[dict]
+        """
+
+        numTracks = pymxs.runtime.numNoteTracks(wrapper)
+        tracks = [pymxs.runtime.getNoteTrack(wrapper, i) for i in inclusiveRange(1, numTracks, 1)]
+
+        return list(map(self.default, tracks))
+
     def delegateObject(self, wrapper, **kwargs):
         """
         Delegates the supplied Max object to the required serializer.
@@ -312,6 +326,14 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
         # Register Max-object
         #
         obj = self.registerObject(wrapper)
+
+        # Check if note tracks should be skipped
+        #
+        skipKeys = kwargs.get('skipKeys', self.skipKeys)
+
+        if not skipKeys:
+
+            obj['noteTracks'].extend(self.serializeNoteTracks(wrapper))
 
         # Check if properties should be skipped
         #
@@ -560,9 +582,18 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
         #
         if not self.skipShapes:
 
+            # Compute face-triangle vertex indices
+            #
+            triMesh = meshutils.getTriMesh(mesh)
+            faceTriangleIndices = meshutils.getFaceTriangleIndices(mesh)
+            faceTriangleVertexIndices = [[list(meshutils.iterFaceVertexIndices(triMesh, indices=[triangleIndex]))[0] for triangleIndex in triangleIndices] for (faceIndex, triangleIndices) in faceTriangleIndices.items()]
+
+            # Update object properties
+            #
             properties = obj['properties']
             properties['vertices'] = list(meshutils.iterVertices(mesh))
             properties['faceVertexIndices'] = list(meshutils.iterFaceVertexIndices(mesh))
+            properties['faceTriangleVertexIndices'] = faceTriangleVertexIndices
             properties['smoothingGroups'] = list(meshutils.iterSmoothingGroups(mesh))
             properties['maps'] = [self.serializeMap(mesh, channel=channel) for channel in range(meshutils.mapCount(mesh))]
             properties['faceMaterialIndices'] = list(meshutils.iterFaceMaterialIndices(mesh))
@@ -804,6 +835,33 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
 
         return obj
 
+    def serializeRootNode(self, rootNode, children=None):
+        """
+        Returns a serializable object for the supplied root node.
+
+        :type rootNode: pymxs.MXSWrapperBase
+        :type children: Union[list, None]
+        :rtype: dict
+        """
+
+        # Serialize object
+        #
+        obj = self.serializeObject(rootNode)
+
+        # Extend children
+        #
+        properties = obj['properties']
+
+        if children is not None:
+
+            properties['children'] = [self.serializeRef(child) for child in children]
+
+        else:
+
+            properties['children'] = [self.serializeRef(child) for child in rootNode.children]
+
+        return obj
+
     def serializeScene(self, scene):
         """
         Returns a serializable object for the supplied Max scene.
@@ -825,17 +883,7 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
         obj['selectionSets'] = {}
         obj['layers'] = []
         obj['materials'] = []
-        obj['world'] = []
-
-        # Check if custom selection should be used
-        #
-        if self.selection is not None:
-
-            obj['world'].extend([self.serializeRef(x) for x in self.selection])
-
-        else:
-
-            obj['world'].extend([self.serializeRef(x) for x in scene.world.children])
+        obj['world'] = self.serializeRootNode(pymxs.runtime.RootNode, children=self.selection)
 
         # Check if selection-sets should be skipped
         #
