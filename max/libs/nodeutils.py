@@ -1,7 +1,6 @@
 import pymxs
 
 from collections import deque
-from . import arrayutils
 
 import logging
 logging.basicConfig()
@@ -68,7 +67,7 @@ def iterNodesByPattern(*patterns, ignoreCase=False):
     """
     Returns a generator that yields nodes based on the supplied pattern.
 
-    :type pattern: str
+    :type patterns: Union[str, Tuple[str]]
     :type ignoreCase: bool
     :rtype: iter
     """
