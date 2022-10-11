@@ -54,7 +54,7 @@ class FnScene(afnscene.AFnScene):
         :rtype: None
         """
 
-        mc.file(newFile=True)
+        mc.file(newFile=True, force=True)
 
     def save(self):
         """
@@ -63,7 +63,21 @@ class FnScene(afnscene.AFnScene):
         :rtype: None
         """
 
-        mc.file(save=True)
+        # Check if this is an open scene file
+        #
+        if self.isNewScene():
+
+            return
+
+        # Get current file type
+        # Otherwise, Maya will assume binary for all files!
+        #
+        extension = self.currentFileExtension()
+        fileType = 'mayaAscii' if extension == FileExtensions.ma else 'mayaBinary'
+
+        # Save changes to scene file
+        #
+        mc.file(save=True, prompt=False, type=fileType)
 
     def saveAs(self, filePath):
         """
@@ -73,7 +87,8 @@ class FnScene(afnscene.AFnScene):
         :rtype: None
         """
 
-        mc.file(filePath, save=True, prompt=False)
+        mc.file(rename=filePath)
+        self.save()
 
     def open(self, filePath):
         """
