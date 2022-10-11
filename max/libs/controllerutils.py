@@ -2,7 +2,7 @@ import pymxs
 import re
 
 from collections import deque
-from . import propertyutils, attributeutils, wrapperutils
+from . import nodeutils, propertyutils, attributeutils, wrapperutils
 from ...generators.inclusiverange import inclusiveRange
 
 import logging
@@ -120,7 +120,7 @@ def isFrozen(obj):
     # Get PRS controller
     #
     node, controller = decomposeController(obj)
-    prs = ensureControllerByClass(controller, pymxs.runtime.PRS)
+    prs = findControllerByClass(controller, pymxs.runtime.PRS)
 
     if not pymxs.runtime.isKindOf(prs, pymxs.runtime.PRS):
 
@@ -129,10 +129,36 @@ def isFrozen(obj):
     # Evaluate if position/rotation lists exist
     #
     positionController, rotationController, scaleController = decomposePRSController(prs)
-    positionList = ensureControllerByClass(positionController, pymxs.runtime.Position_List)
-    rotationList = ensureControllerByClass(rotationController, pymxs.runtime.Rotation_List)
+    positionList = findControllerByClass(positionController, pymxs.runtime.Position_List)
+    rotationList = findControllerByClass(rotationController, pymxs.runtime.Rotation_List)
 
     return positionList is not None and rotationList is not None
+
+
+def isPartiallyFrozen(obj):
+    """
+    Evaluates if the supplied object is partially frozen.
+
+    :type obj: pymxs.MXSWrapperBase
+    :rtype: bool
+    """
+
+    # Get PRS controller
+    #
+    node, controller = decomposeController(obj)
+    prs = findControllerByClass(controller, pymxs.runtime.PRS)
+
+    if not pymxs.runtime.isKindOf(prs, pymxs.runtime.PRS):
+
+        return False
+
+    # Evaluate if position/rotation lists exist
+    #
+    positionController, rotationController, scaleController = decomposePRSController(prs)
+    positionList = findControllerByClass(positionController, pymxs.runtime.Position_List)
+    rotationList = findControllerByClass(rotationController, pymxs.runtime.Rotation_List)
+
+    return len(list(filter(lambda x: x is not None, (positionList, rotationList)))) >= 1
 
 
 def ensureFrozenNames(controller):
@@ -531,7 +557,7 @@ def iterListController(controller):
         yield subController, subControllerName, subControllerWeight
 
 
-def ensureControllerByClass(obj, controllerClass):
+def findControllerByClass(obj, controllerClass):
     """
     Returns a controller derived from the specified class on the supplied object.
     This is useful when you know a controller should exist but is nested under something else.
@@ -597,7 +623,7 @@ def getPRSController(node):
     :rtype: pymxs.MXSWrapperBase
     """
 
-    return ensureControllerByClass(pymxs.runtime.getTMController(node), pymxs.runtime.PRS)
+    return findControllerByClass(pymxs.runtime.getTMController(node), pymxs.runtime.PRS)
 
 
 def decomposePRSController(controller):
@@ -666,3 +692,49 @@ def clearListController(controller):
     for i in range(listCount, 0, -1):
         
         controller.list.delete(i)
+
+
+def decomposeIKController(obj):
+    """
+    Returns the IK handle and joints from the supplied IK controller.
+
+    :type obj: pymxs.MXSWrapperBase
+    :rtype: Tuple[pymxs.MXSWrapperBase, List[pymxs.MXSWrapperBase]]
+    """
+
+    # Evaluate object type
+    #
+    if pymxs.runtime.isValidNode(obj):
+
+        # Evaluate transform controller
+        #
+        transformController = pymxs.runtime.getTMController(obj)
+        return decomposeIKController(transformController)
+
+    elif wrapperutils.isKindOf(obj, pymxs.runtime.IKControl):
+
+        # Find associated ik-chain controller
+        #
+        controllers = [dependent for dependent in wrapperutils.iterDependents(obj) if wrapperutils.isKindOf(dependent, pymxs.runtime.IKChainControl)]
+        numControllers = len(controllers)
+
+        if numControllers == 1:
+
+            return decomposeIKController(controllers[0])
+
+        else:
+
+            return None, tuple()
+
+    elif wrapperutils.isKindOf(obj, pymxs.runtime.IKChainControl):
+
+        # Trace ik joint chain
+        #
+        parents = list(nodeutils.trace(obj.endJoint))
+        index = parents.index(obj.startJoint)
+
+        return obj, parents[index:]
+
+    else:
+
+        return None, tuple()

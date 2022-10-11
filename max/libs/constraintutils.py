@@ -1,6 +1,6 @@
 import pymxs
 
-from . import propertyutils, controllerutils, transformutils
+from . import propertyutils, controllerutils, transformutils, wrapperutils
 from ...generators.inclusiverange import inclusiveRange
 
 import logging
@@ -17,14 +17,24 @@ def iterTargets(constraint):
     :rtype: iter
     """
 
+    # Iterate through targets
+    #
     numTargets = constraint.getNumTargets()
 
     for i in inclusiveRange(1, numTargets, 1):
 
+        # Check if node is valid
+        #
         node = constraint.getNode(i)
         weight = constraint.getWeight(i)
 
-        yield node, weight
+        if pymxs.runtime.isValidNode(node):
+
+            yield node, weight
+
+        else:
+
+            continue
 
 
 def copyTargets(copyFrom, copyTo):
@@ -42,6 +52,23 @@ def copyTargets(copyFrom, copyTo):
         copyTo.appendTarget(node, weight)
 
 
+def clearTargets(constraint):
+    """
+    Removes all targets from the supplied constraint.
+
+    :type constraint: pymxs.MXSWrapperBase
+    :rtype: None
+    """
+
+    # Iterate through targets
+    #
+    numTargets = constraint.getNumTargets()
+
+    for i in inclusiveRange(numTargets, 1, -1):
+
+        constraint.deleteTarget(i)
+
+
 def rebuildPositionList(node):
     """
     Rebuilds the position-list on the supplied node.
@@ -57,18 +84,18 @@ def rebuildPositionList(node):
 
     if not pymxs.runtime.isKindOf(prs, pymxs.runtime.PRS):
 
-        log.warning('Unable to locate PRS controller from "%s" node!' % node.name)
+        log.warning(f'Unable to locate PRS controller from ${node.name}!' % node.name)
         return False
 
     # Get rotation list
     #
-    rotationController = controllerutils.decomposePRSController(prs)[0]
-    positionList = controllerutils.ensureControllerByClass(rotationController, pymxs.runtime.Position_List)
+    positionController = controllerutils.decomposePRSController(prs)[0]
+    positionList = controllerutils.findControllerByClass(positionController, pymxs.runtime.Position_List)
     success = controllerutils.ensureFrozenNames(positionList)
 
     if not success:
 
-        log.warning('Unable to rebuild "$%s.position" list controller!' % node.name)
+        log.warning(f'Unable to rebuild ${node.name}[#position].controller!')
         return False
 
     # Freeze rotation using current matrix
@@ -84,7 +111,7 @@ def rebuildPositionList(node):
     controller = pymxs.runtime.Position_List()
     pymxs.runtime.setPropertyController(prs, 'Position', controller)
 
-    log.info('Resetting "$%s.position" list controller!' % node.name)
+    log.info(f'Rebuilding ${node.name}[#position].controller!')
 
     for (i, (subController, name, weight)) in enumerate(controllerutils.iterListController(positionList)):
 
@@ -107,7 +134,7 @@ def rebuildPositionList(node):
             # Create new constraint
             #
             constraintClass = pymxs.runtime.classOf(subController)
-            log.info('Rebuilding "%s" controller @ "$%s.position.list[%s]"' % (constraintClass, node.name, index))
+            log.info(f'Rebuilding "{constraintClass}" controller @ ${node.name}[#position].controller[{index}]')
 
             constraint = constraintClass()
             pymxs.runtime.setPropertyController(controller, 'Available', constraint)
@@ -148,18 +175,18 @@ def rebuildRotationList(node):
 
     if not pymxs.runtime.isKindOf(prs, pymxs.runtime.PRS):
 
-        log.warning('Unable to locate PRS controller from "%s" node!' % node.name)
+        log.warning(f'Unable to locate PRS controller from ${node.name}!')
         return False
 
     # Get rotation list
     #
     rotationController = controllerutils.decomposePRSController(prs)[1]
-    rotationList = controllerutils.ensureControllerByClass(rotationController, pymxs.runtime.Rotation_List)
+    rotationList = controllerutils.findControllerByClass(rotationController, pymxs.runtime.Rotation_List)
     success = controllerutils.ensureFrozenNames(rotationList)
 
     if not success:
 
-        log.warning('Unable to rebuild "$%s.rotation" list controller!' % node.name)
+        log.warning(f'Unable to rebuild ${node.name}[#rotation].controller!')
         return False
 
     # Freeze rotation using current matrix
@@ -175,7 +202,7 @@ def rebuildRotationList(node):
     controller = pymxs.runtime.Rotation_List()
     pymxs.runtime.setPropertyController(prs, 'Rotation', controller)
 
-    log.info('Resetting "$%s.rotation" list controller!' % node.name)
+    log.info(f'Rebuilding ${node.name}[#rotation].controller!')
 
     for (i, (subController, name, weight)) in enumerate(controllerutils.iterListController(rotationList)):
 
@@ -198,7 +225,7 @@ def rebuildRotationList(node):
             # Create new constraint
             #
             constraintClass = pymxs.runtime.classOf(subController)
-            log.info('Rebuilding "%s" controller @ "$%s.rotation.list[%s]"' % (constraintClass, node.name, index))
+            log.info(f'Rebuilding "{constraintClass}" controller @ "${node.name}[#rotation].controller[{index}]"')
 
             constraint = constraintClass()
             pymxs.runtime.setPropertyController(controller, 'Available', constraint)
@@ -241,9 +268,48 @@ def resetInitialOffsets(node):
 
         return False
 
-    # Rebuild PRS list controllers
+    # Decompose PRS controller
     #
-    rebuildPositionList(node)
-    rebuildRotationList(node)
+    transformController = controllerutils.getPRSController(node)
+    positionController, rotationController, scaleController = controllerutils.decomposePRSController(transformController)
+
+    # Rebuild position list
+    #
+    startMatrix = transformutils.getMatrix(node)
+
+    if wrapperutils.isKindOf(positionController, pymxs.runtime.Position_List):
+
+        rebuildPositionList(node)
+
+    elif wrapperutils.isKindOf(positionController, pymxs.runtime.Position_XYZ):
+
+        transformutils.freezeTranslation(node)
+
+    else:
+
+        pass
+
+    # Rebuild rotation list
+    #
+    if wrapperutils.isKindOf(rotationController, pymxs.runtime.Rotation_List):
+
+        rebuildRotationList(node)
+
+    elif wrapperutils.isKindOf(rotationController, pymxs.runtime.Euler_XYZ):
+
+        transformutils.freezeRotation(node)
+
+    else:
+
+        pass
+
+    # Inspect for matrix changes
+    #
+    endMatrix = transformutils.getMatrix(node)
+
+    if not transformutils.isClose(startMatrix, endMatrix):
+
+        log.error(f'{startMatrix} != {endMatrix}')
+        raise RuntimeError(f'resetInitialOffsets() unable to reset ${node.name} initial offset!')
 
     return True

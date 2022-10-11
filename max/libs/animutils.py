@@ -181,7 +181,7 @@ def bakeConstraints(node, startFrame=None, endFrame=None):
     log.info('Baking $%s.transform' % node.name)
     transformCache = cacheTransforms(node, startFrame=startFrame, endFrame=endFrame)
 
-    transformController = controllerutils.ensureControllerByClass(transformController, pymxs.runtime.PRS)
+    transformController = controllerutils.findControllerByClass(transformController, pymxs.runtime.PRS)
     positionController, rotationController, scaleController = controllerutils.decomposePRSController(transformController)
 
     # Inspect position controller
