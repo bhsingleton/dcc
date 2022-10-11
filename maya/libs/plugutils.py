@@ -114,6 +114,20 @@ def findPlug(dependNode, plugName):
     return plug
 
 
+def isPlugConstrained(plug):
+    """
+    Evaluates if the supplied plug is constrained.
+
+    :type plug: om.MPlug
+    :rtype: bool
+    """
+
+    source = plug.source()
+    node = source.node()
+
+    return node.hasFn(om.MFn.kConstraint)
+
+
 def connectPlugs(source, destination, force=False):
     """
     Method used to connect two plugs.
@@ -243,33 +257,71 @@ def breakConnections(plug, source=True, destination=True, recursive=False):
             breakConnections(childPlug, source=source, destination=destination)
 
 
-def walk(plug):
+def iterTopLevelPlugs(dependNode):
     """
-    Returns a generator that can iterate over a plug's descendants.
+    Returns a generator that yields top-level plugs from the supplied node.
 
-    :type plug: om.MPlug
+    :type dependNode: om.MObject
     :rtype: iter
     """
 
-    # Check if this plug is walkable
-    # If it is then collect child plugs
+    # Iterate through attributes
     #
-    queue = None
+    for attribute in attributeutils.iterAttributes(dependNode):
 
-    if plug.isArray and not plug.isElement:
+        # Check if attribute is top-level
+        #
+        fnAttribute = om.MFnAttribute(attribute)
 
-        queue = deque(iterElements(plug))
+        if not fnAttribute.parent.isNull():
 
-    elif plug.isCompound:
+            continue
 
-        queue = deque(iterChildren(plug))
+        # Initialize and yield plug
+        #
+        yield om.MPlug(dependNode, attribute)
 
-    else:
 
-        return
+def iterChannelBoxPlugs(dependNode):
+    """
+    Returns a generator that yields plugs that are in the channel-box.
 
-    # Walk through plug hierarchy
+    :type dependNode: om.MObject
+    :rtype: iter
+    """
+
+    # Iterate through top-level plugs
     #
+    for plug in iterTopLevelPlugs(dependNode):
+
+        # Check if this is a compound plug
+        #
+        if plug.isChannelBox:
+
+            yield plug
+
+        # Check if this is a compound plug
+        #
+        for childPlug in iterChildren(plug, channelBox=True):
+
+            yield childPlug
+
+
+def walk(plug, writable=False, channelBox=False, keyable=False):
+    """
+    Returns a generator that yields all descendants from the supplied plug.
+
+    :type plug: om.MPlug
+    :type writable: bool
+    :type channelBox: bool
+    :type keyable: bool
+    :rtype: iter
+    """
+
+    elements = list(iterElements(plug, writable=writable))
+    children = list(iterChildren(plug, writable=writable, channelBox=channelBox, keyable=keyable))
+    queue = deque(elements + children)
+
     while len(queue):
 
         plug = queue.popleft()
@@ -277,23 +329,24 @@ def walk(plug):
 
         if plug.isArray and not plug.isElement:
 
-            queue.extend(list(iterElements(plug)))
+            queue.extend(list(iterElements(plug, writable=writable)))
 
         elif plug.isCompound:
 
-            queue.extend(list(iterChildren(plug)))
+            queue.extend(list(iterChildren(plug, writable=writable, channelBox=channelBox, keyable=keyable)))
 
         else:
 
             continue
 
 
-def iterElements(plug):
+def iterElements(plug, writable=False):
     """
-    Returns a generator that can iterate over a plugs elements.
+    Returns a generator that yields all elements from the supplied plug.
     This generator only works on array plugs and not elements!
 
     :type plug: om.MPlug
+    :type writable: bool
     :rtype: iter
     """
 
@@ -301,7 +354,7 @@ def iterElements(plug):
     #
     if not plug.isArray or plug.isElement:
 
-        return
+        return iter([])
 
     # Iterate through plug elements
     #
@@ -309,15 +362,26 @@ def iterElements(plug):
 
     for i in range(numElements):
 
-        yield plug.elementByPhysicalIndex(i)
+        # Check if element is writable
+        #
+        element = plug.elementByPhysicalIndex(i)
+
+        if writable and not element.isFreeToChange():
+
+            continue
+
+        yield element
 
 
-def iterChildren(plug):
+def iterChildren(plug, writable=False, channelBox=False, keyable=False):
     """
-    Returns a generator that can iterate over a plugs children.
+    Returns a generator that yields all children from the supplied plug.
     This generator only works on compound plugs!
 
     :type plug: om.MPlug
+    :type writable: bool
+    :type channelBox: bool
+    :type keyable: bool
     :rtype: iter
     """
 
@@ -325,7 +389,7 @@ def iterChildren(plug):
     #
     if not plug.isCompound:
 
-        return
+        return iter([])
 
     # Iterate through children
     #
@@ -333,7 +397,27 @@ def iterChildren(plug):
 
     for i in range(numChildren):
 
-        yield plug.child(i)
+        # Check if child is writable
+        #
+        child = plug.child(i)
+
+        if writable and not child.isFreeToChange():
+
+            continue
+
+        # Check if child is in channel-box
+        #
+        if channelBox and not child.isChannelBox:
+
+            continue
+
+        # Check if child is keyable
+        #
+        if keyable and not child.isKeyable:
+
+            continue
+
+        yield child
 
 
 def removeMultiInstances(plug, indices):
