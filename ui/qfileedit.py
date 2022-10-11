@@ -14,6 +14,10 @@ class QFileEdit(QtWidgets.QLineEdit):
     Overload of QLineEdit that includes a directory explorer button.
     """
 
+    # region Signals
+    programmaticallyChanged = QtCore.Signal(str)
+    # endregion
+
     # region Dunderscores
     def __init__(self, *args, **kwargs):
         """
@@ -25,16 +29,15 @@ class QFileEdit(QtWidgets.QLineEdit):
         :rtype: None
         """
 
+        # Declare private variables
+        #
+        self._caption = kwargs.pop('caption', 'Select File')
+        self._filter = kwargs.pop('filter', 'All files (*.*)')
+        self._requiresUserInput = False
+
         # Call parent method
         #
         super(QFileEdit, self).__init__(*args, **kwargs)
-
-        # Declare private variables
-        #
-        self._requiresUserInput = False
-        self._caption = kwargs.get('caption', 'Select File')
-        self._dir = kwargs.get('dir', os.getcwd())
-        self._filter = kwargs.get('filter', 'All files (*.*)')
 
         # Add custom action
         #
@@ -67,6 +70,19 @@ class QFileEdit(QtWidgets.QLineEdit):
         #
         return super(QFileEdit, self).text()
 
+    def setText(self, text):
+        """
+        Updates the line edit's text.
+
+        :type text: str
+        :rtype: None
+        """
+
+        # Call parent method
+        #
+        super(QFileEdit, self).setText(text)
+        self.programmaticallyChanged.emit(text)
+
     def isEditor(self):
         """
         Evaluates if this widget is currently acting as an editor for a QStyledItemDelegate.
@@ -86,10 +102,12 @@ class QFileEdit(QtWidgets.QLineEdit):
         :rtype: str
         """
 
+        currentDirectory = super(QFileEdit, self).text()
+
         return QtWidgets.QFileDialog.getOpenFileName(
             parent=self,
             caption=self._caption,
-            dir=self._dir,
+            dir=currentDirectory,
             filter=self._filter
         )[0]
     # endregion
