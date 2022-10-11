@@ -72,7 +72,7 @@ def getDefaultPropertyValue(cls, name):
 
     except (SystemError, RuntimeError):
 
-        log.error('Error encountered while retrieving "%s::%s" default value!' % (cls, name))
+        log.debug('Error encountered while retrieving "%s::%s" default value!' % (cls, name))
         return None
 
 
