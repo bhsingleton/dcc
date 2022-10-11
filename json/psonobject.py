@@ -305,7 +305,7 @@ class PSONObject(with_metaclass(ABCMeta, collections_abc.MutableMapping)):
         return dict(cls.iterProperties(readable=readable, writable=writable, deletable=deletable))
 
     @classmethod
-    def getEditor(cls, name, parent=None):
+    def createEditor(cls, name, parent=None):
         """
         Returns a Qt editor for the specified property.
 
