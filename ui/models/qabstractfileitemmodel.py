@@ -329,11 +329,11 @@ class QAbstractFileItemModel(QtCore.QAbstractItemModel):
         :rtype: QtCore.QMimeData
         """
 
-        paths = set([str(self.pathFromIndex(index)) for index in indexes])
+        paths = [str(self.pathFromIndex(index)) for index in indexes if index.column() == 0]
         log.info('Creating mime-data for URLs: %s' % paths)
 
         mimeData = QtCore.QMimeData()
-        mimeData.setUrls(list(map(QtCore.QUrl.fromLocalFile, paths)))
+        mimeData.setUrls(list(map(QtCore.QUrl.fromLocalFile, sorted(set(paths), key=paths.index))))
 
         return mimeData
 
