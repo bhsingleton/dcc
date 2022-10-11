@@ -14,10 +14,10 @@ def defaultLayer():
     """
     Returns the default layer.
 
-    :rtype: pymxs.runtime.LayerProperties
+    :rtype: pymxs.MXSWrapperBase
     """
 
-    return pymxs.runtime.LayerManager.getLayerFromName('0')
+    return pymxs.runtime.LayerManager.getLayerFromName('0').layerAsRefTarg
 
 
 def isValidLayer(layer):
@@ -57,7 +57,7 @@ def iterTopLevelLayers():
 
         if parent is None:
 
-            yield layer
+            yield layer.layerAsRefTarg
 
         else:
 
@@ -68,22 +68,72 @@ def iterChildLayers(layer):
     """
     Returns a generator that yields children from the supplied layer.
 
-    :type layer: pymxs.runtime.LayerProperties
+    :type layer: pymxs.MXSWrapperBase
     :rtype: iter
     """
 
     childCount = layer.getNumChildren()
 
-    for i in inclusiveRange(1, childCount):  # But these are 1 based???
+    for i in inclusiveRange(1, childCount, 1):  # But these are 1 based???
 
-        yield layer.getChild(i)
+        child = layer.getChild(i)
+
+        if child is not None:
+
+            yield child.layerAsRefTarg
+
+        else:
+
+            continue
+
+
+def iterParentLayers(layer):
+    """
+    Returns a generator that yields the parents for the layer.
+
+    :type layer: pymxs.MXSWrapperBase
+    :rtype: iter
+    """
+
+    # Check if layer is valid
+    #
+    if layer is None:
+
+        return iter([])
+
+    # Iterate through parents
+    #
+    parent = layer.getParent()
+
+    while parent is not None:
+
+        yield parent.layerAsRefTarg
+        parent = parent.getParent()
+
+
+def traceLayer(layer):
+    """
+    Returns a generator that yields the parents leading to the supplied layer.
+
+    :type layer: pymxs.MXSWrapperBase
+    :rtype: iter
+    """
+
+    if layer is not None:
+
+        yield from reversed(list(iterParentLayers(layer)))
+        yield layer
+
+    else:
+
+        return iter([])
 
 
 def walk(*args, **kwargs):
     """
     Returns a generator that yields all descendants from the supplied layers.
 
-    :key ignore: list[pymxs.runtime.LayerProperties]
+    :key ignore: list[pymxs.MXSWrapperBase]
     :rtype: iter
     """
 
@@ -125,6 +175,8 @@ def iterNodesFromLayers(*layers):
     :rtype: iter
     """
 
+    # Iterate through layers
+    #
     for layer in layers:
 
         success, nodes = layer.nodes(pymxs.byref(None))
@@ -149,16 +201,30 @@ def iterLayersFromNodes(*nodes):
     :rtype: iter
     """
 
-    yielded = {}
+    # Iterate through nodes
+    #
+    handles = {}
 
     for node in nodes:
 
-        layer = node.layer
-        wasYielded = yielded.get(layer.name, False)
+        # Check if layer is valid
+        #
+        layerInterface = getattr(node, 'layer', None)
+
+        if layerInterface is None:
+
+            continue
+
+        # Check if layer has already been yielded
+        #
+        layer = layerInterface.layerAsRefTarg
+        handle = int(pymxs.runtime.getHandleByAnim(layer))
+
+        wasYielded = handles.get(handle, False)
 
         if not wasYielded:
 
-            yielded[layer.name] = True
+            handles[handle] = True
             yield layer
 
         else:
