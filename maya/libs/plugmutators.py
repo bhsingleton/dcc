@@ -1,5 +1,6 @@
 from maya.api import OpenMaya as om
 from . import plugutils
+from ..decorators.locksmith import locksmith
 
 import logging
 logging.basicConfig()
@@ -412,56 +413,8 @@ def getAliases(dependNode):
 
 
 # region Setters
-def toggleLock(func):
-    """
-    Returns a function wrapper that toggles the lock state on a plug.
-
-    :type func: function
-    :rtype: function
-    """
-
-    # Define wrapper function
-    #
-    def wrapper(*args, **kwargs):
-
-        # Check number of arguments
-        #
-        numArgs = len(args)
-
-        if numArgs == 2:
-
-            # Check if force was used
-            #
-            plug = args[0]
-            value = args[1]
-
-            force = kwargs.get('force', False)
-
-            if force:
-
-                plug.isLocked = False
-
-            # Update plug value
-            #
-            func(plug, value)
-
-            # Check if plug should be relocked
-            #
-            if force:
-
-                plug.isLocked = True
-
-        else:
-
-            raise TypeError('toggleLock() expects 1 argument (%s given)!' % numArgs)
-
-    # Return wrapper function
-    #
-    return wrapper
-
-
-@toggleLock
-def setBoolean(plug, value):
+@locksmith
+def setBoolean(plug, value, **kwargs):
     """
     Updates the boolean value on the supplied plug.
 
@@ -473,8 +426,8 @@ def setBoolean(plug, value):
     plug.setBool(bool(value))
 
 
-@toggleLock
-def setInteger(plug, value):
+@locksmith
+def setInteger(plug, value, **kwargs):
     """
     Updates the integer value for the supplied plug.
 
@@ -486,8 +439,8 @@ def setInteger(plug, value):
     plug.setInt(int(value))
 
 
-@toggleLock
-def setFloat(plug, value):
+@locksmith
+def setFloat(plug, value, **kwargs):
     """
     Updates the float value for the supplied plug.
 
@@ -499,13 +452,13 @@ def setFloat(plug, value):
     plug.setFloat(float(value))
 
 
-@toggleLock
-def setMatrix(plug, matrix):
+@locksmith
+def setMatrix(plug, value, **kwargs):
     """
     Updates the matrix value on the supplied plug.
 
     :type plug: om.MPlug
-    :type matrix: om.MMatrix
+    :type value: om.MMatrix
     :rtype: None
     """
 
@@ -514,22 +467,20 @@ def setMatrix(plug, matrix):
     fnMatrixData = om.MFnMatrixData()
     matrixData = fnMatrixData.create()
 
-    # Assign matrix to empty object
-    #
-    fnMatrixData.set(matrix)
+    fnMatrixData.set(value)
 
-    # Assign MObject on plug
+    # Assign data object to plug
     #
     plug.setMObject(matrixData)
 
 
-@toggleLock
-def setMatrixArray(plug, value):
+@locksmith
+def setMatrixArray(plug, value, **kwargs):
     """
     Updates the matrix array for the supplied plug.
 
     :type plug: om.MPlug
-    :type value: om.MMatrixArray
+    :type value: Union[List[om.MMatrix], om.MMatrixArray]
     :rtype: None
     """
 
@@ -558,18 +509,18 @@ def setMatrixArray(plug, value):
 
         raise TypeError('setMatrixArray() expects a sequence of matrices!')
 
-    # Assign MObject to plug
+    # Assign data object to plug
     #
     plug.setMObject(matrixArrayData)
 
 
-@toggleLock
-def setDoubleArray(plug, value):
+@locksmith
+def setDoubleArray(plug, value, **kwargs):
     """
     Updates the double array for the supplied plug.
 
     :type plug: om.MPlug
-    :type value: Union[om.MFloatArray, om.MDoubleArray]
+    :type value: Union[List[float], om.MFloatArray, om.MDoubleArray]
     :rtype: None
     """
 
@@ -596,15 +547,15 @@ def setDoubleArray(plug, value):
 
     else:
 
-        raise TypeError('setDoubleArray() expects a sequence of floats!')
+        raise TypeError('setDoubleArray() expects a sequence of floats (%s given)!' % type(value).__name__)
 
     # Assign MObject to plug
     #
     plug.setMObject(doubleArrayData)
 
 
-@toggleLock
-def setMObject(plug, value):
+@locksmith
+def setMObject(plug, value, **kwargs):
     """
     Updates the MObject for the supplied plug.
 
@@ -616,8 +567,8 @@ def setMObject(plug, value):
     return plug.setMObject(value)
 
 
-@toggleLock
-def setString(plug, value):
+@locksmith
+def setString(plug, value, **kwargs):
     """
     Updates the string value for the supplied plug.
 
@@ -629,8 +580,8 @@ def setString(plug, value):
     return plug.setString(str(value))
 
 
-@toggleLock
-def setStringArray(plug, value):
+@locksmith
+def setStringArray(plug, value, **kwargs):
     """
     Gets the string array from the supplied plug.
 
@@ -658,85 +609,85 @@ def setStringArray(plug, value):
 
     else:
 
-        raise TypeError('setStringArray() expects a sequence of strings!')
+        raise TypeError('setStringArray() expects a sequence of strings (%s given)!' % type(value).__name__)
 
-    # Assign MObject to plug
+    # Assign data object to plug
     #
     plug.setMObject(stringArrayData)
 
 
-@toggleLock
-def setMAngle(plug, angle):
+@locksmith
+def setMAngle(plug, value, **kwargs):
     """
     Updates the MAngle value for the supplied plug.
 
     :type plug: om.MPlug
-    :type angle: om.MAngle
+    :type value: Union[int, float, om.MAngle]
     :rtype: None
     """
 
     # Check value type
     #
-    if not isinstance(angle, om.MAngle):
+    if not isinstance(value, om.MAngle):
 
-        angle = om.MAngle(angle, unit=om.MAngle.uiUnit())
+        value = om.MAngle(value, unit=om.MAngle.uiUnit())
 
-    return plug.setMAngle(angle)
+    return plug.setMAngle(value)
 
 
-@toggleLock
-def setMDistance(plug, distance):
+@locksmith
+def setMDistance(plug, value, **kwargs):
     """
     Updates the MDistance value for the supplied plug.
 
     :type plug: om.MPlug
-    :type distance: om.MDistance
+    :type value: Union[int, float, om.MDistance]
     :rtype: None
     """
 
     # Check value type
     #
-    if not isinstance(distance, om.MDistance):
+    if not isinstance(value, om.MDistance):
 
-        distance = om.MDistance(distance, unit=om.MDistance.uiUnit())
+        value = om.MDistance(value, unit=om.MDistance.uiUnit())
 
-    return plug.setMDistance(distance)
+    return plug.setMDistance(value)
 
 
-@toggleLock
-def setMTime(plug, time):
+@locksmith
+def setMTime(plug, value, **kwargs):
     """
     Updates the MTime value for the supplied plug.
 
     :type plug: om.MPlug
-    :type time: om.MTime
+    :type value: Union[int, float, om.MTime]
     :rtype: None
     """
 
     # Check value type
     #
-    if not isinstance(time, om.MTime):
+    if not isinstance(value, om.MTime):
 
-        time = om.MTime(time, om.MTime.uiUnit())
+        value = om.MTime(value, om.MTime.uiUnit())
 
-    return plug.setMTime(time)
+    return plug.setMTime(value)
 
 
-@toggleLock
-def setMessage(plug, dependNode):
+@locksmith
+def setMessage(plug, value, **kwargs):
     """
     Updates the connected message plug node.
 
     :type plug: om.MPlug
-    :type dependNode: om.MObject
+    :type value: om.MObject
     :rtype: None
     """
 
     # Check api type
     #
-    if not dependNode.isNull():
+    if not value.isNull():
 
-        otherPlug = om.MFnDependencyNode(dependNode).findPlug('message', True)
+        otherPlug = om.MFnDependencyNode(value).findPlug('message', True)
         plugutils.connectPlugs(otherPlug, plug, force=True)
 
     else:
@@ -744,13 +695,13 @@ def setMessage(plug, dependNode):
         plugutils.breakConnections(plug, source=True, destination=False)
 
 
-@toggleLock
-def setCompound(plug, values):
+@locksmith
+def setCompound(plug, values, **kwargs):
     """
     Updates the compound value for the supplied plug.
 
     :type plug: om.MPlug
-    :type values: Union[list, dict]
+    :type values: Union[List[Any], Dict[str, Any]]
     :rtype: None
     """
 
@@ -832,8 +783,8 @@ __set_unit_value__ = {
 }
 
 
-@toggleLock
-def setNumericValue(plug, value):
+@locksmith
+def setNumericValue(plug, value, **kwargs):
     """
     Updates the numeric value for the supplied plug.
 
@@ -842,11 +793,11 @@ def setNumericValue(plug, value):
     :rtype: None
     """
 
-    return __set_numeric_value__[getNumericType(plug.attribute())](plug, value)
+    return __set_numeric_value__[getNumericType(plug.attribute())](plug, value, **kwargs)
 
 
-@toggleLock
-def setUnitValue(plug, value):
+@locksmith
+def setUnitValue(plug, value, **kwargs):
     """
     Updates the unit value for the supplied unit plug.
 
@@ -855,11 +806,11 @@ def setUnitValue(plug, value):
     :rtype: None
     """
 
-    return __set_unit_value__[getUnitType(plug.attribute())](plug, value)
+    return __set_unit_value__[getUnitType(plug.attribute())](plug, value, **kwargs)
 
 
-@toggleLock
-def setTypedValue(plug, value):
+@locksmith
+def setTypedValue(plug, value, **kwargs):
     """
     Gets the typed value from the supplied plug.
 
@@ -868,7 +819,7 @@ def setTypedValue(plug, value):
     :rtype: None
     """
 
-    return __set_typed_value__[getDataType(plug.attribute())](plug, value)
+    return __set_typed_value__[getDataType(plug.attribute())](plug, value, **kwargs)
 
 
 __set_value__ = {
@@ -918,7 +869,7 @@ def setValue(plug, value, force=False):
         #
         if not isinstance(value, (list, tuple)):
 
-            raise TypeError('Array plugs expect a sequence of values!')
+            raise TypeError('setValue() expects a sequence of values for array plugs!')
 
         # Check if space should be reallocated
         #
@@ -942,7 +893,7 @@ def setValue(plug, value, force=False):
         for (physicalIndex, item) in enumerate(value):
 
             element = plug.elementByLogicalIndex(physicalIndex)
-            setValue(element, item)
+            setValue(element, item, force=force)
 
         # Remove any excess elements
         #
@@ -952,7 +903,7 @@ def setValue(plug, value, force=False):
 
     elif plug.isCompound:
 
-        setCompound(plug, value)
+        setCompound(plug, value, force=force)
 
     else:
 
@@ -960,11 +911,12 @@ def setValue(plug, value, force=False):
         __set_value__[attributeType](plug, value, force=force)
 
 
-def resetValue(plug):
+def resetValue(plug, force=False):
     """
     Resets the value for the supplied plug back to its default value.
 
     :type plug: om.MPlug
+    :type force: bool
     :rtype: None
     """
 
@@ -984,7 +936,7 @@ def resetValue(plug):
 
         for i in range(numElements):
 
-            resetValue(plug.elementByPhysicalIndex(i))
+            resetValue(plug.elementByPhysicalIndex(i), force=force)
 
     elif plug.isCompound:
 
@@ -994,7 +946,7 @@ def resetValue(plug):
 
         for i in range(numChildren):
 
-            resetValue(plug.child(i))
+            resetValue(plug.child(i), force=force)
 
     else:
 
@@ -1017,7 +969,7 @@ def resetValue(plug):
 
         # Reset plug
         #
-        setValue(plug, defaultValue)
+        setValue(plug, defaultValue, force=force)
 
 
 def setAliases(plug, aliases):

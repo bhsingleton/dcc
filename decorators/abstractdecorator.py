@@ -9,7 +9,7 @@ log.setLevel(logging.INFO)
 
 class AbstractDecorator(with_metaclass(ABCMeta, object)):
     """
-    Base class used for standardizing decorator behavior.
+    Abstract base class used to standardize decorator behavior.
     This pattern can also be used alongside 'with' statements.
     """
 
@@ -46,8 +46,8 @@ class AbstractDecorator(with_metaclass(ABCMeta, object)):
         Private method called whenever this object is accessed via attribute lookup.
 
         :type instance: object
-        :type owner: type
-        :rtype: Undo
+        :type owner: Type[AbstractDecorator]
+        :rtype: AbstractDecorator
         """
 
         self._instance = instance
@@ -59,8 +59,7 @@ class AbstractDecorator(with_metaclass(ABCMeta, object)):
         """
         Private method that is called whenever this instance is evoked.
 
-        :type func: function
-        :rtype: function
+        :rtype: Any
         """
 
         # Execute order of operations
@@ -111,7 +110,7 @@ class AbstractDecorator(with_metaclass(ABCMeta, object)):
         """
         Returns the class associated with the bound instance.
 
-        :rtype: type
+        :rtype: Type[AbstractDecorator]
         """
 
         return self._owner
@@ -122,7 +121,7 @@ class AbstractDecorator(with_metaclass(ABCMeta, object)):
         Getter method used to return the wrapped function.
         If this is a descriptor object then the function will be bound to the instance.
 
-        :rtype: function
+        :rtype: Callable
         """
 
         if self._instance is not None:
