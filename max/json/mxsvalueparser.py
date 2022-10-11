@@ -39,10 +39,11 @@ class MXSValueEncoder(json.JSONEncoder):
         'Array': 'serializeArray',
         'BitArray': 'serializeArray',
         'ObjectSet': 'serializeArray',
+        'SelectionSet': 'serializeSelectionSet',
+        'SelectionSetArray': 'serializeArray',
         'NodeChildrenArray': 'serializeArray',
         'MaterialLibrary': 'serializeArray',
         'Dictionary': 'serializeDictionary',
-        'ArrayParameter': 'serializeArray',
         'BitMap': 'serializeBitMap'
     }
 
@@ -273,6 +274,26 @@ class MXSValueEncoder(json.JSONEncoder):
         obj['kwargs'] = {'name': noteTrack.name, 'keys': noteTrack.keys}
 
         return obj
+
+    def serializeSelectionSet(self, selectionSet):
+        """
+        Serializes the supplied selection set into a json object.
+
+        :type selectionSet: pymxs.runtime.SelectionSet
+        :rtype: List[str]
+        """
+
+        return [selectionSet[i].name for i in range(0, selectionSet.count, 1)]
+
+    def serializeSelectionSetArray(self, selectionSets):
+        """
+        Serializes the supplied selection set array into a json object.
+
+        :type selectionSets: pymxs.runtime.SelectionSetArray
+        :rtype: Dict[str, List[str]]
+        """
+
+        return {selectionSets[i].name: self.serializeSelectionSet(selectionSets[i]) for i in range(0, selectionSets.count, 1)}
 
     def serializeArray(self, array):
         """

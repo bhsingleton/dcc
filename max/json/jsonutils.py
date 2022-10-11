@@ -2,6 +2,7 @@ import json
 import pymxs
 
 from . import mxsobjectparser
+from ..libs import nodeutils
 
 import logging
 logging.basicConfig()
@@ -22,7 +23,7 @@ def exportScene(savePath):
     with open(savePath, 'w') as jsonFile:
 
         json.dump(
-            pymxs.runtime.rootScene,
+            pymxs.runtime.RootScene,
             jsonFile,
             cls=mxsobjectparser.MXSObjectEncoder,
             indent=4,
@@ -43,39 +44,45 @@ def exportSelection(savePath):
     # Open file and overwrite contents
     #
     with open(savePath, 'w') as jsonFile:
+
         json.dump(
-            pymxs.runtime.rootScene,
+            pymxs.runtime.RootScene,
             jsonFile,
             cls=mxsobjectparser.MXSObjectEncoder,
             indent=4,
             skipChildren=True,
-            selection=pymxs.runtime.selection
+            selection=pymxs.runtime.Selection
         )
 
     log.info('Exporting selection to: %s' % savePath)
 
 
-def exportAnimation(savePath):
+def exportAnimation(savePath, controls=('*_Ctrl', '*_Anim')):
     """
     Exports the scene animation to the specified path.
 
     :type savePath: str
+    :type controls: Tuple[str]
     :rtype: None
     """
 
     # Open file and overwrite contents
     #
+    selection = list(nodeutils.iterNodesByPattern(*controls, ignoreCase=True))
+
     with open(savePath, 'w') as jsonFile:
+
         json.dump(
-            pymxs.runtime.rootScene,
+            pymxs.runtime.RootScene,
             jsonFile,
             cls=mxsobjectparser.MXSObjectEncoder,
             indent=4,
             skipProperties=True,
+            skipChildren=True,
             skipShapes=True,
-            skipLayers=True,
             skipSelectionSets=True,
-            skipMaterials=True
+            skipMaterials=True,
+            selection=selection
         )
 
     log.info('Exporting animation to: %s' % savePath)
