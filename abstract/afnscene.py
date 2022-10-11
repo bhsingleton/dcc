@@ -155,6 +155,24 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         pass
 
+    def currentFileExtension(self):
+        """
+        Returns the extension of the open scene file.
+
+        :rtype: FileExtensions
+        """
+
+        # Check if this is a new scene
+        #
+        if self.isNewScene():
+
+            return None
+
+        # Inspect file name
+        #
+        name, extension = os.path.splitext(self.currentFilename())
+        return self.__extensions__[extension.lstrip('.')]
+
     @abstractmethod
     def currentFilePath(self):
         """
