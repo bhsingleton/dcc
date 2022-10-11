@@ -36,6 +36,6 @@ def iterTargets(morpher):
         #
         name = pymxs.runtime.WM3_MC_GetName(morpher, i)
         target = pymxs.runtime.WM3_MC_GetTarget(morpher, i)
-        weight = pymxs.runtime.WM3_MC_GetMorphWeight(morpher, i)
+        weight = pymxs.runtime.WM3_MC_GetValue(morpher, i)
 
         yield name, target, weight
