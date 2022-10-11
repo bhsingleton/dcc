@@ -1,8 +1,7 @@
-import maya.cmds as mc
-import maya.OpenMaya as legacy
-import maya.api.OpenMaya as om
-import maya.api.OpenMayaAnim as oma
+import fnmatch
 
+from maya import cmds as mc, OpenMaya as legacy
+from maya.api import OpenMaya as om, OpenMayaAnim as oma
 from six import string_types
 from collections import deque
 from itertools import chain
@@ -15,7 +14,7 @@ log.setLevel(logging.INFO)
 
 def getNodeName(dependNode):
     """
-    Retrieves the name of the given node object.
+    Returns the name of the supplied node.
     This method will remove any hierarchical or namespace delimiters.
 
     :type dependNode: om.MObject
@@ -36,7 +35,7 @@ def getNodeName(dependNode):
 def demoteMObject(dependNode):
     """
     Demotes the supplied MObject back into the legacy API type.
-    This method only supports Dependency/DAG nodes!
+    This method only supports dependency/dag nodes!
 
     :type dependNode: om.MObject
     :rtype: legacy.MObject
@@ -79,7 +78,7 @@ def demoteMObject(dependNode):
 def promoteMObject(dependNode):
     """
     Promotes the supplied MObject back into the new API type.
-    This method only supports Dependency/DAG nodes!
+    This method only supports dependency/dag nodes!
 
     :type dependNode: legacy.MObject
     :rtype: om.MObject
@@ -120,7 +119,7 @@ def promoteMObject(dependNode):
 
 def getMObjectByName(name):
     """
-    Method used to retrieve an MObject based on the given node name.
+    Returns an MObject from the supplied node name.
     If a plug is included in the name then a tuple will be returned instead.
     There's a better plug lookup method inside plugutils!
 
@@ -174,45 +173,32 @@ def getMObjectByName(name):
 
 def getMObjectByMUuid(uuid):
     """
-    Method used to retrieve an MObject from the given UUID.
+    Returns an MObject from the supplied UUID.
     If multiple nodes are found with the same UUID then a list will be returned!
 
     :type uuid: om.MUuid
     :rtype: Union[om.MObject, List[om.MObject]]
     """
 
-    # Add UUID to selection list
-    #
-    try:
+    nodes = list(iterNodesByUuid(uuid))
+    numNodes = len(nodes)
 
-        selection = om.MSelectionList()
-        selection.add(uuid)
+    if numNodes == 0:
 
-        # Inspect selection count
-        #
-        selectionCount = selection.length()
-
-        if selectionCount == 0:
-
-            return om.MObject.kNullObj
-
-        elif selectionCount == 1:
-
-            return selection.getDependNode(0)
-
-        else:
-
-            return [selection.getDependNode(x) for x in range(selectionCount)]
-
-    except RuntimeError as exception:
-
-        log.debug('"%s" UUID does not exist!' % uuid)
         return om.MObject.kNullObj
+
+    elif numNodes == 1:
+
+        return nodes[0]
+
+    else:
+
+        return nodes
 
 
 def getMObjectByMObjectHandle(handle):
     """
-    Retrieves an MObject from the given MObjectHandle.
+    Returns an MObject from the supplied MObjectHandle.
 
     :type handle: om.MObjectHandle
     :rtype: om.MObject
@@ -223,7 +209,7 @@ def getMObjectByMObjectHandle(handle):
 
 def getMObjectByMDagPath(dagPath):
     """
-    Retrieves an MObject from the given MDagPath.
+    Returns an MObject from the supplied MDagPath.
 
     :type dagPath: om.MDagPath
     :rtype: om.MObject
@@ -243,9 +229,8 @@ __getmobject__ = {
 
 def getMObject(value):
     """
-    Method used to retrieve an MObject from any given value.
-    This method expects the value to be derived from a dependency node in order to work.
-    Failure to do so will result in a type error!
+    Returns an MObject from the supplied value.
+    This method expects the value to be derived from a dependency node in order to work!
 
     :type value: Union[str, om.MObject, om.MObjectHandle, om.MDagPath]
     :rtype: om.MObject
@@ -273,7 +258,7 @@ def getMObject(value):
 
 def getMObjectHandle(value):
     """
-    Method used to get an MObjectHandle from any given value.
+    Returns an MObjectHandle from the supplied value.
 
     :type value: Union[str, om.MObject, om.MObjectHandle, om.MDagPath]
     :rtype: om.MObjectHandle
@@ -292,10 +277,10 @@ def getMObjectHandle(value):
 
 def getHashCode(value):
     """
-    Method used to get the hash code from any given value.
+    Returns a hash code from the supplied value.
 
-    :type value: Union[int, long, str, om.MObject, om.MObjectHandle, om.MDagPath]
-    :rtype: long
+    :type value: Union[str, om.MObject, om.MObjectHandle, om.MDagPath]
+    :rtype: int
     """
 
     return getMObjectHandle(value).hashCode()
@@ -303,8 +288,8 @@ def getHashCode(value):
 
 def getMDagPath(value):
     """
-    Class method used to retrieve an MDagPath from any given value.
-    This method expects the value to be derived from a dag node in order to work.
+    Returns an MDagPath from the supplied value.
+    This method expects the value to be derived from a dag node in order to work!
 
     :type value: Union[str, om.MObject, om.MObjectHandle, om.MDagPath]
     :rtype: om.MDagPath
@@ -347,7 +332,7 @@ def getShapeDirectlyBelow(transform):
 
 def iterAssociatedDeformers(value, apiType=om.MFn.kGeometryFilt):
     """
-    Returns a generator that yields all of the deformers associated with the supplied object.
+    Returns a generator that yields the associated deformers from the supplied object.
     It is safe to supply either the transform, shape or deformer component.
 
     :type value: Union[om.MObject, om.MDagPath]
@@ -379,8 +364,8 @@ def iterAssociatedDeformers(value, apiType=om.MFn.kGeometryFilt):
 
 def iterDeformersFromSelection(apiType=om.MFn.kGeometryFilt):
     """
-    Generator method used to iterate through the deformers associated with the active selection.
-    An optional api type can be provided to narrow down the deformers.
+    Returns a generator that yields deformers from the active selection.
+    An optional api type can be provided to narrow down the yielded deformers.
 
     :type apiType: int
     :rtype: iter
@@ -437,9 +422,10 @@ def findDeformerByType(value, apiType):
 def decomposeDeformer(deformer):
     """
     Breaks down a deformer into its 3 components: transform, shape and intermediate object.
+    A type error will be raised if the deformer was not setup correctly!
 
     :type deformer: om.MObject
-    :rtype: om.MObject, om.MObject, om.MObject
+    :rtype: Tuple[om.MObject, om.MObject, om.MObject]
     """
 
     # Locate shape nodes downstream
@@ -479,7 +465,7 @@ def decomposeDeformer(deformer):
 
 def getAssociatedReferenceNode(dependNode):
     """
-    Method used to retrieve the reference node associated with the given dependency node.
+    Returns the reference node associated with the supplied dependency node.
     If this node is not referenced then none will be returned!
 
     :type dependNode: om.MObject
@@ -517,10 +503,11 @@ def getAssociatedReferenceNode(dependNode):
 
 def getComponentFromString(value):
     """
-    Method used to retrieve an object and component based on the supplied string value.
+    Returns the node and component from the supplied string.
+    A type error will be raised if the string is invalid!
 
     :type value: str
-    :rtype: om.MDagPath, om.MObject
+    :rtype: Tuple[om.MDagPath, om.MObject]
     """
 
     # Check value type
@@ -581,8 +568,8 @@ def createSelectionList(items):
 
 def getActiveSelection(apiType=om.MFn.kDependencyNode):
     """
-    Method used to retrieve the active selection.
-    An optional api type can be supplied to narrow down the selection.
+    Returns the active selection.
+    An optional api type can be supplied to narrow down the returned nodes.
 
     :type apiType: int
     :rtype: List[om.MObject]
@@ -593,8 +580,8 @@ def getActiveSelection(apiType=om.MFn.kDependencyNode):
 
 def iterActiveSelection(apiType=om.MFn.kDependencyNode):
     """
-    Generator method used to iterate through the active selection.
-    An optional api type can be supplied to narrow down the selection.
+    Returns a generator that yields the active selection.
+    An optional api type can be supplied to narrow down the yielded nodes.
 
     :type apiType: int
     :rtype: iter
@@ -679,10 +666,10 @@ def getRichSelection(apiType=om.MFn.kMeshVertComponent):
 
 def iterActiveComponentSelection():
     """
-    Retrieves the current active component selection.
-    Since multiple shape nodes can be edited at different component levels tuples must be returned in a list.
+    Returns a generator that yields the active component selection.
+    Each tuple yielded consists on a dag path and a component object.
 
-    :rtype: List[tuple[om.MDagPath, om.MObject]]
+    :rtype: Iterator[Tuple[om.MDagPath, om.MObject]]
     """
 
     # Get active selection
@@ -725,7 +712,7 @@ def iterActiveComponentSelection():
 
 def iterChildren(transform, apiType=om.MFn.kTransform):
     """
-    Generator method used to iterate through this dag node's children.
+    Returns a generator that yields children from the supplied dag node.
     An optional api type can be supplied to narrow down the children.
 
     :type transform: Union[om.MObject, om.MDagPath]
@@ -755,7 +742,7 @@ def iterChildren(transform, apiType=om.MFn.kTransform):
 
 def iterDescendants(transform, apiType=om.MFn.kTransform):
     """
-    Generator method used to iterate through all of the descendants for the supplied node.
+    Returns a generator that yields all descendants from the supplied dag node.
 
     :type transform: Union[om.MObject, om.MDagPath]
     :type apiType: int
@@ -780,7 +767,7 @@ def iterDescendants(transform, apiType=om.MFn.kTransform):
 
 def iterShapes(transform, apiType=om.MFn.kShape):
     """
-    Generator method used to iterate through this dag node's shapes.
+    Returns a generator that yields shapes from the supplied dag node.
 
     :type transform: Union[om.MObject, om.MDagPath]
     :type apiType: int
@@ -808,7 +795,7 @@ def iterShapes(transform, apiType=om.MFn.kShape):
 
 def iterIntermediateObjects(transform, apiType=om.MFn.kShape):
     """
-    Generator method used to iterate through this dag node's intermediate objects.
+    Returns a generator that yields intermediate objects from the supplied dag node.
 
     :type transform: Union[om.MObject, om.MDagPath]
     :type apiType: int
@@ -836,8 +823,7 @@ def iterIntermediateObjects(transform, apiType=om.MFn.kShape):
 
 def iterFunctionSets():
     """
-    Generator method used to iterate through all available function sets derived from MFnDependencyNode.
-    This does not include function sets from the OpenMayaAnim module.
+    Returns a generator that yields all functions sets compatible with dependency nodes.
 
     :rtype: iter
     """
@@ -880,7 +866,7 @@ def iterNodes(apiType=om.MFn.kDependencyNode):
 
 def iterPluginNodes(typeName):
     """
-    Generator method used to iterate through user plugin nodes based on the given type name.
+    Returns a generator that yields plugin derived nodes based on the supplied type name.
     This method will not respect sub-classes on user plugins! But these are SUPER rare...
     The type name is defined through the "MFnPlugin::registerNode()" method as the first argument.
 
@@ -909,58 +895,92 @@ def iterPluginNodes(typeName):
         iterDependNodes.next()
 
 
-def iterNodesByNamespace(namespace, recurse=False):
+def iterNodesByNamespace(*namespaces, recurse=False):
     """
     Returns a generator that yields dependency nodes from the supplied namespace.
 
-    :type namespace: str
+    :type namespaces: Union[str, List[str]]
     :type recurse: bool
     :rtype: iter
     """
 
-    # Check if namespace exists
+    # Iterate through namespaces
     #
-    if om.MNamespace.namespaceExists(namespace):
+    for name in namespaces:
 
-        log.warning('"%s" namespace does not exist!' % namespace)
-        return
+        # Check if namespace exists
+        #
+        if not om.MNamespace.namespaceExists(name):
 
-    # Iterate through namespace objects
-    #
-    namespace = om.MNamespace.getNamespaceFromName(namespace)
+            log.warning(f'Cannot locate "{name}" namespace!')
+            continue
 
-    for namespaceObject in namespace.getNamespaceObjects(recurse=recurse):
+        # Iterate through namespace objects
+        #
+        namespace = om.MNamespace.getNamespaceFromName(name)
 
-        yield namespaceObject
+        for dependNode in namespace.getNamespaceObjects(recurse=recurse):
+
+            yield dependNode
 
 
-def iterNodesByUuid(uuid):
+def iterNodesByUuid(*uuids):
     """
     Returns a generator that yields dependency nodes with the specified UUID.
 
-    :type uuid: str
+    :type uuids: Union[str, List[str]]
     :rtype: iter
     """
 
-    # Check if uuid requires initializing
+    # Iterate through UUIDs
     #
-    if isinstance(uuid, string_types):
+    for uuid in uuids:
 
-        uuid = om.MUuid(uuid)
+        # Inspect UUID type
+        #
+        if isinstance(uuid, string_types):
 
-    # Add uuid to selection list
+            uuid = om.MUuid(uuid)
+
+        # Add uuid to selection list
+        #
+        selection = om.MSelectionList()
+        selection.add(uuid)
+
+        for i in range(selection.length()):
+
+            yield selection.getDependNode(i)
+
+
+def iterNodesByPattern(*patterns, apiType=om.MFn.kDependencyNode):
+    """
+    Returns a generator that yields any nodes whose name matches the supplied patterns.
+
+    :type patterns: Union[str, List[str]]
+    :type apiType: int
+    :rtype: iter
+    """
+
+    # Iterate through nodes
     #
-    selection = om.MSelectionList()
-    selection.add(uuid)
+    for dependNode in iterNodes(apiType):
 
-    for i in range(selection.length()):
+        # Check if there are any pattern matches
+        #
+        name = getNodeName(dependNode)
 
-        yield selection.getDependNode(i)
+        if any(fnmatch.fnmatch(name, pattern) for pattern in patterns):
+
+            yield dependNode
+
+        else:
+
+            continue
 
 
 def iterDependencies(dependNode, apiType, direction=om.MItDependencyGraph.kDownstream, traversal=om.MItDependencyGraph.kDepthFirst):
     """
-    Generator method used for collecting dependencies based on the supplied filters.
+    Returns a generator that yields dependencies based on the specified criteria.
 
     :param dependNode: The dependency node to iterate from.
     :type dependNode: om.MObject
@@ -1021,7 +1041,7 @@ def dependents(dependNode, apiType=om.MFn.kDependencyNode):
 
 def stripDagPath(name):
     """
-    Method used to remove any pipe characters from the supplied name.
+    Removes any pipe characters from the supplied name.
 
     :type name: str
     :rtype: str
@@ -1032,7 +1052,7 @@ def stripDagPath(name):
 
 def stripNamespace(name):
     """
-    Method used to remove any colon characters from the supplied name.
+    Remove any colon characters from the supplied name.
 
     :type name: str
     :rtype: str
@@ -1043,7 +1063,7 @@ def stripNamespace(name):
 
 def stripAll(name):
     """
-    Method used to remove any unwanted characters from the supplied name.
+    Remove any unwanted characters from the supplied name.
 
     :type name: str
     :rtype: str
