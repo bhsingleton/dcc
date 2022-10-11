@@ -21,15 +21,12 @@ def inclusiveRange(*args, **kwargs):
 
     elif numArgs == 2:
 
-        start = args[0]
-        end = args[1]
+        start, end = args
         step = 1 if start <= end else -1
 
     elif numArgs == 3:
 
-        start = args[0]
-        end = args[1]
-        step = args[2]
+        start, end, step = args
 
     else:
 
@@ -37,9 +34,22 @@ def inclusiveRange(*args, **kwargs):
 
     # Yield integer values
     #
-    i = start
+    index = start
 
-    while i <= end:
+    if start <= end and step > 0:
 
-        yield i
-        i += step
+        while index <= end:
+
+            yield index
+            index += step
+
+    elif end <= start and step < 0:
+
+        while index >= end:
+
+            yield index
+            index += step
+
+    else:
+
+        return iter([])
