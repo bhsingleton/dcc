@@ -27,14 +27,14 @@ class QDirectoryEdit(QtWidgets.QLineEdit):
         :rtype: None
         """
 
+        # Declare private variables
+        #
+        self._caption = kwargs.pop('caption', 'Select Directory')
+        self._requiresUserInput = False
+
         # Call parent method
         #
         super(QDirectoryEdit, self).__init__(*args, **kwargs)
-
-        # Declare private variables
-        #
-        self._caption = kwargs.get('caption', 'Select Directory')
-        self._requiresUserInput = False
 
         # Add custom action
         #
@@ -101,10 +101,12 @@ class QDirectoryEdit(QtWidgets.QLineEdit):
         :rtype: str
         """
 
+        currentDirectory = super(QDirectoryEdit, self).text()
+
         return QtWidgets.QFileDialog.getExistingDirectory(
             parent=self,
             caption=self._caption,
-            dir=self.text(),
+            dir=currentDirectory,
             options=QtWidgets.QFileDialog.ShowDirsOnly
         )
     # endregion
