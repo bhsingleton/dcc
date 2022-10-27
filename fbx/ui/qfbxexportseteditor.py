@@ -450,7 +450,7 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
 
         # Evaluate selected indices
         #
-        indices = [index for index in self.sequencerTreeView.selectedIndexes() if index.column() == 0]
+        indices = [index for index in self.exportSetTreeView.selectedIndexes() if index.column() == 0]
         numIndices = len(indices)
 
         if numIndices != 1:
@@ -479,7 +479,7 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
 
         # Evaluate selected indices
         #
-        indices = [index for index in self.sequencerTreeView.selectedIndexes() if index.column() == 0]
+        indices = [index for index in self.exportSetTreeView.selectedIndexes() if index.column() == 0]
         numIndices = len(indices)
 
         if numIndices != 1:
@@ -506,7 +506,7 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
 
         if numNodeNames > 0:
 
-            model.extendRows(nodeNames, parent=index)
+            model.extendRow(nodeNames, parent=index)
 
     @QtCore.Slot(int)
     def on_exportSetComboBox_currentIndexChanged(self, index):
