@@ -810,6 +810,7 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
             properties['faceVertexIndices'] = list(meshutils.iterFaceVertexIndices(mesh))
             properties['faceTriangleVertexIndices'] = faceTriangleVertexIndices
             properties['smoothingGroups'] = list(meshutils.iterSmoothingGroups(mesh))
+            properties['edgeSmoothings'] = list(meshutils.iterEdgeSmoothings(mesh))
             properties['maps'] = [self.serializeMap(mesh, channel=channel) for channel in range(meshutils.mapCount(mesh))]
             properties['faceMaterialIndices'] = list(meshutils.iterFaceMaterialIndices(mesh))
 

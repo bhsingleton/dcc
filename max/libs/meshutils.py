@@ -820,6 +820,38 @@ def iterSmoothingGroups(mesh, indices=None):
             yield decomposeSmoothingGroups(bits)
 
 
+def iterEdgeSmoothings(mesh, indices=None):
+    """
+    Returns a generator that yields edge-smoothings.
+    If no arguments are supplied then all edge-smoothings will be yielded.
+
+    :type mesh: pymxs.MXSWrapperBase
+    :type indices: List[int]
+    :rtype: Iterator[bool]
+    """
+
+    # Check if this is an editable poly
+    #
+    if not isEditablePoly(mesh):
+
+        return iter([])
+
+    # Select hard edges
+    #
+    editablePoly = mesh.baseObject()
+    editablePoly.selectHardEdges()
+
+    selectedEdges = pymxs.runtime.polyOp.getEdgeSelection(editablePoly)
+
+    # Iterate through indices
+    #
+    indices = inclusiveRange(1, edgeCount(editablePoly), 1) if stringutils.isNullOrEmpty(indices) else indices
+
+    for index in indices:
+
+        yield not selectedEdges[index]  # Is it smooth?
+
+
 def isMapSupported(mesh, channel):
     """
     Evaluates if the specified map channel is supported.
