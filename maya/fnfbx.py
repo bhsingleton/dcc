@@ -12,7 +12,7 @@ log.setLevel(logging.INFO)
 
 class FnFbx(afnfbx.AFnFbx):
     """
-    Overload of AFnFbx that defines function set behaviours for fbx in Maya.
+    Overload of AFnFbx that defines the function set behaviours for fbx in Maya.
     See the following for details: https://knowledge.autodesk.com/support/maya/getting-started/caas/CloudHelp/cloudhelp/2023/ENU/Maya-DataExchange/files/GUID-6CCE943A-2ED4-4CEE-96D4-9CB19C28F4E0-htm.html
     """
 
@@ -44,11 +44,11 @@ class FnFbx(afnfbx.AFnFbx):
             'FBXExportAnimationOnly -v false;',
             'FBXExportApplyConstantKeyReducer -v false;',
             'FBXExportAxisConversionMethod "none";',
-            'FBXExportBakeComplexAnimation -v true;',  # This is needed for ".offsetParentMatrix" attributes!
+            'FBXExportBakeComplexAnimation -v false;',
             'FBXExportBakeComplexStart -v 0;',
             'FBXExportBakeComplexEnd -v 1;',
             'FBXExportBakeComplexStep -v 1;',
-            'FBXExportBakeResampleAnimation -v true;'
+            'FBXExportBakeResampleAnimation -v false;'
             'FBXExportCacheFile -v false;',
             'FBXExportCameras -v true;',
             'FBXExportConstraints -v false;',
@@ -98,7 +98,7 @@ class FnFbx(afnfbx.AFnFbx):
             'FBXExportBakeComplexStart {startFrame};'.format(startFrame=startFrame),
             'FBXExportBakeComplexEnd {endFrame};'.format(endFrame=endFrame),
             'FBXExportBakeComplexStep {step};'.format(step=step),
-            'FBXExportBakeResampleAnimation -v true;',
+            'FBXExportBakeResampleAnimation -v false;',
             'FBXExportInAscii -v false;',
             'FBXExportIncludeChildren -v false;',  # Required to skip non-export nodes!
             'FBXExportInputConnections -v false;',  # Required to skip non-export nodes!
