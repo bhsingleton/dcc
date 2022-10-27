@@ -39,7 +39,9 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
         :rtype: List[float, float, float]
         """
 
-        vector = transformutils.getTranslation(self.dagPath())
+        dagPath = om.MDagPath.getAPathTo(self.object())
+        vector = transformutils.getTranslation(dagPath)
+
         return vector.x, vector.y, vector.z
 
     def setTranslation(self, translation, **kwargs):
@@ -50,8 +52,10 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
         :rtype: None
         """
 
+        dagPath = om.MDagPath.getAPathTo(self.object())
         vector = om.MVector(translation[0], translation[1], translation[2])
-        transformutils.setTranslation(self.dagPath(), vector, **kwargs)
+
+        transformutils.setTranslation(dagPath, vector, **kwargs)
 
     def rotationOrder(self):
         """
@@ -60,7 +64,9 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
         :rtype: str
         """
 
-        rotateOrder = transformutils.getRotationOrder(self.dagPath())
+        dagPath = om.MDagPath.getAPathTo(self.object())
+        rotateOrder = transformutils.getRotationOrder(dagPath)
+
         return RotateOrder(rotateOrder).name
 
     def rotation(self):
@@ -70,7 +76,9 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
         :rtype: List[float, float, float]
         """
 
+        dagPath = om.MDagPath.getAPathTo(self.object())
         eulerRotation = transformutils.getEulerRotation(self.dagPath())
+
         return eulerRotation.x, eulerRotation.y, eulerRotation.z
 
     def setRotation(self, rotation, **kwargs):
@@ -81,8 +89,10 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
         :rtype: None
         """
 
+        dagPath = om.MDagPath.getAPathTo(self.object())
         eulerRotation = om.MEulerRotation(*rotation)
-        transformutils.setEulerRotation(self.dagPath(), eulerRotation, **kwargs)
+
+        transformutils.setEulerRotation(dagPath, eulerRotation, **kwargs)
 
     def scale(self):
         """
@@ -91,7 +101,8 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
         :rtype: List[float, float, float]
         """
 
-        return transformutils.getScale(self.dagPath())
+        dagPath = om.MDagPath.getAPathTo(self.object())
+        return transformutils.getScale(dagPath)
 
     def setScale(self, scale, **kwargs):
         """
@@ -101,7 +112,8 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
         :rtype: None
         """
 
-        transformutils.setScale(self.dagPath(), scale, **kwargs)
+        dagPath = om.MDagPath.getAPathTo(self.object())
+        transformutils.setScale(dagPath, scale, **kwargs)
 
     def boundingBox(self):
         """
@@ -111,29 +123,13 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
         :rtype: List[float, float, float], List[float, float, float]
         """
 
-        boundingBox = transformutils.getBoundingBox(self.dagPath())
+        dagPath = om.MDagPath.getAPathTo(self.object())
+        boundingBox = transformutils.getBoundingBox(dagPath)
+
         return (boundingBox.min.x, boundingBox.min.y, boundingBox.min.z), (boundingBox.max.x, boundingBox.max.y, boundingBox.max.z)
 
     @staticmethod
-    def mmatrixToMatrix(matrix):
-        """
-        Converts a Matrix3 class to a numpy matrix.
-
-        :type matrix: om.MMatrix
-        :rtype: numpy.matrix
-        """
-
-        return numpy.matrix(
-            [
-                (matrix.getElement(0, 0), matrix.getElement(0, 1), matrix.getElement(0, 2), 0.0),
-                (matrix.getElement(1, 0), matrix.getElement(1, 1), matrix.getElement(1, 2), 0.0),
-                (matrix.getElement(2, 0), matrix.getElement(2, 1), matrix.getElement(2, 2), 0.0),
-                (matrix.getElement(3, 0), matrix.getElement(3, 1), matrix.getElement(3, 2), 1.0),
-            ]
-        )
-
-    @staticmethod
-    def matrixToMMatrix(matrix):
+    def nativizeMatrix(matrix):
         """
         Converts a numpy matrix to a Matrix3 class.
 
@@ -150,6 +146,24 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
             ]
         )
 
+    @staticmethod
+    def denativizeMatrix(matrix):
+        """
+        Converts a Matrix3 class to a numpy matrix.
+
+        :type matrix: om.MMatrix
+        :rtype: numpy.matrix
+        """
+
+        return numpy.matrix(
+            [
+                (matrix.getElement(0, 0), matrix.getElement(0, 1), matrix.getElement(0, 2), 0.0),
+                (matrix.getElement(1, 0), matrix.getElement(1, 1), matrix.getElement(1, 2), 0.0),
+                (matrix.getElement(2, 0), matrix.getElement(2, 1), matrix.getElement(2, 2), 0.0),
+                (matrix.getElement(3, 0), matrix.getElement(3, 1), matrix.getElement(3, 2), 1.0),
+            ]
+        )
+
     def matrix(self):
         """
         Returns the local transform matrix for this node.
@@ -157,8 +171,10 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
         :rtype: numpy.matrix
         """
 
-        matrix = transformutils.getMatrix(self.dagPath())
-        return self.mmatrixToMatrix(matrix)
+        dagPath = om.MDagPath.getAPathTo(self.object())
+        matrix = transformutils.getMatrix(dagPath)
+
+        return self.denativizeMatrix(matrix)
 
     def worldMatrix(self):
         """
@@ -167,8 +183,10 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
         :rtype: numpy.matrix
         """
 
-        worldMatrix = self.dagPath().inclusiveMatrix()
-        return self.mmatrixToMatrix(worldMatrix)
+        dagPath = om.MDagPath.getAPathTo(self.object())
+        worldMatrix = dagPath.inclusiveMatrix()
+
+        return self.denativizeMatrix(worldMatrix)
 
     def setMatrix(self, matrix, **kwargs):
         """
@@ -178,8 +196,8 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
         :rtype: None
         """
 
-        mMatrix = self.matrixToMMatrix(matrix)
-        transformutils.applyTransformMatrix(self.object(), mMatrix)
+        matrix = self.nativizeMatrix(matrix)
+        transformutils.applyTransformMatrix(self.object(), matrix)
 
     def parentMatrix(self):
         """
@@ -188,8 +206,10 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
         :rtype: numpy.matrix
         """
 
-        parentMatrix = self.dagPath().exclusiveMatrix()
-        return self.mmatrixToMatrix(parentMatrix)
+        dagPath = om.MDagPath.getAPathTo(self.object())
+        parentMatrix = dagPath.exclusiveMatrix()
+
+        return self.denativizeMatrix(parentMatrix)
 
     def freezeTransform(self):
         """
@@ -198,4 +218,5 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
         :rtype: None
         """
 
-        transformutils.freezeTransform(self.dagPath())
+        dagPath = om.MDagPath.getAPathTo(self.object())
+        transformutils.freezeTransform(dagPath)

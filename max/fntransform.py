@@ -124,25 +124,7 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
         return (minPoint.x, minPoint.y, minPoint.z), (maxPoint.x, maxPoint.y, maxPoint.z)
 
     @staticmethod
-    def matrix3ToMatrix(matrix3):
-        """
-        Converts a Matrix3 class to a numpy matrix.
-
-        :type matrix3: pymxs.runtime.Matrix3
-        :rtype: numpy.matrix
-        """
-
-        return numpy.matrix(
-            [
-                (matrix3.row1.x, matrix3.row1.y, matrix3.row1.z, 0.0),
-                (matrix3.row2.x, matrix3.row2.y, matrix3.row2.z, 0.0),
-                (matrix3.row3.x, matrix3.row3.y, matrix3.row3.z, 0.0),
-                (matrix3.row4.x, matrix3.row4.y, matrix3.row4.z, 1.0),
-            ]
-        )
-
-    @staticmethod
-    def matrixToMatrix3(matrix):
+    def nativizeMatrix(matrix):
         """
         Converts a numpy matrix to a Matrix3 class.
 
@@ -157,6 +139,24 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
             pymxs.runtime.Point3(float(matrix[3, 0]), float(matrix[3, 1]), float(matrix[3, 2]))
         )
 
+    @staticmethod
+    def denativizeMatrix(matrix):
+        """
+        Converts a Matrix3 class to a numpy matrix.
+
+        :type matrix: pymxs.runtime.Matrix3
+        :rtype: numpy.matrix
+        """
+
+        return numpy.matrix(
+            [
+                (matrix.row1.x, matrix.row1.y, matrix.row1.z, 0.0),
+                (matrix.row2.x, matrix.row2.y, matrix.row2.z, 0.0),
+                (matrix.row3.x, matrix.row3.y, matrix.row3.z, 0.0),
+                (matrix.row4.x, matrix.row4.y, matrix.row4.z, 1.0),
+            ]
+        )
+
     def matrix(self):
         """
         Returns the local transform matrix for this node.
@@ -164,8 +164,8 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
         :rtype: numpy.matrix
         """
 
-        matrix3 = transformutils.getMatrix(self.object())
-        return self.matrix3ToMatrix(matrix3)
+        matrix = transformutils.getMatrix(self.object())
+        return self.denativizeMatrix(matrix)
 
     def setMatrix(self, matrix, **kwargs):
         """
@@ -175,8 +175,8 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
         :rtype: None
         """
 
-        matrix3 = self.matrixToMatrix3(matrix)
-        transformutils.applyTransformMatrix(self.object(), matrix3)
+        matrix = self.nativizeMatrix(matrix)
+        transformutils.applyTransformMatrix(self.object(), matrix)
 
     def worldMatrix(self):
         """
@@ -185,18 +185,18 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
         :rtype: numpy.matrix
         """
 
-        matrix3 = transformutils.getWorldMatrix(self.object())
-        return self.matrix3ToMatrix(matrix3)
+        worldMatrix = transformutils.getWorldMatrix(self.object())
+        return self.denativizeMatrix(worldMatrix)
 
     def parentMatrix(self):
         """
         Returns the world parent matrix for this node.
 
-        :rtype: List[List[float], List[float], List[float], List[float]]
+        :rtype: numpy.matrix
         """
 
-        matrix3 = transformutils.getParentMatrix(self.object())
-        return self.matrix3ToMatrix(matrix3)
+        parentMatrix = transformutils.getParentMatrix(self.object())
+        return self.denativizeMatrix(parentMatrix)
 
     def freezeTransform(self):
         """
