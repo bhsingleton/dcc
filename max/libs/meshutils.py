@@ -34,7 +34,7 @@ def isEditableMesh(mesh):
     :rtype: bool
     """
 
-    return wrapperutils.isKindOf(nodeutils.baseObject(mesh), (pymxs.runtime.Editable_Mesh, pymxs.runtime.TriMesh))
+    return wrapperutils.isKindOf(nodeutils.baseObject(mesh), pymxs.runtime.Editable_Mesh)
 
 
 def isTriMesh(mesh):
@@ -62,7 +62,7 @@ def getTriMesh(mesh):
 
     elif isEditableMesh(mesh) or isEditablePoly(mesh):
 
-        return mesh.mesh
+        return getattr(mesh, 'mesh', None)
 
     else:
 
@@ -130,13 +130,11 @@ def triCount(mesh):
     :rtype: int
     """
 
-    if isTriMesh(mesh):
+    triMesh = getTriMesh(mesh)
 
-        return pymxs.runtime.meshOp.getNumFaces(mesh)
+    if triMesh is not None:
 
-    elif isEditablePoly(mesh) or isEditableMesh(mesh):
-
-        return triCount(mesh.mesh)
+        return pymxs.runtime.meshOp.getNumFaces(triMesh)
 
     else:
 
@@ -366,6 +364,8 @@ def iterFaceVertexIndices(mesh, indices=None):
     #
     if isEditablePoly(mesh):
 
+        # Iterate through indices
+        #
         for index in indices:
 
             vertices = pymxs.runtime.polyOp.getFaceVerts(mesh, index)
@@ -373,10 +373,12 @@ def iterFaceVertexIndices(mesh, indices=None):
 
     else:
 
+        # Iterate through indices
+        #
         for index in indices:
 
-            indices = pymxs.runtime.getFace(mesh, index)
-            yield tuple(arrayutils.iterElements(indices))
+            vertices = pymxs.runtime.meshOp.getFace(mesh, index)
+            yield int(vertices.x), int(vertices.y), int(vertices.z)  # bruh
 
 
 @coordsysoverride.coordSysOverride(mode='local')
@@ -453,18 +455,22 @@ def iterFaceCenters(mesh, indices=None):
     #
     if stringutils.isNullOrEmpty(indices):
 
-        indices = inclusiveRange(1, faceCount(mesh))
+        indices = inclusiveRange(1, faceCount(mesh), 1)
 
     # Iterate through faces
     #
     if isEditablePoly(mesh):
 
+        # Iterate through indices
+        #
         for index in indices:
 
             yield pymxs.runtime.polyOp.getFaceCenter(mesh, index)
 
     else:
 
+        # Iterate through indices
+        #
         for index in indices:
 
             yield pymxs.runtime.meshOp.getFaceCenter(mesh, index)
@@ -485,18 +491,22 @@ def iterFaceNormals(mesh, indices=None):
     #
     if stringutils.isNullOrEmpty(indices):
 
-        indices = inclusiveRange(1, faceCount(mesh))
+        indices = inclusiveRange(1, faceCount(mesh), 1)
 
     # Check if this is an editable poly
     #
     if isEditablePoly(mesh):
 
+        # Iterate through indicies
+        #
         for index in indices:
 
             yield pymxs.runtime.polyOp.getFaceNormal(mesh, index)
 
     else:
 
+        # Iterate through indicies
+        #
         for index in indices:
 
             normals = pymxs.runtime.meshOp.getFaceRNormals(mesh, index)
@@ -787,6 +797,8 @@ def iterSmoothingGroups(mesh, indices=None):
     #
     if isEditablePoly(mesh):
 
+        # Iterate through indices
+        #
         for index in indices:
 
             bits = pymxs.runtime.polyOp.getFaceSmoothGroup(mesh, index)
@@ -794,6 +806,14 @@ def iterSmoothingGroups(mesh, indices=None):
 
     else:
 
+        # Check if this is an editable mesh modifier
+        #
+        if isEditableMesh(mesh) and not pymxs.runtime.isValidNode(mesh):
+
+            mesh = wrapperutils.getAssociatedNode(mesh)  # getFace raises an error for Editable_mesh types!
+
+        # Iterate through indices
+        #
         for index in indices:
 
             bits = pymxs.runtime.getFaceSmoothGroup(mesh, index)
@@ -833,12 +853,14 @@ def iterMapVertices(mesh, channel=0, indices=None):
     #
     if stringutils.isNullOrEmpty(indices):
 
-        indices = inclusiveRange(1, mapVertexCount(mesh, channel=channel))
+        indices = inclusiveRange(1, mapVertexCount(mesh, channel=channel), 1)
 
     # Check if this is an editable poly
     #
     if isEditablePoly(mesh):
 
+        # Iterate through indices
+        #
         for index in indices:
 
             point = pymxs.runtime.polyOp.getMapVert(mesh, channel, index)
@@ -846,6 +868,8 @@ def iterMapVertices(mesh, channel=0, indices=None):
 
     else:
 
+        # Iterate through indices
+        #
         for index in indices:
 
             point = pymxs.runtime.meshOp.getMapVert(mesh, channel, index)
@@ -867,7 +891,7 @@ def iterMapFaceVertexIndices(mesh, channel=0, indices=None):
     #
     if stringutils.isNullOrEmpty(indices):
 
-        indices = inclusiveRange(1, mapFaceCount(mesh, channel=channel))
+        indices = inclusiveRange(1, mapFaceCount(mesh, channel=channel), 1)
 
     # Check if this is an editable poly
     #
@@ -883,7 +907,7 @@ def iterMapFaceVertexIndices(mesh, channel=0, indices=None):
         for index in indices:
 
             vertices = pymxs.runtime.meshOp.getMapFace(mesh, channel, index)
-            yield vertices.x, vertices.y, vertices.z  # bruh?
+            yield int(vertices.x), int(vertices.y), int(vertices.z)  # bruh
 
 
 def iterFaceMaterialIndices(mesh, indices=None):
@@ -900,12 +924,14 @@ def iterFaceMaterialIndices(mesh, indices=None):
     #
     if stringutils.isNullOrEmpty(indices):
 
-        indices = inclusiveRange(1, faceCount(mesh))
+        indices = inclusiveRange(1, faceCount(mesh), 1)
 
     # Check if this is an editable poly
     #
     if isEditablePoly(mesh):
 
+        # Iterate through indices
+        #
         for index in indices:
 
             index = pymxs.runtime.polyOp.getFaceMatID(mesh, index)
@@ -913,7 +939,10 @@ def iterFaceMaterialIndices(mesh, indices=None):
 
     else:
 
+        # Iterate through indices
+        #
         for index in indices:
 
-            index = pymxs.runtime.getFaceMatID(mesh, index)
+            index = pymxs.runtime.meshOp.getFaceMatID(mesh, index)
             yield int(index)
+

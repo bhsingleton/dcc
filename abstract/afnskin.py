@@ -159,7 +159,9 @@ class Influences(collections_abc.MutableMapping):
         :rtype: collections_abc.ValuesView
         """
 
-        return self._influences.values()
+        for influenceId in self._influences.keys():
+
+            yield self.get(influenceId)
 
     def items(self):
         """
@@ -168,7 +170,9 @@ class Influences(collections_abc.MutableMapping):
         :rtype: collections_abc.ItemsView
         """
 
-        return self._influences.items()
+        for (influenceId, influenceHandle) in self._influences.items():
+
+            yield influenceId, self.get(influenceId)
 
     def get(self, index, default=None):
         """

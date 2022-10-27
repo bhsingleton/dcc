@@ -1,9 +1,13 @@
+import os.path
+
 import fbx
 import FbxCommon
 
 from itertools import chain
 from ... import __application__, fnscene, fnnode, fntransform, fnmesh, fnskin
 from ...math import matrixmath
+from ...python import stringutils
+from ...generators.inclusiverange import inclusiveRange
 
 import logging
 logging.basicConfig()
@@ -50,13 +54,12 @@ class FbxSerializer(object):
     Base class used for composing fbx files from DCC scene nodes.
     This exporter was created to ensure that the DCC scene data was as clean as possible for game engines.
     This exporter supports animation baking at a decimal framerate to help reduce euler filter abnormalities.
-    TODO: Implement support for custom attributes and blendshapes.
+    TODO: Implement support for custom attributes and blendshapes!
     """
 
     # region Dunderscores
     __slots__ = (
         '_scene',
-        '_exportSet',
         '_fbxScene',
         '_fbxManager',
         '_fbxAnimStack',
@@ -100,11 +103,10 @@ class FbxSerializer(object):
         'zyx': fbx.eEulerZYX
     }
 
-    def __init__(self, exportSet):
+    def __init__(self, *args, **kwargs):
         """
         Private method called after a new instance has been created.
 
-        :type exportSet: fbxexportset.FbxExportSet
         :rtype: None
         """
 
@@ -115,11 +117,10 @@ class FbxSerializer(object):
         # Declare class variables
         #
         self._scene = fnscene.FnScene()
-        self._exportSet = exportSet
         self._fbxManager, self._fbxScene = FbxCommon.InitializeSdkObjects()
         self._fbxAnimStack = fbx.FbxAnimStack.Create(self.fbxManager, 'Take 001')
         self._fbxAnimLayer = fbx.FbxAnimLayer.Create(self.fbxManager, 'BaseLayer')
-        self._fbxNodes = {}
+        self._fbxNodes = {}  # type: Dict[int, fbx.FbxNode]
 
         # Initialize scene settings
         #
@@ -145,16 +146,6 @@ class FbxSerializer(object):
         """
 
         return self._scene
-
-    @property
-    def exportSet(self):
-        """
-        Getter method that returns the export set.
-
-        :rtype: fbxexportset.FbxExportSet
-        """
-
-        return self._exportSet
 
     @property
     def fbxScene(self):
@@ -210,18 +201,16 @@ class FbxSerializer(object):
     # region Methods
     def copySystemAxis(self):
         """
-        Copies the DCC application's axis setting to the fbx global settings.
+        Copies the system axis settings from the current scene file.
 
         :rtype: None
         """
 
-        # Change axis system
-        #
         globalSettings = self.fbxScene.GetGlobalSettings()
-        upAxis = self.scene.getUpAxis()
 
         if __application__ == 'maya':
 
+            upAxis = self.scene.getUpAxis()
             axisSystem = fbx.FbxAxisSystem.MayaYUp if upAxis == 'y' else fbx.FbxAxisSystem.MayaZUp
             globalSettings.SetAxisSystem(axisSystem)
 
@@ -231,21 +220,44 @@ class FbxSerializer(object):
 
         else:
 
-            globalSettings.SetAxisSystem(self.__class__.__axes__[upAxis])
+            pass
 
     def copySystemUnits(self):
         """
-        Copies the DCC application's unit settings to the fbx global settings.
+        Copies the system unit settings from the current scene file.
 
         :rtype: None
         """
 
-        # Change system units
-        #
         globalSettings = self.fbxScene.GetGlobalSettings()
+        globalSettings.SetSystemUnit(fbx.FbxSystemUnit.cm)  # TODO: Implement support for other unit types!
 
-        linearUnit = self.scene.getLinearUnit()  # TODO: Implement this method!
-        globalSettings.SetSystemUnit(self.__class__.__units__[linearUnit.name.lower()])
+    def updateTimeRange(self, startFrame, endFrame):
+        """
+        Updates the FBX time range using the specified start and end frames.
+
+        :type startFrame: Union[int, float]
+        :type endFrame: Union[int, float]
+        :rtype: None
+        """
+
+        globalSettings = self.fbxScene.GetGlobalSettings()
+        globalSettings.setTimeMode(fbx.FbxTime.eFrames30)  # TODO: Add support for other time modes!
+
+        globalSettings.SetTimelineDefaultTimeSpan(
+            self.convertFrameToTime(startFrame),
+            self.convertFrameToTime(endFrame)
+        )
+
+    def hasHandle(self, handle):
+        """
+        Evaluates if an fbx node with the given handle already exists.
+
+        :type handle: int
+        :rtype: bool
+        """
+
+        return self.fbxNodes.get(handle, None) is not None
 
     def getFbxNodeByHandle(self, handle):
         """
@@ -257,50 +269,86 @@ class FbxSerializer(object):
 
         return self._fbxNodes.get(handle, None)
 
-    def getFbxNodeByName(self, name):
+    def getAssociatedNode(self, fbxNode):
         """
-        Returns the Fbx node with the supplied name.
+        Returns the scene node associated with the supplied fbx node.
 
-        :type name: str
-        :rtype: fbx.FbxNode
-        """
-
-        pass
-
-    def copyTransform(self, copyFrom, copyTo):
-        """
-        Method used to copy the transform values between two nodes.
-
-        :type copyFrom: fntransform.FnTransform
-        :type copyTo: fbx.FbxNode
-        :rtype: bool
+        :type fbxNode: fbx.FbxNode
+        :rtype: Any
         """
 
-        # Set local translation
+        fbxProperty = fbxNode.FindProperty('handle')
+        handle = eval(fbx.FbxPropertyString(fbxProperty).Get())
+
+        return fnnode.FnNode.getNodeByHandle(handle)
+
+    def allocateFbxNodes(self, *nodes):
+        """
+        Reserves space for the supplied nodes.
+
+        :rtype: None
+        """
+
+        # Iterate through nodes
         #
-        matrix = copyFrom.matrix()
-        translation = None
+        node = fnnode.FnNode(iter(nodes))
 
-        if self.exportSet.scale != 1.0:
+        while not node.isDone():
 
-            # Get matrices
-            #
-            scaleMatrix = matrixmath.createScaleMatrix(self.exportSet.scale)
-            parentMatrix = copyFrom.parentMatrix()
-            worldMatrix = copyFrom.worldMatrix()
+            node.next()
+            self.createFbxNode(node)
 
-            # Calculate scaled translation
-            #
-            matrix = (scaleMatrix.I * (worldMatrix * scaleMatrix)) * (scaleMatrix.I * (parentMatrix * scaleMatrix)).I
-            translation = matrixmath.decomposeTranslateMatrix(matrix)
+    def ensureParent(self, copyFrom, copyTo):
+        """
+        Ensures the fbx node has the same equivalent parent node.
+
+        :type copyFrom: fnnode.FnNode
+        :type copyTo: fbx.FbxNode
+        :rtype: None
+        """
+
+        # Check if node has a parent
+        #
+        parent = fntransform.FnTransform()
+        success = parent.trySetObject(copyFrom.parent())
+
+        rootNode = self.fbxScene.GetRootNode()
+
+        if not success:
+
+            rootNode.AddChild(copyTo)
+            return
+
+        # Check if equivalent parent exists
+        #
+        handle = parent.handle()
+
+        if self.hasHandle(handle):
+
+            fbxParent = self.getFbxNodeByHandle(handle)
+            fbxParent.AddChild(copyTo)
 
         else:
 
-            translation = matrixmath.decomposeTranslateMatrix(matrix)
+            rootNode.AddChild(copyTo)
+
+    def copyTransform(self, copyFrom, copyTo):
+        """
+        Copies the local transform values from the supplied scene node to the specified fbx node.
+
+        :type copyFrom: fntransform.FnTransform
+        :type copyTo: fbx.FbxNode
+        :rtype: None
+        """
+
+        # Update local translation
+        #
+        matrix = copyFrom.matrix()
+        translation = matrixmath.decomposeTranslateMatrix(matrix)
 
         copyTo.LclTranslation.Set(fbx.FbxDouble3(*translation))
 
-        # Set local rotation
+        # Update local rotation
         #
         rotationOrder = copyFrom.rotationOrder()
         rotation = matrixmath.decomposeRotateMatrix(matrix, rotateOrder=rotationOrder)
@@ -309,123 +357,19 @@ class FbxSerializer(object):
         copyTo.SetRotationOrder(fbx.FbxNode.eSourcePivot, self.__class__.__rotate_orders__[rotationOrder])
         copyTo.LclRotation.Set(fbx.FbxDouble3(*rotation))
 
-        # Set local scale
+        # Update local scale
         #
         scale = matrixmath.decomposeScaleMatrix(matrix)
         copyTo.LclScaling.Set(fbx.FbxDouble3(*scale))
         copyTo.SetTransformationInheritType(fbx.FbxTransform.eInheritRrs)  # Add support for inverse scale!
 
-        return True
-
-    def copyCustomAttributes(self, copyFrom, copyTo):
+    def copyMesh(self, copyFrom, copyTo, **kwargs):
         """
-        Method used to copy any custom attributes between two nodes.
-
-        :type copyFrom: Union[maya.api.OpenMaya.MObject, pymxs.MXSWrapperBase]
-        :type copyTo: fbx.FbxNode
-        :rtype: bool
-        """
-
-        pass
-
-    @fbxNodeLookup
-    def createFbxNode(self, node, **kwargs):
-        """
-        Returns an FbxNode from the supplied DCC scene node.
-        This method will also copy all the required transform data.
-        When it comes to transformation inheritance please see the following:
-            [0] eInheritRrSs: Scaling of parent is applied in the child world after the local child rotation.
-            [1] eInheritRSrs: Scaling of parent is applied in the parent world.
-            [2] eInheritRrs: Scaling of parent does not affect the scaling of children.
-        The latter is the equivalent of enabling inverse scaling inside Maya.
-
-        :type node: fnnode.FnNode
-        :key fbxParent: fbx.FbxNode
-        :rtype: fbx.FbxNode
-        """
-
-        # Create fbx node
-        #
-        name = node.name()
-        fbxNode = fbx.FbxNode.Create(self.fbxManager, name)
-
-        self.fbxScene.AddNode(fbxNode)
-
-        # Store reference to fbx node
-        #
-        handle = node.handle()
-        self._fbxNodes[handle] = fbxNode
-
-        # Check if a parent node was supplied
-        #
-        parent = kwargs.get('parent', self.fbxScene.GetRootNode())
-        parent.AddChild(fbxNode)
-
-        # Create fbx property for reverse lookups
-        # This property should not be exported since hash codes are not persistent between sessions
-        #
-        fbxProperty = fbx.FbxProperty.Create(fbxNode, fbx.FbxStringDT, 'handle', '')
-        fbxProperty.ModifyFlag(fbx.FbxPropertyFlags.eNotSavable, True)
-
-        success = fbxProperty.Set(repr(handle))
-
-        if not success:
-
-            raise RuntimeError(f'Unable to assign {handle} handle to fbx property!')
-
-        return fbxNode
-
-    @fbxNodeLookup
-    def createFbxSkeleton(self, node, **kwargs):
-        """
-        Returns an FbxSkeleton attribute from the supplied node.
-
-        :type node: fntransform.FnTransform
-        :rtype: fbx.FbxNode
-        """
-
-        # Create base fbx node
-        #
-        fbxNode = self.createFbxNode(node, **kwargs)
-        self.copyTransform(node, fbxNode)
-
-        # Create fbx skeleton attribute
-        #
-        fbxSkeleton = fbx.FbxSkeleton.Create(self.fbxManager, node.name())
-        fbxSkeleton.SetSkeletonType(fbx.FbxSkeleton.eLimbNode)
-
-        fbxNode.SetNodeAttribute(fbxSkeleton)
-
-        return fbxNode
-
-    @fbxNodeLookup
-    def createFbxCamera(self, node, **kwargs):
-        """
-        Returns an FbxCamera attribute node.
-
-        :type node: fncamera.FnCamera
-        :rtype: fbx.FbxNode
-        """
-
-        # Create base fbx node
-        #
-        fbxNode = self.createFbxNode(node, **kwargs)
-        self.copyTransform(node, fbxNode)
-
-        # Create fbx camera attribute
-        #
-        fbxCamera = fbx.FbxCamera.Create(self.fbxManager, '')
-        fbxNode.SetNodeAttribute(fbxCamera)
-
-        return fbxNode
-
-    def copyMesh(self, copyFrom, copyTo):
-        """
-        Method used to copy the transform values between two nodes.
+        Copies the mesh data from the supplied scene node to the specified fbx node.
 
         :type copyFrom: fnmesh.FnMesh
         :type copyTo: fbx.FbxMesh
-        :rtype: bool
+        :rtype: None
         """
 
         # Initialize control points for mesh
@@ -438,9 +382,12 @@ class FbxSerializer(object):
 
         # Assign vertices to polygons
         #
-        for (polygonIndex, faceVertexIndices) in enumerate(copyFrom.iterFaceVertexIndices()):
+        faceVertexIndices = list(copyFrom.iterFaceVertexIndices())
+        numFaceVertices = sum(map(len, faceVertexIndices))
 
-            # Begin defining polygon
+        for (polygonIndex, faceVertexIndices) in enumerate(faceVertexIndices):
+
+            # Define face-vertex composition
             #
             copyTo.BeginPolygon(polygonIndex)
 
@@ -466,13 +413,15 @@ class FbxSerializer(object):
         indexArray = materialElement.GetIndexArray()
         indexArray.SetCount(copyFrom.numFaces())
 
-        for (index, materialIndex) in enumerate(copyFrom.iterFaceMaterialIndices()):  # FIXME
+        for (insertAt, materialIndex) in enumerate(copyFrom.iterFaceMaterialIndices()):
 
-            indexArray.SetAt(index, materialIndex)
+            indexArray.SetAt(insertAt, materialIndex)
 
         # Check if normals should be included
         #
-        if self.exportSet.includeNormals:
+        includeNormals = kwargs.get('includeNormals', False)
+
+        if includeNormals:
 
             # Initialize new normal element
             #
@@ -482,15 +431,13 @@ class FbxSerializer(object):
 
             # Assign normals
             #
-            numFaceVertices = copyFrom.numFaceVertices()
-
             directArray = normalElement.GetDirectArray()
             directArray.SetCount(numFaceVertices)
 
             indexArray = normalElement.GetIndexArray()
             indexArray.SetCount(numFaceVertices)
 
-            for (index, normal) in enumerate(chain(*copyFrom.faceVertexNormals)):  # FIXME
+            for (index, normal) in enumerate(chain(*copyFrom.iterFaceVertexNormals())):
 
                 directArray.SetAt(index, fbx.FbxVector4(normal[0], normal[1], normal[2], 1.0))
                 indexArray.SetAt(index, index)
@@ -501,7 +448,9 @@ class FbxSerializer(object):
 
         # Check if smoothings should be included
         #
-        if self.exportSet.includeSmoothings:
+        includeSmoothings = kwargs.get('includeSmoothings', False)
+
+        if includeSmoothings:
 
             # Check if mesh uses edge smoothings
             #
@@ -547,11 +496,13 @@ class FbxSerializer(object):
 
         else:
 
-            log.info('Skipping component smoothings...')
+            log.info('Skipping smoothings...')
 
         # Check if vertex colors should be included
         #
-        if self.exportSet.includeColorSets:
+        includeColorSets = kwargs.get('includeColorSets', False)
+
+        if includeColorSets:
 
             # Iterate through all color sets
             #
@@ -561,8 +512,9 @@ class FbxSerializer(object):
 
                 # Create new color set element
                 #
-                colorElement = copyTo.CreateElementVertexColor()
+                log.info(f'Creating "{colorSetName}" colour set...')
 
+                colorElement = copyTo.CreateElementVertexColor()
                 colorElement.SetName(colorSetName)  # The constructor takes no arguments so use this method to set the name
                 colorElement.SetMappingMode(fbx.FbxLayerElement.eByPolygonVertex)
                 colorElement.SetReferenceMode(fbx.FbxLayerElement.eIndexToDirect)
@@ -603,7 +555,7 @@ class FbxSerializer(object):
 
             # Create new uv element
             #
-            log.info('Creating "%s" UV set...' % uvSetName)
+            log.info(f'Creating "{uvSetName}" UV set...')
 
             layerElement = copyTo.CreateElementUV(uvSetName)
             layerElement.SetMappingMode(fbx.FbxLayerElement.eByPolygonVertex)
@@ -623,7 +575,7 @@ class FbxSerializer(object):
 
             # Assign uv indices
             #
-            assignedUVs = copyFrom.getAsignedUVs(channel=channel)
+            assignedUVs = copyFrom.getAssignedUVs(channel=channel)
             numAssignedUVs = copyFrom.numFaceVertexIndices()
 
             indexArray = layerElement.GetIndexArray()
@@ -635,7 +587,9 @@ class FbxSerializer(object):
 
         # Check if tangents should be saved
         #
-        if self.exportSet.includeTangentsAndBinormals:
+        includeTangentsAndBinormals = kwargs.get('includeTangentsAndBinormals', False)
+
+        if includeNormals and includeTangentsAndBinormals:
 
             # Create new tangent elements
             # This will create a layer for each UV set!
@@ -643,104 +597,336 @@ class FbxSerializer(object):
             copyTo.CreateElementTangent()
             copyTo.CreateElementBinormal()
 
-            for (index, uvSet) in enumerate(meshData.uvSets):
+            for (channel, uvSetName) in enumerate(uvSetNames):
 
                 # Get indexed elements
                 #
-                tangentElement = copyTo.GetElementTangent(index)
-                tangentElement.SetName(uvSet.name)
+                tangentElement = copyTo.GetElementTangent(channel)
+                tangentElement.SetName(uvSetName)
                 tangentElement.SetMappingMode(fbx.FbxLayerElement.eByPolygonVertex)
                 tangentElement.SetReferenceMode(fbx.FbxLayerElement.eDirect)
 
-                binormalElement = copyTo.GetElementBinormal(index)
-                binormalElement.SetName(uvSet.name)
+                binormalElement = copyTo.GetElementBinormal(channel)
+                binormalElement.SetName(uvSetName)
                 binormalElement.SetMappingMode(fbx.FbxLayerElement.eByPolygonVertex)
                 binormalElement.SetReferenceMode(fbx.FbxLayerElement.eDirect)
 
-                # Assign tangents and binormals
+                # Assign tangents
                 #
+                tangents, binormals = list(zip(*list(copyFrom.iterTangentsAndBinormals(channel=channel))))
+
                 tangentArray = tangentElement.GetDirectArray()
-                tangentArray.SetCount(len(uvSet.tangents))
+                tangentArray.SetCount(numFaceVertices)
 
+                for (index, tangent) in enumerate(chain(*tangents)):
+
+                    tangentArray.SetAt(index, fbx.FbxVector4(tangent[0], tangent[1], tangent[2], 1.0))
+
+                # Assign binormals
+                #
                 binormalArray = binormalElement.GetDirectArray()
-                binormalArray.SetCount(len(uvSet.binormals))
+                binormalArray.SetCount(numFaceVertices)
 
-                for j, (tangent, binormal) in enumerate(zip(uvSet.tangents, uvSet.binormals)):
+                for (index, binormal) in enumerate(chain(*binormals)):
 
-                    tangentArray.SetAt(j, fbx.FbxVector4(tangent[0], tangent[1], tangent[2], 1.0))
-                    binormalArray.SetAt(j, fbx.FbxVector4(binormal[0], binormal[1], binormal[2], 1.0))
+                    binormalArray.SetAt(index, fbx.FbxVector4(binormal[0], binormal[1], binormal[2], 1.0))
 
         else:
 
             log.info('Skipping tangents and binormals...')
 
-    @fbxNodeLookup
-    def createFbxMesh(self, node, **kwargs):
+    def copyMaterials(self, copyFrom, copyTo):
         """
-        Returns an FbxMesh from the supplied node.
+        Copies the materials from the supplied scene node to the specified fbx node.
+
+        :type copyFrom: fnmesh.FnMesh
+        :type copyTo: fbx.FbxNode
+        :rtype: None
+        """
+
+        # Iterate through assigned materials
+        #
+        materials = copyFrom.getAssignedMaterials()
+        material = fnnode.FnNode()
+
+        for (obj, texturePath) in materials:
+
+            # Check if material already exists
+            #
+            success = material.trySetObject(obj)
+
+            if success:
+
+                fbxMaterial = self.createFbxMaterial(material, texturePath=texturePath)
+                copyTo.AddMaterial(fbxMaterial)
+
+            else:
+
+                fbxMaterial = fbx.FbxSurfaceLambert.Create(self.fbxManager, '')
+                copyTo.AddMaterial(fbxMaterial)
+
+    def copyCustomAttributes(self, copyFrom, copyTo):
+        """
+        Method used to copy any custom attributes between two nodes.
+
+        :type copyFrom: fnnode.FnNode
+        :type copyTo: fbx.FbxNode
+        :rtype: None
+        """
+
+        pass
+
+    def convertFrameToTime(self, frame, timeMode=None):
+        """
+        Converts the supplied frame number to an FBX time unit.
+
+        :type frame: Union[int, float]
+        :type timeMode: fbx.FbxTime.EMode
+        :rtype: fbx.FbxTime
+        """
+        # Check if time mode was supplied
+        #
+        if timeMode is None:
+
+            timeMode = self.fbxScene.GetGlobalSettings().GetTimeMode()
+
+        # Create new fbx time
+        #
+        fbxTime = fbx.FbxTime()
+
+        if isinstance(frame, int):
+
+            fbxTime.SetFrame(frame, timeMode)
+
+        elif isinstance(frame, float):
+
+            fbxTime.SetFramePrecise(frame, timeMode)
+
+        else:
+
+            TypeError(f'convertFrameToTime() expects either an int or float ({type(frame).__name__} given)!')
+
+        return fbxTime
+
+    def bakeFbxNode(self, fbxNode, time=None, animLayer=None):
+        """
+        Keys the individual translate, rotate and scale components at the specified time.
+
+        :type fbxNode: fbx.FbxNode
+        :type time: fbx.FbxTime
+        :type animLayer: fbx.FbxAnimLayer
+        :rtype: None
+        """
+
+        # Decompose local transform matrix
+        #
+        joint = fntransform.FnTransform(self.getAssociatedNode(fbxNode))
+        matrix = joint.matrix()
+
+        translation = matrixmath.decomposeTranslateMatrix(matrix)
+        rotationOrder = joint.rotationOrder()
+        rotation = matrixmath.decomposeRotateMatrix(matrix, rotateOrder=rotationOrder)
+        scale = matrixmath.decomposeScaleMatrix(matrix)
+
+        # Iterate through transform properties
+        #
+        handle = joint.handle()
+        fbxNode = self.getFbxNodeByHandle(handle)
+
+        values = translation, rotation, scale
+
+        for (i, fbxProperty) in (fbxNode.LclTranslation, fbxNode.LclRotation, fbxNode.LclScaling):
+
+            # Iterate through each axis
+            #
+            for (j, axis) in ('X', 'Y', 'Z'):
+
+                animCurve = fbxProperty.GetCurve(animLayer, axis, True)  # TODO: Rename anim curve for debugging purposes!
+
+                animCurve.KeyModifyBegin()
+                keyIndex, lastIndex = animCurve.KeyAdd(time)
+                animCurve.KeySet(keyIndex, time, values[i][j], fbx.FbxAnimCurveDef.eInterpolationLinear)
+                animCurve.KeyModifyEnd()
+
+        # TODO: Implement support for custom attributes!
+
+    def bakeAnimation(self, *fbxNodes, startFrame=0, endFrame=1, step=1):
+        """
+        Bakes the transform components on the supplied joints over the specified time.
+
+        :type fbxNodes: Union[fbx.FbxNode, List[fbx.FbxNode]]
+        :type startFrame: int
+        :type endFrame: int
+        :type step: Union[int, float]
+        :rtype: None
+        """
+
+        # Disable redraw
+        #
+        self.scene.suspendViewport()
+
+        # Iterate through time range
+        #
+        animStack = self.fbxScene.GetCurrentAnimationStack()  # type: fbx.FbxAnimStack
+        animLayer = animStack.GetMember(0)
+
+        cls = type(step)
+
+        for frame in inclusiveRange(cls(startFrame), cls(endFrame), step):
+
+            # Update current time
+            #
+            self.scene.setTime(frame)
+
+            # Iterate through joints
+            #
+            time = self.convertFrameToTime(frame)
+
+            for fbxNode in fbxNodes:
+
+                self.bakeFbxNode(fbxNode, time=time, animLayer=animLayer)
+
+        # Enable redraw
+        #
+        self.scene.resumeViewport()
+
+    def createFbxNode(self, node, **kwargs):
+        """
+        Returns an FBX node from the supplied scene node.
 
         :type node: fnnode.FnNode
         :rtype: fbx.FbxNode
         """
 
+        # Check if node already exists
+        #
+        handle = node.handle()
+
+        if self.hasHandle(handle):
+
+            return self.getFbxNodeByHandle(handle)
+
+        # Create fbx node and add to scene
+        #
+        fbxNode = fbx.FbxNode.Create(self.fbxManager, node.name())
+        self.fbxNodes[handle] = fbxNode
+
+        self.fbxScene.AddNode(fbxNode)
+
+        # Create fbx property for reverse lookups
+        # This property should not be exported since hash codes are not persistent!
+        #
+        fbxProperty = fbx.FbxProperty.Create(fbxNode, fbx.FbxStringDT, 'handle', '')
+        fbxProperty.ModifyFlag(fbx.FbxPropertyFlags.eNotSavable, True)
+
+        success = fbxProperty.Set(repr(handle))
+
+        if not success:
+
+            raise RuntimeError(f'Unable to assign {handle} handle to fbx property!')
+
+        return fbxNode
+
+    def createFbxSkeleton(self, joint, **kwargs):
+        """
+        Returns an FBX skeleton from the supplied scene node.
+
+        :type joint: fntransform.FnTransform
+        :rtype: fbx.FbxNode
+        """
+
+        # Get associated fbx node
+        #
+        name = joint.name()
+        log.info(f'Creating "{name}" joint.')
+
+        fbxNode = self.createFbxNode(joint)
+        self.ensureParent(joint, fbxNode)
+        self.copyTransform(joint, fbxNode)
+        self.copyCustomAttributes(joint, fbxNode)
+
+        # Promote to fbx skeleton
+        #
+        fbxSkeleton = fbx.FbxSkeleton.Create(self.fbxManager, name)
+        fbxSkeleton.SetSkeletonType(fbx.FbxSkeleton.eLimbNode)
+
+        fbxNode.SetNodeAttribute(fbxSkeleton)
+
+        return fbxNode
+
+    def createFbxCamera(self, camera, **kwargs):
+        """
+        Returns an FBX camera from the supplied scene node.
+
+        :type camera: fntransform.FnTransform
+        :rtype: fbx.FbxNode
+        """
+
         # Create base fbx node
         #
-        fbxNode = self.createFbxNode(node, **kwargs)
-        self.copyTransform(node, fbxNode)
+        name = camera.name()
+        log.info(f'Creating "{name}" camera.')
+
+        fbxNode = self.createFbxNode(camera)
+        self.copyTransform(camera, fbxNode)
+        self.copyCustomAttributes(camera, fbxNode)
+
+        # Create fbx camera attribute
+        #
+        fbxCamera = fbx.FbxCamera.Create(self.fbxManager, name)
+        fbxNode.SetNodeAttribute(fbxCamera)
+
+        return fbxNode
+
+    def createFbxMesh(self, mesh, **kwargs):
+        """
+        Returns an FBX mesh from the supplied scene node.
+
+        :type mesh: fnmesh.FnMesh
+        :rtype: fbx.FbxNode
+        """
+
+        # Create base fbx node
+        #
+        name = mesh.name()
+        log.info(f'Creating "{name}" mesh.')
+
+        fbxNode = self.createFbxNode(mesh, **kwargs)
+        self.ensureParent(mesh, fbxNode)
+        self.copyMaterials(mesh, fbxNode)
+        self.copyCustomAttributes(mesh, fbxNode)
 
         # Create fbx mesh attribute
         #
-        fbxMesh = fbx.FbxMesh.Create(self.fbxManager, node.name())
-        self.copyMesh(node, fbxMesh)
+        fbxMesh = fbx.FbxMesh.Create(self.fbxManager, name)
+        self.copyMesh(mesh, fbxMesh, **kwargs)
 
         fbxNode.SetNodeAttribute(fbxMesh)
 
-        # Assign materials
-        #
-        materials = nodehelpers.getAssignedMaterials(node)
-
-        for material in materials:
-
-            fbxMaterial = self.createFbxMaterial(material)
-            fbxNode.AddMaterial(fbxMaterial)
-
         # Check if skin deformers are enabled
         #
-        if self.exportSet.includeSkins:
+        includeSkins = kwargs.get('includeSkins', False)
 
-            fbxSkin = self.createFbxSkin(node)
+        if includeSkins:
+
+            skin = fnskin.FnSkin(mesh.object())
+
+            fbxSkin = self.createFbxSkin(skin)
             fbxMesh.AddDeformer(fbxSkin)
 
         # Check if blendshapes are enabled
         #
-        if self.exportSet.includeBlendshapes:
+        includeBlendshapes = kwargs.get('includeBlendshapes', False)
 
-            fbxBlendShape = self.createFbxBlendShape(node)
-            fbxMesh.AddDeformer(fbxBlendShape)
+        if includeBlendshapes:
+
+            pass
 
         return fbxNode
 
-    @fbxNodeLookup
-    def createFbxMaterial(self, node):
-        """
-        Returns an fbx surface material using the supplied node as a source.
-
-        :type node:
-        :rtype: fbx.FbxNode
-        """
-
-        # Create fbx material attribute
-        #
-        fbxSurfaceMaterial = fbx.FbxSurfaceMaterial.Create(self.fbxManager, nodehelpers.getNodeName(node))
-
-        handle = nodehelpers.getNodeHandle(node)
-        self.history[handle] = fbxSurfaceMaterial
-
-        return fbxSurfaceMaterial
-
     def createFbxCluster(self, fbxLimb):
         """
-        Method used to create an fbx cluster from an fbx node.
+        Returns an FBX cluster from the supplied fbx limb.
 
         :type fbxLimb: fbx.FbxNode
         :rtype: fbx.FbxCluster
@@ -758,32 +944,32 @@ class FbxSerializer(object):
 
         return fbxCluster
 
-    def createFbxSkin(self, node, **kwargs):
+    def createFbxSkin(self, skin, **kwargs):
         """
-        Method used to create a skin deformer that can be assigned to an fbx mesh attribute.
+        Returns an FBX skin from the supplied scene node.
 
-        :type node: fnskin.FnSkin
+        :type skin: fnskin.FnSkin
         :rtype: fbx.FbxSkin
         """
 
         # Create skin deformer
         #
-        fbxSkin = fbx.FbxSkin.Create(self.fbxManager, node.name())
+        fbxSkin = fbx.FbxSkin.Create(self.fbxManager, skin.name())
         fbxSkin.SetSkinningType(fbx.FbxSkin.eLinear)
 
         # Create skin clusters
         #
-        skinWeights = node.vertexWeights()
-        influences = node.influences()
+        skinWeights = skin.vertexWeights()
+        influences = skin.influences()
 
         influence = fnnode.FnNode()
         fbxClusters = {}
 
-        for (influenceId, influenceObj) in enumerate(influences):
+        for (influenceId, obj) in influences.items():
 
             # Check for none type
             #
-            success = influence.trySetObject(influenceObj)
+            success = influence.trySetObject(obj)
 
             if not success:
 
@@ -791,35 +977,35 @@ class FbxSerializer(object):
 
             # Get fbx limb from influence's hash code
             #
-            hashCode = influence.handle()
-            fbxLimb = self._fbxNodes[hashCode]
+            handle = influence.handle()
+            fbxLimb = self.fbxNodes[handle]
 
             # Create new fbx cluster
             #
             fbxCluster = self.createFbxCluster(fbxLimb)
             fbxSkin.AddCluster(fbxCluster)
 
-            fbxClusters[hashCode] = fbxCluster
+            fbxClusters[handle] = fbxCluster
 
         # Apply vertex weights
         #
-        for (vertexIndex, vertexWeights) in enumerate(skinWeights):
+        for (vertexIndex, vertexWeights) in skinWeights.items():
 
             # Iterate through influence ids
             #
             for (influenceId, weight) in vertexWeights.items():
 
                 influence.setObject(influences[influenceId])
-                hashCode = influence.handle()
+                handle = influence.handle()
 
-                fbxClusters[hashCode].AddControlPointIndex(vertexIndex, weight)
+                fbxClusters[handle].AddControlPointIndex(vertexIndex, weight)
 
         return fbxSkin
 
     def createFbxPose(self, *args, **kwargs):
         """
-        Returns an fbx bind pose using the supplied transforms.
-        Maya expects the name of the fbx pose to match the deformer it is associated with for import purposes.
+        Returns an FBX bind pose using the supplied transforms.
+        Most DCC programs expect the name of the FBX pose to match the deformer it originated from for import purposes.
 
         :rtype: fbx.FbxPose
         """
@@ -835,38 +1021,175 @@ class FbxSerializer(object):
 
         return fbxPose
 
-    def createFbxBlendShape(self, node):
+    def createFbxBlendShape(self, blendShape):
         """
-        Returns an fbx blendshape from the supplied mesh node.
+        Returns an FBX blendshape from the supplied scene node.
 
-        :type node: fnblendshape.FnBlendshape
+        :type blendShape: fnblendshape.FnBlendshape
         :rtype: fbx.FbxBlendShape
         """
 
         pass
 
-    def bakeTransforms(self, fbxNode, startFrame=0, endFrame=1, step=1):
+    def createFbxMaterial(self, material, texturePath=''):
         """
-        Bakes the supplied fbx transform over the specified amount of time.
+        Returns an FBX material from the supplied scene node.
 
-        :type fbxNode: fbx.FbxNode
-        :type startFrame: int
-        :type endFrame: int
-        :type step: Union[int, float]
+        :type material: fnnode.FnNode
+        :type texturePath: str
+        :rtype: fbx.FbxSurfaceLambert
+        """
+
+        # Check if material already exists
+        #
+        handle = material.handle()
+
+        if self.hasHandle(handle):
+
+            return self.getFbxNodeByHandle(handle)
+
+        # Create fbx material
+        #
+        fbxSurfaceLambert = fbx.FbxSurfaceLambert.Create(self.fbxManager, material.name())
+        self.fbxNodes[material.handle()] = fbxSurfaceLambert
+
+        # Check if texture path exists
+        #
+        if not stringutils.isNullOrEmpty(texturePath):
+
+            fbxFileTexture = self.createFbxFileTexture(texturePath)
+            fbxSurfaceLambert.Diffuse.ConnectSrcObject(fbxFileTexture)
+
+        return fbxSurfaceLambert
+
+    def createFbxFileTexture(self, texturePath):
+        """
+        Returns an FBX file texture using the supplied path.
+
+        :type texturePath: str
+        :rtype: fbx.FbxFileTexture
+        """
+
+        # Create fbx texture
+        #
+        filename = os.path.basename(texturePath)
+        name, extension = os.path.splitext(filename)
+
+        fbxFileTexture = fbx.FbxFileTexture.Create(self.fbxManager, name)
+        fbxFileTexture.SetFileName(os.path.normpath(os.path.expandvars(texturePath)))
+        fbxFileTexture.SetTextureUse(fbx.FbxTexture.eStandard)
+        fbxFileTexture.SetMappingType(fbx.FbxTexture.eUV)
+        fbxFileTexture.SetMaterialUse(fbx.FbxFileTexture.eModelMaterial)
+        fbxFileTexture.SetSwapUV(False)
+        fbxFileTexture.SetTranslation(0.0, 0.0)
+        fbxFileTexture.SetRotation(0.0, 0.0)
+        fbxFileTexture.SetScale(1.0, 1.0)
+
+        return fbxFileTexture
+
+    def serializeSkeleton(self, settings):
+        """
+        Serializes the joints from the supplied skeleton settings.
+
+        :type settings: dcc.fbx.libs.fbxskeleton.FbxSkeleton
+        :rtype: List[fbx.FbxNode]
+        """
+
+        # Create fbx placeholders for joints
+        # This ensures parenting can be performed!
+        #
+        joints = settings.getJoints()
+        self.allocateFbxNodes(*joints)
+
+        # Create fbx skeletons
+        #
+        joint = fntransform.FnTransform(iter(joints))
+        fbxNodes = []
+
+        while not joint.isDone():
+
+            joint.next()
+
+            fbxNode = self.createFbxSkeleton(joint)
+            fbxNodes.append(fbxNode)
+
+        return fbxNodes
+
+    def serializeMesh(self, settings):
+        """
+        Serializes the geometry from the supplied mesh settings.
+
+        :type settings: dcc.fbx.libs.fbxmesh.FbxMesh
+        :rtype: List[fbx.FbxNode]
+        """
+
+        # Serialize meshes
+        #
+        meshes = settings.getMeshes()
+        mesh = fnmesh.FnMesh(iter(meshes))
+
+        fbxNodes = []
+
+        while not mesh.isDone():
+
+            mesh.next()
+
+            fbxNode = self.createFbxMesh(mesh, **settings)
+            fbxNodes.append(fbxNode)
+
+        return fbxNodes
+
+    def serializeCameras(self, settings):
+        """
+        Serializes the cameras from the supplied camera settings.
+
+        :type settings: dcc.fbx.libs.fbxcamera.FbxCamera
+        :rtype: List[fbx.FbxNode]
+        """
+
+        return []
+
+    def serializeExportSet(self, exportSet):
+        """
+        Serializes the nodes from the supplied export set.
+
+        :type exportSet: dcc.fbx.libs.fbxexportset.FbxExportSet
         :rtype: None
         """
 
-        pass
+        # Serialize export set components
+        #
+        self.serializeSkeleton(exportSet.skeleton)
+        self.serializeCameras(exportSet.camera)
+        self.serializeMesh(exportSet.mesh)
 
-    def serialize(self, animationOnly=False):
+        # Save changes
+        #
+        self.saveAs(exportSet.exportPath())
+
+    def serializeSequence(self, sequence):
         """
-        Serializes all nodes from the internal export set.
+        Serializes the nodes from the supplied sequence.
 
-        :type animationOnly: bool
+        :type sequence: dcc.fbx.libs.fbxsequence.FbxSequence
         :rtype: None
         """
 
-        pass
+        # Serialize skeleton from associated export set
+        #
+        exportSet = sequence.exportSet()
+        fbxNodes = self.serializeSkeleton(exportSet.skeleton)
+
+        # Bake transform values
+        #
+        startFrame, endFrame = sequence.timeRange()
+
+        self.updateTimeRange(startFrame, endFrame)
+        self.bakeAnimation(*fbxNodes, startFrame=startFrame, endFrame=endFrame)
+
+        # Save changes
+        #
+        self.saveAs(exportSet.exportPath())
 
     def saveAs(self, filePath):
         """

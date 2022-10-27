@@ -242,6 +242,28 @@ class FnScene(afnscene.AFnScene):
 
         mc.autoKeyframe(state=False)
 
+    def suspendViewport(self):
+        """
+        Pauses the current viewport from executing any redraws.
+
+        :rtype: None
+        """
+
+        if not mc.ogs(query=True, pause=True):
+
+            mc.ogs(pause=True)
+
+    def resumeViewport(self):
+        """
+        Un-pauses the current viewport to resume redraws.
+
+        :rtype: None
+        """
+
+        if mc.ogs(query=True, pause=True):
+
+            mc.ogs(pause=True)
+
     def playblast(self, filePath=None, startFrame=None, endFrame=None):
         """
         Creates a playblast using the supplied path.

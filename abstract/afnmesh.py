@@ -25,7 +25,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
     """
 
     __slots__ = ()
-    __facetriangles__ = {}  # Lookup optimization
+    __face_triangles__ = {}  # Lookup optimization
 
     Components = IntEnum('Components', {'Unknown': -1, 'Vertex': 0, 'Edge': 1, 'Face': 2})
     Hit = namedtuple('Hit', ['hitIndex', 'hitPoint', 'hitBary'])
@@ -73,11 +73,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         :rtype: iter
         """
 
-        numElements = len(elements)
-
-        for i in range(numElements):
-
-            yield (i + self.arrayIndexType), elements[i]
+        return enumerate(elements, start=self.arrayIndexType)
 
     @abstractmethod
     def triMesh(self):
@@ -85,36 +81,6 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         Returns the triangulated mesh data object for this mesh.
 
         :rtype: object
-        """
-
-        pass
-
-    @abstractmethod
-    def selectedVertices(self):
-        """
-        Returns a list of selected vertex indices.
-
-        :rtype: list[int]
-        """
-
-        pass
-
-    @abstractmethod
-    def selectedEdges(self):
-        """
-        Returns a list of selected vertex indices.
-
-        :rtype: list[int]
-        """
-
-        pass
-
-    @abstractmethod
-    def selectedFaces(self):
-        """
-        Returns a list of selected vertex indices.
-
-        :rtype: list[int]
         """
 
         pass
@@ -149,6 +115,15 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         pass
 
+    def numFaceVertexIndices(self):
+        """
+        Returns the number of face-vertex indices.
+
+        :rtype: int
+        """
+
+        return sum([len(faceVertexIndices) for faceVertexIndices in self.iterFaceVertexIndices()])
+
     def numTriangles(self):
         """
         Returns the number of triangles in this mesh.
@@ -159,7 +134,37 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         return self.__class__(self.triMesh()).numFaces()
 
     @abstractmethod
-    def iterVertices(self, *args):
+    def selectedVertices(self):
+        """
+        Returns a list of selected vertex indices.
+
+        :rtype: list[int]
+        """
+
+        pass
+
+    @abstractmethod
+    def selectedEdges(self):
+        """
+        Returns a list of selected vertex indices.
+
+        :rtype: list[int]
+        """
+
+        pass
+
+    @abstractmethod
+    def selectedFaces(self):
+        """
+        Returns a list of selected vertex indices.
+
+        :rtype: list[int]
+        """
+
+        pass
+
+    @abstractmethod
+    def iterVertices(self, *indices):
         """
         Returns a generator that yields vertex points.
         If no arguments are supplied then all vertex points will be yielded.
@@ -169,17 +174,17 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         pass
 
-    def vertices(self, *args):
+    def vertices(self, *indices):
         """
         Returns a list of vertex points.
 
         :rtype: list[tuple[float, float, float]]
         """
 
-        return list(self.iterVertices(*args))
+        return list(self.iterVertices(*indices))
 
     @abstractmethod
-    def iterVertexNormals(self, *args):
+    def iterVertexNormals(self, *indices):
         """
         Returns a generator that yields vertex normals.
         If no arguments are supplied then all vertex normals will be yielded.
@@ -189,34 +194,121 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         pass
 
-    def vertexNormals(self, *args):
+    def vertexNormals(self, *indices):
         """
         Returns a list of vertex normals.
 
         :rtype: list[tuple[float, float, float]]
         """
 
-        return list(self.iterVertexNormals(*args))
+        return list(self.iterVertexNormals(*indices))
 
     @abstractmethod
-    def iterFaceVertexIndices(self, *args):
+    def hasEdgeSmoothings(self):
         """
-        Returns a generator that yields face-vertex indices.
-        If no arguments are supplied then all face vertex indices will be yielded.
+        Evaluates if this mesh uses edge smoothings.
+
+        :rtype: bool
+        """
+
+        pass
+
+    @abstractmethod
+    def iterEdgeSmoothings(self, *indices):
+        """
+        Returns a generator that yields edge smoothings for the specified indices.
 
         :rtype: iter
         """
 
         pass
 
-    def faceVertexIndices(self, *args):
+    def getEdgeSmoothings(self, *indices):
+        """
+        Returns a list of edge of smoothings for the specified indices.
+
+        :rtype: List[int]
+        """
+
+        return list(self.iterEdgeSmoothings(*indices))
+
+    @abstractmethod
+    def hasSmoothingGroups(self):
+        """
+        Evaluates if this mesh uses smoothing groups.
+
+        :rtype: bool
+        """
+
+        pass
+
+    @abstractmethod
+    def numSmoothingGroups(self):
+        """
+        Returns the number of smoothing groups currently in use.
+
+        :rtype: int
+        """
+
+        pass
+
+    @abstractmethod
+    def iterSmoothingGroups(self, *indices):
+        """
+        Returns a generator that yields face smoothing groups for the specified indices.
+
+        :rtype: iter
+        """
+
+        pass
+
+    def getSmoothingGroups(self, *indices):
+        """
+        Returns a list of face smoothing groups for the specified indices.
+
+        :rtype: List[int]
+        """
+
+        return list(self.iterSmoothingGroups(*indices))
+
+    @abstractmethod
+    def iterFaceVertexIndices(self, *indices):
+        """
+        Returns a generator that yields face-vertex indices.
+        If no arguments are supplied then all face vertex indices will be yielded.
+
+        :rtype: Iterator[List[int]]
+        """
+
+        pass
+
+    def faceVertexIndices(self, *indices):
         """
         Returns a list of face-vertex indices.
 
-        :rtype: list[int]
+        :rtype: List[List[int]]
         """
 
-        return list(self.iterFaceVertexIndices(*args))
+        return list(self.iterFaceVertexIndices(*indices))
+
+    @abstractmethod
+    def iterFaceVertexNormals(self, *indices):
+        """
+        Returns a generator that yields face-vertex indices for the specified faces.
+
+        :rtype: Iterator[List[Tuple[float, float, float]]]
+        """
+
+        pass
+
+    def faceVertexNormals(self, *indices):
+        """
+        Returns a list of face-vertex indices for the specified faces.
+
+        :rtype: List[List[Tuple[float, float, float]]]
+        """
+
+        return list(self.iterFaceVertexNormals(*indices))
 
     def cacheFaceTriangleIndices(self):
         """
@@ -228,7 +320,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         # Check if map has already been generated
         #
         handle = self.handle()
-        faceTriangleIndices = self.__facetriangles__.get(handle, {})
+        faceTriangleIndices = self.__face_triangles__.get(handle, {})
 
         if len(faceTriangleIndices) == self.numFaces():
 
@@ -259,7 +351,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         # Store map and return value
         #
-        self.__facetriangles__[handle] = faceTriangleIndices
+        self.__face_triangles__[handle] = faceTriangleIndices
         return faceTriangleIndices
 
     def iterFaceTriangleIndices(self, *args):
@@ -317,7 +409,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         return triangleFaceIndices
 
     @abstractmethod
-    def iterFaceCenters(self, *args):
+    def iterFaceCenters(self, *indices):
         """
         Returns a generator that yields face centers.
         If no arguments are supplied then all face centers will be yielded.
@@ -327,17 +419,17 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         pass
 
-    def faceCenters(self, *args):
+    def faceCenters(self, *indices):
         """
         Returns a list of face centers.
 
         :rtype: Sequence[List[float, float, float]]
         """
 
-        return list(self.iterFaceCenters(*args))
+        return list(self.iterFaceCenters(*indices))
 
     @abstractmethod
-    def iterFaceNormals(self, *args):
+    def iterFaceNormals(self, *indices):
         """
         Returns a generator that yields face normals.
         If no arguments are supplied then all face normals will be yielded.
@@ -347,25 +439,128 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         pass
 
-    def faceNormals(self, *args):
+    def faceNormals(self, *indices):
         """
         Returns a list of face normals.
 
         :rtype: Sequence[List[float, float, float]]
         """
 
-        return list(self.iterFaceNormals(*args))
+        return list(self.iterFaceNormals(*indices))
+
+    @abstractmethod
+    def iterFaceMaterialIndices(self, *indices):
+        """
+        Returns a generator that yields face material indices.
+        If no arguments are supplied then all face-material indices will be yielded.
+
+        :rtype: iter
+        """
+
+        pass
+
+    def faceMaterialIndices(self, *indices):
+        """
+        Returns a list of face material indices.
+        If no arguments are supplied then all face-material indices will be yielded.
+
+        :rtype: List[int]
+        """
+
+        return list(self.iterFaceMaterialIndices(*indices))
+
+    @abstractmethod
+    def getAssignedMaterials(self):
+        """
+        Returns a list of material-texture pairs from this mesh.
+
+        :rtype: List[Tuple[Any, str]]
+        """
+
+        pass
 
     @staticmethod
     def getCentroid(points):
         """
         Returns the centroid of the given triangle.
 
-        :type points: Sequence[List[float, float, float]]
+        :type points: List[List[float, float, float]]
         :rtype: List[float, float, float]
         """
 
         return (sum(numpy.array(points)) / len(points)).tolist()
+
+    @abstractmethod
+    def numUVSets(self):
+        """
+        Returns the number of UV sets.
+
+        :rtype: int
+        """
+
+        pass
+
+    @abstractmethod
+    def getUVSetNames(self):
+        """
+        Returns the UV set names.
+
+        :rtype: List[str]
+        """
+
+        pass
+
+    @abstractmethod
+    def iterUVs(self, *indices, channel=0):
+        """
+        Returns a generator that yields UV vertex points from the specified UV channel.
+
+        :type channel: int
+        :rtype: iter
+        """
+
+        pass
+
+    def getUVs(self, *indices, channel=0):
+        """
+        Returns a list of UV vertex points from the specified UV channel.
+
+        :type channel: int
+        :rtype: iter
+        """
+
+        return list(self.iterUVs(*indices, channel=channel))
+
+    @abstractmethod
+    def iterAssignedUVs(self, *indices, channel=0):
+        """
+        Returns a generator that yields UV face-vertex indices from the specified UV channel.
+
+        :type channel: int
+        :rtype: iter
+        """
+
+        pass
+
+    def getAssignedUVs(self, *indices, channel=0):
+        """
+        Returns a list of UV face-vertex indices from the specified UV channel.
+
+        :rtype: List[List[int]]
+        """
+
+        return list(self.iterAssignedUVs(*indices, channel=channel))
+
+    @abstractmethod
+    def iterTangentsAndBinormals(self, *indices, channel=0):
+        """
+        Returns a generator that yields face-vertex tangents and binormals for the specified channel.
+
+        :type channel: int
+        :rtype: Iterator[Tuple[int]]
+        """
+
+        pass
 
     @abstractmethod
     def iterConnectedVertices(self, *args, **kwargs):
@@ -576,7 +771,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         Returns the faces that are closest to the given points.
         An optional list of faces can be used to limit the range of centroids considered.
 
-        :type points: Sequence[List[float, float, float]]
+        :type points: List[List[float, float, float]]
         :type faceIndices: List[int]
         :rtype: int
         """
@@ -607,7 +802,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         :type point: numpy.array
         :type triangle: numpy.array
-        :rtype: list[float, float, float]
+        :rtype: List[float, float, float]
         """
 
         # Get edge vectors
@@ -713,9 +908,9 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         An optional list of faces can be used to limit the range of surfaces considered.
         The returns values are organized by: triangleIndex, hitPoint
 
-        :type points: Sequence[List[float, float, float]]
+        :type points: List[List[float, float, float]]
         :type faceIndices: List[int]
-        :rtype: List[AfnMesh.Hit]
+        :rtype: List[AFnMesh.Hit]
         """
 
         # Check if faces were supplied

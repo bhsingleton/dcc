@@ -145,7 +145,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
             return []
 
-    def iterVertices(self, *args):
+    def iterVertices(self, *indices):
         """
         Returns a generator that yield vertex points.
         If no arguments are supplied then all vertices will be yielded.
@@ -155,24 +155,24 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
         # Evaluate arguments
         #
-        numArgs = len(args)
+        numIndices = len(indices)
 
-        if numArgs == 0:
+        if numIndices == 0:
 
-            args = range(self.numVertices())
+            indices = range(self.numVertices())
 
         # Iterate through vertices
         #
         iterVertices = om.MItMeshVertex(self.object())
 
-        for arg in args:
+        for index in indices:
 
-            iterVertices.setIndex(arg)
+            iterVertices.setIndex(index)
             point = iterVertices.position()
 
             yield point.x, point.y, point.z
 
-    def iterVertexNormals(self, *args):
+    def iterVertexNormals(self, *indices):
         """
         Returns a generator that yields vertex normals.
         If no arguments are supplied then all vertex normals will be yielded.
@@ -182,24 +182,84 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
         # Evaluate arguments
         #
-        numArgs = len(args)
+        numIndices = len(indices)
 
-        if numArgs == 0:
+        if numIndices == 0:
 
-            args = range(self.numVertices())
+            indices = range(self.numVertices())
 
         # Iterate through vertices
         #
         iterVertices = om.MItMeshVertex(self.object())
 
-        for arg in args:
+        for index in indices:
 
-            iterVertices.setIndex(arg)
+            iterVertices.setIndex(index)
             normal = iterVertices.getNormal()
 
             yield normal.x, normal.y, normal.z
 
-    def iterFaceVertexIndices(self, *args):
+    def hasEdgeSmoothings(self):
+        """
+        Evaluates if this mesh uses edge smoothings.
+
+        :rtype: bool
+        """
+
+        return True
+
+    def iterEdgeSmoothings(self, *indices):
+        """
+        Returns a generator that yields edge smoothings.
+
+        :rtype: iter
+        """
+
+        # Evaluate arguments
+        #
+        numIndices = len(indices)
+
+        if numIndices == 0:
+
+            indices = range(self.numEdges())
+
+        # Iterate through vertices
+        #
+        iterEdges = om.MItMeshEdge(self.object())
+
+        for index in indices:
+
+            iterEdges.setIndex(index)
+            yield iterEdges.isSmooth
+
+    def hasSmoothingGroups(self):
+        """
+        Evaluates if this mesh uses smoothing groups.
+
+        :rtype: bool
+        """
+
+        return False
+
+    def numSmoothingGroups(self):
+        """
+        Returns the number of smoothing groups currently in use.
+
+        :rtype: int
+        """
+
+        return 0
+
+    def iterSmoothingGroups(self, *indices):
+        """
+        Returns a generator that yields face smoothing groups.
+
+        :rtype: iter
+        """
+
+        return iter([])
+
+    def iterFaceVertexIndices(self, *indices):
         """
         Returns a generator that yields face vertex indices.
         If no arguments are supplied then all face vertex indices will be yielded.
@@ -209,24 +269,48 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
         # Evaluate arguments
         #
-        numArgs = len(args)
+        numIndices = len(indices)
 
-        if numArgs == 0:
+        if numIndices == 0:
 
-            args = range(self.numFaces())
+            indices = range(self.numFaces())
 
         # Iterate through vertices
         #
         iterPolygons = om.MItMeshPolygon(self.object())
 
-        for arg in args:
+        for index in indices:
 
-            iterPolygons.setIndex(arg)
+            iterPolygons.setIndex(index)
             vertexIndices = iterPolygons.getVertices()
 
             yield tuple(vertexIndices)
 
-    def iterFaceCenters(self, *args):
+    def iterFaceVertexNormals(self, *indices):
+        """
+        Returns a generator that yields face-vertex indices for the specified faces.
+
+        :rtype: Iterator[List[Tuple[float, float, float]]]
+        """
+
+        # Evaluate arguments
+        #
+        numIndices = len(indices)
+
+        if numIndices == 0:
+
+            indices = range(self.numFaces())
+
+        # Iterate through indices
+        #
+        fnMesh = om.MFnMesh(self.object())
+
+        for index in indices:
+
+            normals = fnMesh.getFaceVertexNormals(index)
+            yield [(normal.x, normal.y, normal.z) for normal in normals]
+
+    def iterFaceCenters(self, *indices):
         """
         Returns a generator that yields face centers.
         If no arguments are supplied then all face centers will be yielded.
@@ -236,24 +320,24 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
         # Evaluate arguments
         #
-        numArgs = len(args)
+        numIndices = len(indices)
 
-        if numArgs == 0:
+        if numIndices == 0:
 
-            args = range(self.numFaces())
+            indices = range(self.numFaces())
 
         # Iterate through vertices
         #
         iterPolygons = om.MItMeshPolygon(self.object())
 
-        for arg in args:
+        for index in indices:
 
-            iterPolygons.setIndex(arg)
+            iterPolygons.setIndex(index)
             center = iterPolygons.center()
 
             yield center.x, center.y, center.z
 
-    def iterFaceNormals(self, *args):
+    def iterFaceNormals(self, *indices):
         """
         Returns a generator that yields face normals.
         If no arguments are supplied then all face normals will be yielded.
@@ -263,24 +347,91 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
         # Evaluate arguments
         #
-        numArgs = len(args)
+        numIndices = len(indices)
 
-        if numArgs == 0:
+        if numIndices == 0:
 
-            args = range(self.numFaces())
+            indices = range(self.numFaces())
 
         # Iterate through vertices
         #
         iterPolygons = om.MItMeshPolygon(self.object())
 
-        for arg in args:
+        for index in indices:
 
-            iterPolygons.setIndex(arg)
-
+            iterPolygons.setIndex(index)
             normals = iterPolygons.getNormals()
             normal = sum(normals) / len(normals)
 
             yield normal.x, normal.y, normal.z
+
+    def iterFaceMaterialIndices(self, *indices):
+        """
+        Returns a generator that yields face material indices.
+        If no arguments are supplied then all face-material indices will be yielded.
+
+        :rtype: iter
+        """
+
+        # Evaluate arguments
+        #
+        numIndices = len(indices)
+
+        if numIndices == 0:
+
+            indices = range(self.numFaces())
+
+        # Get connected shaders
+        #
+        dagPath = om.MDagPath.getAPathTo(self.object())
+        fnMesh = om.MFnMesh(dagPath)
+
+        shaders, polygonConnects = fnMesh.getConnectedShaders(dagPath.instanceNumber())
+
+        # Iterate through indices
+        #
+        for index in indices:
+
+            yield polygonConnects[index]
+
+    def getAssignedMaterials(self):
+        """
+        Returns a list of material-texture pairs from this mesh.
+
+        :rtype: List[Tuple[Any, str]]
+        """
+
+        # Get connected shaders
+        #
+        dagPath = om.MDagPath.getAPathTo(self.object())
+        fnMesh = om.MFnMesh(dagPath)
+
+        shaders, polygonConnects = fnMesh.getConnectedShaders(dagPath.instanceNumber())
+        numShaders = len(shaders)
+
+        # Get associated material and textures
+        #
+        materials = [None] * numShaders
+
+        for (i, shader) in enumerate(shaders):
+
+            # Check if surface shader has any textures
+            #
+            material = om.MFnDependencyNode(shader).findPlug('surfaceShader', True).source().node()
+
+            textures = dagutils.dependsOn(material, apiType=om.MFn.kFileTexture)
+            numTextures = len(textures)
+
+            if numTextures > 0:
+
+                texturePath = om.MFnDependencyNode(textures[0]).findPlug('fileTextureName', True).asString()
+                materials[i] = (material, texturePath)
+
+            else:
+
+                materials[i] = (material, '')
+
+        return materials
 
     def iterTriangleVertexIndices(self, *args):
         """
@@ -314,7 +465,206 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
             yield tuple(vertexIndices)
 
-    def iterConnectedVertices(self, *args, **kwargs):
+    def numUVSets(self):
+        """
+        Returns the number of UV sets.
+
+        :rtype: int
+        """
+
+        return om.MFnMesh(self.object()).numUVSets
+
+    def getUVSetNames(self):
+        """
+        Returns the UV set names.
+
+        :rtype: List[str]
+        """
+
+        return om.MFnMesh(self.object()).getUVSetNames()
+
+    def getUVSetName(self, channel):
+        """
+        Returns the UV set name at the specified index.
+
+        :type channel: int
+        :rtype: str
+        """
+
+        uvSetNames = self.getUVSetNames()
+        numUVSetNames = len(uvSetNames)
+
+        if 0 <= channel < numUVSetNames:
+
+            return uvSetNames[channel]
+
+        else:
+
+            return ''
+
+    def numUVs(self, channel=0):
+        """
+        Returns the number of UV points from the specified set.
+
+        :type channel: int
+        :rtype: int
+        """
+
+        return om.MFnMesh(self.object()).numUVs(uvSet=self.getUVSetName(channel))
+
+    def iterUVs(self, *indices, channel=0):
+        """
+        Returns a generator that yields UV vertex points from the specified set.
+
+        :type channel: int
+        :rtype: iter
+        """
+
+        # Evaluate arguments
+        #
+        numIndices = len(indices)
+
+        if numIndices == 0:
+
+            indices = range(self.numUVs(channel=channel))
+
+        # Iterate through indices
+        #
+        fnMesh = om.MFnMesh(self.object())
+
+        uvSet = self.getUVSetName(channel)
+        uValues, vValues = fnMesh.getUVs(uvSet=uvSet)
+
+        for index in indices:
+
+            yield uValues[index], vValues[index]
+
+    def iterAssignedUVs(self, *indices, channel=0):
+        """
+        Returns a generator that yields UV face-vertex indices from the specified set.
+
+        :type channel: int
+        :rtype: iter
+        """
+
+        # Evaluate arguments
+        #
+        numIndices = len(indices)
+
+        if numIndices == 0:
+
+            indices = range(self.numFaces())
+
+        # Get associated UV set name
+        #
+        fnMesh = om.MFnMesh(self.object())
+
+        uvSet = self.getUVSetName(channel)
+        uvCounts, uvIndices = fnMesh.getAssignedUVs(uvSet=uvSet)
+
+        faceVertexIndices = list(meshutils.package(uvCounts, uvIndices))
+
+        for index in indices:
+
+            yield faceVertexIndices[index]
+
+    def iterTangentsAndBinormals(self, *indices, channel=0):
+        """
+        Returns a generator that yields face-vertex tangents and binormals for the specified channel.
+
+        :type channel: int
+        :rtype: Iterator[List[Tuple[float, float, float]], List[Tuple[float, float, float]]]
+        """
+
+        # Evaluate arguments
+        #
+        numIndices = len(indices)
+
+        if numIndices == 0:
+
+            indices = range(self.numFaces())
+
+        # Iterate through indices
+        #
+        fnMesh = om.MFnMesh(self.object())
+        uvSet = self.getUVSetName(channel)
+
+        for index in indices:
+
+            tangents = fnMesh.getFaceVertexTangents(index, uvSet=uvSet)
+            binormals = fnMesh.getFaceVertexBinormals(index, uvSet=uvSet)
+
+            yield list(map(tuple, tangents)), list(map(tuple, binormals))
+
+    def numColorSets(self):
+        """
+        Returns the number of vertex color sets currently in use.
+
+        :rtype: int
+        """
+
+        return om.MFnMesh(self.object()).numColorSets
+
+    def getColorSetNames(self):
+        """
+        Returns a list of color set names.
+
+        :rtype: List[str]
+        """
+
+        return om.MFnMesh(self.object()).getColorSetNames()
+
+    def getColorSetName(self, channel):
+        """
+        Returns the color set name at the specified channel.
+
+        :type channel: int
+        :rtype: str
+        """
+
+        colorSetNames = om.MFnMesh(self.object()).getColorSetNames()
+        numColorSetNames = len(colorSetNames)
+
+        if 0 <= channel < numColorSetNames:
+
+            return colorSetNames[channel]
+
+        else:
+
+            return ''
+
+    def iterColors(self, channel=0):
+        """
+        Returns a generator that yields index-color pairs for the specified vertex color channel.
+
+        :type channel: int
+        :rtype: Iterator[Tuple[float, float, float, float]]
+        """
+
+        colorSet = self.getColorSetName(channel)
+        colors = om.MFnMesh(self.object()).getColors(colorSet=colorSet)
+
+        for color in colors:
+
+            yield color.r, color.g, color.b, color.a
+
+    def iterFaceVertexColorIndices(self, *indices, channel=0):
+        """
+        Returns a generator that yields face-vertex color indices for the specified faces.
+
+        :type channel: int
+        :rtype: Iterator[List[int]]
+        """
+
+        fnMesh = om.MFnMesh(self.object())
+        colorSet = self.getColorSetName(channel)
+
+        for (faceIndex, vertexIndices) in self.iterFaceVertexIndices(*indices):
+
+            colorIndices = [fnMesh.getColorIndex(faceIndex, physicalIndex, colorSet=colorSet) for (physicalIndex, logicalIndex) in enumerate(vertexIndices)]
+            yield colorIndices
+
+    def iterConnectedVertices(self, *indices, **kwargs):
         """
         Returns a generator that yields the connected vertex elements.
 
@@ -330,7 +680,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
             iterVertices = om.MItMeshVertex(self.object())
 
-            for arg in args:
+            for arg in indices:
 
                 iterVertices.setIndex(arg)
                 connectedVertices = iterVertices.getConnectedVertices()
@@ -343,7 +693,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
             iterEdges = om.MItMeshEdge(self.object())
 
-            for arg in args:
+            for arg in indices:
 
                 iterEdges.setIndex(arg)
 
@@ -355,7 +705,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
             iterFaces = om.MItMeshPolygon(self.object())
 
-            for arg in args:
+            for arg in indices:
 
                 iterFaces.setIndex(arg)
                 connectedVertices = iterFaces.getConnectedVertices()
@@ -368,7 +718,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
             raise TypeError('iterConnectedVertices() expects a valid component type (%s given)' % componentType)
 
-    def iterConnectedEdges(self, *args, **kwargs):
+    def iterConnectedEdges(self, *indices, **kwargs):
         """
         Returns a generator that yields the connected edge elements.
 
@@ -384,7 +734,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
             iterVertices = om.MItMeshVertex(self.object())
 
-            for arg in args:
+            for arg in indices:
 
                 iterVertices.setIndex(arg)
                 connectedEdges = iterVertices.getConnectedEdges()
@@ -397,7 +747,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
             iterEdges = om.MItMeshEdge(self.object())
 
-            for arg in args:
+            for arg in indices:
 
                 iterEdges.setIndex(arg)
                 connectedEdges = iterEdges.getConnectedEdges()
@@ -419,7 +769,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
             raise TypeError('iterConnectedEdges() expects a valid component type (%s given)' % componentType)
 
-    def iterConnectedFaces(self, *args, **kwargs):
+    def iterConnectedFaces(self, *indices, **kwargs):
         """
         Returns a generator that yields the connected face elements.
 
@@ -435,7 +785,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
             iterVertices = om.MItMeshVertex(self.object())
 
-            for arg in args:
+            for arg in indices:
 
                 iterVertices.setIndex(arg)
                 connectedFaces = iterVertices.getConnectedFaces()
@@ -448,7 +798,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
             iterEdges = om.MItMeshEdge(self.object())
 
-            for arg in args:
+            for arg in indices:
 
                 iterEdges.setIndex(arg)
                 connectedFaces = iterEdges.getConnectedFaces()
@@ -461,7 +811,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
             iterFaces = om.MItMeshPolygon(self.object())
 
-            for arg in args:
+            for arg in indices:
 
                 iterFaces.setIndex(arg)
                 connectedFaces = iterFaces.getConnectedFaces()

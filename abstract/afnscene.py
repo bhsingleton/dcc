@@ -570,6 +570,26 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
             fnTexture.next()
             fnTexture.fix()
 
+    @abstractmethod
+    def suspendViewport(self):
+        """
+        Pauses the current viewport from executing any redraws.
+
+        :rtype: None
+        """
+
+        pass
+
+    @abstractmethod
+    def resumeViewport(self):
+        """
+        Un-pauses the current viewport to resume redraws.
+
+        :rtype: None
+        """
+
+        pass
+
     @staticmethod
     def findFFmpeg():
         """
