@@ -198,13 +198,21 @@ class QPSONPath(collections_abc.Sequence):
         :rtype: bool
         """
 
+        # Check if root item is valid
+        #
+        if self.model.invisibleRootItem is None:
+
+            return False
+
+        # Evaluate path length
+        #
         pathLength = len(self._path)
 
-        if pathLength == 0:
+        if pathLength == 0 and stringutils.isNullOrEmpty(self.model.invisibleRootProperty):
 
             return True
 
-        elif pathLength == 1:
+        elif pathLength == 1 and not stringutils.isNullOrEmpty(self.model.invisibleRootProperty):
 
             return self._path[0] == self.model.invisibleRootProperty
 
@@ -238,6 +246,15 @@ class QPSONPath(collections_abc.Sequence):
         else:
 
             return None
+
+    def supportsChildren(self):
+        """
+        Evaluates if this path can support children.
+
+        :rtype: bool
+        """
+
+        return self.isArray() or self.isMapping()
 
     def hasAttr(self, name):
         """
@@ -293,14 +310,14 @@ class QPSONPath(collections_abc.Sequence):
 
         if not callable(getter):
 
-            return type(None)
+            return type(None), tuple() if decomposeAliases else type(None)
 
         # Check if return type requires decomposing
         #
         returnType = annotationutils.getReturnType(getter)
 
-        if decomposeAliases and annotationutils.isParameterizedAlias(returnType):
-
+        if decomposeAliases:
+            
             return annotationutils.decomposeAlias(returnType)
 
         else:
@@ -390,10 +407,16 @@ class QPSONPath(collections_abc.Sequence):
         :rtype: bool
         """
 
-        alias = self.type()
-        origin, parameters = annotationutils.decomposeAlias(alias)
+        alias, parameters = self.type(decomposeAliases=True)
+        numParameters = len(parameters)
 
-        return issubclass(origin, collections_abc.MutableSequence) and not issubclass(origin, string_types)
+        if self.isElement() and numParameters == 1:
+
+            return issubclass(parameters[0], collections_abc.MutableSequence) and not issubclass(parameters[0], string_types)
+
+        else:
+
+            return issubclass(alias, collections_abc.MutableSequence) and not issubclass(alias, string_types)
 
     def isMapping(self):
         """
@@ -402,10 +425,16 @@ class QPSONPath(collections_abc.Sequence):
         :rtype: bool
         """
 
-        alias = self.type()
-        origin, parameters = annotationutils.decomposeAlias(alias)
+        alias, parameters = self.type(decomposeAliases=True)
+        numParameters = len(parameters)
 
-        return issubclass(origin, collections_abc.MutableMapping)
+        if self.isElement() and numParameters == 1:
+
+            return issubclass(parameters[0], collections_abc.MutableMapping)
+
+        else:
+
+            return issubclass(alias, collections_abc.MutableMapping)
 
     def isElement(self):
         """

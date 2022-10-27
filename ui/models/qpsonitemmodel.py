@@ -310,10 +310,10 @@ class QPSONItemModel(QtCore.QAbstractItemModel):
         # Evaluate parent item
         #
         parentId = self.decodeInternalId(parent.internalId())
-        parentItem = parentId.value()
 
-        if isinstance(parentItem, (collections_abc.Sequence, collections_abc.Mapping)):
+        if parentId.supportsChildren() or parentId.isRoot():
 
+            parentItem = parentId.value()
             return len(parentItem)
 
         else:
@@ -456,9 +456,9 @@ class QPSONItemModel(QtCore.QAbstractItemModel):
 
         # Evaluate if index has children
         #
-        isMapping = internalId.isMapping()
+        supportsChildren = internalId.supportsChildren()
 
-        if not isArray and not isMapping:
+        if not supportsChildren:
 
             flags |= QtCore.Qt.ItemNeverHasChildren
 
