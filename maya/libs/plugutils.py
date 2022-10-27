@@ -49,13 +49,14 @@ def findPlug(dependNode, plugName):
     # Break down string path into groups
     #
     fnDependNode = om.MFnDependencyNode(dependNode)
+    nodeName = fnDependNode.name()
 
     groups = __plugparser__.findall(plugName)
     numGroups = len(groups)
 
     if numGroups == 0:
 
-        raise TypeError('findPlug() unable to parse "%s" path!' % plugName)
+        raise TypeError('findPlug() unable to split path: "%s"!' % plugName)
 
     # Find leaf attribute
     #
@@ -64,7 +65,7 @@ def findPlug(dependNode, plugName):
 
     if attribute.isNull():
 
-        raise TypeError('findPlug() cannot find "%s" attribute!' % attributeName)
+        raise TypeError('findPlug() cannot find "%s.%s" attribute!' % (nodeName, attributeName))
 
     # Trace attribute path
     # Collect all indices in plug path
