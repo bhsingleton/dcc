@@ -307,7 +307,7 @@ def resetInitialOffsets(node):
     #
     endMatrix = transformutils.getMatrix(node)
 
-    if not transformutils.isClose(startMatrix, endMatrix):
+    if not transformutils.isClose(startMatrix, endMatrix, tolerance=0.01):
 
         log.error(f'{startMatrix} != {endMatrix}')
         raise RuntimeError(f'resetInitialOffsets() unable to reset ${node.name} initial offset!')
