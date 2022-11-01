@@ -838,14 +838,12 @@ def iterEdgeSmoothings(mesh, indices=None):
 
     # Select hard edges
     #
-    editablePoly = mesh.baseObject()
-    editablePoly.selectHardEdges()
-
-    selectedEdges = pymxs.runtime.polyOp.getEdgeSelection(editablePoly)
+    mesh.selectHardEdges()
+    selectedEdges = pymxs.runtime.polyOp.getEdgeSelection(mesh)  # type: pymxs.runtime.BitArray
 
     # Iterate through indices
     #
-    indices = inclusiveRange(1, edgeCount(editablePoly), 1) if stringutils.isNullOrEmpty(indices) else indices
+    indices = range(edgeCount(mesh)) if stringutils.isNullOrEmpty(indices) else indices
 
     for index in indices:
 
