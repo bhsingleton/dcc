@@ -81,7 +81,6 @@ def exportAnimation(savePath, controls=('*_Ctrl', '*_Anim')):
             skipChildren=True,
             skipShapes=True,
             skipSelectionSets=True,
-            skipMaterials=True,
             selection=selection
         )
 
