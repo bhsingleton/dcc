@@ -118,8 +118,17 @@ class FnFbx(afnfbx.AFnFbx):
         Exports the active selection to the specified file path.
 
         :type filePath: str
-        :rtype: None
+        :rtype: bool
         """
 
-        altPath = filePath.replace(os.sep, os.altsep)
-        mel.eval(f'FBXExport -f "{altPath}" -s;')
+        try:
+
+            altPath = filePath.replace(os.sep, os.altsep)
+            mel.eval(f'FBXExport -f "{altPath}" -s;')
+
+            return True
+
+        except (RuntimeError, IOError) as exception:
+
+            log.error(exception)
+            return False

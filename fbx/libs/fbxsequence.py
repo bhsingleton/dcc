@@ -1,7 +1,7 @@
 import os
 
 from enum import Enum, IntEnum
-from . import fbxbase
+from . import fbxbase, fbxserializer
 from ... import fnfbx, fnscene
 from ...python import stringutils
 from ...ui import qdirectoryedit, qtimespinbox
@@ -20,6 +20,7 @@ class FbxSequence(fbxbase.FbxBase):
     # region Dunderscores
     __slots__ = (
         '_scene',
+        '_fbx',
         '_sequencer',
         '_directory',
         '_startFrame',
@@ -63,6 +64,16 @@ class FbxSequence(fbxbase.FbxBase):
         """
 
         return self._scene
+
+    @property
+    def fbx(self):
+        """
+        Getter method that returns the fbx interface.
+
+        :rtype: fnfbx.FnFbx
+        """
+
+        return self._fbx
 
     @property
     def sequencer(self):
@@ -334,26 +345,96 @@ class FbxSequence(fbxbase.FbxBase):
 
             return None
 
-    def export(self):
+    def legacyExport(self):
         """
-        Outputs this export set to the user defined path.
+        Exports this sequences to the user defined path using the legacy serializer.
 
         :rtype: bool
         """
 
         # Check if sequence is valid
         #
-        if self.isValid():
+        if not self.isValid():
 
-            exportSet = self.exportSet()
-            namespace = self.sequencer.namespace()
+            log.error(f'Cannot locate export set from "{self.name}" sequence!')
+            return False
 
-            return exportSet.exportAnimation(self, namespace=namespace)
+        # Select nodes and execute pre-scripts
+        #
+        asset = self.asset()
+        exportSet = self.exportSet()
+        namespace = self.sequencer.namespace()
+
+        exportSet.select(animationOnly=True, namespace=namespace)
+        exportSet.preExport()
+
+        # Export fbx using selection
+        #
+        self.fbx.setAnimExportParams(
+            version=asset.fileVersion,
+            asAscii=bool(asset.fileType),
+            scale=exportSet.scale,
+            startFrame=self.startFrame,
+            endFrame=self.endFrame,
+            step=self.step,
+        )
+
+        exportPath = self.exportPath()
+        success = self.fbx.exportSelection(exportPath)
+
+        # Execute post-scripts
+        #
+        exportSet.editExportFile(exportPath)
+        exportSet.postExport()
+
+        return success
+
+    def customExport(self):
+        """
+        Exports this sequences to the user defined path using the custom serializer.
+
+        :rtype: bool
+        """
+
+        # Check if sequence is valid
+        #
+        if not self.isValid():
+
+            log.error(f'Cannot locate export set from "{self.name}" sequence!')
+            return False
+
+        # Serialize this sequence
+        #
+        namespace = self.sequencer.namespace()
+        serializer = fbxserializer.FbxSerializer(namespace=namespace)
+
+        return serializer.serializeSequence(self)
+
+    def export(self):
+        """
+        Exports this sequences to the user defined path.
+
+        :rtype: bool
+        """
+
+        # Check if sequence is valid
+        #
+        if not self.isValid():
+
+            log.error(f'Cannot locate export set from "{self.name}" sequence!')
+            return False
+
+        # Check if legacy serializer should be used
+        #
+        asset = self.asset()
+
+        if asset.useLegacySerializer:
+
+            return self.legacyExport()
 
         else:
 
-            log.error('Cannot locate export set from "%s" sequence!' % self.name)
-            return False
+            return self.customExport()
 
     def refresh(self):
         """

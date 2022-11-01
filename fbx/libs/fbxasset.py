@@ -18,7 +18,8 @@ class FbxAsset(fbxbase.FbxBase):
         '_frameRate',
         '_fileType',
         '_fileVersion',
-        '_exportSets'
+        '_exportSets',
+        '_useLegacySerializer'
     )
 
     def __init__(self, *args, **kwargs):
@@ -35,6 +36,7 @@ class FbxAsset(fbxbase.FbxBase):
         self._fileType = kwargs.get('fileType', FbxFileType.Binary)
         self._fileVersion = kwargs.get('fileVersion', FbxFileVersion.FBX202000)
         self._exportSets = notifylist.NotifyList()
+        self._useLegacySerializer = kwargs.get('useLegacySerializer', False)
 
         # Setup notifies
         #
@@ -152,6 +154,27 @@ class FbxAsset(fbxbase.FbxBase):
 
         self._exportSets.clear()
         self._exportSets.extend(exportSets)
+
+    @property
+    def useLegacySerializer(self):
+        """
+        Getter method that returns the `useLegacySerializer` flag.
+
+        :rtype: bool
+        """
+
+        return self._useLegacySerializer
+
+    @useLegacySerializer.setter
+    def useLegacySerializer(self, useLegacySerializer):
+        """
+        Setter method that updates the `useLegacySerializer` flag.
+
+        :type useLegacySerializer: bool
+        :rtype: None
+        """
+
+        self._useLegacySerializer = useLegacySerializer
     # endregion
 
     # region Callbacks

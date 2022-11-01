@@ -151,20 +151,21 @@ class PSONObject(with_metaclass(ABCMeta, collections_abc.MutableMapping)):
         #
         instance = self.__class__()
 
-        for (name, func) in self.iterProperties(readable=True, writable=True):
+        for (name, func) in self.iterProperties():
 
             # Inspect property value
             # Mutable sequences will require a deep copy
             #
             value = func.fget(self)
+            cls = type(value)
 
             if isinstance(value, collections_abc.MutableSequence):
 
-                setattr(instance, name, [copy.copy(x) for x in value])
+                setattr(instance, name, list(map(copy.copy, value)))
 
             elif isinstance(value, collections_abc.MutableMapping):
 
-                setattr(instance, name, {key: copy.copy(value) for (key, value) in value.items()})
+                setattr(instance, name, cls({key: copy.copy(value) for (key, value) in value.items()}))
 
             else:
 

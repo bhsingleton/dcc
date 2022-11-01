@@ -88,7 +88,15 @@ class FnFbx(afnfbx.AFnFbx):
         Exports the active selection to the specified file path.
 
         :type filePath: str
-        :rtype: None
+        :rtype: bool
         """
 
-        pymxs.runtime.exportFile(filePath, pymxs.runtime.name('noPrompt'), selectedOnly=True, using='FBXEXP')
+        try:
+
+            pymxs.runtime.exportFile(filePath, pymxs.runtime.name('noPrompt'), selectedOnly=True, using='FBXEXP')
+            return True
+
+        except (RuntimeError, IOError) as exception:
+
+            log.error(exception)
+            return False

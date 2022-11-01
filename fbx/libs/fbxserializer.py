@@ -60,6 +60,7 @@ class FbxSerializer(object):
     # region Dunderscores
     __slots__ = (
         '_scene',
+        '_namespace',
         '_fbxScene',
         '_fbxManager',
         '_fbxAnimStack',
@@ -117,6 +118,7 @@ class FbxSerializer(object):
         # Declare class variables
         #
         self._scene = fnscene.FnScene()
+        self._namespace = kwargs.get('namespace', '')
         self._fbxManager, self._fbxScene = FbxCommon.InitializeSdkObjects()
         self._fbxAnimStack = fbx.FbxAnimStack.Create(self.fbxManager, 'Take 001')
         self._fbxAnimLayer = fbx.FbxAnimLayer.Create(self.fbxManager, 'BaseLayer')
@@ -146,6 +148,16 @@ class FbxSerializer(object):
         """
 
         return self._scene
+
+    @property
+    def namespace(self):
+        """
+        Getter method that returns the global namespace.
+
+        :rtype: str
+        """
+
+        return self._namespace
 
     @property
     def fbxScene(self):
@@ -1098,7 +1110,7 @@ class FbxSerializer(object):
         # Create fbx placeholders for joints
         # This ensures parenting can be performed!
         #
-        joints = settings.getJoints()
+        joints = settings.getJoints(namespace=self.namespace)
         self.allocateFbxNodes(*joints)
 
         # Create fbx skeletons
@@ -1125,7 +1137,7 @@ class FbxSerializer(object):
 
         # Serialize meshes
         #
-        meshes = settings.getMeshes()
+        meshes = settings.getMeshes(namespace=self.namespace)
         mesh = fnmesh.FnMesh(iter(meshes))
 
         fbxNodes = []

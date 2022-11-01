@@ -1,7 +1,7 @@
 import os
 
 from enum import IntEnum
-from . import fbxbase, fbxskeleton, fbxmesh, fbxcamera, fbxscript
+from . import fbxbase, fbxskeleton, fbxmesh, fbxcamera, fbxscript, fbxserializer
 from ..interop import fbxfile
 from ... import fnscene, fnfbx
 from ...ui import qdirectoryedit
@@ -444,12 +444,12 @@ class FbxExportSet(fbxbase.FbxBase):
 
             customScript.preExport()
 
-    def export(self, namespace=''):
+    def legacyExport(self, namespace=''):
         """
-        Outputs this export set to the user defined path.
+        Exports this set to the user defined path using the legacy serializer.
 
         :type namespace: str
-        :rtype: None
+        :rtype: bool
         """
 
         # Select nodes and execute pre-scripts
@@ -471,45 +471,47 @@ class FbxExportSet(fbxbase.FbxBase):
         )
 
         exportPath = self.exportPath()
-        self.fbx.exportSelection(exportPath)
+        success = self.fbx.exportSelection(exportPath)
+
+        if not success:
+
+            return success
 
         # Execute post-scripts
         #
         self.editExportFile(exportPath)
         self.postExport()
 
-    def exportAnimation(self, sequence, namespace=''):
-        """
-        Outputs the supplied sequence to the user defined path.
+        return success
 
-        :type sequence: fbxsequence.FbxSequence
+    def customExport(self, *sequences, namespace=''):
+        """
+        Exports this set to the user defined path using the custom serializer.
+
+        :type namespace: str
+        :rtype: str
+        """
+
+        serializer = fbxserializer.FbxSerializer(namespace=namespace)
+        return serializer.serializeExportSet(self)
+
+    def export(self, namespace=''):
+        """
+        Exports this set to the user defined path.
+
         :type namespace: str
         :rtype: None
         """
 
-        # Select nodes and execute pre-scripts
+        # Check if legacy serializer should be used
         #
-        self.select(animationOnly=True, namespace=namespace)
-        self.preExport()
+        if self.asset.useLegacySerializer:
 
-        # Export fbx using selection
-        #
-        self.fbx.setAnimExportParams(
-            version=self.asset.fileVersion,
-            asAscii=bool(self.asset.fileType),
-            scale=self.scale,
-            startFrame=sequence.startFrame,
-            endFrame=sequence.endFrame,
-            step=sequence.step,
-        )
+            return self.legacyExport(namespace=namespace)
 
-        exportPath = sequence.exportPath()
-        self.fbx.exportSelection(exportPath)
+        else:
 
-        # Execute post-scripts
-        #
-        self.editExportFile(exportPath)
-        self.postExport()
+            return self.customExport(namespace=namespace)
 
     def postExport(self):
         """

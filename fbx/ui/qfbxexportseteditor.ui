@@ -767,7 +767,7 @@
     <property name="title">
      <string>&amp;Settings</string>
     </property>
-    <addaction name="separator"/>
+    <addaction name="useLegacySerializerAction"/>
     <addaction name="generateLogsAction"/>
    </widget>
    <addaction name="fileMenu"/>
@@ -824,6 +824,19 @@
    </property>
    <property name="text">
     <string>&amp;Generate Logs</string>
+   </property>
+  </action>
+  <action name="actionUse_Legacy_Serializer">
+   <property name="text">
+    <string>Use Legacy Serializer</string>
+   </property>
+  </action>
+  <action name="useLegacySerializerAction">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Use Legacy Serializer</string>
    </property>
   </action>
  </widget>

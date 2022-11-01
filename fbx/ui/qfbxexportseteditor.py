@@ -331,6 +331,17 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
         self.asset.name = text
 
     @QtCore.Slot(bool)
+    def on_useLegacySerializer_triggered(self, checked=False):
+        """
+        Slot method for the useLegacySerializer's triggered signal.
+
+        :type checked: bool
+        :rtype: None
+        """
+
+        self.asset.useLegacySerializer = checked
+
+    @QtCore.Slot(bool)
     def on_savePushButton_clicked(self, checked=False):
         """
         Slot method for the savePushButton's clicked signal.
@@ -639,7 +650,7 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
         # Check if name is unique
         # Be sure to slugify the name before processing!
         #
-        newName = self.slugify(newName)
+        newName = stringutils.slugify(newName)
 
         if not self.isNameUnique(newName) or len(newName) == 0:
 
@@ -654,7 +665,7 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
 
             if response == QtWidgets.QMessageBox.Ok:
 
-                self.renameExportSetPushButton.click()
+                self.renameExportSetPushButton.click()  # Redo operation!
 
         else:
 
