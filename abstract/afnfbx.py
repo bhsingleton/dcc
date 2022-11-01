@@ -42,7 +42,7 @@ class AFnFbx(with_metaclass(ABCMeta, afnbase.AFnBase)):
         Exports the active selection to the specified file path.
 
         :type filePath: str
-        :rtype: None
+        :rtype: bool
         """
 
         pass
