@@ -42,7 +42,7 @@ class MXSIterDependencies(object):
 
         # Declare public variables
         #
-        self.objects = kwargs.get('selection', [pymxs.runtime.RootNode])
+        self.objects = [pymxs.runtime.RootNode] + kwargs.get('selection', [])
         self.processed = {}
         self.skipProperties = kwargs.get('skipProperties', False)
         self.skipSubAnims = kwargs.get('skipSubAnims', False)
