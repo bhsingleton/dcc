@@ -1,5 +1,4 @@
-import os.path
-
+import os
 import fbx
 import FbxCommon
 
@@ -13,40 +12,6 @@ import logging
 logging.basicConfig()
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
-
-
-def fbxNodeLookup(func):
-    """
-    Returns a function wrapper that can be used to check for serialization redundancy.
-    Anytime a new fbx node is requested this function will check to see if it already exists.
-
-    :rtype: instancemethod
-    """
-
-    # Define wrapper function
-    #
-    def wrapper(*args, **kwargs):
-
-        # Get node handle
-        #
-        factory = args[0]
-
-        node = args[1]
-        handle = node.handle()
-
-        # Check if node already exists
-        #
-        fbxNode = factory.fbxNodes.get(handle, None)
-
-        if fbxNode is not None:
-
-            return fbxNode
-
-        else:
-
-            return func(*args, **kwargs)
-
-    return wrapper
 
 
 class FbxSerializer(object):
@@ -254,11 +219,13 @@ class FbxSerializer(object):
         """
 
         globalSettings = self.fbxScene.GetGlobalSettings()
-        globalSettings.setTimeMode(fbx.FbxTime.eFrames30)  # TODO: Add support for other time modes!
+        globalSettings.SetTimeMode(fbx.FbxTime.eFrames30)  # TODO: Add support for other time modes!
 
         globalSettings.SetTimelineDefaultTimeSpan(
-            self.convertFrameToTime(startFrame),
-            self.convertFrameToTime(endFrame)
+            fbx.FbxTimeSpan(
+                self.convertFrameToTime(startFrame),
+                self.convertFrameToTime(endFrame)
+            )
         )
 
     def hasHandle(self, handle):
@@ -290,7 +257,7 @@ class FbxSerializer(object):
         """
 
         fbxProperty = fbxNode.FindProperty('handle')
-        handle = eval(fbx.FbxPropertyString(fbxProperty).Get())
+        handle = int(str(fbx.FbxPropertyString(fbxProperty).Get()))
 
         return fnnode.FnNode.getNodeByHandle(handle)
 
@@ -747,11 +714,11 @@ class FbxSerializer(object):
 
         values = translation, rotation, scale
 
-        for (i, fbxProperty) in (fbxNode.LclTranslation, fbxNode.LclRotation, fbxNode.LclScaling):
+        for (i, fbxProperty) in enumerate([fbxNode.LclTranslation, fbxNode.LclRotation, fbxNode.LclScaling]):
 
             # Iterate through each axis
             #
-            for (j, axis) in ('X', 'Y', 'Z'):
+            for (j, axis) in enumerate(['X', 'Y', 'Z']):
 
                 animCurve = fbxProperty.GetCurve(animLayer, axis, True)  # TODO: Rename anim curve for debugging purposes!
 
@@ -1201,7 +1168,7 @@ class FbxSerializer(object):
 
         # Save changes
         #
-        self.saveAs(exportSet.exportPath())
+        self.saveAs(sequence.exportPath())
 
     def saveAs(self, filePath):
         """
