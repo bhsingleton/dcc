@@ -825,6 +825,7 @@ def setTypedValue(plug, value, **kwargs):
 __set_value__ = {
     om.MFn.kNumericAttribute: setNumericValue,
     om.MFn.kUnitAttribute: setUnitValue,
+    om.MFn.kTimeAttribute: setMTime,
     om.MFn.kDoubleAngleAttribute: setUnitValue,
     om.MFn.kDoubleLinearAttribute: setUnitValue,
     om.MFn.kTypedAttribute: setTypedValue,
