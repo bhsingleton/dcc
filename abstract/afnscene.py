@@ -4,10 +4,8 @@ import subprocess
 from abc import ABCMeta, abstractmethod
 from six import with_metaclass
 from six.moves import collections_abc
-from string import ascii_uppercase
-from ctypes import windll
-from fnmatch import fnmatch
 from dcc import fntexture
+from dcc.python import pathutils, stringutils
 from dcc.abstract import afnbase
 from dcc.decorators.classproperty import classproperty
 
@@ -304,37 +302,28 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
         :rtype: bool
         """
 
-        if isinstance(value, collections_abc.Sequence):
+        return stringutils.isNullOrEmpty(value)
 
-            return len(value) == 0
-
-        elif value is None:
-
-            return True
-
-        else:
-
-            return False
-
-    def getDriveLetters(self):
+    @classmethod
+    def getDriveLetters(cls):
         """
         Returns all the available drive letters.
 
         :rtype: List[str]
         """
 
-        drives = []
-        bitmask = windll.kernel32.GetLogicalDrives()
+        return pathutils.getDriveLetters()
 
-        for letter in ascii_uppercase:
+    @classmethod
+    def ensureDirectory(cls, path):
+        """
+        Ensures that the supplied directory exists.
 
-            if bitmask & 1:
+        :type path: str
+        :rtype: None
+        """
 
-                drives.append(letter)
-
-            bitmask >>= 1
-
-        return drives
+        pathutils.ensureDirectory(path)
 
     @classmethod
     def isPathRelative(cls, path):
@@ -345,16 +334,7 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
         :rtype: bool
         """
 
-        segments = os.path.normpath(path).split(os.path.sep)
-        numSegments = len(segments)
-
-        if numSegments == 0:
-
-            return False
-
-        else:
-
-            return not fnmatch(segments[0], '?:')
+        return pathutils.isPathRelative(path)
 
     @classmethod
     def isPathVariable(cls, path):
@@ -365,7 +345,7 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
         :rtype: bool
         """
 
-        return path.startswith(('%', '$'))
+        return pathutils.isPathVariable(path)
 
     @classmethod
     def isPathRelativeTo(cls, path, directory):
@@ -377,18 +357,7 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
         :rtype: bool
         """
 
-        # Check for empty strings
-        #
-        if cls.isNullOrEmpty(path) or cls.isNullOrEmpty(directory):
-
-            return False
-
-        # Normalize and compare paths
-        #
-        path = os.path.normpath(os.path.expandvars(path))
-        directory = os.path.normpath(os.path.expandvars(directory))
-
-        return os.path.normcase(path).startswith(os.path.normcase(directory))
+        return pathutils.isPathRelativeTo(path, directory)
 
     @classmethod
     def makePathRelativeTo(cls, path, directory):
@@ -400,27 +369,7 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
         :rtype: str
         """
 
-        # Check for empty strings
-        #
-        if cls.isNullOrEmpty(path) or cls.isNullOrEmpty(directory):
-
-            return ''
-
-        # Check if path is relative to directory
-        #
-        path = os.path.normpath(path)
-
-        if cls.isPathRelativeTo(path, directory):
-
-            relativePath = os.path.relpath(path, directory)
-            log.info('%s > %s' % (path, relativePath))
-
-            return relativePath
-
-        else:
-
-            log.warning('Cannot make: %s, relative to: %s' % (path, directory))
-            return path
+        return pathutils.makePathRelativeTo(path, directory)
 
     def makePathRelative(self, path):
         """
@@ -454,43 +403,10 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
         Converts all the texture paths to absolute.
 
         :type path: str
-        :rtype: List[str]
+        :rtype: str
         """
 
-        # Check for empty strings
-        #
-        if self.isNullOrEmpty(path):
-
-            return ''
-
-        # Inspect path type
-        #
-        path = os.path.normpath(os.path.expandvars(path))
-
-        if os.path.isabs(path):
-
-            return path
-
-        # Iterate through paths
-        #
-        for directory in self.paths():
-
-            # Check if combined path is valid
-            #
-            absolutePath = os.path.join(directory, path)
-
-            if os.path.exists(absolutePath):
-
-                return absolutePath
-
-            else:
-
-                continue
-
-        # Notify user
-        #
-        log.warning('Unable to make path absolute: %s' % path)
-        return path
+        return pathutils.makePathAbsolute(path, paths=self.paths())
 
     def makePathVariable(self, path, variable):
         """

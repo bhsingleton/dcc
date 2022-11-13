@@ -1,4 +1,6 @@
 import os
+import sys
+import platform
 
 from string import ascii_uppercase
 from ctypes import windll
@@ -19,6 +21,16 @@ def getDriveLetters():
     :rtype: List[str]
     """
 
+    # Evaluate user's operating system
+    #
+    name = platform.system()
+
+    if name != 'Windows':
+
+        return []
+
+    # Collect letters using drive bitmask
+    #
     drives = []
     bitmask = windll.kernel32.GetLogicalDrives()
 
@@ -42,6 +54,26 @@ def isDriveLetter(string):
     """
 
     return fnmatch(string, '?:')
+
+
+def ensureDirectory(path):
+    """
+    Ensures that the supplied directory exists.
+
+    :type path: str
+    :rtype: None
+    """
+
+    # Check if this is a file
+    # If so, then get the parent directory
+    #
+    if os.path.isfile(path):
+
+        path = os.path.dirname(path)
+
+    # Ensure directories exist
+    #
+    os.makedirs(path, exist_ok=True)
 
 
 def isPathRelative(path):
@@ -85,7 +117,7 @@ def isPathRelativeTo(path, directory):
     #
     if stringutils.isNullOrEmpty(path) or stringutils.isNullOrEmpty(directory):
 
-        return ''
+        return False
 
     # Normalize and compare paths
     #
@@ -104,3 +136,123 @@ def isPathVariable(path):
     """
 
     return path.startswith(('%', '$'))
+
+
+def makePathRelativeTo(path, directory):
+    """
+    Returns a path relative to the supplied directory.
+
+    :type path: str
+    :type directory: str
+    :rtype: str
+    """
+
+    # Check for empty strings
+    #
+    if stringutils.isNullOrEmpty(path) or stringutils.isNullOrEmpty(directory):
+
+        return ''
+
+    # Check if path is relative to directory
+    #
+    path = os.path.normpath(path)
+    directory = os.path.normpath(os.path.expandvars(directory))
+
+    if isPathRelativeTo(path, directory):
+
+        relativePath = os.path.relpath(path, directory)
+        log.info('%s > %s' % (path, relativePath))
+
+        return relativePath
+
+    else:
+
+        log.warning('Cannot make: %s, relative to: %s' % (path, directory))
+        return path
+
+
+def makePathAbsolute(path, paths=None):
+    """
+    Returns an absolute path using the supplied paths to resolve.
+
+    :type path: str
+    :type paths: Union[List[str], None]
+    :rtype: str
+    """
+
+    # Check for empty strings
+    #
+    if stringutils.isNullOrEmpty(path):
+
+        return ''
+
+    # Inspect path type
+    #
+    path = os.path.normpath(os.path.expandvars(path))
+
+    if os.path.isabs(path):
+
+        return path
+
+    # Iterate through paths
+    #
+    paths = sys.path if stringutils.isNullOrEmpty(paths) else paths
+
+    for directory in paths:
+
+        # Check if directory is valid
+        #
+        if stringutils.isNullOrEmpty(directory):
+
+            continue
+
+        # Check if combined path is valid
+        #
+        absolutePath = os.path.join(directory, path)
+
+        if os.path.exists(absolutePath):
+
+            return absolutePath
+
+        else:
+
+            continue
+
+    # Notify user
+    #
+    log.warning('Unable to make path absolute: %s' % path)
+    return path
+
+
+def makePathVariable(path, variable):
+    """
+    Converts all the texture paths to variable.
+    The supplied variable name must contain a dollar sign!
+
+    :type path: str
+    :type variable: str
+    :rtype: str
+    """
+
+    # Check for empty strings
+    #
+    if stringutils.isNullOrEmpty(path) or stringutils.isNullOrEmpty(variable):
+
+        return ''
+
+    # Check if path is relative to variable
+    #
+    absolutePath = makePathAbsolute(path)
+    directory = os.path.expandvars(variable)
+
+    if isPathRelativeTo(absolutePath, directory):
+
+        variablePath = os.path.join(variable, os.path.relpath(absolutePath, directory))
+        log.debug('%s > %s' % (absolutePath, variablePath))
+
+        return variablePath
+
+    else:
+
+        log.warning('Unable to make path variable: %s' % path)
+        return path
