@@ -19,6 +19,25 @@ class FnReference(fnnode.FnNode, afnreference.AFnReference):
 
     __slots__ = ()
 
+    def namespace(self):
+        """
+        Returns the namespace for this node.
+
+        :rtype: str
+        """
+
+        return om.MFnReference(self.object()).associatedNamespace(False)
+
+    def setNamespace(self, namespace):
+        """
+        Updates the namespace for this node.
+
+        :type namespace: str
+        :rtype: None
+        """
+
+        pass
+
     def filePath(self):
         """
         Returns the source file path for this reference.
