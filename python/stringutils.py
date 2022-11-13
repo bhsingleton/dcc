@@ -63,7 +63,7 @@ def camelize(text, separator=''):
     :rtype: str
     """
 
-    return separator.join([string.title() if i > 0 else string for (i, string) in enumerate(__title__.findall(text))])
+    return separator.join([string.title() if i > 0 else string.lower() for (i, string) in enumerate(__title__.findall(text))])
 
 
 def pascalize(text, separator=''):
