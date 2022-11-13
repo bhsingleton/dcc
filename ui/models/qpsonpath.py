@@ -1,3 +1,4 @@
+import inspect
 import weakref
 
 from Qt import QtGui
@@ -282,17 +283,34 @@ class QPSONPath(collections_abc.Sequence):
 
             return QtGui.QIcon()
 
-        # Check if this is a mapping object
+        # Inspect base classes
         #
-        if issubclass(origin, collections_abc.Mapping):
+        if issubclass(origin, collections_abc.MutableSequence):
+
+            return QtGui.QIcon(':data/icons/list.svg')
+
+        elif issubclass(origin, collections_abc.MutableMapping):
 
             return QtGui.QIcon(':data/icons/dict.svg')
 
-        elif hasattr(origin, '__name__'):
-
-            return QtGui.QIcon(':data/icons/{type}.svg'.format(type=origin.__name__))
-
         else:
+
+            # Check if icon exists
+            #
+            bases = inspect.getmro(origin)
+
+            for base in bases:
+
+                typeName = getattr(base, '__name__', '')
+                icon = QtGui.QIcon(':data/icons/{typeName}.svg'.format(typeName=typeName))
+
+                if not icon.isNull():
+
+                    return icon
+
+                else:
+
+                    continue
 
             return QtGui.QIcon()
 
