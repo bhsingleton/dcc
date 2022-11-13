@@ -42,6 +42,12 @@ class FbxSequencer(fbxbase.FbxBase):
         # Call parent method
         #
         super(FbxSequencer, self).__init__(*args, **kwargs)
+
+        # Invalidate sequencer
+        #
+        if not stringutils.isNullOrEmpty(self.guid):
+
+            self.invalidate()
     # endregion
 
     # region Properties
