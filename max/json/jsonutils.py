@@ -77,7 +77,6 @@ def exportAnimation(savePath, controls=('*_Ctrl', '*_Anim')):
             jsonFile,
             cls=mxsobjectparser.MXSObjectEncoder,
             indent=4,
-            skipProperties=True,
             skipChildren=True,
             skipShapes=True,
             skipSelectionSets=True,
