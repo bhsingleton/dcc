@@ -576,8 +576,15 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
         :rtype: dict
         """
 
+        # Serialize max-object components
+        #
         obj = self.serializeObject(attributeDef)
-        obj['properties']['owner'] = self.serializeRef(pymxs.runtime.custAttributes.getOwner(attributeDef))
+
+        # Serialize extended properties
+        #
+        properties = obj['properties']
+        properties['owner'] = self.serializeRef(pymxs.runtime.custAttributes.getOwner(attributeDef))
+        properties['source'] = pymxs.runtime.custAttributes.getDef(attributeDef).source
 
         return obj
 
