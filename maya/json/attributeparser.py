@@ -9,24 +9,6 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-class AttributeEncoder(json.JSONEncoder):
-    """
-    Overload of JSONEncoder used to serialize custom Maya attributes.
-    """
-
-    __slots__ = ()
-
-    def default(self, obj):
-        """
-        Returns a serializable object for the supplied value.
-
-        :type obj: Any
-        :rtype: Any
-        """
-
-        return super(AttributeEncoder, self).default(obj)
-
-
 class AttributeDecoder(json.JSONDecoder):
     """
     Overload of JSONDecoder used to deserialize custom Maya attributes.
