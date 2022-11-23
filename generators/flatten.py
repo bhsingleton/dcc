@@ -1,5 +1,3 @@
-import collections
-
 from six import string_types
 from six.moves import collections_abc
 from collections import deque
@@ -22,7 +20,7 @@ def flatten(*items):
 
             queue.extendleft(reversed(item))
 
-        elif isinstance(item, collections.Iterable) and not isinstance(item, string_types):
+        elif isinstance(item, collections_abc.Iterator):
 
             queue.extendleft(reversed(list(item)))
 
