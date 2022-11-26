@@ -2,6 +2,7 @@ import math
 
 from dataclasses import dataclass, fields, replace
 from six import string_types, integer_types
+from six.moves import collections_abc
 from ..decorators.classproperty import classproperty
 
 import logging
@@ -11,7 +12,7 @@ log.setLevel(logging.INFO)
 
 
 @dataclass
-class Vector:
+class Vector(collections_abc.Sequence):
     """
     Data class for 3D vectors.
     """
@@ -335,9 +336,9 @@ class Vector:
         :rtype: Iterator[float]
         """
 
-        for angle in (self.x, self.y, self.z):
+        for axis in (self.x, self.y, self.z, self.w):
 
-            yield angle
+            yield axis
 
     def __len__(self):
         """
@@ -346,7 +347,7 @@ class Vector:
         :rtype: int
         """
 
-        return 3
+        return 4
     # endregion
 
     # region Properties
@@ -492,4 +493,13 @@ class Vector:
         """
 
         return all(math.isclose(self[i], other[i], abs_tol=tolerance) for i in range(len(self)))
+
+    def toList(self):
+        """
+        Converts this vector a list.
+
+        :rtype: List[float]
+        """
+
+        return list(self)
     # endregion

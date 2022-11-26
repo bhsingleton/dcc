@@ -2,6 +2,7 @@ import math
 
 from dataclasses import dataclass, fields, replace
 from six import string_types, integer_types
+from six.moves import collections_abc
 from . import transformationmatrix, vector
 from ..decorators.classproperty import classproperty
 
@@ -12,7 +13,7 @@ log.setLevel(logging.INFO)
 
 
 @dataclass
-class EulerAngles:
+class EulerAngles(collections_abc.Sequence):
     """
     Data class for euler angles.
     """
@@ -204,29 +205,35 @@ class EulerAngles:
         # Compose rotation components
         #
         rotateXMatrix = transformationmatrix.TransformationMatrix(
-            vector.Vector.xAxis,
-            vector.Vector(0.0, math.cos(self.x), math.sin(self.x), 0.0),
-            vector.Vector(0.0, -math.sin(self.x), math.cos(self.x), 0.0),
-            vector.Vector.origin
+            [
+                vector.Vector.xAxis,
+                vector.Vector(0.0, math.cos(self.x), math.sin(self.x), 0.0),
+                vector.Vector(0.0, -math.sin(self.x), math.cos(self.x), 0.0),
+                vector.Vector.origin
+            ]
         )
 
         rotateYMatrix = transformationmatrix.TransformationMatrix(
-            vector.Vector(math.cos(self.y), 0.0, -math.sin(self.y), 0.0),
-            vector.Vector.yAxis,
-            vector.Vector(math.sin(self.y), 0.0, math.cos(self.y), 0.0),
-            vector.Vector.origin
+            [
+                vector.Vector(math.cos(self.y), 0.0, -math.sin(self.y), 0.0),
+                vector.Vector.yAxis,
+                vector.Vector(math.sin(self.y), 0.0, math.cos(self.y), 0.0),
+                vector.Vector.origin
+            ]
         )
 
         rotateZMatrix = transformationmatrix.TransformationMatrix(
-            vector.Vector(math.cos(self.z), math.sin(self.z), 0.0, 0.0),
-            vector.Vector(-math.sin(self.z), math.cos(self.z), 0.0, 0.0),
-            vector.Vector.zAxis,
-            vector.Vector.origin
+            [
+                vector.Vector(math.cos(self.z), math.sin(self.z), 0.0, 0.0),
+                vector.Vector(-math.sin(self.z), math.cos(self.z), 0.0, 0.0),
+                vector.Vector.zAxis,
+                vector.Vector.origin
+            ]
         )
 
         # Multiply components based on rotation order
         #
-        rotateMatrix = transformationmatrix.TransformationMatrix.identity
+        rotateMatrix = transformationmatrix.TransformationMatrix()
         matrices = [rotateXMatrix, rotateYMatrix, rotateZMatrix]
 
         for char in self.order:
@@ -235,4 +242,13 @@ class EulerAngles:
             rotateMatrix *= matrices[index]
 
         return rotateMatrix
+
+    def toList(self):
+        """
+        Converts these angles to a list.
+
+        :rtype: List[float]
+        """
+
+        return list(self)
     # endregion

@@ -1,9 +1,6 @@
 import math
 
-from dataclasses import dataclass, fields, field, replace
-from six import string_types, integer_types
-from ..decorators.classproperty import classproperty
-from . import vector, eulerangles
+from . import matrix, vector, eulerangles
 
 import logging
 logging.basicConfig()
@@ -11,185 +8,99 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-@dataclass
-class TransformationMatrix:
+class TransformationMatrix(matrix.Matrix):
     """
     Data class for transformation matrices.
     """
 
-    # region Fields
-    row1: vector.Vector = field(default_factory=(lambda: vector.Vector.xAxis))
-    row2: vector.Vector = field(default_factory=(lambda: vector.Vector.yAxis))
-    row3: vector.Vector = field(default_factory=(lambda: vector.Vector.zAxis))
-    row4: vector.Vector = field(default_factory=(lambda: vector.Vector.origin))
-    # endregion
-
     # region Dunderscores
-    def __getitem__(self, key):
+    def __init__(self, *args, **kwargs):
         """
-        Private method that returns an indexed item.
+        Private method called after a new instance is created.
 
-        :type key: Union[str, int, Tuple[int, int]]
-        :rtype: Union[float, vector.Vector]
-        """
-
-        if isinstance(key, string_types):
-
-            return getattr(self, key)
-
-        elif isinstance(key, integer_types):
-
-            dataFields = fields(self.__class__)
-            numDataFields = len(dataFields)
-
-            if 0 <= key < numDataFields:
-
-                return getattr(self, dataFields[key].name)
-
-            else:
-
-                raise IndexError('__getitem__() index is out of range!')
-
-        elif isinstance(key, tuple):
-
-            count = len(key)
-
-            if count == 2:
-
-                row, column = key
-                return self[row][column]
-
-            else:
-
-                raise IndexError(f'__getitem__() expects 2 co-ordinates ({count} given)!')
-
-        else:
-
-            raise TypeError(f'__getitem__() expects either a str or int ({type(key).__name__} given)!')
-
-    def __setitem__(self, key, value):
-        """
-        Private method that updates an indexed item.
-
-        :type key: Union[str, int, Tuple[int, int]]
-        :type value: Union[float, vector.Vector]
+        :type args: List[list[float]]
+        :key row1: vector.Vector
+        :key row2: vector.Vector
+        :key row3: vector.Vector
+        :key row4: vector.Vector
         :rtype: None
         """
 
-        if isinstance(key, string_types):
+        # Evaluate supplied arguments
+        # If no arguments are supplied then initialize an identity matrix!
+        #
+        numArgs = len(args)
+        numKwargs = len(kwargs)
 
-            return setattr(self, key, value)
+        if numArgs == 1:
 
-        elif isinstance(key, integer_types):
+            super(TransformationMatrix, self).__init__(*args, **kwargs)
 
-            dataFields = fields(self.__class__)
-            numDataFields = len(dataFields)
+        elif numKwargs > 0:
 
-            if 0 <= key < numDataFields:
+            row1 = kwargs.get('row1', vector.Vector.xAxis)
+            row2 = kwargs.get('row2', vector.Vector.yAxis)
+            row3 = kwargs.get('row3', vector.Vector.zAxis)
+            row4 = kwargs.get('row4', vector.Vector.origin)
 
-                return setattr(self, dataFields[key].name, value)
-
-            else:
-
-                raise IndexError('__setitem__() index is out of range!')
-
-        elif isinstance(key, tuple):
-
-            count = len(key)
-
-            if count == 2:
-
-                row, column = key
-                self[row][column] = value
-
-            else:
-
-                raise IndexError(f'__setitem__() expects 2 co-ordinates ({count} given)!')
+            super(TransformationMatrix, self).__init__([row1, row2, row3, row4])
 
         else:
-
-            raise TypeError(f'__setitem__() expects either a str or int ({type(key).__name__} given)!')
-
-    def __mul__(self, other):
-        """
-        Private method that implements the multiplication operator.
-
-        :type other: TransformationMatrix
-        :rtype: TransformationMatrix
-        """
-
-        matrix = self.__class__()
-        numRows = len(matrix)
-
-        for row in range(numRows):
-
-            numColumns = len(matrix[row])
-
-            for column in range(numColumns):
-
-                matrix[row, column] = sum(self[row, i] * other[i, column] for i in range(numColumns))
-
-        return matrix
-
-    def __imul__(self, other):
-        """
-        Private method that implements the in-place multiplication operator.
-
-        :type other: TransformationMatrix
-        :rtype: TransformationMatrix
-        """
-
-        matrix = self * other
-        self.row1 = matrix.row1
-        self.row2 = matrix.row2
-        self.row3 = matrix.row3
-        self.row4 = matrix.row4
-
-        return self
-
-    def __neg__(self):
-        """
-        Private method that implements the invert operator.
-
-        :rtype: TransformationMatrix
-        """
-
-        return self.inverse()
-
-    def __iter__(self):
-        """
-        Private method that returns a generator that yields data field values.
-
-        :rtype: Iterator[Vector]
-        """
-
-        for row in (self.row1, self.row2, self.row3, self.row4):
-
-            yield row
-
-    def __len__(self):
-        """
-        Private method that returns the number of fields belonging to this class.
-
-        :rtype: int
-        """
-
-        return self.rowCount()
+            
+            super(TransformationMatrix, self).__init__(
+                [
+                    vector.Vector.xAxis,
+                    vector.Vector.yAxis,
+                    vector.Vector.zAxis,
+                    vector.Vector.origin
+                ],
+                **kwargs
+            )
     # endregion
 
     # region Properties
-    @classproperty
-    def identity(cls):
+    @property
+    def row1(self):
         """
-        Getter method that returns the identity matrix.
+        Getter method that returns the X-axis as a vector.
 
-        :rtype: Vector
+        :rtype: vector.Vector
         """
 
-        return cls(vector.Vector.xAxis, vector.Vector.yAxis, vector.Vector.zAxis, vector.Vector.origin)
+        return vector.Vector(self[0])
+
+    @property
+    def row2(self):
+        """
+        Getter method that returns the Y-axis as a vector.
+
+        :rtype: vector.Vector
+        """
+
+        return vector.Vector(self[1])
+
+    @property
+    def row3(self):
+        """
+        Getter method that returns the Z-axis as a vector.
+
+        :rtype: vector.Vector
+        """
+
+        return vector.Vector(self[2])
+
+    @property
+    def row4(self):
+        """
+        Getter method that returns the position as a vector.
+
+        :rtype: vector.Vector
+        """
+
+        return vector.Vector(self[3])
     # endregion
 
-    # region Methods
+    # region Translation Methods
     def translation(self):
         """
         Returns the translation value from this matrix.
@@ -197,7 +108,7 @@ class TransformationMatrix:
         :rtype: vector.Vector
         """
 
-        return replace(self.row4)
+        return self.row4
 
     def setTranslation(self, translation):
         """
@@ -207,7 +118,7 @@ class TransformationMatrix:
         :rtype: None
         """
 
-        self.row4 = replace(translation)
+        self[3] = translation
 
     def translationPart(self):
         """
@@ -217,206 +128,210 @@ class TransformationMatrix:
         """
 
         return self.__class__(
-            vector.Vector.xAxis,
-            vector.Vector.yAxis,
-            vector.Vector.zAxis,
-            replace(self.row4)
+            [
+                vector.Vector.xAxis,
+                vector.Vector.yAxis,
+                vector.Vector.zAxis,
+                self.row4
+            ]
         )
+    # endregion
 
+    # region Euler Rotation Methods
     @classmethod
-    def matrixToEulerXYZ(cls, matrix):
+    def matrixToEulerXYZ(cls, m):
         """
-        Converts the supplied matrix to euler XYZ angles.
+        Converts the supplied m to euler XYZ angles.
 
-        :type matrix: transformationmatrix.TransformationMatrix
+        :type m: transformationmatrix.TransformationMatrix
         :rtype: EulerAngles
         """
 
         x, y, z = 0, 0, 0
 
-        if matrix[0, 2] < 1.0:
+        if m[0, 2] < 1.0:
 
-            if matrix[0, 2] > -1.0:
+            if m[0, 2] > -1.0:
 
-                y = math.asin(matrix[0, 2])
-                x = math.atan2(-matrix[1, 2], matrix[2, 2])
-                z = math.atan2(-matrix[0, 1], matrix[0, 0])
+                y = math.asin(m[0, 2])
+                x = math.atan2(-m[1, 2], m[2, 2])
+                z = math.atan2(-m[0, 1], m[0, 0])
 
             else:
 
                 y = -math.pi / 2.0
-                x = -math.atan2(matrix[1, 0], matrix[1, 1])
+                x = -math.atan2(m[1, 0], m[1, 1])
                 z = 0.0
 
         else:
 
             y = math.pi / 2.0
-            x = math.atan2(matrix[1, 0], matrix[1, 1])
+            x = math.atan2(m[1, 0], m[1, 1])
             z = 0.0
 
         return eulerangles.EulerAngles(-x, -y, -z, order='xyz')  # Why the inverse though???
 
     @classmethod
-    def matrixToEulerXZY(cls, matrix):
+    def matrixToEulerXZY(cls, m):
         """
-        Converts the supplied matrix to euler XZY angles.
+        Converts the supplied m to euler XZY angles.
 
-        :type matrix: transformationmatrix.TransformationMatrix
+        :type m: transformationmatrix.TransformationMatrix
         :rtype: EulerAngles
         """
 
         x, z, y = 0, 0, 0
 
-        if matrix[0, 1] < 1.0:
+        if m[0, 1] < 1.0:
 
-            if matrix[0, 1] > -1.0:
+            if m[0, 1] > -1.0:
 
-                z = math.asin(-matrix[0, 1])
-                x = math.atan2(matrix[2, 1], matrix[1, 1])
-                y = math.atan2(matrix[0, 2], matrix[0, 0])
+                z = math.asin(-m[0, 1])
+                x = math.atan2(m[2, 1], m[1, 1])
+                y = math.atan2(m[0, 2], m[0, 0])
 
             else:
 
                 z = math.pi / 2.0
-                x = -math.atan2(-matrix[2, 0], matrix[2, 2])
+                x = -math.atan2(-m[2, 0], m[2, 2])
                 y = 0.0
 
         else:
 
             z = -math.pi / 2.0
-            x = math.atan2(-matrix[2, 0], matrix[2, 2])
+            x = math.atan2(-m[2, 0], m[2, 2])
             y = 0.0
 
         return eulerangles.EulerAngles(-x, -z, -y, order='xzy')
 
     @classmethod
-    def matrixToEulerYXZ(cls, matrix):
+    def matrixToEulerYXZ(cls, m):
         """
-        Converts the supplied matrix to euler YXZ angles.
+        Converts the supplied m to euler YXZ angles.
 
-        :type matrix: transformationmatrix.TransformationMatrix
+        :type m: transformationmatrix.TransformationMatrix
         :rtype: EulerAngles
         """
 
         y, x, z = 0, 0, 0
 
-        if matrix[1, 2] < 1.0:
+        if m[1, 2] < 1.0:
 
-            if matrix[1, 2] > -1.0:
+            if m[1, 2] > -1.0:
 
-                x = math.asin(-matrix[1, 2])
-                y = math.atan2(matrix[0, 2], matrix[2, 2])
-                z = math.atan2(matrix[1, 0], matrix[1, 1])
+                x = math.asin(-m[1, 2])
+                y = math.atan2(m[0, 2], m[2, 2])
+                z = math.atan2(m[1, 0], m[1, 1])
 
             else:
 
                 x = math.pi / 2.0
-                y = -math.atan2(-matrix[0, 1], matrix[0, 0])
+                y = -math.atan2(-m[0, 1], m[0, 0])
                 z = 0.0
 
         else:
 
             x = -math.pi / 2.0
-            y = math.atan2(-matrix[0, 1], matrix[0, 0])
+            y = math.atan2(-m[0, 1], m[0, 0])
             z = 0.0
 
         return eulerangles.EulerAngles(-y, -x, -z, order='yxz')
 
     @classmethod
-    def matrixToEulerYZX(cls, matrix):
+    def matrixToEulerYZX(cls, m):
         """
-        Converts the supplied matrix to euler YZX angles.
+        Converts the supplied m to euler YZX angles.
 
-        :type matrix: transformationmatrix.TransformationMatrix
+        :type m: transformationmatrix.TransformationMatrix
         :rtype: EulerAngles
         """
 
         y, z, x = 0, 0, 0
 
-        if matrix[1, 0] < 1.0:
+        if m[1, 0] < 1.0:
 
-            if matrix[1, 0] > -1.0:
+            if m[1, 0] > -1.0:
 
-                z = math.asin(matrix[1, 0])
-                y = math.atan2(-matrix[2, 0], matrix[0, 0])
-                x = math.atan2(-matrix[1, 2], matrix[1, 1])
+                z = math.asin(m[1, 0])
+                y = math.atan2(-m[2, 0], m[0, 0])
+                x = math.atan2(-m[1, 2], m[1, 1])
 
             else:
 
                 z = -math.pi / 2.0
-                y = -math.atan2(matrix[2, 1], matrix[2, 2])
+                y = -math.atan2(m[2, 1], m[2, 2])
                 x = 0.0
 
         else:
 
             z = math.pi / 2.0
-            y = math.atan2(matrix[2, 1], matrix[2, 2])
+            y = math.atan2(m[2, 1], m[2, 2])
             x = 0.0
 
         return eulerangles.EulerAngles(-y, -z, -x, order='yzx')
 
     @classmethod
-    def matrixToEulerZXY(cls, matrix):
+    def matrixToEulerZXY(cls, m):
         """
-        Converts the supplied matrix to euler ZXY angles.
+        Converts the supplied m to euler ZXY angles.
 
-        :type matrix: transformationmatrix.TransformationMatrix
+        :type m: transformationmatrix.TransformationMatrix
         :rtype: EulerAngles
         """
 
         z, x, y = 0, 0, 0
 
-        if matrix[2, 1] < 1.0:
+        if m[2, 1] < 1.0:
 
-            if matrix[2, 1] > -1.0:
+            if m[2, 1] > -1.0:
 
-                x = math.asin(matrix[2, 1])
-                z = math.atan2(-matrix[0, 1], matrix[1, 1])
-                y = math.atan2(-matrix[2, 0], matrix[2, 2])
+                x = math.asin(m[2, 1])
+                z = math.atan2(-m[0, 1], m[1, 1])
+                y = math.atan2(-m[2, 0], m[2, 2])
 
             else:
 
                 x = -math.pi / 2.0
-                z = -math.atan2(matrix[0, 2], matrix[0, 0])
+                z = -math.atan2(m[0, 2], m[0, 0])
                 y = 0.0
 
         else:
 
             x = math.pi / 2.0
-            z = math.atan2(matrix[0, 2], matrix[0, 0])
+            z = math.atan2(m[0, 2], m[0, 0])
             y = 0.0
 
         return eulerangles.EulerAngles(-z, -x, -y, order='zxy')
 
     @classmethod
-    def matrixToEulerZYX(cls, matrix):
+    def matrixToEulerZYX(cls, m):
         """
-        Converts the supplied matrix to euler ZYX angles.
+        Converts the supplied m to euler ZYX angles.
 
-        :type matrix: transformationmatrix.TransformationMatrix
+        :type m: transformationmatrix.TransformationMatrix
         :rtype: EulerAngles
         """
 
         z, y, x = 0, 0, 0
 
-        if matrix[2, 0] < 1.0:
+        if m[2, 0] < 1.0:
 
-            if matrix[2, 0] > -1.0:
+            if m[2, 0] > -1.0:
 
-                y = math.asin(-matrix[2, 0])
-                z = math.atan2(matrix[1, 0], matrix[0, 0])
-                x = math.atan2(matrix[2, 1], matrix[2, 2])
+                y = math.asin(-m[2, 0])
+                z = math.atan2(m[1, 0], m[0, 0])
+                x = math.atan2(m[2, 1], m[2, 2])
 
             else:
 
                 y = math.pi / 2.0
-                z = -math.atan2(-matrix[1, 2], matrix[1, 1])
+                z = -math.atan2(-m[1, 2], m[1, 1])
                 x = 0.0
 
         else:
 
             y = -math.pi / 2.0
-            z = math.atan2(-matrix[1, 2], matrix[1, 1])
+            z = math.atan2(-m[1, 2], m[1, 1])
             x = 0.0
 
         return eulerangles.EulerAngles(-z, -y, -x, order='zyx')
@@ -450,9 +365,9 @@ class TransformationMatrix:
         rotationMatrix = eulerAngles.asMatrix()
         scale = self.scale()
 
-        self.row1 = rotationMatrix.row1 * scale.x
-        self.row2 = rotationMatrix.row2 * scale.y
-        self.row3 = rotationMatrix.row3 * scale.z
+        self[0] = rotationMatrix.row1 * scale.x
+        self[1] = rotationMatrix.row2 * scale.y
+        self[2] = rotationMatrix.row3 * scale.z
 
     def rotationPart(self):
         """
@@ -462,12 +377,122 @@ class TransformationMatrix:
         """
 
         return self.__class__(
-            replace(self.row1),
-            replace(self.row2),
-            replace(self.row3),
-            vector.Vector.origin
+            [
+                self.row1,
+                self.row2,
+                self.row3,
+                vector.Vector.origin
+            ]
         )
+    # endregion
 
+    # region Look-At Methods
+    def lookAt(self, target, forwardAxis=0, forwardAxisSign=1, upVector=None, upAxis=1, upAxisSign=1, origin=None):
+        """
+        Re-orients this matrix to look-at the specified target.
+        An optional point of origin can be supplied to override this matrix.
+
+        :type target: vector.Vector
+        :type forwardAxis: int
+        :type forwardAxisSign: Union[int, float]
+        :type upVector: Union[vector.Vector, None]
+        :type upAxis: int
+        :type upAxisSign: Union[int, float]
+        :type origin: Union[vector.Vector, None]
+        """
+
+        # Check if axes are valid
+        #
+        if not (0 <= forwardAxis < 3) or not (0 <= upAxis < 3):
+
+            raise TypeError('lookAt() expects a valid axis!')
+
+        # Check if an origin was supplied
+        #
+        if origin is None:
+
+            origin = self.row4
+
+        # Check if an up-vector was supplied
+        #
+        xAxis = vector.Vector.xAxis
+        yAxis = vector.Vector.yAxis
+        zAxis = vector.Vector.zAxis,
+
+        axes = (xAxis, yAxis, zAxis)
+
+        if upVector is None:
+
+            upVector = axes[upAxis]
+
+        # Evaluate forward axis
+        #
+        forwardVector = target - origin
+
+        if forwardAxis == 0:
+
+            xAxis = forwardVector * forwardAxisSign
+
+            if upAxis == 1:
+
+                zAxis = xAxis ^ (upVector * upAxisSign)
+                yAxis = zAxis ^ xAxis
+
+            elif upAxis == 2:
+
+                yAxis = (upVector * upAxisSign) ^ xAxis
+                zAxis = xAxis ^ yAxis
+
+            else:
+
+                raise TypeError(f'lookAt() expects a unique up axis ({upAxis} given)!')
+
+        elif forwardAxis == 1:
+
+            yAxis = forwardVector * forwardAxisSign
+
+            if upAxis == 0:
+
+                zAxis = (upVector * upAxisSign) ^ yAxis
+                xAxis = yAxis ^ zAxis
+
+            elif upAxis == 2:
+
+                xAxis = yAxis ^ (upVector * upAxisSign)
+                zAxis = xAxis ^ yAxis
+
+            else:
+
+                raise TypeError(f'lookAt() expects a unique up axis ({upAxis} given)!')
+
+        elif forwardAxis == 2:
+
+            zAxis = forwardVector * forwardAxisSign
+
+            if upAxis == 0:
+
+                yAxis = zAxis ^ (upVector * upAxisSign)
+                xAxis = yAxis ^ zAxis
+
+            elif upAxis == 1:
+
+                xAxis = (upVector * upAxisSign) ^ zAxis
+                yAxis = zAxis ^ xAxis
+
+            else:
+
+                raise TypeError(f'lookAt() expects a unique up axis ({upAxis} given)!')
+
+        else:
+
+            raise TypeError(f'lookAt() expects a valid forward axis ({forwardAxis} given)!')
+
+        # Compose aim matrix from axis vectors
+        #
+        return self.__class__([xAxis.normalize(), yAxis.normalize(), zAxis.normalize(), origin])
+    # endregion
+
+    # region Scale Methods
     def scale(self):
         """
         Returns the scale value from this matrix.
@@ -485,9 +510,9 @@ class TransformationMatrix:
         :rtype: None
         """
 
-        self.row1 = self.row1.normal() * scale[0]
-        self.row2 = self.row2.normal() * scale[1]
-        self.row3 = self.row3.normal() * scale[2]
+        self[0] = self.row1.normal() * scale[0]
+        self[1] = self.row2.normal() * scale[1]
+        self[2] = self.row3.normal() * scale[2]
 
     def scalePart(self):
         """
@@ -497,92 +522,11 @@ class TransformationMatrix:
         """
 
         return self.__class__(
-            vector.Vector(self.row1.length(), 0.0, 0.0),
-            vector.Vector(0.0, self.row2.length(), 0.0),
-            vector.Vector(0.0, 0.0, self.row3.length()),
-            vector.Vector.origin
+            [
+                vector.Vector(self.row1.length(), 0.0, 0.0),
+                vector.Vector(0.0, self.row2.length(), 0.0),
+                vector.Vector(0.0, 0.0, self.row3.length()),
+                vector.Vector.origin
+            ]
         )
-
-    def minors(self, row, column):
-        """
-        Returns the minors for the specified row and column.
-
-        :type row: int
-        :type column: int
-        :rtype: float
-        """
-
-        pass
-
-    def determinant(self):
-        """
-        Returns the determinant of this matrix.
-        See the following for details: https://semath.info/src/determinant-four-by-four.html
-        TODO: Simplify this code!
-
-        :rtype: float
-        """
-
-        a11 = (self[1, 1] * self[2, 2] * self[3, 3]) + (self[1, 2] * self[2, 3] * self[3, 1]) + (self[1, 3] * self[2, 1] * self[3, 2]) - (self[1, 3] * self[2, 2] * self[3, 1]) - (self[1, 2] * self[2, 1] * self[3, 3]) - (self[1, 1] * self[2, 3] * self[3, 2])
-        a21 = (self[0, 1] * self[2, 2] * self[3, 3]) + (self[0, 2] * self[2, 3] * self[3, 1]) + (self[0, 3] * self[2, 1] * self[3, 2]) - (self[0, 3] * self[2, 2] * self[3, 1]) - (self[0, 2] * self[2, 1] * self[3, 3]) - (self[0, 1] * self[2, 3] * self[3, 2])
-        a31 = (self[0, 1] * self[1, 2] * self[3, 3]) + (self[0, 2] * self[1, 3] * self[3, 1]) + (self[0, 3] * self[1, 1] * self[3, 2]) - (self[0, 3] * self[1, 2] * self[3, 1]) - (self[0, 2] * self[1, 1] * self[3, 3]) - (self[0, 1] * self[1, 3] * self[3, 2])
-        a41 = (self[0, 1] * self[1, 2] * self[2, 3]) + (self[0, 2] * self[1, 3] * self[2, 1]) + (self[0, 3] * self[1, 1] * self[2, 2]) - (self[0, 3] * self[1, 2] * self[2, 1]) - (self[0, 2] * self[1, 1] * self[2, 3]) - (self[0, 1] * self[1, 3] * self[2, 2])
-
-        return a11 - a21 + a31 - a41
-
-    def adjugate(self):
-        """
-        Returns the adjugate of this matrix.
-        See the following for details: https://semath.info/src/inverse-cofactor-ex4.html
-        TODO: Simplify this code!
-
-        :rtype: TransformationMatrix
-        """
-
-        a11 = (self[1, 1] * self[2, 2] * self[3, 3]) + (self[1, 2] * self[2, 3] * self[3, 1]) + (self[1, 3] * self[2, 1] * self[3, 2]) - (self[1, 3] * self[2, 2] * self[3, 1]) - (self[1, 2] * self[2, 1] * self[3, 3]) - (self[1, 1] * self[2, 3] * self[3, 2])
-        a12 = -(self[0, 1] * self[2, 2] * self[3, 3]) - (self[0, 2] * self[2, 3] * self[3, 1]) - (self[0, 3] * self[2, 1] * self[3, 2]) + (self[0, 3] * self[2, 2] * self[3, 1]) + (self[0, 2] * self[2, 1] * self[3, 3]) + (self[0, 1] * self[2, 3] * self[3, 2])
-        a13 = (self[0, 1] * self[1, 2] * self[3, 3]) + (self[0, 2] * self[1, 3] * self[3, 1]) + (self[0, 3] * self[1, 1] * self[3, 2]) - (self[0, 3] * self[1, 2] * self[3, 1]) - (self[0, 2] * self[1, 1] * self[3, 3]) - (self[0, 1] * self[1, 3] * self[3, 2])
-        a14 = -(self[0, 1] * self[1, 2] * self[2, 3]) - (self[0, 2] * self[1, 3] * self[2, 1]) - (self[0, 3] * self[1, 1] * self[2, 2]) + (self[0, 3] * self[1, 2] * self[2, 1]) + (self[0, 2] * self[1, 1] * self[2, 3]) + (self[0, 1] * self[1, 3] * self[2, 2])
-
-        a21 = -(self[1, 0] * self[2, 2] * self[3, 3]) - (self[1, 2] * self[2, 3] * self[3, 0]) - (self[1, 3] * self[2, 0] * self[3, 2]) + (self[1, 3] * self[2, 2] * self[3, 0]) + (self[1, 2] * self[2, 0] * self[3, 3]) + (self[1, 0] * self[2, 3] * self[3, 2])
-        a22 = (self[0, 0] * self[2, 2] * self[3, 3]) + (self[0, 2] * self[2, 3] * self[3, 0]) + (self[0, 3] * self[2, 0] * self[3, 2]) - (self[0, 3] * self[2, 2] * self[3, 0]) - (self[0, 2] * self[2, 0] * self[3, 3]) - (self[0, 0] * self[2, 3] * self[3, 2])
-        a23 = -(self[0, 0] * self[1, 2] * self[3, 3]) - (self[0, 2] * self[1, 3] * self[3, 0]) - (self[0, 3] * self[1, 0] * self[3, 2]) + (self[0, 3] * self[1, 2] * self[3, 0]) + (self[0, 2] * self[1, 0] * self[3, 3]) + (self[0, 0] * self[1, 3] * self[3, 1])
-        a24 = (self[0, 0] * self[1, 2] * self[2, 3]) + (self[0, 2] * self[1, 3] * self[2, 0]) + (self[0, 3] * self[1, 0] * self[2, 2]) - (self[0, 3] * self[1, 2] * self[2, 0]) - (self[0, 2] * self[1, 0] * self[2, 3]) - (self[0, 0] * self[1, 3] * self[2, 2])
-
-        a31 = (self[1, 0] * self[2, 1] * self[3, 3]) + (self[1, 1] * self[2, 3] * self[3, 1]) + (self[1, 3] * self[2, 0] * self[3, 1]) - (self[1, 3] * self[2, 1] * self[3, 0]) - (self[1, 1] * self[2, 0] * self[3, 3]) - (self[1, 0] * self[2, 3] * self[3, 1])
-        a32 = -(self[0, 0] * self[2, 1] * self[3, 3]) - (self[0, 2] * self[2, 3] * self[3, 0]) - (self[0, 3] * self[2, 0] * self[3, 1]) + (self[0, 3] * self[2, 1] * self[3, 0]) + (self[0, 1] * self[2, 0] * self[3, 3]) + (self[0, 0] * self[2, 3] * self[3, 1])
-        a33 = (self[0, 0] * self[1, 1] * self[3, 3]) + (self[0, 1] * self[1, 3] * self[3, 0]) + (self[0, 3] * self[1, 0] * self[3, 1]) - (self[0, 3] * self[1, 1] * self[3, 0]) - (self[0, 1] * self[1, 0] * self[3, 3]) - (self[0, 0] * self[1, 3] * self[3, 1])
-        a34 = -(self[0, 0] * self[1, 1] * self[2, 3]) - (self[0, 1] * self[1, 3] * self[2, 0]) - (self[0, 3] * self[1, 0] * self[2, 1]) + (self[0, 3] * self[1, 1] * self[2, 0]) + (self[0, 1] * self[1, 0] * self[2, 3]) + (self[0, 0] * self[1, 3] * self[2, 1])
-
-        a41 = -(self[1, 0] * self[2, 1] * self[3, 2]) - (self[1, 1] * self[2, 2] * self[3, 0]) - (self[1, 2] * self[2, 0] * self[3, 1]) + (self[1, 2] * self[2, 1] * self[3, 0]) + (self[1, 1] * self[2, 0] * self[3, 2]) + (self[1, 0] * self[2, 2] * self[3, 1])
-        a42 = (self[0, 0] * self[2, 1] * self[3, 2]) + (self[0, 1] * self[2, 2] * self[3, 0]) + (self[0, 2] * self[2, 0] * self[3, 1]) - (self[0, 2] * self[2, 1] * self[3, 0]) - (self[0, 1] * self[2, 0] * self[3, 2]) - (self[0, 0] * self[2, 2] * self[3, 1])
-        a43 = -(self[0, 0] * self[1, 1] * self[3, 2]) - (self[0, 1] * self[1, 2] * self[3, 1]) - (self[0, 2] * self[1, 0] * self[3, 1]) + (self[0, 2] * self[1, 1] * self[3, 0]) + (self[0, 1] * self[1, 0] * self[3, 2]) + (self[0, 0] * self[1, 2] * self[3, 1])
-        a44 = (self[0, 0] * self[1, 1] * self[2, 2]) + (self[0, 1] * self[1, 2] * self[2, 0]) + (self[0, 2] * self[1, 0] * self[2, 1]) - (self[0, 2] * self[1, 1] * self[2, 0]) - (self[0, 1] * self[1, 0] * self[2, 2]) - (self[0, 0] * self[1, 2] * self[2, 1])
-
-        return self.__class__(vector.Vector(a11, a12, a13, a14), vector.Vector(a21, a22, a23, a24), vector.Vector(a31, a32, a33, a34), vector.Vector(a41, a42, a43, a44))
-
-    def inverse(self):
-        """
-        Returns the inverse of this matrix.
-
-        :rtype: TransformationMatrix
-        """
-
-        determinant = 1.0 / abs(self.determinant())
-
-        adjugate = self.adjugate()
-        adjugate[0] *= determinant
-        adjugate[1] *= determinant
-        adjugate[2] *= determinant
-        adjugate[3] *= determinant
-
-        return adjugate
-
-    def rowCount(self):
-
-        return len(fields(self.__class__))
-
-    def columnCount(self):
-
-        return len(self.row1)
     # endregion
