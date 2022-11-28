@@ -26,36 +26,39 @@ class TransformationMatrix(matrix.Matrix):
         :rtype: None
         """
 
-        # Evaluate supplied arguments
-        # If no arguments are supplied then initialize an identity matrix!
+        # Call parent method
+        #
+        super(TransformationMatrix, self).__init__(4)
+
+        # Assume the default identity pattern
+        #
+        self.identitize()
+
+        # Inspect supplied arguments
         #
         numArgs = len(args)
         numKwargs = len(kwargs)
 
         if numArgs == 1:
 
-            super(TransformationMatrix, self).__init__(*args, **kwargs)
+            self.fill(args[0])
+
+        elif numArgs > 1:
+
+            self.fill(args)
 
         elif numKwargs > 0:
 
             row1 = kwargs.get('row1', vector.Vector.xAxis)
             row2 = kwargs.get('row2', vector.Vector.yAxis)
             row3 = kwargs.get('row3', vector.Vector.zAxis)
-            row4 = kwargs.get('row4', vector.Vector.origin)
+            row4 = kwargs.get('row4', vector.Vector.zero)
 
-            super(TransformationMatrix, self).__init__([row1, row2, row3, row4])
+            self.fill([row1, row2, row3, row4])
 
         else:
-            
-            super(TransformationMatrix, self).__init__(
-                [
-                    vector.Vector.xAxis,
-                    vector.Vector.yAxis,
-                    vector.Vector.zAxis,
-                    vector.Vector.origin
-                ],
-                **kwargs
-            )
+
+            pass
     # endregion
 
     # region Properties
@@ -98,6 +101,26 @@ class TransformationMatrix(matrix.Matrix):
         """
 
         return vector.Vector(self[3])
+    # endregion
+
+    # region Matrix Methods
+    def decompose(self, normalize=False):
+        """
+        Returns the x, y, z and position components from this matrix.
+        An optional `normalize` flag can be passed to normalize the x, y and z axis vectors.
+
+        :rtype: Tuple[vector.Vector, vector.Vector, vector.Vector, vector.Vector]
+        """
+
+        xAxis, yAxis, zAxis, position = self.row1, self.row2, self.row3, self.row4
+
+        if normalize:
+
+            return xAxis.normalize(), yAxis.normalize(), zAxis.normalize(), position
+
+        else:
+
+            return xAxis, yAxis, zAxis, position
     # endregion
 
     # region Translation Methods
@@ -387,12 +410,13 @@ class TransformationMatrix(matrix.Matrix):
     # endregion
 
     # region Look-At Methods
-    def lookAt(self, target, forwardAxis=0, forwardAxisSign=1, upVector=None, upAxis=1, upAxisSign=1, origin=None):
+    def lookAt(self, *targets, forwardVector=None, forwardAxis=0, forwardAxisSign=1, upVector=None, upAxis=1, upAxisSign=1, origin=None):
         """
         Re-orients this matrix to look-at the specified target.
-        An optional point of origin can be supplied to override this matrix.
+        An optional point of origin can be supplied to override the current fourth row value.
 
-        :type target: vector.Vector
+        :type targets: Union[vector.Vector, List[vector.Vector]]
+        :type forwardVector: Union[vector.Vector, None]
         :type forwardAxis: int
         :type forwardAxisSign: Union[int, float]
         :type upVector: Union[vector.Vector, None]
@@ -413,6 +437,12 @@ class TransformationMatrix(matrix.Matrix):
 
             origin = self.row4
 
+        # Check if a forward vector was supplied
+        #
+        if forwardVector is None:
+
+            forwardVector = ((sum(targets) / len(targets)) - origin).normalize()
+
         # Check if an up-vector was supplied
         #
         xAxis = vector.Vector.xAxis
@@ -427,8 +457,6 @@ class TransformationMatrix(matrix.Matrix):
 
         # Evaluate forward axis
         #
-        forwardVector = target - origin
-
         if forwardAxis == 0:
 
             xAxis = forwardVector * forwardAxisSign

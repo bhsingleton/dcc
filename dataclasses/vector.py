@@ -21,7 +21,6 @@ class Vector(collections_abc.Sequence):
     x: float = 0.0
     y: float = 0.0
     z: float = 0.0
-    w: float = 0.0  # This is here to maintain square transformation matrices!
     # endregion
 
     # region Dunderscores
@@ -336,9 +335,7 @@ class Vector(collections_abc.Sequence):
         :rtype: Iterator[float]
         """
 
-        for axis in (self.x, self.y, self.z, self.w):
-
-            yield axis
+        return iter((self.x, self.y, self.z))
 
     def __len__(self):
         """
@@ -347,7 +344,7 @@ class Vector(collections_abc.Sequence):
         :rtype: int
         """
 
-        return 4
+        return 3
     # endregion
 
     # region Properties
@@ -382,14 +379,14 @@ class Vector(collections_abc.Sequence):
         return cls(0.0, 0.0, 1.0)
 
     @classproperty
-    def origin(cls):
+    def zero(cls):
         """
         Getter method that returns the origin vector.
 
         :rtype: Vector
         """
 
-        return cls(0.0, 0.0, 0.0, 1.0)
+        return cls(0.0, 0.0, 0.0)
 
     @classproperty
     def one(cls):
@@ -437,15 +434,21 @@ class Vector(collections_abc.Sequence):
         :rtype: float
         """
 
-        radian = math.acos(self.dot(other) / self.length() * other.length())
+        try:
 
-        if asDegrees:
+            radian = math.acos(self.dot(other) / self.length() * other.length())
 
-            return math.degrees(radian)
+            if asDegrees:
 
-        else:
+                return math.degrees(radian)
 
-            return radian
+            else:
+
+                return radian
+
+        except ZeroDivisionError:
+
+            return 0.0
 
     def length(self):
         """
@@ -463,7 +466,13 @@ class Vector(collections_abc.Sequence):
         :rtype: Vector
         """
 
-        return self / self.length()
+        try:
+
+            return self / self.length()
+
+        except ZeroDivisionError:
+
+            return replace(self)
 
     def normalize(self):
         """
@@ -493,6 +502,15 @@ class Vector(collections_abc.Sequence):
         """
 
         return all(math.isclose(self[i], other[i], abs_tol=tolerance) for i in range(len(self)))
+
+    def copy(self):
+        """
+        Returns a copy of this vector.
+
+        :rtype: Vector
+        """
+
+        return replace(self)
 
     def toList(self):
         """

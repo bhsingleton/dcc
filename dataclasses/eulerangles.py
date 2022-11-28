@@ -4,7 +4,6 @@ from dataclasses import dataclass, fields, replace
 from six import string_types, integer_types
 from six.moves import collections_abc
 from . import transformationmatrix, vector
-from ..decorators.classproperty import classproperty
 
 import logging
 logging.basicConfig()
@@ -23,18 +22,6 @@ class EulerAngles(collections_abc.Sequence):
     y: float = 0.0
     z: float = 0.0
     order: str = 'xyz'
-    # endregion
-
-    # region Properties
-    @classproperty
-    def identity(cls):
-        """
-        Getter method that returns a identity euler angles.
-
-        :rtype: EulerAngles
-        """
-
-        return cls(0.0, 0.0, 0.0, 'xyz')
     # endregion
 
     # region Dunderscores
@@ -180,9 +167,7 @@ class EulerAngles(collections_abc.Sequence):
         :rtype: Iterator[float]
         """
 
-        for angle in (self.x, self.y, self.z):
-
-            yield angle
+        return iter((self.x, self.y, self.z))
 
     def __len__(self):
         """
@@ -195,6 +180,16 @@ class EulerAngles(collections_abc.Sequence):
     # endregion
 
     # region Methods
+    def reorder(self, order):
+        """
+        Returns an alternate solution in the specified order.
+
+        :type order: str
+        :rtype: EulerAngles
+        """
+
+        return self.asMatrix().eulerRotation(order)
+
     def asMatrix(self):
         """
         Returns these euler angles as a rotation matrix.
@@ -207,27 +202,27 @@ class EulerAngles(collections_abc.Sequence):
         rotateXMatrix = transformationmatrix.TransformationMatrix(
             [
                 vector.Vector.xAxis,
-                vector.Vector(0.0, math.cos(self.x), math.sin(self.x), 0.0),
-                vector.Vector(0.0, -math.sin(self.x), math.cos(self.x), 0.0),
-                vector.Vector.origin
+                vector.Vector(0.0, math.cos(self.x), math.sin(self.x)),
+                vector.Vector(0.0, -math.sin(self.x), math.cos(self.x)),
+                vector.Vector.zero
             ]
         )
 
         rotateYMatrix = transformationmatrix.TransformationMatrix(
             [
-                vector.Vector(math.cos(self.y), 0.0, -math.sin(self.y), 0.0),
+                vector.Vector(math.cos(self.y), 0.0, -math.sin(self.y)),
                 vector.Vector.yAxis,
-                vector.Vector(math.sin(self.y), 0.0, math.cos(self.y), 0.0),
-                vector.Vector.origin
+                vector.Vector(math.sin(self.y), 0.0, math.cos(self.y)),
+                vector.Vector.zero
             ]
         )
 
         rotateZMatrix = transformationmatrix.TransformationMatrix(
             [
-                vector.Vector(math.cos(self.z), math.sin(self.z), 0.0, 0.0),
-                vector.Vector(-math.sin(self.z), math.cos(self.z), 0.0, 0.0),
+                vector.Vector(math.cos(self.z), math.sin(self.z), 0.0),
+                vector.Vector(-math.sin(self.z), math.cos(self.z), 0.0),
                 vector.Vector.zAxis,
-                vector.Vector.origin
+                vector.Vector.zero
             ]
         )
 
@@ -243,12 +238,28 @@ class EulerAngles(collections_abc.Sequence):
 
         return rotateMatrix
 
-    def toList(self):
+    def copy(self):
+        """
+        Returns a copy of these euler angles.
+
+        :rtype: Vector
+        """
+
+        return replace(self)
+
+    def toList(self, asDegrees=False):
         """
         Converts these angles to a list.
 
+        :type asDegrees: bool
         :rtype: List[float]
         """
 
-        return list(self)
+        if asDegrees:
+
+            return list(map(math.degrees, self))
+
+        else:
+
+            return list(self)
     # endregion
