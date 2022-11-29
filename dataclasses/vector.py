@@ -3,6 +3,7 @@ import math
 from dataclasses import dataclass, fields, replace
 from six import string_types, integer_types
 from six.moves import collections_abc
+from . import transformationmatrix
 from ..decorators.classproperty import classproperty
 
 import logging
@@ -107,46 +108,6 @@ class Vector(collections_abc.Sequence):
 
         return not self.isEquivalent(other)
 
-    def __lt__(self, other):
-        """
-        Private method that implements the less than operator.
-
-        :type other: Vector
-        :rtype: bool
-        """
-
-        return self.x < other.x and self.y < other.y and self.z < other.z
-
-    def __le__(self, other):
-        """
-        Private method that implements the less than or equal to operator.
-
-        :type other: Vector
-        :rtype: bool
-        """
-
-        return self < other or self.isEquivalent(other)
-
-    def __gt__(self, other):
-        """
-        Private method that implements the greater than operator.
-
-        :type other: Vector
-        :rtype: bool
-        """
-
-        return self.x > other.x and self.y > other.y and self.z > other.z
-
-    def __ge__(self, other):
-        """
-        Private method that implements the greater than or equal to operator.
-
-        :type other: Vector
-        :rtype: bool
-        """
-
-        return self > other or self.isEquivalent(other)
-
     def __add__(self, other):
         """
         Private method that implements the addition operator.
@@ -155,10 +116,27 @@ class Vector(collections_abc.Sequence):
         :rtype: Vector
         """
 
-        copy = replace(self)
+        copy = self.copy()
         copy += other
 
         return copy
+
+    def __radd__(self, other):
+        """
+        Private method that implements the right-side addition operator.
+
+        :type other: Union[int, float]
+        :rtype: Vector
+        """
+
+        if isinstance(other, (int, float)):
+
+            other = Vector(other, other, other)
+            return other.__add__(self)
+
+        else:
+
+            raise NotImplemented(f'__radd__() expects either an int or float ({type(other).__name__} given)!')
 
     def __iadd__(self, other):
         """
@@ -168,19 +146,23 @@ class Vector(collections_abc.Sequence):
         :rtype: Vector
         """
 
-        try:
+        if isinstance(other, Vector):
 
-            self.x += other[0]
-            self.y += other[1]
-            self.z += other[2]
+            self.x += other.x
+            self.y += other.y
+            self.z += other.z
 
-        except (IndexError, TypeError) as exception:
+        elif isinstance(other, (int, float)):
 
-            log.warning(exception)
+            self.x += other
+            self.y += other
+            self.z += other
 
-        finally:
+        else:
 
-            return self
+            raise NotImplemented(f'__iadd__() expects either a float or Vector ({type(other).__name__} given)!')
+
+        return self
 
     def __sub__(self, other):
         """
@@ -190,10 +172,27 @@ class Vector(collections_abc.Sequence):
         :rtype: Vector
         """
 
-        copy = replace(self)
+        copy = self.copy()
         copy -= other
 
         return copy
+
+    def __rsub__(self, other):
+        """
+        Private method that implements the right-side subtraction operator.
+
+        :type other: Union[int, float]
+        :rtype: Vector
+        """
+
+        if isinstance(other, (int, float)):
+
+            other = Vector(other, other, other)
+            return other.__sub__(self)
+
+        else:
+
+            raise NotImplemented(f'__rsub__() expects either an int or float ({type(other).__name__} given)!')
 
     def __isub__(self, other):
         """
@@ -203,19 +202,23 @@ class Vector(collections_abc.Sequence):
         :rtype: Vector
         """
 
-        try:
+        if isinstance(other, Vector):
 
-            self.x -= other[0]
-            self.y -= other[1]
-            self.z -= other[2]
+            self.x -= other.x
+            self.y -= other.y
+            self.z -= other.z
 
-        except (IndexError, TypeError) as exception:
+        elif isinstance(other, (int, float)):
 
-            log.warning(exception)
+            self.x -= other
+            self.y -= other
+            self.z -= other
 
-        finally:
+        else:
 
-            return self
+            raise NotImplemented(f'__isub__() expects either a float or Vector ({type(other).__name__} given)!')
+
+        return self
 
     def __mul__(self, other):
         """
@@ -225,16 +228,16 @@ class Vector(collections_abc.Sequence):
         :rtype: Union[float, Vector]
         """
 
-        if isinstance(other, (float, int)):
+        if isinstance(other, Vector):
 
-            copy = replace(self)
-            copy *= other
-
-            return copy
+            return self.dot(other)
 
         else:
 
-            return self.dot(other)
+            copy = self.copy()
+            copy *= other
+
+            return copy
 
     def __imul__(self, other):
         """
@@ -244,27 +247,30 @@ class Vector(collections_abc.Sequence):
         :rtype: Vector
         """
 
-        try:
+        if isinstance(other, Vector):
 
-            if isinstance(other, (float, int)):
+            self.x *= other.x
+            self.y *= other.y
+            self.z *= other.z
 
-                self.x *= other
-                self.y *= other
-                self.z *= other
+        elif isinstance(other, (int, float)):
 
-            else:
+            self.x *= other
+            self.y *= other
+            self.z *= other
 
-                self.x *= other[0]
-                self.y *= other[1]
-                self.z *= other[2]
+        elif isinstance(other, transformationmatrix.TransformationMatrix):
 
-        except (IndexError, TypeError) as exception:
+            matrix = transformationmatrix.TransformationMatrix(row4=self)
+            matrix *= other
 
-            log.warning(exception)
+            self.x, self.y, self.z = matrix.row4
 
-        finally:
+        else:
 
-            return self
+            raise NotImplemented(f'__imul__() expects either a float or Vector ({type(other).__name__} given)!')
+
+        return self
 
     def __truediv__(self, other):
         """
@@ -274,7 +280,7 @@ class Vector(collections_abc.Sequence):
         :rtype: Vector
         """
 
-        copy = replace(self)
+        copy = self.copy()
         copy /= other
 
         return copy
@@ -287,27 +293,35 @@ class Vector(collections_abc.Sequence):
         :rtype: Vector
         """
 
-        try:
+        if isinstance(other, Vector):
 
-            if isinstance(other, (float, int)):
+            try:
+
+                self.x /= other.x
+                self.y /= other.y
+                self.z /= other.z
+
+            except ZeroDivisionError as exception:
+
+                log.debug(exception)
+
+        elif isinstance(other, (float, int)):
+
+            try:
 
                 self.x /= other
                 self.y /= other
                 self.z /= other
 
-            else:
+            except ZeroDivisionError as exception:
 
-                self.x /= other[0]
-                self.y /= other[1]
-                self.z /= other[2]
+                log.debug(exception)
 
-        except (ZeroDivisionError, IndexError, TypeError) as exception:
+        else:
 
-            log.warning(exception)
+            raise NotImplemented(f'__itruediv__() expects either a float or Vector ({type(other).__name__} given)!')
 
-        finally:
-
-            return self
+        return self
 
     def __xor__(self, other):
         """
@@ -356,7 +370,7 @@ class Vector(collections_abc.Sequence):
         :rtype: Vector
         """
 
-        return cls(1.0, 0.0, 0.0)
+        return Vector(1.0, 0.0, 0.0)
 
     @classproperty
     def yAxis(cls):
@@ -366,7 +380,7 @@ class Vector(collections_abc.Sequence):
         :rtype: Vector
         """
 
-        return cls(0.0, 1.0, 0.0)
+        return Vector(0.0, 1.0, 0.0)
 
     @classproperty
     def zAxis(cls):
@@ -376,7 +390,7 @@ class Vector(collections_abc.Sequence):
         :rtype: Vector
         """
 
-        return cls(0.0, 0.0, 1.0)
+        return Vector(0.0, 0.0, 1.0)
 
     @classproperty
     def zero(cls):
@@ -386,7 +400,7 @@ class Vector(collections_abc.Sequence):
         :rtype: Vector
         """
 
-        return cls(0.0, 0.0, 0.0)
+        return Vector(0.0, 0.0, 0.0)
 
     @classproperty
     def one(cls):
@@ -396,7 +410,7 @@ class Vector(collections_abc.Sequence):
         :rtype: Vector
         """
 
-        return cls(1.0, 1.0, 1.0)
+        return Vector(1.0, 1.0, 1.0)
     # endregion
 
     # region Methods
@@ -482,6 +496,7 @@ class Vector(collections_abc.Sequence):
         """
 
         self /= self.length()
+        return self
 
     def inverse(self):
         """
@@ -501,7 +516,7 @@ class Vector(collections_abc.Sequence):
         :rtype: bool
         """
 
-        return all(math.isclose(self[i], other[i], abs_tol=tolerance) for i in range(len(self)))
+        return all(math.isclose(x, y, abs_tol=tolerance) for (x, y) in zip(self, other))
 
     def copy(self):
         """
