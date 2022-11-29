@@ -42,15 +42,33 @@ def getTranslation(node, space=om.MSpace.kTransform, context=om.MDGContext.kNorm
     :rtype: om.MVector
     """
 
+    # Inspect dag path
+    #
+    dagPath = dagutils.getMDagPath(node)
+
+    if not dagPath.isValid():
+
+        raise TypeError('getTranslation() expects a valid dag path!')
+
+    # Inspect transform space
+    #
     if space == om.MSpace.kWorld:
 
-        transformationMatrix = getWorldMatrix(node, asTransformationMatrix=True, context=context)
-        return transformationMatrix.translation(om.MSpace.kTransform)
+        return decomposeTransformMatrix(dagPath.inclusiveMatrix())[0]
 
     else:
 
-        transformationMatrix = getMatrix(node, asTransformationMatrix=True, context=context)
-        return transformationMatrix.translation(om.MSpace.kTransform)
+        # Get translate values from plugs
+        #
+        fnTransform = om.MFnTransform(dagPath)
+
+        translation = om.MVector(
+            fnTransform.findPlug('translateX', False).asFloat(context=context),
+            fnTransform.findPlug('translateY', False).asFloat(context=context),
+            fnTransform.findPlug('translateZ', False).asFloat(context=context)
+        )
+
+        return translation
 
 
 def setTranslation(node, translation, **kwargs):
@@ -127,6 +145,33 @@ def resetTranslation(node):
     setTranslation(node, om.MVector.kZeroVector)
 
 
+def translateTo(node, position, **kwargs):
+    """
+    Translates this node to the specified position.
+    Unlike `setTranslation`, this method adds the translational difference to the current transform matrix.
+
+    :type node: Union[str, om.MObject, om.MDagPath]
+    :type position: om.MVector
+    :rtype: None
+    """
+
+    # Inspect dag path
+    #
+    dagPath = dagutils.getMDagPath(node)
+
+    if not dagPath.isValid():
+
+        raise TypeError('translateTo() expects a valid dag path!')
+
+    # Calculate translation difference
+    #
+    currentPosition = getMatrix(dagPath, asTransformationMatrix=True).translation(om.MSpace.kTransform)
+    difference = position - currentPosition
+    translation = getTranslation(dagPath) + difference
+
+    setTranslation(dagPath, translation, **kwargs)
+
+
 def getRotationOrder(node, context=om.MDGContext.kNormal):
     """
     Returns the rotation order from the supplied node.
@@ -161,16 +206,33 @@ def getEulerRotation(node, context=om.MDGContext.kNormal):
     :rtype: om.MEulerRotation
     """
 
-    transformationMatrix = getMatrix(node, asTransformationMatrix=True, context=context)
-    return transformationMatrix.rotation(asQuaternion=False)
+    # Inspect dag path
+    #
+    dagPath = dagutils.getMDagPath(node)
+
+    if not dagPath.isValid():
+
+        raise TypeError('getEulerRotation() expects a valid dag path!')
+
+    # Get euler values from plugs
+    #
+    fnTransform = om.MFnTransform(dagPath)
+    rotateOrder = getRotationOrder(dagPath)
+
+    return om.MEulerRotation(
+        fnTransform.findPlug('rotateX', False).asMAngle(context=context).asRadians(),
+        fnTransform.findPlug('rotateY', False).asMAngle(context=context).asRadians(),
+        fnTransform.findPlug('rotateZ', False).asMAngle(context=context).asRadians(),
+        order=rotateOrder
+    )
 
 
-def setEulerRotation(node, rotation, **kwargs):
+def setEulerRotation(node, eulerRotation, **kwargs):
     """
     Updates the euler angles on the supplied node.
 
     :type node: om.MDagPath
-    :type rotation: om.MEulerRotation
+    :type eulerRotation: om.MEulerRotation
     :key skipRotate: bool
     :key skipRotateX: bool
     :key skipRotateY: bool
@@ -192,7 +254,7 @@ def setEulerRotation(node, rotation, **kwargs):
     fnTransform = om.MFnTransform(dagPath)
 
     rotateOrderPlug = fnTransform.findPlug('rotateOrder', True)
-    rotateOrderPlug.setInt(rotation.order)
+    rotateOrderPlug.setInt(eulerRotation.order)
 
     # Check if rotateX can be set
     #
@@ -202,7 +264,7 @@ def setEulerRotation(node, rotation, **kwargs):
 
     if not skipRotateX and not rotateXPlug.isLocked:
 
-        rotateXPlug.setMAngle(om.MAngle(rotation.x, om.MAngle.kRadians))
+        rotateXPlug.setMAngle(om.MAngle(eulerRotation.x, om.MAngle.kRadians))
 
     # Check if rotateY can be set
     #
@@ -211,7 +273,7 @@ def setEulerRotation(node, rotation, **kwargs):
 
     if not skipRotateY and not rotateYPlug.isLocked:
 
-        rotateYPlug.setMAngle(om.MAngle(rotation.y, om.MAngle.kRadians))
+        rotateYPlug.setMAngle(om.MAngle(eulerRotation.y, om.MAngle.kRadians))
 
     # Check if rotateZ can be set
     #
@@ -220,7 +282,7 @@ def setEulerRotation(node, rotation, **kwargs):
 
     if not skipRotateZ and not rotateZPlug.isLocked:
 
-        rotateZPlug.setMAngle(om.MAngle(rotation.z, om.MAngle.kRadians))
+        rotateZPlug.setMAngle(om.MAngle(eulerRotation.z, om.MAngle.kRadians))
 
 
 def resetEulerRotation(node):
@@ -232,6 +294,39 @@ def resetEulerRotation(node):
     """
 
     setEulerRotation(node, om.MEulerRotation.kIdentity)
+
+
+def rotateTo(node, eulerRotation, **kwargs):
+    """
+    Rotates this node to the specified orientation.
+    Unlike `setEulerRotation`, this method adds the rotational difference to the current transform matrix.
+
+    :type node: Union[str, om.MObject, om.MDagPath]
+    :type eulerRotation: om.MEulerRotation
+    :rtype: None
+    """
+
+    # Inspect dag path
+    #
+    dagPath = dagutils.getMDagPath(node)
+
+    if not dagPath.isValid():
+
+        raise TypeError('rotateTo() expects a valid dag path!')
+
+    # Calculate rotation difference
+    #
+    rotationMatrix = eulerRotation.asMatrix()
+    currentMatrix = getMatrix(node)
+    difference = rotationMatrix * currentMatrix.inverse()
+
+    currentEulerRotation = getEulerRotation(node)
+    newRotationMatrix = difference * currentEulerRotation.asMatrix()
+
+    newEulerRotation = om.MEulerRotation([0.0, 0.0, 0.0], order=getRotationOrder(node))
+    newEulerRotation.setValue(newRotationMatrix)
+
+    setEulerRotation(node, newEulerRotation, **kwargs)
 
 
 def getJointOrient(joint, context=om.MDGContext.kNormal):
@@ -318,8 +413,23 @@ def getScale(node, context=om.MDGContext.kNormal):
     :rtype: list[float, float, float]
     """
 
-    transformationMatrix = getMatrix(node, asTransformationMatrix=True, context=context)
-    return transformationMatrix.scale(om.MSpace.kTransform)
+    # Inspect dag path
+    #
+    dagPath = dagutils.getMDagPath(node)
+
+    if not dagPath.isValid():
+
+        raise TypeError('getScale() expects a valid dag path!')
+
+    # Get scale values from plugs
+    #
+    fnTransform = om.MFnTransform(dagPath)
+
+    return [
+        fnTransform.findPlug('scaleX', False).asFloat(context=context),
+        fnTransform.findPlug('scaleY', False).asFloat(context=context),
+        fnTransform.findPlug('scaleZ', False).asFloat(context=context)
+    ]
 
 
 def setScale(node, scale, **kwargs):
@@ -385,6 +495,33 @@ def resetScale(node):
     """
 
     setScale(node, [1.0, 1.0, 1.0])
+
+
+def scaleTo(node, scale, **kwargs):
+    """
+    Scales this node to the specified size.
+    Unlike `setScale`, this method adds the scalar difference to the current transform matrix.
+
+    :type node: Union[str, om.MObject, om.MDagPath]
+    :type scale: Union[List[float, float, float], om.MVector]
+    :rtype: None
+    """
+
+    # Inspect dag path
+    #
+    dagPath = dagutils.getMDagPath(node)
+
+    if not dagPath.isValid():
+
+        raise TypeError('scaleTo() expects a valid dag path!')
+
+    # Calculate scale difference
+    #
+    currentScale = getMatrix(dagPath, asTransformationMatrix=True).scale(om.MSpace.kTransform)
+    difference = om.MVector(scale) - om.MVector(currentScale)
+    newScale = om.MVector(getScale(dagPath)) + difference
+
+    setScale(node, newScale, **kwargs)
 
 
 def resetPivots(node):
@@ -462,44 +599,29 @@ def applyTransformMatrix(node, matrix, **kwargs):
 
     if not dagPath.isValid() or not isinstance(matrix, om.MMatrix):
 
-        raise TypeError('applyTransformMatrix() expects a MDagPath and MMatrix!')
+        raise TypeError('applyTransformMatrix() expects an MDagPath and MMatrix!')
 
-    # Initialize transformation matrix
+    # Decompose transform matrix
     #
     partialPathName = dagPath.partialPathName()
-    transformationMatrix = om.MTransformationMatrix(matrix)
+    translation, eulerRotation, scale = decomposeTransformMatrix(matrix, rotateOrder=getRotationOrder(dagPath))
 
-    rotateOrder = getRotationOrder(dagPath)
-    transformationMatrix.reorderRotation(rotateOrder + 1)  # MTransformationMatrix rotation orders are off by 1...
+    log.debug('%s.translate = [%s, %s, %s]' % (partialPathName, translation.x, translation.y, translation.z))
+    translateTo(node, translation, **kwargs)
 
-    # Set translation
-    #
-    translate = transformationMatrix.translation(om.MSpace.kTransform)
-    setTranslation(dagPath, translate, **kwargs)
-
-    log.debug('%s.translate = [%s, %s, %s]' % (partialPathName, translate.x, translate.y, translate.z))
-
-    # Check if dag path belongs to a joint
-    # If it does then we need to compensate for any joint orientations
-    #
-    if dagPath.hasFn(om.MFn.kJoint):
-
-        jointOrient = getJointOrient(dagPath)
-        transformationMatrix.rotateBy(jointOrient.inverse(), om.MSpace.kTransform)
-
-    # Set euler rotation
-    #
-    rotate = transformationMatrix.rotation(asQuaternion=False)
-    setEulerRotation(dagPath, rotate, **kwargs)
-
-    log.debug('%s.rotate = [%s, %s, %s]' % (partialPathName, rotate.x, rotate.y, rotate.z))
-
-    # Check if scale should be skipped
-    #
-    scale = transformationMatrix.scale(om.MSpace.kTransform)
-    setScale(dagPath, scale, **kwargs)
+    log.debug('%s.rotate = [%s, %s, %s]' % (partialPathName, eulerRotation.x, eulerRotation.y, eulerRotation.z))
+    rotateTo(node, eulerRotation, **kwargs)
 
     log.debug('%s.scale = [%s, %s, %s]' % (partialPathName, scale[0], scale[1], scale[2]))
+    scaleTo(node, scale, **kwargs)
+
+    # Freeze transform
+    #
+    freeze = kwargs.get('freezeTransform', False)
+
+    if freeze:
+
+        freezeTransform(node, **kwargs)
 
 
 def applyWorldMatrix(node, worldMatrix, **kwargs):

@@ -1,10 +1,10 @@
 import pymxs
-import numpy
 
 from enum import IntEnum
 from dcc.max import fnnode
 from dcc.max.libs import transformutils
 from dcc.abstract import afntransform
+from dcc.dataclasses import vector, eulerangles, transformationmatrix, boundingbox
 
 import logging
 logging.basicConfig()
@@ -31,34 +31,34 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
     """
 
     __slots__ = ()
+    __rotate_order__ = RotateOrder
 
     def translation(self, worldSpace=False):
         """
         Returns the translation values for this node.
 
         :type worldSpace: bool
-        :rtype: List[float, float, float]
+        :rtype: vector.Vector
         """
 
         if worldSpace:
 
-            worldMatrix = self.worldMatrix()
-            return float(worldMatrix[3, 0]), float(worldMatrix[3, 1]), float(worldMatrix[3, 2])
+            return self.worldMatrix().translation()
 
         else:
 
-            point3 = transformutils.getTranslation(self.object())
-            return point3.x, point3.y, point3.z
+            translation = transformutils.getTranslation(self.object())
+            return vector.Vector(translation.x, translation.y, translation.z)
 
     def setTranslation(self, translation, **kwargs):
         """
         Updates the translation values for this node.
 
-        :type translation: List[float, float, float]
+        :type translation: vector.Vector
         :rtype: None
         """
 
-        point = pymxs.runtime.Point3(float(translation[0]), float(translation[1]), float(translation[2]))
+        point = pymxs.runtime.Point3(translation.x, translation.y, translation.z)
         transformutils.setTranslation(self.object(), point, **kwargs)
 
     def rotationOrder(self):
@@ -71,7 +71,7 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
         rotateOrder = transformutils.getRotationOrder(self.object())
         return RotateOrder(rotateOrder).name
 
-    def rotation(self):
+    def eulerRotation(self):
         """
         Returns the rotation values, as euler angles, from this node.
 
@@ -79,56 +79,66 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
         """
 
         eulerAngles = transformutils.getEulerRotation(self.object())
-        return eulerAngles.x, eulerAngles.y, eulerAngles.z
+        return eulerangles.EulerAngles(eulerAngles.x, eulerAngles.y, eulerAngles.z, order=self.rotationOrder())
 
-    def setRotation(self, rotation, **kwargs):
+    def setEulerRotation(self, eulerAngles, **kwargs):
         """
         Updates the rotation values, as euler angles, for this node.
 
-        :type rotation: List[float, float, float]
+        :type eulerAngles: List[float, float, float]
         :rtype: None
         """
 
-        eulerAngles = pymxs.runtime.EulerAngles(float(rotation[0]), float(rotation[1]), float(rotation[2]))
+        eulerAngles = pymxs.runtime.EulerAngles(float(eulerAngles[0]), float(eulerAngles[1]), float(eulerAngles[2]))
         transformutils.setEulerRotation(self.object(), eulerAngles, **kwargs)
 
     def scale(self):
         """
         Returns the scale values for this node.
 
-        :rtype: List[float, float, float]
+        :rtype: vector.Vector
         """
 
-        return transformutils.getScale(self.object())
+        scale = transformutils.getScale(self.object())
+        return vector.Vector(scale[0], scale[1], scale[2])
 
     def setScale(self, scale, **kwargs):
         """
         Updates the scale values for this node.
 
-        :type scale: List[float, float, float]
+        :type scale: vector.Vector
         :rtype: None
         """
 
-        point = pymxs.runtime.Point3(float(scale[0]), float(scale[1]), float(scale[2]))
+        point = pymxs.runtime.Point3(scale.x, scale.y, scale.z)
         transformutils.setScale(self.object(), point, **kwargs)
+
+    def ensureKeyed(self):
+        """
+        Ensures all transform properties are keyed.
+
+        :rtype: None
+        """
+
+        pass
 
     def boundingBox(self):
         """
         Returns the bounding box for this node.
         This consists of a minimum and maximum point in world space.
 
-        :rtype: List[float, float, float], List[float, float, float]
+        :rtype: boundingbox.BoundingBox
         """
 
         minPoint, maxPoint = transformutils.getBoundingBox(self.object())
-        return (minPoint.x, minPoint.y, minPoint.z), (maxPoint.x, maxPoint.y, maxPoint.z)
+        return boundingbox.BoundingBox(vector.Vector(*minPoint), vector.Vector(*maxPoint))
 
     @staticmethod
     def nativizeMatrix(matrix):
         """
-        Converts a numpy matrix to a Matrix3 class.
+        Converts a DCC agnostic matrix to the native Matrix3 class.
 
-        :type matrix: numpy.matrix
+        :type matrix: transformationmatrix.TransformationMatrix
         :rtype: pymxs.runtime.Matrix3
         """
 
@@ -142,26 +152,24 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
     @staticmethod
     def denativizeMatrix(matrix):
         """
-        Converts a Matrix3 class to a numpy matrix.
+        Converts the native Matrix3 class to a DCC agnostic matrix.
 
         :type matrix: pymxs.runtime.Matrix3
-        :rtype: numpy.matrix
+        :rtype: transformationmatrix.TransformationMatrix
         """
 
-        return numpy.matrix(
-            [
-                (matrix.row1.x, matrix.row1.y, matrix.row1.z, 0.0),
-                (matrix.row2.x, matrix.row2.y, matrix.row2.z, 0.0),
-                (matrix.row3.x, matrix.row3.y, matrix.row3.z, 0.0),
-                (matrix.row4.x, matrix.row4.y, matrix.row4.z, 1.0),
-            ]
+        return transformationmatrix.TransformationMatrix(
+            (matrix.row1.x, matrix.row1.y, matrix.row1.z),
+            (matrix.row2.x, matrix.row2.y, matrix.row2.z),
+            (matrix.row3.x, matrix.row3.y, matrix.row3.z),
+            (matrix.row4.x, matrix.row4.y, matrix.row4.z)
         )
 
     def matrix(self):
         """
         Returns the local transform matrix for this node.
 
-        :rtype: numpy.matrix
+        :rtype: transformationmatrix.TransformationMatrix
         """
 
         matrix = transformutils.getMatrix(self.object())
@@ -171,7 +179,7 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
         """
         Updates the local transform matrix for this node.
 
-        :type matrix: numpy.matrix
+        :type matrix: transformationmatrix.TransformationMatrix
         :rtype: None
         """
 
@@ -182,7 +190,7 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
         """
         Returns the world matrix for this node.
 
-        :rtype: numpy.matrix
+        :rtype: transformationmatrix.TransformationMatrix
         """
 
         worldMatrix = transformutils.getWorldMatrix(self.object())
@@ -192,7 +200,7 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
         """
         Returns the world parent matrix for this node.
 
-        :rtype: numpy.matrix
+        :rtype: transformationmatrix.TransformationMatrix
         """
 
         parentMatrix = transformutils.getParentMatrix(self.object())

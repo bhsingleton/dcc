@@ -54,26 +54,35 @@ def isKindOf(obj, cls):
     :rtype: bool
     """
 
-    # Redundancy check
-    # Otherwise: isKindOf(1, int) == False, in python!
-    #
-    if not isinstance(obj, pymxs.MXSWrapperBase):
-
-        return isinstance(obj, cls)
-
-    # Inspect supplied classes
+    # Evaluate supplied class
     #
     if isinstance(cls, (tuple, list)):
 
+        # Evaluate all items
+        #
         return any([isKindOf(obj, x) for x in cls])
-
-    elif pymxs.runtime.isKindOf(obj, pymxs.runtime.SubAnim):
-
-        return pymxs.runtime.classOf(obj) == cls
 
     else:
 
-        return pymxs.runtime.isKindOf(obj, cls)
+        # Evaluate if this is a maxscript type
+        # Otherwise, `isKindOf(1, int) == False` can happen in python!
+        #
+        if isinstance(cls, pymxs.MXSWrapperBase):
+
+            # Check if this is a sub-anim
+            # Otherwise, MXS will evaluate the sub-anim value rather than the object itself!
+            #
+            if pymxs.runtime.isKindOf(obj, pymxs.runtime.SubAnim):
+
+                return pymxs.runtime.classOf(obj) == cls
+
+            else:
+
+                return pymxs.runtime.isKindOf(obj, cls)
+
+        else:
+
+            return isinstance(obj, cls)
 
 
 def isValidWrapper(obj):

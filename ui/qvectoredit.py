@@ -1,8 +1,8 @@
 import sys
-import numpy
 
 from Qt import QtCore, QtWidgets, QtGui
 from dcc.ui import qlineeditgroup
+from dcc.dataclasses import vector
 
 import logging
 logging.basicConfig()
@@ -15,9 +15,11 @@ class QVectorEdit(QtWidgets.QWidget):
     Overload of QWidget used to edit transform matrices.
     """
 
+    # region Signals
     readOnlyChanged = QtCore.Signal(bool)
     validatorChanged = QtCore.Signal(QtGui.QValidator)
     vectorChanged = QtCore.Signal(object)
+    # endregion
 
     # region Dunderscores
     __decimals__ = 3
@@ -37,7 +39,7 @@ class QVectorEdit(QtWidgets.QWidget):
 
         # Declare private variables
         #
-        self._vector = numpy.zeros(3)
+        self._vector = vector.Vector()
         self._readOnly = False
         self._validator = self.defaultValidator()
 
@@ -88,7 +90,7 @@ class QVectorEdit(QtWidgets.QWidget):
 
     def validator(self):
         """
-        Returns the validator used by the matrix line edits.
+        Returns the validator used by this widget.
 
         :rtype: QtGui.QDoubleValidator
         """
@@ -109,7 +111,7 @@ class QVectorEdit(QtWidgets.QWidget):
 
     def setValidator(self, validator):
         """
-        Updates the validator used by the matrix line edits.
+        Updates the validator used by this widget.
 
         :rtype: QtGui.QDoubleValidator
         """
@@ -121,20 +123,20 @@ class QVectorEdit(QtWidgets.QWidget):
         """
         Returns the current vector.
 
-        :rtype: numpy.array
+        :rtype: vector.Vector
         """
 
         return self._vector
 
-    def setVector(self, vector):
+    def setVector(self, v):
         """
         Updates the current vector.
 
-        :type vector: numpy.array
+        :type v: Union[Tuple[float, float, float], vector.Vector]
         :rtype: None
         """
 
-        self._vector = numpy.array(vector)
+        self._vector = vector.Vector(*v)
         self.synchronize()
         self.vectorChanged.emit(self._vector)
 
@@ -151,7 +153,7 @@ class QVectorEdit(QtWidgets.QWidget):
 
     def createLineEdit(self):
         """
-        Returns a line edit with all of the necessary connections.
+        Returns a line edit with all the required settings and connections.
 
         :rtype: QtWidgets.QLineEdit
         """
@@ -174,16 +176,15 @@ class QVectorEdit(QtWidgets.QWidget):
     # endregion
 
     # region Slots
-    def vectorLineEditGroup_idTextEdited(self, id):
+    def vectorLineEditGroup_idTextEdited(self, index):
         """
-        Id text edited slot method responsible for updating the associated internal vector entry.
+        Slot method for the vectorLineEditGroup's `idTextEdited` signal.
+        This method updates the associated internal vector element.
 
-        :type id: int
+        :type index: int
         :rtype: None
         """
 
-        lineEditGroup = self.sender()
-
-        self._vector[id] = float(lineEditGroup[id].text())
+        self._vector[index] = float(self[index].text())
         self.vectorChanged.emit(self._vector)
     # endregion

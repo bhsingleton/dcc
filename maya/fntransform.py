@@ -1,10 +1,9 @@
-import numpy
-
 from maya import cmds as mc
 from maya.api import OpenMaya as om
 from enum import IntEnum
 from dcc.maya import fnnode
 from dcc.maya.libs import transformutils
+from dcc.dataclasses import vector, eulerangles, transformationmatrix, boundingbox
 from dcc.abstract import afntransform
 
 import logging
@@ -14,6 +13,9 @@ log.setLevel(logging.INFO)
 
 
 class RotateOrder(IntEnum):
+    """
+    Overload if `IntEnum` that lists all available rotation orders.
+    """
 
     xyz = 0
     yzx = 1
@@ -25,37 +27,38 @@ class RotateOrder(IntEnum):
 
 class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
     """
-    Overload of AFnTransform that implements the transform interface for Maya.
+    Overload of `AFnTransform` that implements the transform interface for Maya.
     """
 
     __slots__ = ()
-    __rotateorder__ = RotateOrder
+    __rotate_order__ = RotateOrder
 
     def translation(self, worldSpace=False):
         """
         Returns the translation values for this node.
 
         :type worldSpace: bool
-        :rtype: List[float, float, float]
+        :rtype: vector.Vector
         """
 
         dagPath = om.MDagPath.getAPathTo(self.object())
-        vector = transformutils.getTranslation(dagPath)
+        space = om.MSpace.kWorld if worldSpace else om.MSpace.kTransform
+        translation = transformutils.getTranslation(dagPath, space=space)
 
-        return vector.x, vector.y, vector.z
+        return vector.Vector(translation.x, translation.y, translation.z)
 
     def setTranslation(self, translation, **kwargs):
         """
         Updates the translation values for this node.
 
-        :type translation: List[float, float, float]
+        :type translation: vector.Vector
         :rtype: None
         """
 
         dagPath = om.MDagPath.getAPathTo(self.object())
-        vector = om.MVector(translation[0], translation[1], translation[2])
+        translation = om.MVector(translation.x, translation.y, translation.z)
 
-        transformutils.setTranslation(dagPath, vector, **kwargs)
+        transformutils.setTranslation(dagPath, translation, **kwargs)
 
     def rotationOrder(self):
         """
@@ -69,28 +72,29 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
 
         return RotateOrder(rotateOrder).name
 
-    def rotation(self):
+    def eulerRotation(self):
         """
         Returns the rotation values, as euler angles, from this node.
 
-        :rtype: List[float, float, float]
+        :rtype: eulerangles.EulerAngles
         """
 
         dagPath = om.MDagPath.getAPathTo(self.object())
-        eulerRotation = transformutils.getEulerRotation(self.dagPath())
+        eulerRotation = transformutils.getEulerRotation(dagPath)
+        order = RotateOrder(eulerRotation.order).name
 
-        return eulerRotation.x, eulerRotation.y, eulerRotation.z
+        return eulerangles.EulerAngles(eulerRotation.x, eulerRotation.y, eulerRotation.z, order=order)
 
-    def setRotation(self, rotation, **kwargs):
+    def setEulerRotation(self, rotation, **kwargs):
         """
         Updates the rotation values, as euler angles, for this node.
 
-        :type rotation: List[float, float, float]
+        :type rotation: eulerangles.EulerAngles
         :rtype: None
         """
 
         dagPath = om.MDagPath.getAPathTo(self.object())
-        eulerRotation = om.MEulerRotation(*rotation)
+        eulerRotation = om.MEulerRotation(*rotation, order=RotateOrder[rotation.order].value)
 
         transformutils.setEulerRotation(dagPath, eulerRotation, **kwargs)
 
@@ -98,22 +102,35 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
         """
         Returns the scale values for this node.
 
-        :rtype: List[float, float, float]
+        :rtype: vector.Vector
         """
 
         dagPath = om.MDagPath.getAPathTo(self.object())
-        return transformutils.getScale(dagPath)
+        scale = transformutils.getScale(dagPath)
+
+        return vector.Vector(*scale)
 
     def setScale(self, scale, **kwargs):
         """
         Updates the scale values for this node.
 
-        :type scale: List[float, float, float]
+        :type scale: vector.Vector
         :rtype: None
         """
 
         dagPath = om.MDagPath.getAPathTo(self.object())
+        scale = om.MVector(scale.x, scale.y, scale.z)
+
         transformutils.setScale(dagPath, scale, **kwargs)
+
+    def ensureKeyed(self):
+        """
+        Ensures all transform properties are keyed.
+
+        :rtype: None
+        """
+
+        pass
 
     def boundingBox(self):
         """
@@ -126,14 +143,17 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
         dagPath = om.MDagPath.getAPathTo(self.object())
         boundingBox = transformutils.getBoundingBox(dagPath)
 
-        return (boundingBox.min.x, boundingBox.min.y, boundingBox.min.z), (boundingBox.max.x, boundingBox.max.y, boundingBox.max.z)
+        return boundingbox.BoundingBox(
+            vector.Vector(boundingBox.min.x, boundingBox.min.y, boundingBox.min.z),
+            vector.Vector(boundingBox.max.x, boundingBox.max.y, boundingBox.max.z)
+        )
 
     @staticmethod
     def nativizeMatrix(matrix):
         """
-        Converts a numpy matrix to a Matrix3 class.
+        Converts a DCC agnostic matrix to the native MMatrix class.
 
-        :type matrix: numpy.matrix
+        :type matrix: transformationmatrix.TransformationMatrix
         :rtype: om.MMatrix
         """
 
@@ -149,26 +169,24 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
     @staticmethod
     def denativizeMatrix(matrix):
         """
-        Converts a Matrix3 class to a numpy matrix.
+        Converts a MMatrix class to a DCC agnostic matrix.
 
         :type matrix: om.MMatrix
-        :rtype: numpy.matrix
+        :rtype: transformationmatrix.TransformationMatrix
         """
 
-        return numpy.matrix(
-            [
-                (matrix.getElement(0, 0), matrix.getElement(0, 1), matrix.getElement(0, 2), 0.0),
-                (matrix.getElement(1, 0), matrix.getElement(1, 1), matrix.getElement(1, 2), 0.0),
-                (matrix.getElement(2, 0), matrix.getElement(2, 1), matrix.getElement(2, 2), 0.0),
-                (matrix.getElement(3, 0), matrix.getElement(3, 1), matrix.getElement(3, 2), 1.0),
-            ]
+        return transformationmatrix.TransformationMatrix(
+            (matrix.getElement(0, 0), matrix.getElement(0, 1), matrix.getElement(0, 2)),
+            (matrix.getElement(1, 0), matrix.getElement(1, 1), matrix.getElement(1, 2)),
+            (matrix.getElement(2, 0), matrix.getElement(2, 1), matrix.getElement(2, 2)),
+            (matrix.getElement(3, 0), matrix.getElement(3, 1), matrix.getElement(3, 2))
         )
 
     def matrix(self):
         """
         Returns the local transform matrix for this node.
 
-        :rtype: numpy.matrix
+        :rtype: transformationmatrix.TransformationMatrix
         """
 
         dagPath = om.MDagPath.getAPathTo(self.object())
@@ -180,7 +198,7 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
         """
         Returns the world matrix for this node.
 
-        :rtype: numpy.matrix
+        :rtype: transformationmatrix.TransformationMatrix
         """
 
         dagPath = om.MDagPath.getAPathTo(self.object())
@@ -192,7 +210,7 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
         """
         Updates the local transform matrix for this node.
 
-        :type matrix: numpy.matrix
+        :type matrix: transformationmatrix.TransformationMatrix
         :rtype: None
         """
 
@@ -203,7 +221,7 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
         """
         Returns the world parent matrix for this node.
 
-        :rtype: numpy.matrix
+        :rtype: transformationmatrix.TransformationMatrix
         """
 
         dagPath = om.MDagPath.getAPathTo(self.object())

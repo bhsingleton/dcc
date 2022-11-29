@@ -1,8 +1,8 @@
 import sys
-import numpy
 
 from Qt import QtCore, QtWidgets, QtGui
 from dcc.ui import qlineeditgroup
+from dcc.dataclasses import matrix
 
 import logging
 logging.basicConfig()
@@ -43,7 +43,7 @@ class QMatrixEdit(QtWidgets.QWidget):
         #
         self._rowCount = kwargs.get('rowCount', 4)
         self._columnCount = kwargs.get('columnCount', 4)
-        self._matrix = numpy.matrix(numpy.zeros((self._rowCount, self._columnCount)))
+        self._matrix = matrix.Matrix(self._rowCount, self._columnCount)
         self._readOnly = False
         self._validator = self.defaultValidator()
         self._rows = [None] * self._rowCount
@@ -159,20 +159,20 @@ class QMatrixEdit(QtWidgets.QWidget):
         """
         Returns the current matrix.
 
-        :rtype: numpy.matrix
+        :rtype: matrix.Matrix
         """
 
         return self._matrix
 
-    def setMatrix(self, matrix):
+    def setMatrix(self, m):
         """
         Updates the current matrix.
 
-        :type matrix: numpy.matrix
+        :type m: Union[List[Tuple[float, float, float, float]], matrix.Matrix]
         :rtype: None
         """
 
-        self._matrix = numpy.matrix(matrix)
+        self._matrix = matrix.Matrix(m)
         self.synchronize()
         self.matrixChanged.emit(self.matrix())
 
@@ -194,7 +194,7 @@ class QMatrixEdit(QtWidgets.QWidget):
 
     def createLineEdit(self):
         """
-        Returns a line edit with all of the necessary connections.
+        Returns a new line edit.
 
         :rtype: QtWidgets.QLineEdit
         """

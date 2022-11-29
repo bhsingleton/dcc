@@ -2,9 +2,8 @@ import numpy
 
 from abc import ABCMeta, abstractmethod
 from six import with_metaclass
-
 from dcc.abstract import afnnode
-from dcc.math import matrixmath
+from dcc.dataclasses import vector, eulerangles, transformationmatrix
 
 import logging
 logging.basicConfig()
@@ -35,10 +34,10 @@ class AFnTransform(with_metaclass(ABCMeta, afnnode.AFnNode)):
     @abstractmethod
     def translation(self, worldSpace=False):
         """
-        Returns the translation values for this node.
+        Returns the translation values from this node.
 
         :type worldSpace: bool
-        :rtype: List[float, float, float]
+        :rtype: vector.Vector
         """
 
         pass
@@ -48,7 +47,7 @@ class AFnTransform(with_metaclass(ABCMeta, afnnode.AFnNode)):
         """
         Updates the translation values for this node.
 
-        :type translation: List[float, float, float]
+        :type translation: vector.Vector
         :rtype: None
         """
 
@@ -61,7 +60,22 @@ class AFnTransform(with_metaclass(ABCMeta, afnnode.AFnNode)):
         :rtype: None
         """
 
-        self.setTranslation([0.0, 0.0, 0.0])
+        self.setTranslation(vector.Vector.origin)
+
+    def translateTo(self, position):
+        """
+        Translates this node to the specified position.
+        Unlike `setTranslation`, this method adds the translational difference to the current transform matrix.
+
+        :type position: vector.Vector
+        :rtype: None
+        """
+
+        currentPosition = self.matrix().translation()
+        difference = position - currentPosition
+        translation = self.translation() + difference
+
+        self.setTranslation(translation)
 
     @abstractmethod
     def rotationOrder(self):
@@ -74,41 +88,60 @@ class AFnTransform(with_metaclass(ABCMeta, afnnode.AFnNode)):
         pass
 
     @abstractmethod
-    def rotation(self):
+    def eulerRotation(self):
         """
-        Returns the rotation values, as euler angles, from this node.
+        Returns the euler rotation values from this node.
 
-        :rtype: List[float, float, float]
+        :rtype: eulerangles.EulerAngles
         """
 
         pass
 
     @abstractmethod
-    def setRotation(self, rotation, **kwargs):
+    def setEulerRotation(self, eulerRotation, **kwargs):
         """
-        Updates the rotation values, as euler angles, for this node.
+        Updates the euler rotation values for this node.
 
-        :type rotation: List[float, float, float]
+        :type eulerRotation: eulerangles.EulerAngles
         :rtype: None
         """
 
         pass
 
-    def resetRotation(self):
+    def resetEulerRotation(self):
         """
-        Resets the rotation values for this node.
+        Resets the euler rotation values for this node.
 
         :rtype: None
         """
 
-        self.setRotation([0.0, 0.0, 0.0])
+        self.setRotation(eulerangles.EulerAngles.identity)
+
+    def rotateTo(self, eulerRotation):
+        """
+        Rotates this node to the specified orientation.
+        Unlike `setEulerRotation`, this method adds the rotational difference to the current transform matrix.
+
+        :type eulerRotation: eulerangles.EulerAngles
+        :rtype: None
+        """
+
+        rotationMatrix = eulerRotation.asMatrix()
+        currentMatrix = self.matrix().rotationPart()
+        difference = rotationMatrix * currentMatrix.inverse()
+
+        currentEulerRotation = self.eulerRotation()
+        newRotationMatrix = difference * currentEulerRotation.asMatrix()
+        newEulerRotation = newRotationMatrix.eulerRotation(order=currentEulerRotation.order)
+
+        self.setEulerRotation(newEulerRotation)
 
     @abstractmethod
     def scale(self):
         """
         Returns the scale values for this node.
 
-        :rtype: List[float, float, float]
+        :rtype: vector.Vector
         """
 
         pass
@@ -118,7 +151,7 @@ class AFnTransform(with_metaclass(ABCMeta, afnnode.AFnNode)):
         """
         Updates the scale values for this node.
 
-        :type scale: List[float, float, float]
+        :type scale: vector.Vector
         :rtype: None
         """
 
@@ -131,7 +164,32 @@ class AFnTransform(with_metaclass(ABCMeta, afnnode.AFnNode)):
         :rtype: None
         """
 
-        self.setScale([1.0, 1.0, 1.0])
+        self.setScale(vector.Vector.one)
+
+    def scaleTo(self, scale):
+        """
+        Scales this node to the specified size.
+        Unlike `setScale`, this method adds the scalar difference to the current transform matrix.
+
+        :type scale: vector.Vector
+        :rtype: None
+        """
+
+        currentScale = self.matrix().scale()
+        difference = scale - currentScale
+        newScale = self.scale() + difference
+
+        self.setScale(newScale)
+
+    @abstractmethod
+    def ensureKeyed(self):
+        """
+        Ensures all transform properties are keyed.
+
+        :rtype: None
+        """
+
+        pass
 
     @abstractmethod
     def boundingBox(self):
@@ -139,7 +197,7 @@ class AFnTransform(with_metaclass(ABCMeta, afnnode.AFnNode)):
         Returns the bounding box for this node.
         This consists of a minimum and maximum point in world space.
 
-        :rtype: List[float, float, float], List[float, float, float]
+        :rtype: Tuple[vector.Vector, vector.Vector]
         """
 
         pass
@@ -148,18 +206,18 @@ class AFnTransform(with_metaclass(ABCMeta, afnnode.AFnNode)):
         """
         Returns the bounding box center for this node.
 
-        :rtype: numpy.array
+        :rtype: vector.Vector
         """
 
-        boundingBox = self.boundingBox()
-        return (numpy.array(boundingBox[0]) * 0.5) + (numpy.array(boundingBox[1]) * 0.5)
+        minPoint, maxPoint = self.boundingBox()
+        return (minPoint * 0.5) + (maxPoint * 0.5)
 
     @abstractmethod
     def matrix(self):
         """
         Returns the local transform matrix for this node.
 
-        :rtype: numpy.matrix
+        :rtype: transformationmatrix.TransformationMatrix
         """
 
         pass
@@ -168,17 +226,17 @@ class AFnTransform(with_metaclass(ABCMeta, afnnode.AFnNode)):
         """
         Returns the local inverse matrix for this node.
 
-        :rtype: numpy.matrix
+        :rtype: transformationmatrix.TransformationMatrix
         """
 
-        return self.matrix().I
+        return self.matrix().inverse()
 
     @abstractmethod
     def setMatrix(self, matrix, **kwargs):
         """
         Updates the local transform matrix for this node.
 
-        :type matrix: numpy.matrix
+        :type matrix: transformationmatrix.TransformationMatrix
         :rtype: None
         """
 
@@ -189,7 +247,7 @@ class AFnTransform(with_metaclass(ABCMeta, afnnode.AFnNode)):
         """
         Returns the world matrix for this node.
 
-        :rtype: numpy.matrix
+        :rtype: transformationmatrix.TransformationMatrix
         """
 
         pass
@@ -198,17 +256,17 @@ class AFnTransform(with_metaclass(ABCMeta, afnnode.AFnNode)):
         """
         Returns the world inverse matrix for this node.
 
-        :rtype: numpy.matrix
+        :rtype: transformationmatrix.TransformationMatrix
         """
 
-        return self.worldMatrix().I
+        return self.worldMatrix().inverse()
 
     @abstractmethod
     def parentMatrix(self):
         """
         Returns the world parent matrix for this node.
 
-        :rtype: numpy.matrix
+        :rtype: transformationmatrix.TransformationMatrix
         """
 
         pass
@@ -217,10 +275,10 @@ class AFnTransform(with_metaclass(ABCMeta, afnnode.AFnNode)):
         """
         Returns the world parent inverse matrix for this node.
 
-        :rtype: numpy.matrix
+        :rtype: transformationmatrix.TransformationMatrix
         """
 
-        return self.parentMatrix().I
+        return self.parentMatrix().inverse()
 
     @abstractmethod
     def freezeTransform(self):
@@ -232,19 +290,19 @@ class AFnTransform(with_metaclass(ABCMeta, afnnode.AFnNode)):
 
         pass
 
-    def copyTransform(self, otherTransform, **kwargs):
+    def copyTransform(self, otherNode, **kwargs):
         """
         Copies the transform matrix from the supplied node.
 
-        :type otherTransform: Any
+        :type otherNode: Any
         :rtype: None
         """
 
-        fnTransform = self.__class__(otherTransform)
-        worldMatrix = fnTransform.worldMatrix()
+        otherNode = self.__class__(otherNode)
+        worldMatrix = otherNode.worldMatrix()
         parentInverseMatrix = self.parentInverseMatrix()
 
-        offsetMatrix = kwargs.get('offsetMatrix', matrixmath.IDENTITY_MATRIX)
+        offsetMatrix = kwargs.get('offsetMatrix', transformationmatrix.TransformationMatrix())
         matrix = (offsetMatrix * worldMatrix) * parentInverseMatrix
 
         self.setMatrix(matrix, **kwargs)
@@ -253,7 +311,7 @@ class AFnTransform(with_metaclass(ABCMeta, afnnode.AFnNode)):
         """
         Returns the offset matrix between the supplied transform.
         Optional keywords can be used to determine which transform component offsets are preserved.
-        By default all component offsets are maintained.
+        By default, all component offsets are maintained.
 
         :type otherTransform: Any
         :type maintainTranslate: bool
@@ -271,17 +329,15 @@ class AFnTransform(with_metaclass(ABCMeta, afnnode.AFnNode)):
 
         # Evaluate which transform components should be maintained
         #
-        matrices = matrixmath.decomposeMatrix(offsetMatrix)
-
-        translateMatrix = matrices[0] if maintainTranslate else matrixmath.IDENTITY_MATRIX
-        rotateMatrix = matrices[1] if maintainRotate else matrixmath.IDENTITY_MATRIX
-        scaleMatrix = matrices[2] if maintainScale else matrixmath.IDENTITY_MATRIX
+        translateMatrix = offsetMatrix.translationPart() if maintainTranslate else transformationmatrix.TransformationMatrix()
+        rotateMatrix = offsetMatrix.rotationPart() if maintainRotate else transformationmatrix.TransformationMatrix()
+        scaleMatrix = offsetMatrix.scalePart() if maintainScale else transformationmatrix.TransformationMatrix()
 
         return scaleMatrix * rotateMatrix * translateMatrix
 
     def snapshot(self):
         """
-        Stores a transform snapshot for all of the descendants derived from this node.
+        Stores a transform snapshot for all the descendants derived from this node.
 
         :rtype: None
         """
