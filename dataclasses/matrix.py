@@ -2,6 +2,7 @@ import math
 import operator
 
 from functools import reduce
+from itertools import islice
 from dataclasses import dataclass
 from six import integer_types
 from six.moves import collections_abc
@@ -202,17 +203,22 @@ class Matrix(collections_abc.Sequence):
 
                 raise IndexError(f'__getitem__() expects 2 co-ordinates ({count} given)!')
 
-            # Check if co-ordinates are in range
+            # Get matrix row and evaluate column type
             #
-            row, column = key
+            rowIndex, columnIndex = key
+            row = self.__getitem__(rowIndex)
 
-            if (0 <= row < self.shape.rows) and (0 <= column < self.shape.columns):
+            if isinstance(columnIndex, integer_types):
 
-                return self.__rows__[row][column]
+                return row[columnIndex]
+
+            elif isinstance(columnIndex, slice):
+
+                return tuple(islice(row, columnIndex.start, columnIndex.stop, columnIndex.step))
 
             else:
 
-                raise IndexError('__getitem__() index is out of range!')
+                raise TypeError('__getitem__() expects an int or slice ({type(key).__name__} given)!')
 
         else:
 
