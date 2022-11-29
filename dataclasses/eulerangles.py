@@ -90,6 +90,26 @@ class EulerAngles(collections_abc.Sequence):
 
             raise TypeError(f'__setitem__() expects either a str or int ({type(key).__name__} given)!')
 
+    def __eq__(self, other):
+        """
+        Private method that implements the equal operator.
+
+        :type other: EulerAngles
+        :rtype: bool
+        """
+
+        return self.isEquivalent(other)
+
+    def __ne__(self, other):
+        """
+        Private method that implements the not equal operator.
+
+        :type other: EulerAngles
+        :rtype: bool
+        """
+
+        return not self.isEquivalent(other)
+
     def __add__(self, other):
         """
         Private method that implements the addition operator.
@@ -246,6 +266,17 @@ class EulerAngles(collections_abc.Sequence):
         """
 
         return replace(self)
+
+    def isEquivalent(self, other, tolerance=1e-3):
+        """
+        Evaluates if the two supplied euler angles are equivalent.
+
+        :type other: EulerAngles
+        :type tolerance: float
+        :rtype: bool
+        """
+
+        return self.asMatrix().isEquivalent(other.asMatrix(), tolerance=tolerance)
 
     def toList(self, asDegrees=False):
         """
