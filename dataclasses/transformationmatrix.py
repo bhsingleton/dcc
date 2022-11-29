@@ -70,7 +70,7 @@ class TransformationMatrix(matrix.Matrix):
         :rtype: vector.Vector
         """
 
-        return vector.Vector(self[0])
+        return vector.Vector(*self[0, 0:3])
 
     @property
     def row2(self):
@@ -80,7 +80,7 @@ class TransformationMatrix(matrix.Matrix):
         :rtype: vector.Vector
         """
 
-        return vector.Vector(self[1])
+        return vector.Vector(*self[1, 0:3])
 
     @property
     def row3(self):
@@ -90,7 +90,7 @@ class TransformationMatrix(matrix.Matrix):
         :rtype: vector.Vector
         """
 
-        return vector.Vector(self[2])
+        return vector.Vector(*self[2, 0:3])
 
     @property
     def row4(self):
@@ -100,7 +100,7 @@ class TransformationMatrix(matrix.Matrix):
         :rtype: vector.Vector
         """
 
-        return vector.Vector(self[3])
+        return vector.Vector(*self[3, 0:3])
     # endregion
 
     # region Matrix Methods
@@ -515,9 +515,9 @@ class TransformationMatrix(matrix.Matrix):
 
             raise TypeError(f'lookAt() expects a valid forward axis ({forwardAxis} given)!')
 
-        # Compose aim matrix from axis vectors
+        # Assume aim matrix from axis vectors
         #
-        return self.__class__([xAxis.normalize(), yAxis.normalize(), zAxis.normalize(), origin])
+        return self.fill([xAxis.normalize(), yAxis.normalize(), zAxis.normalize(), origin], shape=self.shape)
     # endregion
 
     # region Scale Methods
