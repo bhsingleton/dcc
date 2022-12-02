@@ -401,9 +401,9 @@ class TransformationMatrix(matrix.Matrix):
 
         return self.__class__(
             [
-                self.row1,
-                self.row2,
-                self.row3,
+                self.row1.normalize(),
+                self.row2.normalize(),
+                self.row3.normalize(),
                 vector.Vector.origin
             ]
         )
