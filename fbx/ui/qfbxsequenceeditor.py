@@ -239,13 +239,12 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
 
         self.invalidateSequences()
 
-    @QtCore.Slot(QtCore.QItemSelection, QtCore.QItemSelection)
-    def on_sequencerTreeView_selectionChanged(self, selected, deselected):
+    @QtCore.Slot(QtCore.QModelIndex)
+    def on_sequencerTreeView_clicked(self, index):
         """
-        Slot method for the sequencerTreeView's selectionChanged signal.
+        Slot method for the sequencerTreeView's clicked signal.
 
-        :type selected: QtCore.QItemSelection
-        :type deselected: QtCore.QItemSelection
+        :type index: QtCore.QModelIndex
         :rtype: None
         """
 
