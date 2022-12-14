@@ -2,6 +2,7 @@ import fnmatch
 
 from maya import cmds as mc, OpenMaya as legacy
 from maya.api import OpenMaya as om, OpenMayaAnim as oma
+from dcc.python import stringutils
 from six import string_types
 from collections import deque
 from itertools import chain
@@ -978,14 +979,16 @@ def iterNodesByPattern(*patterns, apiType=om.MFn.kDependencyNode):
             continue
 
 
-def iterDependencies(dependNode, apiType, direction=om.MItDependencyGraph.kDownstream, traversal=om.MItDependencyGraph.kDepthFirst):
+def iterDependencies(dependNode, apiType, typeName='', direction=om.MItDependencyGraph.kDownstream, traversal=om.MItDependencyGraph.kDepthFirst):
     """
     Returns a generator that yields dependencies based on the specified criteria.
 
     :param dependNode: The dependency node to iterate from.
     :type dependNode: om.MObject
-    :param apiType: The specific api type to collect.
+    :param apiType: The specific api type to collect, the default being all dependency nodes.
     :type apiType: int
+    :param typeName: The specific type name to collect if supplied.
+    :type typeName: str
     :param direction: The direction to traverse in the node graph.
     :type direction: int
     :param traversal: The order of traversal.
@@ -1003,12 +1006,18 @@ def iterDependencies(dependNode, apiType, direction=om.MItDependencyGraph.kDowns
         level=om.MItDependencyGraph.kNodeLevel
     )
 
+    fnDependNode = om.MFnDependencyNode()
+
     while not iterDepGraph.isDone():
 
-        # Get current node
+        # Insect current node
         #
         currentNode = iterDepGraph.currentNode()
-        yield currentNode
+        fnDependNode.setObject(currentNode)
+
+        if fnDependNode.typeName == typeName or stringutils.isNullOrEmpty(typeName):
+
+            yield currentNode
 
         # Increment iterator
         #
