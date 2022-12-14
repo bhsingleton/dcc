@@ -1630,7 +1630,7 @@ def isArray(value):
     return hasattr(value, '__getitem__') and hasattr(value, '__len__')
 
 
-def isClose(value, otherValue, rel_tol=1e-3, abs_tol=1e-3):
+def isClose(value, otherValue, rel_tol=0.0, abs_tol=1e-3):
     """
     Evaluates if the two values are close.
 
