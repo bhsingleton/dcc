@@ -75,6 +75,29 @@ class AFnQt(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
                 continue
 
+    def iterMainMenus(self):
+        """
+        Returns a generator that yields top-level menus.
+
+        :rtype: Iterator[QtWidgets.QMenu]
+        """
+
+        # Iterate through actions
+        #
+        menuBar = self.getMainMenuBar()
+
+        for child in menuBar.children():
+
+            # Check if menu is visible
+            #
+            if isinstance(child, QtWidgets.QMenu):
+
+                yield child
+
+            else:
+
+                continue
+
     def nativizeWindow(self, window):
         """
         Performs any necessary steps to nativize the supplied window with the associated DCC application.
@@ -125,15 +148,18 @@ class AFnQt(with_metaclass(ABCMeta, afnbase.AFnBase)):
         # Check if menu already exists
         #
         menuBar = self.getMainMenuBar()
-        menu = self.findMainMenuByTitle('Logging Control')
 
-        if menu is None:
+        menus = [menu for menu in self.iterMainMenus() if menu.title() == 'Logging Control']
+        numMenus = len(menus)
+
+        if numMenus == 0:
 
             menu = qloggingmenu.QLoggingMenu('Logging Control', parent=menuBar)
             menuBar.insertMenu(menuBar.actions()[-1], menu)
 
         else:
 
+            menu = menus[0]
             menu.refresh()
 
         return menu
