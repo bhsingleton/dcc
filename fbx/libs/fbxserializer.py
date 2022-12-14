@@ -1,10 +1,10 @@
 import os
+import math
 import fbx
 import FbxCommon
 
 from itertools import chain
 from ... import __application__, fnscene, fnnode, fntransform, fnmesh, fnskin
-from ...math import matrixmath
 from ...python import stringutils
 from ...generators.inclusiverange import inclusiveRange
 
@@ -323,22 +323,22 @@ class FbxSerializer(object):
         # Update local translation
         #
         matrix = copyFrom.matrix()
-        translation = matrixmath.decomposeTranslateMatrix(matrix)
+        translation = matrix.translation()
 
         copyTo.LclTranslation.Set(fbx.FbxDouble3(*translation))
 
-        # Update local rotation
+        # Update local rotation in degrees
         #
         rotationOrder = copyFrom.rotationOrder()
-        rotation = matrixmath.decomposeRotateMatrix(matrix, rotateOrder=rotationOrder)
+        eulerAngles = list(map(math.degrees, matrix.eulerRotation(order=rotationOrder)))
 
         copyTo.SetRotationActive(True)
         copyTo.SetRotationOrder(fbx.FbxNode.eSourcePivot, self.__class__.__rotate_orders__[rotationOrder])
-        copyTo.LclRotation.Set(fbx.FbxDouble3(*rotation))
+        copyTo.LclRotation.Set(fbx.FbxDouble3(*eulerAngles))
 
         # Update local scale
         #
-        scale = matrixmath.decomposeScaleMatrix(matrix)
+        scale = matrix.scale()
         copyTo.LclScaling.Set(fbx.FbxDouble3(*scale))
         copyTo.SetTransformationInheritType(fbx.FbxTransform.eInheritRrs)  # Add support for inverse scale!
 
@@ -663,6 +663,7 @@ class FbxSerializer(object):
         :type timeMode: fbx.FbxTime.EMode
         :rtype: fbx.FbxTime
         """
+
         # Check if time mode was supplied
         #
         if timeMode is None:
@@ -697,22 +698,22 @@ class FbxSerializer(object):
         :rtype: None
         """
 
-        # Decompose local transform matrix
+        # Get local transform matrix
         #
         joint = fntransform.FnTransform(self.getAssociatedNode(fbxNode))
         matrix = joint.matrix()
 
-        translation = matrixmath.decomposeTranslateMatrix(matrix)
+        translation = matrix.translation()
         rotationOrder = joint.rotationOrder()
-        rotation = matrixmath.decomposeRotateMatrix(matrix, rotateOrder=rotationOrder)
-        scale = matrixmath.decomposeScaleMatrix(matrix)
+        eulerAngles = list(map(math.degrees, matrix.eulerRotation(order=rotationOrder)))
+        scale = matrix.scale()
 
-        # Iterate through transform properties
+        # Iterate through transform components
         #
         handle = joint.handle()
         fbxNode = self.getFbxNodeByHandle(handle)
 
-        values = translation, rotation, scale
+        values = [translation, eulerAngles, scale]
 
         for (i, fbxProperty) in enumerate([fbxNode.LclTranslation, fbxNode.LclRotation, fbxNode.LclScaling]):
 
@@ -743,9 +744,11 @@ class FbxSerializer(object):
         # Disable redraw
         #
         self.scene.suspendViewport()
+        log.info(f'Exporting range: {startFrame} : {endFrame} @ {step} step.')
 
         # Iterate through time range
         #
+        timeMode = self.fbxScene.GetGlobalSettings().GetTimeMode()
         animStack = self.fbxScene.GetCurrentAnimationStack()  # type: fbx.FbxAnimStack
         animLayer = animStack.GetMember(0)
 
@@ -759,7 +762,7 @@ class FbxSerializer(object):
 
             # Iterate through joints
             #
-            time = self.convertFrameToTime(frame)
+            time = self.convertFrameToTime(frame, timeMode=timeMode)
 
             for fbxNode in fbxNodes:
 
@@ -1077,7 +1080,7 @@ class FbxSerializer(object):
         # Create fbx placeholders for joints
         # This ensures parenting can be performed!
         #
-        joints = settings.getJoints(namespace=self.namespace)
+        joints = settings.getObjects(namespace=self.namespace)
         self.allocateFbxNodes(*joints)
 
         # Create fbx skeletons
@@ -1104,7 +1107,7 @@ class FbxSerializer(object):
 
         # Serialize meshes
         #
-        meshes = settings.getMeshes(namespace=self.namespace)
+        meshes = settings.getObjects(namespace=self.namespace)
         mesh = fnmesh.FnMesh(iter(meshes))
 
         fbxNodes = []
@@ -1126,7 +1129,7 @@ class FbxSerializer(object):
         :rtype: List[fbx.FbxNode]
         """
 
-        return []
+        return []  # TODO: Implement camera serialization!
 
     def serializeExportSet(self, exportSet):
         """
