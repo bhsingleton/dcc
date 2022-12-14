@@ -1,6 +1,4 @@
-from . import fbxbase, FbxMeshComponent
-from ... import fnscene, fnnode
-from ...generators.uniquify import uniquify
+from . import fbxobjectset, FbxMeshComponent
 
 import logging
 logging.basicConfig()
@@ -8,17 +6,13 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-class FbxMesh(fbxbase.FbxBase):
+class FbxMesh(fbxobjectset.FbxObjectSet):
     """
     Overload of FbxBase used to store mesh properties.
     """
 
     # region Dunderscores
     __slots__ = (
-        '_scene',
-        '_includeNodes',
-        '_includeLayers',
-        '_includeSelectionSets',
         '_includeNormals',
         '_includeTangentsAndBinormals',
         '_includeSmoothings',
@@ -36,10 +30,6 @@ class FbxMesh(fbxbase.FbxBase):
 
         # Declare private variables
         #
-        self._scene = fnscene.FnScene()
-        self._includeNodes = kwargs.get('nodes', [])
-        self._includeLayers = kwargs.get('layers', [])
-        self._includeSelectionSets = kwargs.get('selectionSets', [])
         self._includeNormals = kwargs.get('includeNormals', True)
         self._includeTangentsAndBinormals = kwargs.get('includeTangentsAndBinormals', True)
         self._includeSmoothings = kwargs.get('includeSmoothings', True)
@@ -62,72 +52,6 @@ class FbxMesh(fbxbase.FbxBase):
         """
 
         return self._scene
-
-    @property
-    def includeNodes(self):
-        """
-        Getter method that returns the list of nodes to be included.
-
-        :rtype: List[str]
-        """
-
-        return self._includeNodes
-
-    @includeNodes.setter
-    def includeNodes(self, includeNodes):
-        """
-        Setter method that updates the list of nodes to be included.
-
-        :type includeNodes: List[str]
-        :rtype: None
-        """
-
-        self._includeNodes.clear()
-        self._includeNodes.extend(includeNodes)
-
-    @property
-    def includeLayers(self):
-        """
-        Getter method that returns the list of layers to be included.
-
-        :rtype: List[str]
-        """
-
-        return self._includeLayers
-
-    @includeLayers.setter
-    def includeLayers(self, includeLayers):
-        """
-        Setter method that updates the list of layers to be included.
-
-        :type includeLayers: List[str]
-        :rtype: None
-        """
-
-        self._includeLayers.clear()
-        self._includeLayers.extend(includeLayers)
-
-    @property
-    def includeSelectionSets(self):
-        """
-        Getter method that returns the list of layers to be included.
-
-        :rtype: List[str]
-        """
-
-        return self._includeSelectionSets
-
-    @includeSelectionSets.setter
-    def includeSelectionSets(self, includeSelectionSets):
-        """
-        Setter method that updates the list of layers to be included.
-
-        :type includeSelectionSets: List[str]
-        :rtype: None
-        """
-
-        self._includeSelectionSets.clear()
-        self._includeSelectionSets.extend(includeSelectionSets)
 
     @property
     def includeNormals(self):
@@ -256,43 +180,4 @@ class FbxMesh(fbxbase.FbxBase):
         self._includeBlendshapes = includeBlendshapes
     # endregion
 
-    # region Methods
-    def iterIncludeMeshes(self, namespace=''):
-        """
-        Returns a generator that yields meshes that should be included.
-
-        :type namespace: str
-        :rtype: Iterator[Any]
-        """
-
-        # Get meshes from collections
-        #
-        root = self.iterNodesFromNames(self.name, namespace=namespace)
-        includeNodes = self.iterNodesFromNames(*self.includeNodes, namespace=namespace)
-        includeLayers = self.iterNodesFromLayers(*self.includeLayers, namespace=namespace)
-        includeSelectionSets = self.iterNodesFromSelectionSets(*self.includeSelectionSets, namespace=namespace)
-
-        return uniquify(root, includeNodes, includeLayers, includeSelectionSets)
-
-    def getMeshes(self, namespace=''):
-        """
-        Returns a list of nodes from this mesh.
-
-        :type namespace: str
-        :rtype: List[Any]
-        """
-
-        return list(self.iterIncludeMeshes(namespace=namespace))
-
-    def select(self, namespace=''):
-        """
-        Selects the associated node from the scene file.
-
-        :type namespace: str
-        :rtype: None
-        """
-
-        meshes = self.getMeshes(namespace=namespace)
-        self.scene.setActiveSelection(meshes, replace=False)
-    # endregion
 

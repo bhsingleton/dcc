@@ -79,56 +79,39 @@ class FbxBase(with_metaclass(ABCMeta, psonobject.PSONObject)):
             return '{namespace}:{name}'.format(namespace=namespace, name=name)
 
     @classmethod
-    def iterNodesFromNames(cls, *names, namespace=''):
+    def iterNodesFromNames(cls, *names, includeChildren=False, namespace=''):
         """
         Returns a generator that yields nodes from the supplied names and namespace.
 
+        :type includeChildren: bool
         :type namespace: str
         :rtype: Iterator[Any]
         """
 
+        # Iterate through names
+        #
         node = fnnode.FnNode()
 
         for name in names:
 
+            # Try and initialize function set
+            #
             success = node.trySetObject(cls.absolutify(name, namespace))
 
-            if success:
-
-                yield node.object()
-
-            else:
+            if not success:
 
                 continue
 
-    @classmethod
-    def iterDescendantsFromName(cls, name, namespace=''):
-        """
-        Returns a generator that yields descendants from the specified names and namespace.
+            # Check if children should be included
+            #
+            if includeChildren:
 
-        :type name: str
-        :type namespace: str
-        :rtype: Iterator[Any]
-        """
+                yield node.object()
+                yield from node.iterDescendants()
 
-        # Check if name is valid
-        #
-        if stringutils.isNullOrEmpty(name):
+            else:
 
-            return iter([])
-
-        # Try and initialize function set
-        #
-        node = fnnode.FnNode()
-        success = node.trySetObject(cls.absolutify(name, namespace))
-
-        if success:
-
-            yield from node.iterDescendants()
-
-        else:
-
-            return iter([])
+                yield node.object()
 
     @classmethod
     def iterNodesFromLayers(cls, *names, namespace=''):
@@ -177,26 +160,30 @@ class FbxBase(with_metaclass(ABCMeta, psonobject.PSONObject)):
                 continue
 
     @classmethod
-    def iterNodesFromRegex(cls, regex, namespace=''):
+    def iterNodesFromRegex(cls, *expressions, namespace=''):
         """
         Returns a generator that yields nodes from the supplied regex.
 
-        :type regex: str
+        :type expressions: str
         :type namespace: str
         :rtype: Iterator[Any]
         """
 
-        # Check if regex is valid
+        # Iterate through expressions
         #
-        if stringutils.isNullOrEmpty(regex):
+        for expression in expressions:
 
-            return iter([])
+            # Check if expression is valid
+            #
+            if stringutils.isNullOrEmpty(regex):
 
-        # Check if namespace was supplied
-        #
-        if not stringutils.isNullOrEmpty(namespace):
+                continue
 
-            regex = r'(?:{namespace}\:)?{regex}'.format(namespace=namespace, regex=regex)
+            # Check if namespace was supplied
+            #
+            if not stringutils.isNullOrEmpty(namespace):
 
-        return fnnode.FnNode.iterInstancesByRegex(regex)
+                expression = r'(?:{namespace}\:)?{regex}'.format(namespace=namespace, regex=regex)
+
+            yield from fnnode.FnNode.iterInstancesByRegex(regex)
     # endregion
