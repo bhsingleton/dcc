@@ -533,6 +533,11 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
 
             raise TypeError('serializeNode() expects a valid node!')
 
+        # Invalidate any internally cached transform matrices
+        #
+        pymxs.runtime.invalidateTM(node)
+        pymxs.runtime.invalidateWS(node)
+
         # Serialize object components
         #
         obj = self.serializeObject(node, skipProperties=True, skipCustomAttributes=True)
