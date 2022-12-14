@@ -303,7 +303,7 @@ def resetInitialOffsets(node):
 
         pass
 
-    # Inspect for matrix changes
+    # Check for any significant matrix changes
     #
     endMatrix = transformutils.getMatrix(node)
 
