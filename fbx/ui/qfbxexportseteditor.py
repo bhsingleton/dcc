@@ -4,11 +4,12 @@ import webbrowser
 from Qt import QtCore, QtWidgets, QtGui
 from copy import copy
 from dcc import fnscene, fnnode, fnnotify
+from dcc.python import stringutils
+from dcc.json import jsonutils
 from dcc.ui import quicwindow, qdirectoryedit, qfileedit
 from dcc.ui.dialogs import qlistdialog
 from dcc.ui.models import qpsonitemmodel, qpsonstyleditemdelegate
 from dcc.fbx.libs import fbxio, fbxasset, fbxexportset, fbxscript
-from dcc.python import stringutils
 
 import logging
 logging.basicConfig()
@@ -124,15 +125,15 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
         self.customContextMenu = QtWidgets.QMenu(parent=self.exportSetTreeView)
         self.customContextMenu.setObjectName('customContextMenu')
 
-        self.clearItemsAction = QtWidgets.QAction('Clear Items', parent=self.customContextMenu)
-        self.clearItemsAction.setObjectName('clearItemsAction')
-        self.clearItemsAction.triggered.connect(self.on_clearItemsAction_triggered)
-
         self.copySelectionAction = QtWidgets.QAction('Copy Selection', parent=self.customContextMenu)
         self.copySelectionAction.setObjectName('copySelectionAction')
         self.copySelectionAction.triggered.connect(self.on_copySelectionAction_triggered)
 
-        self.customContextMenu.addActions([self.clearItemsAction, self.copySelectionAction])
+        self.clearItemsAction = QtWidgets.QAction('Clear Items', parent=self.customContextMenu)
+        self.clearItemsAction.setObjectName('clearItemsAction')
+        self.clearItemsAction.triggered.connect(self.on_clearItemsAction_triggered)
+
+        self.customContextMenu.addActions([self.copySelectionAction, self.clearItemsAction])
 
     def isNameUnique(self, name):
         """
@@ -162,20 +163,32 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
 
         return newName
 
-    def invalidateAsset(self):
+    def reloadAsset(self):
         """
-        Invalidates the displayed asset settings.
+        Reloads the asset from the current scene file.
 
         :rtype: None
         """
 
         # Load scene asset
+        # If no asset exists then create an empty asset!
         #
         self._asset = self._manager.loadAsset()
 
         if self._asset is None:
 
             self._asset = fbxasset.FbxAsset()
+
+        # Invalidate user interface
+        #
+        self.invalidateAsset()
+
+    def invalidateAsset(self):
+        """
+        Invalidates the asset related widgets.
+
+        :rtype: None
+        """
 
         # Synchronize asset widgets
         #
@@ -226,7 +239,7 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
         :rtype: None
         """
 
-        self.invalidateAsset()
+        self.reloadAsset()
     # endregion
 
     # region Events
@@ -317,7 +330,53 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
         :rtype: None
         """
 
-        pass
+        # Prompt user for import path
+        #
+        importPath, selectedFilter = QtWidgets.QFileDialog.getOpenFileName(
+            parent=self,
+            caption='Import From',
+            dir=self.scene.currentDirectory(),
+            filter='JSON files (*.json)'
+        )
+
+        # Check if path is valid
+        #
+        if not stringutils.isNullOrEmpty(importPath):
+
+            self._asset = jsonutils.load(importPath)
+            self.invalidateAsset()
+
+        else:
+
+            log.info('Operation aborted...')
+
+    @QtCore.Slot(bool)
+    def on_exportAction_triggered(self, checked=False):
+        """
+        Slot method for the exportAction's triggered signal.
+
+        :type checked: bool
+        :rtype: None
+        """
+
+        # Prompt user for export path
+        #
+        exportPath, selectedFilter = QtWidgets.QFileDialog.getSaveFileName(
+            parent=self,
+            caption='Export To',
+            dir=self.scene.currentDirectory(),
+            filter='JSON files (*.json)'
+        )
+
+        # Check if path is valid
+        #
+        if not stringutils.isNullOrEmpty(exportPath):
+
+            jsonutils.dump(exportPath, self.asset, indent=4)
+
+        else:
+
+            log.info('Operation aborted...')
 
     @QtCore.Slot(str)
     def on_assetNameLineEdit_textChanged(self, text):
@@ -441,7 +500,7 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
 
         name = internalId[-1]
 
-        if name in ('includeNodes', 'includeJoints', 'excludeJoints'):
+        if name in ('includeObjects', 'excludeObjects'):
 
             globalPoint = self.sender().mapToGlobal(point)
             self.customContextMenu.exec_(globalPoint)
