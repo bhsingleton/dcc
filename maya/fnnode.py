@@ -3,7 +3,7 @@ import maya.api.OpenMaya as om
 
 from six import integer_types
 from dcc.abstract import afnnode
-from dcc.maya.libs import dagutils, plugutils, attributeutils
+from dcc.maya.libs import dagutils, attributeutils, plugutils, plugmutators
 
 import logging
 logging.basicConfig()
@@ -297,7 +297,7 @@ class FnNode(afnnode.AFnNode):
         """
 
         plug = plugutils.findPlug(self.object(), name)
-        return plugutils.getValue(plug)
+        return plugmutators.getValue(plug)
 
     def hasAttr(self, name):
         """
@@ -319,7 +319,7 @@ class FnNode(afnnode.AFnNode):
         """
 
         plug = plugutils.findPlug(self.object(), name)
-        plugutils.setValue(plug, value)
+        plugmutators.setValue(plug, value)
 
     def iterAttr(self):
         """
