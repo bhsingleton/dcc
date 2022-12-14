@@ -29,6 +29,7 @@ class MXSValueEncoder(json.JSONEncoder):
         'Color': 'serializeColor',
         'EulerAngles': 'serializeEulerAngles',
         'Quat': 'serializeQuat',
+        'AngleAxis': 'serializeAngleAxis',
         'Matrix3': 'serializeMatrix3',
         'MAXKey': 'serializeMAXKey',
         'MAXAKey': 'serializeMAXKey',
@@ -215,6 +216,20 @@ class MXSValueEncoder(json.JSONEncoder):
         obj = self.serializeInheritance(quat)
         obj['args'] = [quat.x, quat.y, quat.z, quat.w]
         obj['kwargs'] = {}
+
+        return obj
+
+    def serializeAngleAxis(self, angleAxis):
+        """
+        Serializes the supplied AngleAxis object into a json object.
+
+        :type angleAxis: pymxs.runtime.AngleAxis
+        :rtype: dict
+        """
+
+        obj = self.serializeInheritance(angleAxis)
+        obj['args'] = []
+        obj['kwargs'] = {'angle': angleAxis.angle, 'axis': angleAxis.axis, 'numRevs': angleAxis.numRevs}
 
         return obj
 
