@@ -27,6 +27,35 @@ class EulerAngles(collections_abc.Sequence):
     # region Dunderscores
     __default_order__ = 'xyz'
 
+    def __post_init__(self):
+        """
+        Private method called after a new instance has been created.
+
+        :rtype: None
+        """
+
+        # Validate vector
+        #
+        if all(isinstance(x, (int, float)) for x in self):
+
+            return
+
+        # Check if sequence was passed to constructor
+        #
+        arg = self.x
+
+        if hasattr(arg, '__getitem__') and hasattr(arg, '__len__'):
+
+            # Un-package items into vector
+            #
+            for (i, item) in enumerate(arg):
+
+                self[i] = item
+
+        else:
+
+            raise TypeError(f'__post_init__() expects either an int or float ({type(arg).__name__} given)!')
+
     def __getitem__(self, key):
         """
         Private method that returns an indexed item.
