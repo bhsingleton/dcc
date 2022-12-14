@@ -100,7 +100,7 @@ def showInExplorer():
 
 def makeSceneWritable():
     """
-    Removes the read-only flag from the scene file.
+    Removes the `readOnly` flag from the scene file.
 
     :rtype: None
     """
@@ -113,6 +113,27 @@ def makeSceneWritable():
     if os.path.exists(filePath):
 
         os.chmod(filePath, stat.S_IWRITE)
+
+    else:
+
+        log.warning('Unable to make scene file writable!')
+
+
+def makeSceneReadOnly():
+    """
+    Adds the `readOnly` flag to the scene file.
+
+    :rtype: None
+    """
+
+    # Check if scene exists
+    #
+    fnScene = fnscene.FnScene()
+    filePath = fnScene.currentFilePath()
+
+    if os.path.exists(filePath):
+
+        os.chmod(filePath, stat.S_IREAD|stat.S_IRGRP|stat.S_IROTH)
 
     else:
 
