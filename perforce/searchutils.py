@@ -59,20 +59,11 @@ class SearchEngine(object):
 
             client = clientutils.getCurrentClient()
 
-        # Evaluate path type
+        # Concatenate path and search client for file
         #
         filePath = os.path.normpath(filePath)
         segments = filePath.split(os.path.sep)
-
-        search = None
-
-        if os.path.isabs(filePath):
-
-            search = '/'.join([client.view[0].clientPath, '...'] + segments[-2:])  # Include filename and parent directory
-
-        else:
-
-            search = '/'.join([client.view[0].clientPath, '...'] + segments)  # Include all relative directories
+        search = '/'.join([client.view[0].clientPath, '...', segments[-1]])
 
         return self.searchClient(search, client=client)
 
