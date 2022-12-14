@@ -100,11 +100,12 @@ class FnScene(afnscene.AFnScene):
 
         try:
 
-            mc.file(filePath, open=True, prompt=False)
+            mc.file(filePath, open=True, prompt=False, force=True)
             return True
 
-        except RuntimeError:
+        except RuntimeError as exception:
 
+            log.error(exception)
             return False
 
     def extensions(self):
@@ -219,7 +220,7 @@ class FnScene(afnscene.AFnScene):
         Updates the current time.
 
         :type time: int
-        :rtype: int
+        :rtype: None
         """
 
         mc.currentTime(time, edit=True)
