@@ -30,10 +30,11 @@ class Singleton(with_metaclass(ABCMeta, object)):
 
         if instance is None:
 
-            instance = super(Singleton, cls).__new__(cls)
-            cls.__instances__[cls.className] = instance
+            return super(Singleton, cls).__new__(cls)
 
-        return instance
+        else:
+
+            return instance
 
     def __init__(self, *args, **kwargs):
         """
@@ -45,6 +46,12 @@ class Singleton(with_metaclass(ABCMeta, object)):
         # Call parent method
         #
         super(Singleton, self).__init__()
+
+        # Check if instance has already been initialized
+        #
+        if not self.hasInstance():
+
+            self.__instances__[self.className] = self
     # endregion
 
     # region Properties

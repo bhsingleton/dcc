@@ -25,13 +25,15 @@ class ProxyFactory(singleton.Singleton):
         :rtype: None
         """
 
+        # Check if instance has already been initialized
+        #
+        if not self.hasInstance():
+
+            self.__classes__ = dict(self.iterPackages(*self.packages()))
+
         # Call parent method
         #
         super(ProxyFactory, self).__init__(*args, **kwargs)
-
-        # Declare class variables
-        #
-        self.__classes__ = dict(self.iterPackages(*self.packages()))
 
     def __iter__(self):
         """
