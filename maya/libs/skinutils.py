@@ -27,7 +27,7 @@ def numControlPoints(skinCluster):
 
 def iterInfluences(skinCluster):
     """
-    Returns a generator that yields all of the influence objects from the supplied skin cluster.
+    Returns a generator that yields all the influence objects from the supplied skin cluster.
 
     :type skinCluster: om.MObject
     :rtype: iter
