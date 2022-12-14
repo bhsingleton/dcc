@@ -37,15 +37,17 @@ class FbxIO(singleton.Singleton):
         :rtype: None
         """
 
+        # Check if instance has already been initialized
+        #
+        if not self.hasInstance():
+
+            self._scene = fnscene.FnScene()
+            self._assets = {}
+            self._sequencers = {}
+
         # Call parent method
         #
         super(FbxIO, self).__init__(*args, **kwargs)
-
-        # Declare private variables
-        #
-        self._scene = fnscene.FnScene()
-        self._assets = {}
-        self._sequencers = {}
     # endregion
 
     # region Properties
