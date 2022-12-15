@@ -27,7 +27,8 @@ class FbxSequence(fbxbase.FbxBase):
         '_endFrame',
         '_step',
         '_useTimeline',
-        '_exportSetId'
+        '_exportSetId',
+        '_customScripts'
     )
 
     def __init__(self, *args, **kwargs):
@@ -48,6 +49,7 @@ class FbxSequence(fbxbase.FbxBase):
         self._step = kwargs.get('step', 1)
         self._useTimeline = kwargs.get('useTimeline', True)
         self._exportSetId = kwargs.get('exportSetId', 0)
+        self._customScripts = []
 
         # Call parent method
         #
@@ -210,6 +212,27 @@ class FbxSequence(fbxbase.FbxBase):
         """
 
         self._exportSetId = exportSetId
+
+    @property
+    def customScripts(self):
+        """
+        Getter method that returns the custom scripts for this export set.
+
+        :rtype: List[fbxscript.FbxScript]
+        """
+
+        return self._customScripts
+
+    @customScripts.setter
+    def customScripts(self, customScripts):
+        """
+        Setter method that updates the custom scripts for this export set.
+
+        :type customScripts: List[fbxscript.FbxScript]
+        :rtype: None
+        """
+
+        self._customScripts = customScripts
     # endregion
 
     # region Methods
