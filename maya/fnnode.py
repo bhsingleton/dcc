@@ -84,7 +84,8 @@ class FnNode(afnnode.AFnNode):
         :rtype: str
         """
 
-        return om.MFnDependencyNode(self.object()).name()
+        absoluteName = om.MFnDependencyNode(self.object()).name()
+        return dagutils.stripNamespace(absoluteName)
 
     def setName(self, name):
         """
