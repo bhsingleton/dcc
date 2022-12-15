@@ -834,7 +834,7 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
         :rtype: None
         """
 
-        for exportSet in self.asset.exportSets():
+        for exportSet in self.asset.exportSets:
 
             exportSet.export()
 
