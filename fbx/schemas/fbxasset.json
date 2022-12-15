@@ -1,58 +1,123 @@
 {
 	"$schema": "http://json-schema.org/draft/2019-09/schema#",
-	"description": "A representation of the components required to export a mesh asset.",
-	"type": "array",
-	"items": 
-	{
-		"type": "object",
-		"$ref": "#/definitions/FbxExportSet"
-	},
+	"description": "A representation of the components required to export a static/skeletal mesh asset.",
+	"type": "object",
+	"allOf":
+	[
+		{ "$ref": "#/definitions/FbxAsset" }
+	],
 	"definitions":
 	{
-		"FbxAsset":
-		{
-			"type": "object",
-			"properties": {
-				"__name__": { "type": "string" },
-				"__module__": { "type": "string" },
-				"name": { "type": "string" },
-                "frameRate": { "type": "integer" },
-				"directory": { "type": "string" },
-				"fileType": { "type": "number" },
-				"fileVersion": { "type": "number" },
-				"exportSets":
-				{
-					"type": "array",
-					"items":
-					{
-						"type": "object",
-						"$ref": "#/definitions/FbxExportSet"
-					}
-				}
-			}
-		},
-		"FbxExportSet":
+		"FbxBase":
 		{
 			"type": "object",
 			"properties":
 			{
 				"__name__": { "type": "string" },
 				"__module__": { "type": "string" },
-				"name": { "type": "string" },
+				"name": { "type": "string" }
+			}
+		},
+		"FbxObjectSet":
+		{
+			"type": "object",
+			"allOf": 
+			[
+				{ "$ref": "#/definitions/FbxBase" }
+			],
+			"properties":
+			{
+				"includeType": { "type": "number" },
+				"includeObjects":
+				{
+					"type": "array",
+					"items": { "type": "string" }
+				},
+				"includeChildren": { "type": "boolean" },
+				"excludeType": { "type": "number" },
+				"excludeObjects":
+				{
+					"type": "array",
+					"items": { "type": "string" }
+				},
+				"excludeChildren": { "type": "boolean" }
+			}
+		},
+		"FbxCamera":
+		{
+			"type": "object",
+			"allOf": 
+			[
+				{ "$ref": "#/definitions/FbxObjectSet" }
+			]
+		},
+		"FbxSkeleton":
+		{
+			"type": "object",
+			"allOf": 
+			[
+				{ "$ref": "#/definitions/FbxObjectSet" }
+			]
+		},
+		"FbxMesh":
+		{
+			"type": "object",
+			"allOf": 
+			[
+				{ "$ref": "#/definitions/FbxObjectSet" }
+			],
+			"properties":
+			{
+				"includeNormals": { "type": "boolean" },
+				"includeSmoothings": { "type": "boolean" },
+				"includeColorSets": { "type": "boolean" },
+				"includeTangentsAndBinormals": { "type": "boolean" },
+				"includeSkins": { "type": "boolean" },
+				"includeBlendshapes": { "type": "boolean" }
+			}
+		},
+		"FbxScript":
+		{
+			"type": "object",
+			"allOf": 
+			[
+				{ "$ref": "#/definitions/FbxBase" }
+			],
+			"properties":
+			{
+				"filePath": { "type": "string" },
+				"language": { "type": "integer" },
+				"script": { "type": "string" }
+			}
+		},
+		"FbxExportSet":
+		{
+			"type": "object",
+			"allOf": 
+			[
+				{ "$ref": "#/definitions/FbxBase" }
+			],
+			"properties":
+			{
 				"directory": { "type": "string" },
+				"scale": { "type": "number" },
+				"moveToOrigin": { "type": "boolean" },
+				"removeDisplayLayers": { "type": "boolean" },
+				"removeContainers": { "type": "boolean" },
+				"camera":
+				{
+					"type": "object",
+					"$ref": "#/definitions/FbxSkeleton"
+				},
 				"skeleton":
 				{
 					"type": "object",
 					"$ref": "#/definitions/FbxSkeleton"
 				},
-				"meshes":
+				"mesh":
 				{
-					"type": "array",
-					"items":
-					{
-						"type": "object",
-						"$ref": "#/definitions/FbxMesh"
-					}
+					"type": "object",
+					"$ref": "#/definitions/FbxMesh"
 				},
 				"customScripts":
 				{
@@ -62,74 +127,32 @@
 						"type": "object",
 						"$ref": "#/definitions/FbxScript"
 					}
-				},
-				"scale": { "type": "number" },
-				"moveToOrigin": { "type": "boolean" },
-				"includeNormals": { "type": "boolean" },
-				"includeSmoothings": { "type": "boolean" },
-				"includeColorSets": { "type": "boolean" },
-				"includeTangentsAndBinormals": { "type": "boolean" },
-				"includeSkins": { "type": "boolean" },
-				"includeBlendshapes": { "type": "boolean" },
-				"additionalProperties": true
-			}
-		},
-		"FbxSkeleton":
-		{
-			"type": "object",
-			"properties":
-			{
-				"__name__": { "type": "string" },
-				"__module__": { "type": "string" },
-				"name": { "type": "string" },
-				"includeDescendants": { "type": "boolean" },
-				"includeJoints":
-				{
-					"type": "array",
-					"items": { "type": "string" }
-				},
-				"includeLayers":
-				{
-					"type": "array",
-					"items": { "type": "string" }
-				},
-				"includeSelectionSets":
-				{
-					"type": "array",
-					"items": { "type": "string" }
-				},
-                "includeRegex": { "type": "string" }
-			}
-		},
-		"FbxMesh":
-		{
-			"type": "object",
-			"properties":
-			{
-				"__name__": { "type": "string" },
-				"__module__": { "type": "string" },
-				"name": { "type": "string" },
-				"extract": { "type": "boolean" },
-				"extractType": { "type": "integer" },
-				"extractElements":
-				{
-					"type": "array",
-					"items": { "type": "integer" }
 				}
 			}
 		},
-		"FbxScript":
+		"FbxAsset":
 		{
 			"type": "object",
-			"properties":
-			{
-				"__name__": { "type": "string" },
-				"__module__": { "type": "string" },
-				"filePath": { "type": "string" },
-				"args": { "type": "array" },
-				"kwargs": { "type": "object" }
-			},
-			"additionalProperties": true
+			"allOf": 
+			[
+				{ "$ref": "#/definitions/FbxBase" }
+			],
+			"properties": {
+				"directory": { "type": "string" },
+				"frameRate": { "type": "integer" },
+				"fileType": { "type": "integer" },
+				"fileVersion": { "type": "integer" },
+				"exportSets":
+				{
+					"type": "array",
+					"items":
+					{
+						"type": "object",
+						"$ref": "#/definitions/FbxExportSet"
+					}
+				},
+				"useLegacySerializer": { "type": "boolean" }
+			}
 		}
 	}
 }

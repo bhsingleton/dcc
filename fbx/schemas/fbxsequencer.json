@@ -1,0 +1,83 @@
+{
+	"$schema": "http://json-schema.org/draft/2019-09/schema#",
+	"description": "A representation of the components required to export an animation sequence.",
+	"type": "object",
+	"allOf":
+	[
+		{ "$ref": "#/definitions/FbxSequencer" } 
+	],
+	"definitions":
+	{
+		"FbxBase":
+		{
+			"type": "object",
+			"properties":
+			{
+				"__name__": { "type": "string" },
+				"__module__": { "type": "string" },
+				"name": { "type": "string" }
+			}
+		},
+		"FbxScript":
+		{
+			"type": "object",
+			"allOf":
+			[
+				{ "$ref": "#/definitions/FbxBase" }
+			],
+			"properties":
+			{
+				"filePath": { "type": "string" },
+				"language": { "type": "integer" },
+				"script": { "type": "string" }
+			}
+		},
+		"FbxSequence": 
+		{
+			"type": "object",
+			"allOf":
+			[
+				{ "$ref": "#/definitions/FbxBase" }
+			],
+			"properties": 
+			{
+				"directory": { "type": "string" },
+				"startFrame": { "type": "number" },
+				"endFrame": { "type": "number" },
+				"step": { "type": "number" },
+				"useTimeline": { "type": "boolean" },
+				"exportSetId": { "type": "number" },
+				"customScripts":
+				{
+					"type": "array",
+					"items":
+					{
+						"type": "object",
+						"$ref": "#/definitions/FbxScript"
+					}
+				}
+			}
+		},
+		"FbxSequencer": 
+		{
+			"type": "object",
+			"allOf":
+			[
+				{ "$ref": "#/definitions/FbxBase" }
+			],
+			"properties": 
+			{
+				"guid": { "type": "string" },
+				"sequences":
+				{ 
+					"type": "array",
+					"items": 
+					{ 
+						"type": "object",
+						"$ref": "#/definitions/FbxSequence"
+					}
+				}
+			}
+		}
+	}
+}
