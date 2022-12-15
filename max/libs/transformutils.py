@@ -656,6 +656,7 @@ def freezeTransform(node, **kwargs):
 
     # Check if translation should be frozen
     #
+    startMatrix = getMatrix(node)
     includeTranslate = kwargs.get('includeTranslate', True)
 
     if includeTranslate:
@@ -677,6 +678,15 @@ def freezeTransform(node, **kwargs):
     if includeScale:
 
         freezeScale(node, **kwargs)
+
+    # Check for any significant transform changes
+    #
+    endMatrix = getMatrix(node)
+
+    if not isClose(startMatrix, endMatrix, tolerance=0.01):
+
+        log.error(f'{startMatrix} != {endMatrix}')
+        raise RuntimeError(f'freezeTransform() unable to freeze ${node.name} node!')
 
 
 def unfreezeTransform(node):
