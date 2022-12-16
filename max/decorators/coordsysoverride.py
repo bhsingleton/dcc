@@ -30,7 +30,7 @@ class CoordSysOverride(abstractdecorator.AbstractDecorator):
         # Declare public variables
         #
         self._mode = pymxs.runtime.Name(kwargs.get('mode', 'local'))
-        self._revert = kwargs.get('revert', False)
+        self._revert = kwargs.get('revert', True)
         self._previous = pymxs.runtime.getRefCoordSys()
 
     def __enter__(self, *args, **kwargs):
@@ -44,7 +44,8 @@ class CoordSysOverride(abstractdecorator.AbstractDecorator):
 
         if self.previous != self.mode:
 
-            pymxs.runtime.toolMode.coordsys(self.mode)
+            mode = kwargs.get('mode', self.mode)
+            pymxs.runtime.toolMode.coordsys(mode)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """
