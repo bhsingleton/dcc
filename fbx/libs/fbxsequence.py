@@ -1,7 +1,7 @@
 import os
 
 from enum import Enum, IntEnum
-from . import fbxbase, fbxserializer
+from . import fbxbase, fbxscript, fbxserializer
 from ... import fnfbx, fnscene
 from ...python import stringutils
 from ...ui import qdirectoryedit, qtimespinbox
