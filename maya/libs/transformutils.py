@@ -1060,9 +1060,9 @@ def getMatrix(node, asTransformationMatrix=False, context=om.MDGContext.kNormal)
     # Get matrix plug
     #
     dagPath = dagutils.getMDagPath(node)
-    fnTransform = om.MFnTransform(dagPath)
+    fnDagNode = om.MFnDagNode(dagPath)
 
-    plug = fnTransform.findPlug('matrix', True)
+    plug = fnDagNode.findPlug('matrix', True)
     matrixData = plug.asMObject(context=context)
 
     # Convert matrix data
@@ -1133,9 +1133,9 @@ def getWorldMatrix(node, asTransformationMatrix=False, context=om.MDGContext.kNo
     # Get matrix plug
     #
     dagPath = dagutils.getMDagPath(node)
-    fnTransform = om.MFnTransform(dagPath)
+    fnDagNode = om.MFnDagNode(dagPath)
 
-    plug = fnTransform.findPlug('worldMatrix', True)
+    plug = fnDagNode.findPlug('worldMatrix', True)
     element = plug.elementByLogicalIndex(dagPath.instanceNumber())
 
     matrixData = element.asMObject(context=context)
