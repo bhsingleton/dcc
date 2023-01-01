@@ -423,7 +423,9 @@ def setBoolean(plug, value, **kwargs):
     :rtype: bool
     """
 
-    plug.setBool(bool(value))
+    dagModifier = om.MDGModifier()
+    dagModifier.newPlugValueBool(plug, bool(value))
+    dagModifier.doIt()
 
 
 @locksmith
@@ -436,7 +438,9 @@ def setInteger(plug, value, **kwargs):
     :rtype: None
     """
 
-    plug.setInt(int(value))
+    dagModifier = om.MDGModifier()
+    dagModifier.newPlugValueInt(plug, int(value))
+    dagModifier.doIt()
 
 
 @locksmith
@@ -449,7 +453,9 @@ def setFloat(plug, value, **kwargs):
     :rtype: None
     """
 
-    plug.setFloat(float(value))
+    dagModifier = om.MDGModifier()
+    dagModifier.newPlugValueFloat(plug, float(value))
+    dagModifier.doIt()
 
 
 @locksmith
@@ -471,7 +477,9 @@ def setMatrix(plug, value, **kwargs):
 
     # Assign data object to plug
     #
-    plug.setMObject(matrixData)
+    dagModifier = om.MDGModifier()
+    dagModifier.newPlugValue(plug, matrixData)
+    dagModifier.doIt()
 
 
 @locksmith
@@ -511,7 +519,9 @@ def setMatrixArray(plug, value, **kwargs):
 
     # Assign data object to plug
     #
-    plug.setMObject(matrixArrayData)
+    dagModifier = om.MDGModifier()
+    dagModifier.newPlugValue(plug, matrixArrayData)
+    dagModifier.doIt()
 
 
 @locksmith
@@ -551,7 +561,9 @@ def setDoubleArray(plug, value, **kwargs):
 
     # Assign MObject to plug
     #
-    plug.setMObject(doubleArrayData)
+    dagModifier = om.MDGModifier()
+    dagModifier.newPlugValue(plug, doubleArrayData)
+    dagModifier.doIt()
 
 
 @locksmith
@@ -564,7 +576,9 @@ def setMObject(plug, value, **kwargs):
     :rtype: None
     """
 
-    return plug.setMObject(value)
+    dagModifier = om.MDGModifier()
+    dagModifier.newPlugValue(plug, value)
+    dagModifier.doIt()
 
 
 @locksmith
@@ -577,7 +591,9 @@ def setString(plug, value, **kwargs):
     :rtype: None
     """
 
-    return plug.setString(str(value))
+    dagModifier = om.MDGModifier()
+    dagModifier.newPlugValueString(plug, value)
+    dagModifier.doIt()
 
 
 @locksmith
@@ -613,7 +629,9 @@ def setStringArray(plug, value, **kwargs):
 
     # Assign data object to plug
     #
-    plug.setMObject(stringArrayData)
+    dagModifier = om.MDGModifier()
+    dagModifier.newPlugValue(plug, stringArrayData)
+    dagModifier.doIt()
 
 
 @locksmith
@@ -632,7 +650,11 @@ def setMAngle(plug, value, **kwargs):
 
         value = om.MAngle(value, unit=om.MAngle.uiUnit())
 
-    return plug.setMAngle(value)
+    # Assign value to plug
+    #
+    dagModifier = om.MDGModifier()
+    dagModifier.newPlugValueMAngle(plug, value)
+    dagModifier.doIt()
 
 
 @locksmith
@@ -651,7 +673,11 @@ def setMDistance(plug, value, **kwargs):
 
         value = om.MDistance(value, unit=om.MDistance.uiUnit())
 
-    return plug.setMDistance(value)
+    # Assign value to plug
+    #
+    dagModifier = om.MDGModifier()
+    dagModifier.newPlugValueMDistance(plug, value)
+    dagModifier.doIt()
 
 
 @locksmith
@@ -670,7 +696,11 @@ def setMTime(plug, value, **kwargs):
 
         value = om.MTime(value, om.MTime.uiUnit())
 
-    return plug.setMTime(value)
+    # Assign value to plug
+    #
+    dagModifier = om.MDGModifier()
+    dagModifier.newPlugValueMTime(plug, value)
+    dagModifier.doIt()
 
 
 @locksmith
