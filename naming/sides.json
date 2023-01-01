@@ -7,11 +7,5 @@
 	"lf": "rt",
 	"rt": "lf",
 	"left": "right",
-	"right": "left",
-	"t": "b",
-	"b": "t",
-	"tp": "btm",
-	"btm": "tp",
-	"top": "bottom",
-	"bottom": "top"
+	"right": "left"
 }
