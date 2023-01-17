@@ -196,7 +196,7 @@ class Influences(collections_abc.MutableMapping):
         """
 
         handle = fnnode.FnNode(influence).handle()
-        return {handle: index for (index, handle) in self.items()}.get(handle, None)
+        return {influenceHandle: influenceId for (influenceId, influenceHandle) in self._influences.items()}.get(handle, None)
 
     def lastIndex(self):
         """
@@ -442,7 +442,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
 
     def influences(self):
         """
-        Returns all of the influence objects from this deformer.
+        Returns the influence objects derived from this deformer.
 
         :rtype: Influences
         """
@@ -460,9 +460,9 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
 
     def influenceNames(self):
         """
-        Returns all of the influence names from this deformer.
+        Returns the influence names derived from this deformer.
 
-        :rtype: Dict[int,str]
+        :rtype: Dict[int, str]
         """
 
         influences = self.influences()
@@ -1404,7 +1404,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         :type pull: bool
         :type axis: int
         :type tolerance: float
-        :rtype: Dict[int,Dict[int, float]]
+        :rtype: Dict[int, Dict[int, float]]
         """
 
         # Mirror the supplied vertex indices
