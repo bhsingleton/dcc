@@ -1,6 +1,7 @@
 from maya import cmds as mc
 from maya.api import OpenMaya as om, OpenMayaAnim as oma
 from dcc.dataclasses import vector, keyframe, bezierpoint
+from . import dagutils, plugutils
 
 import logging
 logging.basicConfig()
@@ -306,3 +307,360 @@ def synchronizeCompoundInputs(plug):
                 continue
 
     return caches
+
+
+def getBaseAnimLayer():
+    """
+    Returns the base anim layer.
+
+    :rtype: om.MObject
+    """
+
+    animLayers = [animLayer for animLayer in dagutils.iterNodes(apiType=om.MFn.kAnimLayer) if isBaseAnimLayer(animLayer)]
+    numAnimLayers = len(animLayers)
+
+    if numAnimLayers == 1:
+
+        return animLayers[0]
+
+    else:
+
+        return om.MObject.kNullObj
+
+
+def isBaseAnimLayer(animLayer):
+    """
+    Evaluates if the supplied layer is top-level.
+
+    :type animLayer: om.MObject
+    :rtype: bool
+    """
+
+    return getAnimLayerParent(animLayer).isNull()
+
+
+def getAssociatedAnimLayers(*nodes):
+    """
+    Returns the anim layers associated with the supplied node.
+    Layers are ordered based on their child index in the base anim layer.
+
+    :type nodes: Union[om.MObject, Tuple[om.MObject]]
+    :rtype: om.MObjectArray
+    """
+
+    # Iterate through layers
+    #
+    baseLayer = getBaseAnimLayer()
+    childLayers = getAnimLayerChildren(baseLayer)
+
+    animLayers = om.MObjectArray()
+
+    for childLayer in childLayers:
+
+        # Check if child layer contains nodes
+        #
+        layerObjects = getAnimLayerObjects(childLayer)
+
+        if any([node in layerObjects for node in nodes]):
+
+            animLayers.append(childLayer)
+
+        else:
+
+            continue
+
+    return animLayers
+
+
+def iterAnimLayerMembers(animLayer, node=om.MObject.kNullObj):
+    """
+    Returns a generator that yields plug members from the supplied anim layer.
+    An optional node can be supplied to limit the yielded members.
+
+    :type animLayer: om.MObject
+    :type node: om.MObject
+    :rtype: Iterator[om.MPlug]
+    """
+
+    # Iterate through plug elements
+    #
+    fnDependNode = om.MFnDependencyNode(animLayer)
+    plug = fnDependNode.findPlug('dagSetMembers', True)
+
+    indices = plug.getExistingArrayAttributeIndices()
+
+    for (physicalIndex, logicalIndex) in enumerate(indices):
+
+        # Check if element is connected
+        #
+        element = plug.elementByPhysicalIndex(physicalIndex)
+        otherPlug = element.source()
+
+        if otherPlug.isNull:
+
+            continue
+
+        # Check if a node was supplied
+        #
+        if not node.isNull():
+
+            # Compare nodes
+            #
+            if node == otherPlug.node():
+
+                yield otherPlug
+
+            else:
+
+                continue
+
+        else:
+
+            yield otherPlug
+
+
+def getAnimLayerMembers(animLayer, node=om.MObject.kNullObj):
+    """
+    Returns a list of plug members from the supplied anim layer.
+
+    :type animLayer: om.MObject
+    :type node: om.MObject
+    :rtype: om.MPlugArray
+    """
+
+    return om.MPlugArray(list(iterAnimLayerMembers(animLayer, node=node)))
+
+
+def getAnimLayerObjects(*animLayers):
+    """
+    Returns a list of nodes associated with the supplied anim layer.
+
+    :type animLayers: Union[om.MObject, Tuple[om.MObject]]
+    :rtype: om.MObjectArray
+    """
+
+    # Iterate through anim layers
+    #
+    objects = om.MObjectArray()
+    traversed = {}
+
+    for animLayer in animLayers:
+
+        # Iterate through anim layer members
+        #
+        for plug in iterAnimLayerMembers(animLayer):
+
+            # Check if node has already been appended
+            #
+            node = plug.node()
+            hashCode = om.MObjectHandle(node).hashCode()
+
+            hasObject = traversed.get(hashCode, False)
+
+            if not hasObject:
+
+                traversed[hashCode] = True
+                objects.append(node)
+
+            else:
+
+                continue
+
+    return objects
+
+
+def getAnimLayerParent(animLayer):
+    """
+    Returns the parent of the supplied anim layer.
+
+    :type animLayer: om.MObject
+    :rtype: om.MObject
+    """
+
+    fnDependNode = om.MFnDependencyNode(animLayer)
+    plug = fnDependNode.findPlug('parentLayer', True)
+
+    destinations = plug.destinations()
+    numDestinations = len(destinations)
+
+    if numDestinations == 1:
+
+        return destinations[0].node()
+
+    else:
+
+        return om.MObject.kNullObj
+
+
+def getAnimLayerChildren(animLayer):
+    """
+    Returns a list of children from the supplied anim layer.
+
+    :type animLayer: om.MObject
+    :rtype: om.MObjectArray
+    """
+
+    fnDependNode = om.MFnDependencyNode(animLayer)
+    plug = fnDependNode.findPlug('childrenLayers', True)
+
+    return plugutils.getConnectedNodes(plug)
+
+
+def getAnimLayerBlends(*animLayers):
+    """
+    Returns the anim curves from the supplied layer.
+
+    :type animLayers: Union[om.MObject, Tuple[om.MObject]]
+    :rtype: om.MObjectArray
+    """
+
+    # Iterate through anim layers
+    #
+    fnDependNode = om.MFnDependencyNode()
+    blends = om.MObjectArray()
+
+    for animLayer in animLayers:
+
+        # Extend blend array
+        #
+        fnDependNode.setObject(animLayer)
+        plug = fnDependNode.findPlug('blendNodes', True)
+
+        blends += plugutils.getConnectedNodes(plug)
+
+    return blends
+
+
+def getBlendAnimCurves(*blends, inputA=False, inputB=True):
+    """
+    Returns a list of anim curves from the supplied blend nodes.
+    Overriding the `input` flags changes which curves are returned.
+
+    :type blends: Union[om.MObject, Tuple[om.MObject]]
+    :type inputA: bool
+    :type inputB: bool
+    :rtype: om.MObjectArray
+    """
+
+    # Iterate through blends
+    #
+    fnDependNode = om.MFnDependencyNode()
+    animCurves = om.MObjectArray()
+
+    for blend in blends:
+
+        # Check if `inputA` should be included
+        #
+        fnDependNode.setObject(blend)
+
+        if inputA:
+
+            plug = fnDependNode.findPlug('inputA', True)
+            animCurves += plugutils.getConnectedNodes(plug, includeNullObjects=True)
+
+        # Check if `inputB` should be included
+        #
+        if inputB:
+
+            plug = fnDependNode.findPlug('inputB', True)
+            animCurves += plugutils.getConnectedNodes(plug, includeNullObjects=True)
+
+    return animCurves
+
+
+def getAnimLayerCurves(animLayer, node=om.MObject.kNullObj, inputA=False, inputB=True):
+    """
+    Returns member-curve pairs from the supplied anim layer for the specified node.
+    If no node is specified then all anim curves are returned instead!
+
+    :type animLayer: om.MObject
+    :type node: om.MObject
+    :type inputA: bool
+    :type inputB: bool
+    :rtype: om.MObjectArray
+    """
+
+    # Get input curves from anim layer
+    #
+    blends = getAnimLayerBlends(animLayer)
+    animCurves = getBlendAnimCurves(*blends, inputA=inputA, inputB=inputB)
+
+    if node.isNull():
+        
+        return animCurves
+
+    # Get indices associated with node
+    #
+    members = getAnimLayerMembers(animLayer, node=node)
+    indices = [index for (index, member) in enumerate(members) if member.node() == node]
+
+    if len(animCurves) == len(members):
+
+        return [animCurves[index] for index in indices]
+
+    else:
+
+        return []
+
+
+def getNodeAnimCurves(node):
+    """
+    Returns a list of attribute-curve pairs from the supplied node.
+    If the node is using anim layers then no curves will be returned!
+
+    :type node: om.MObject
+    :rtype: Dict[str, om.MObject]
+    """
+
+    # Iterate through channel-box plug
+    #
+    animCurves = {}
+
+    for plug in plugutils.iterChannelBoxPlugs(node):
+
+        # Check if plug is animated
+        #
+        if isAnimated(plug):
+
+            name = plug.partialName(useLongNames=True)
+            animCurves[name] = plug.source().node()
+
+        else:
+
+            continue
+
+    return animCurves
+
+
+def getNodeAnimLayers(node):
+    """
+    Returns a list of attribute-layer pairs from the supplied node.
+
+    :type node: om.MObject
+    :rtype: Dict[str, Dict[str, om.MObject]]
+    """
+
+    # Iterate through associated anim layers
+    #
+    animLayers = getAssociatedAnimLayers(node)
+    animCurves = {}
+
+    for (i, animLayer) in enumerate(animLayers):
+
+        # Check if we need to include the base layer
+        #
+        members = getAnimLayerMembers(animLayer, node=node)
+
+        if i == 0:
+
+            baseCurves = getAnimLayerCurves(animLayer, node=node, inputA=True, inputB=False)
+            animCurves['BaseAnimation'] = {member.partialName(useLongNames=True): animCurve for (member, animCurve) in zip(members, baseCurves)}
+
+        # Add layer member-curves
+        #
+        layerName = dagutils.getNodeName(animLayer)
+        layerCurves = getAnimLayerCurves(animLayer, node=node, inputA=False, inputB=True)
+
+        animCurves[layerName] = {member.partialName(useLongNames=True): animCurve for (member, animCurve) in zip(members, layerCurves)}
+
+    return animCurves
