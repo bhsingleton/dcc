@@ -10,7 +10,7 @@ log.setLevel(logging.INFO)
 
 class QListDialog(quicdialog.QUicDialog):
     """
-    Overload of QDialog used to edit string list data.
+    Overload of `QDialog` used to edit string list data.
     """
 
     # region Dunderscores
@@ -33,10 +33,6 @@ class QListDialog(quicdialog.QUicDialog):
         self._items = []
         self._textFilter = kwargs.get('textFilter', None)
         self._allowDuplicates = kwargs.get('allowDuplicates', False)
-
-        # Build user interface
-        #
-        self.__build__(*args, **kwargs)
 
         # Check if any arguments were supplied
         #
@@ -172,7 +168,7 @@ class QListDialog(quicdialog.QUicDialog):
         :rtype: bool
         """
 
-        return not any(x.text() == text for x in self.items())
+        return not any(item == text for item in self.iterItems())
 
     @staticmethod
     def createListWidgetItem(text):
