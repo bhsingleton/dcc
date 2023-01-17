@@ -240,7 +240,7 @@ class QAbstractFileItemModel(QtCore.QAbstractItemModel):
 
             return QtCore.QModelIndex()
 
-    def index(self, row, column, parent=None):
+    def index(self, row, column, parent=QtCore.QModelIndex()):
         """
         Returns the index of the item in the model specified by the given row, column and parent index.
 
@@ -283,7 +283,7 @@ class QAbstractFileItemModel(QtCore.QAbstractItemModel):
 
                 return QtCore.QModelIndex()
 
-    def rowCount(self, parent=None):
+    def rowCount(self, parent=QtCore.QModelIndex()):
         """
         Returns the number of rows under the given parent.
 
@@ -302,7 +302,7 @@ class QAbstractFileItemModel(QtCore.QAbstractItemModel):
 
             return len(self._paths)
 
-    def columnCount(self, parent=None):
+    def columnCount(self, parent=QtCore.QModelIndex()):
         """
         Returns the number of columns under the given parent.
 

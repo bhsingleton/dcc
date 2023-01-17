@@ -1,4 +1,5 @@
 from PySide2 import QtCore, QtWidgets, QtGui
+from dcc.python import stringutils
 from dcc.ui.models import qabstractfileitemmodel
 
 import logging
@@ -29,6 +30,8 @@ class QFileItemFilterModel(QtCore.QSortFilterProxyModel):
         #
         self._directoriesOnly = False
         self._ignoreSymLinks = False
+        self._fileMasks = []
+
     # endregion
 
     # region Methods
@@ -70,6 +73,25 @@ class QFileItemFilterModel(QtCore.QSortFilterProxyModel):
 
         self._ignoreSymLinks = ignoreSymLinks
 
+    def fileMasks(self):
+        """
+        Returns a list of file extensions to mask.
+
+        :rtype: List[str]
+        """
+
+        return self._fileMasks
+
+    def setFileMasks(self, extensions):
+        """
+        Updates the internal list of file extensions to mask.
+
+        :type extensions: List[str]
+        :rtype: None
+        """
+
+        self._fileMasks = [extension.lstrip('.') for extension in extensions]
+
     def setSourceModel(self, sourceModel):
         """
         Updates the source model to be processed by this proxy model.
@@ -108,11 +130,18 @@ class QFileItemFilterModel(QtCore.QSortFilterProxyModel):
         index = sourceModel.index(row, 0, parent=parent)
         path = sourceModel.pathFromIndex(index)
 
+        fileMasks = self.fileMasks()
+        extension = path.extension.lstrip('.')
+
         if self.ignoreSymLinks() and path.isLink():
 
             return False
 
         elif self.directoriesOnly() and not path.isDir():
+
+            return False
+
+        elif extension not in fileMasks and (not stringutils.isNullOrEmpty(fileMasks) and not stringutils.isNullOrEmpty(extension)):
 
             return False
 

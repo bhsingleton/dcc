@@ -181,6 +181,16 @@ class QFilePath(object):
         return self._name
 
     @property
+    def extension(self):
+        """
+        Getter method that returns the file extension from this path.
+
+        :rtype: str
+        """
+
+        return self._extension
+
+    @property
     def parent(self):
         """
         Getter method that returns the parent of this path.
