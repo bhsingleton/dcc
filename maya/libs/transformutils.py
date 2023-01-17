@@ -32,13 +32,12 @@ TRANSFORM_ROTATE_ORDER = {
 }
 
 
-def getTranslation(node, space=om.MSpace.kTransform, context=om.MDGContext.kNormal):
+def getTranslation(node, space=om.MSpace.kTransform):
     """
     Returns the translation values from the supplied node.
 
     :type node: Union[str, om.MObject, om.MDagPath]
     :type space: int
-    :type context: om.MDGContext
     :rtype: om.MVector
     """
 
@@ -63,9 +62,9 @@ def getTranslation(node, space=om.MSpace.kTransform, context=om.MDGContext.kNorm
         fnTransform = om.MFnTransform(dagPath)
 
         translation = om.MVector(
-            fnTransform.findPlug('translateX', False).asFloat(context=context),
-            fnTransform.findPlug('translateY', False).asFloat(context=context),
-            fnTransform.findPlug('translateZ', False).asFloat(context=context)
+            fnTransform.findPlug('translateX', False).asFloat(),
+            fnTransform.findPlug('translateY', False).asFloat(),
+            fnTransform.findPlug('translateZ', False).asFloat()
         )
 
         return translation
@@ -172,12 +171,11 @@ def translateTo(node, position, **kwargs):
     setTranslation(dagPath, translation, **kwargs)
 
 
-def getRotationOrder(node, context=om.MDGContext.kNormal):
+def getRotationOrder(node):
     """
     Returns the rotation order from the supplied node.
 
     :type node: Union[str, om.MObject, om.MDagPath]
-    :type context: om.MDGContext
     :rtype: int
     """
 
@@ -192,17 +190,16 @@ def getRotationOrder(node, context=om.MDGContext.kNormal):
     # Get euler values from plugs
     #
     fnTransform = om.MFnTransform(dagPath)
-    rotateOrder = fnTransform.findPlug('rotateOrder', False).asInt(context=context)
+    rotateOrder = fnTransform.findPlug('rotateOrder', False).asInt()
 
     return rotateOrder
 
 
-def getEulerRotation(node, context=om.MDGContext.kNormal):
+def getEulerRotation(node):
     """
     Updates the euler angles on the supplied node.
 
     :type node: Union[str, om.MObject, om.MDagPath]
-    :type context: om.MDGContext
     :rtype: om.MEulerRotation
     """
 
@@ -220,9 +217,9 @@ def getEulerRotation(node, context=om.MDGContext.kNormal):
     rotateOrder = getRotationOrder(dagPath)
 
     return om.MEulerRotation(
-        fnTransform.findPlug('rotateX', False).asMAngle(context=context).asRadians(),
-        fnTransform.findPlug('rotateY', False).asMAngle(context=context).asRadians(),
-        fnTransform.findPlug('rotateZ', False).asMAngle(context=context).asRadians(),
+        fnTransform.findPlug('rotateX', False).asMAngle().asRadians(),
+        fnTransform.findPlug('rotateY', False).asMAngle().asRadians(),
+        fnTransform.findPlug('rotateZ', False).asMAngle().asRadians(),
         order=rotateOrder
     )
 
@@ -329,13 +326,12 @@ def rotateTo(node, eulerRotation, **kwargs):
     setEulerRotation(node, newEulerRotation, **kwargs)
 
 
-def getJointOrient(joint, context=om.MDGContext.kNormal):
+def getJointOrient(joint):
     """
     Returns the joint orient angles from the supplied node.
     If the node is not derived from a joint then a zero euler rotation is returned.
 
     :type joint: Union[str, om.MObject, om.MDagPath]
-    :type context: om.MDGContext
     :rtype: om.MEulerRotation
     """
 
@@ -354,9 +350,9 @@ def getJointOrient(joint, context=om.MDGContext.kNormal):
     if dagPath.hasFn(om.MFn.kJoint):
 
         return om.MEulerRotation(
-            fnTransform.findPlug('jointOrientX', False).asMAngle(context=context).asRadians(),
-            fnTransform.findPlug('jointOrientY', False).asMAngle(context=context).asRadians(),
-            fnTransform.findPlug('jointOrientZ', False).asMAngle(context=context).asRadians()
+            fnTransform.findPlug('jointOrientX', False).asMAngle().asRadians(),
+            fnTransform.findPlug('jointOrientY', False).asMAngle().asRadians(),
+            fnTransform.findPlug('jointOrientZ', False).asMAngle().asRadians()
         )
 
     else:
@@ -404,12 +400,11 @@ def resetJointOrient(joint):
     setJointOrient(joint, om.MEulerRotation.kIdentity)
 
 
-def getScale(node, context=om.MDGContext.kNormal):
+def getScale(node):
     """
     Returns the scale values from the supplied node.
 
     :type node: Union[str, om.MObject, om.MDagPath]
-    :type context: om.MDGContext
     :rtype: list[float, float, float]
     """
 
@@ -426,9 +421,9 @@ def getScale(node, context=om.MDGContext.kNormal):
     fnTransform = om.MFnTransform(dagPath)
 
     return [
-        fnTransform.findPlug('scaleX', False).asFloat(context=context),
-        fnTransform.findPlug('scaleY', False).asFloat(context=context),
-        fnTransform.findPlug('scaleZ', False).asFloat(context=context)
+        fnTransform.findPlug('scaleX', False).asFloat(),
+        fnTransform.findPlug('scaleY', False).asFloat(),
+        fnTransform.findPlug('scaleZ', False).asFloat()
     ]
 
 
@@ -849,7 +844,7 @@ def freezeTranslation(node):
 
     # Commit offset parent matrix to plug
     #
-    updateOffsetParentMatrix(dagPath, translateMatrix)
+    setOffsetParentMatrix(dagPath, translateMatrix)
 
 
 def freezeRotation(node):
@@ -877,7 +872,7 @@ def freezeRotation(node):
 
     # Commit offset parent matrix to plug
     #
-    updateOffsetParentMatrix(dagPath, rotateMatrix)
+    setOffsetParentMatrix(dagPath, rotateMatrix)
 
 
 def freezeScale(node):
@@ -988,7 +983,7 @@ def matrixToList(matrix):
     Converts the supplied value to a matrix list comprised of 16 float values.
 
     :type matrix: Union[om.MMatrix, om.MTransformationMatrix and om.MFnMatrixData]
-    :rtype: tuple[float, float, float, float, float, float, float, float, float, float, float, float]
+    :rtype: Tuple[float, float, float, float, float, float, float, float, float, float, float, float]
     """
 
     # Query variable type
@@ -1013,7 +1008,7 @@ def listToMatrix(matrixList):
     """
     Converts a list of values into a matrix.
 
-    :type matrixList: list[float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float]
+    :type matrixList: Tuple[float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float]
     :rtype: om.MMatrix
     """
 
@@ -1047,13 +1042,12 @@ def listToMatrix(matrixList):
         raise TypeError('listToMatrix() expects either 4 or 16 items (%s given)!' % numItems)
 
 
-def getMatrix(node, asTransformationMatrix=False, context=om.MDGContext.kNormal):
+def getMatrix(node, asTransformationMatrix=False):
     """
     Returns the transform matrix for the supplied node.
 
     :type node: Union[str, om.MObject, om.MDagPath]
     :type asTransformationMatrix: bool
-    :type context: om.MDGContext
     :rtype: om.MMatrix
     """
 
@@ -1063,7 +1057,7 @@ def getMatrix(node, asTransformationMatrix=False, context=om.MDGContext.kNormal)
     fnDagNode = om.MFnDagNode(dagPath)
 
     plug = fnDagNode.findPlug('matrix', True)
-    matrixData = plug.asMObject(context=context)
+    matrixData = plug.asMObject()
 
     # Convert matrix data
     #
@@ -1076,12 +1070,41 @@ def getMatrix(node, asTransformationMatrix=False, context=om.MDGContext.kNormal)
         return getMatrixData(matrixData)
 
 
-def getOffsetParentMatrix(node, context=om.MDGContext.kNormal):
+def getParentMatrix(node, asTransformationMatrix=False):
+    """
+    Returns the parent matrix for the supplied node.
+
+    :type node: Union[str, om.MObject, om.MDagPath]
+    :type asTransformationMatrix: bool
+    :rtype: om.MMatrix
+    """
+
+    # Get matrix plug
+    #
+    dagPath = dagutils.getMDagPath(node)
+    fnDagNode = om.MFnDagNode(dagPath)
+
+    plug = fnDagNode.findPlug('parentMatrix', True)
+    element = plug.elementByLogicalIndex(dagPath.instanceNumber())
+
+    matrixData = element.asMObject()
+
+    # Convert matrix data
+    #
+    if asTransformationMatrix:
+
+        return getTransformData(matrixData)
+
+    else:
+
+        return getMatrixData(matrixData)
+
+
+def getOffsetParentMatrix(node):
     """
     Returns the offset parent matrix for the supplied node.
 
     :type node: Union[str, om.MObject, om.MDagPath]
-    :type context: om.MDGContext
     :rtype: om.MMatrix
     """
 
@@ -1091,14 +1114,14 @@ def getOffsetParentMatrix(node, context=om.MDGContext.kNormal):
     fnTransform = om.MFnTransform(dagPath)
 
     plug = fnTransform.findPlug('offsetParentMatrix', True)
-    offsetParentMatrixData = plug.asMObject(context=context)
+    offsetParentMatrixData = plug.asMObject()
 
     # Convert matrix data
     #
     return getMatrixData(offsetParentMatrixData)
 
 
-def updateOffsetParentMatrix(node, offsetParentMatrix):
+def setOffsetParentMatrix(node, offsetParentMatrix):
     """
     Updates the offset parent matrix for the supplied node.
 
@@ -1120,13 +1143,12 @@ def updateOffsetParentMatrix(node, offsetParentMatrix):
     plug.setMObject(offsetParentMatrixData)
 
 
-def getWorldMatrix(node, asTransformationMatrix=False, context=om.MDGContext.kNormal):
+def getWorldMatrix(node, asTransformationMatrix=False):
     """
     Returns the world matrix for the supplied node.
 
     :type node: Union[str, om.MObject, om.MDagPath]
     :type asTransformationMatrix: bool
-    :type context: om.MDGContext
     :rtype: om.MMatrix
     """
 
@@ -1138,7 +1160,7 @@ def getWorldMatrix(node, asTransformationMatrix=False, context=om.MDGContext.kNo
     plug = fnDagNode.findPlug('worldMatrix', True)
     element = plug.elementByLogicalIndex(dagPath.instanceNumber())
 
-    matrixData = element.asMObject(context=context)
+    matrixData = element.asMObject()
 
     # Convert matrix data
     #
@@ -1572,25 +1594,25 @@ def composeMatrix(xAxis, yAxis, zAxis, position):
     )
 
 
-def breakMatrix(value, normalize=False):
+def breakMatrix(matrix, normalize=False):
     """
     Returns the axis vectors and position from the supplied matrix.
 
-    :type value: Union[str, list, tuple, om.MObject, om.MMatrix]
+    :type matrix: Union[str, list, tuple, om.MObject, om.MMatrix]
     :type normalize: bool
     :rtype: om.MVector, om.MVector, om.MVector, om.MPoint
     """
 
     # Check value type
     #
-    if isinstance(value, om.MMatrix):
+    if isinstance(matrix, om.MMatrix):
 
         # Extract rows
         #
-        x = om.MVector([value.getElement(0, 0), value.getElement(0, 1), value.getElement(0, 2)])
-        y = om.MVector([value.getElement(1, 0), value.getElement(1, 1), value.getElement(1, 2)])
-        z = om.MVector([value.getElement(2, 0), value.getElement(2, 1), value.getElement(2, 2)])
-        p = om.MPoint([value.getElement(3, 0), value.getElement(3, 1), value.getElement(3, 2), value.getElement(3, 3)])
+        x = om.MVector([matrix.getElement(0, 0), matrix.getElement(0, 1), matrix.getElement(0, 2)])
+        y = om.MVector([matrix.getElement(1, 0), matrix.getElement(1, 1), matrix.getElement(1, 2)])
+        z = om.MVector([matrix.getElement(2, 0), matrix.getElement(2, 1), matrix.getElement(2, 2)])
+        p = om.MPoint([matrix.getElement(3, 0), matrix.getElement(3, 1), matrix.getElement(3, 2), matrix.getElement(3, 3)])
 
         # Check if vectors should be normalized
         #
@@ -1602,21 +1624,33 @@ def breakMatrix(value, normalize=False):
 
             return x, y, z, p
 
-    if isinstance(value, string_types):
+    if isinstance(matrix, string_types):
 
-        return breakMatrix(om.MMatrix(mc.getAttr('%s.matrix' % value)))
+        return breakMatrix(om.MMatrix(mc.getAttr('%s.matrix' % matrix)))
 
-    elif isinstance(value, (list, tuple)):
+    elif isinstance(matrix, (list, tuple)):
 
-        return breakMatrix(om.MMatrix(value))
+        return breakMatrix(om.MMatrix(matrix))
 
-    elif isinstance(value, om.MObject):
+    elif isinstance(matrix, om.MObject):
 
-        return breakMatrix(om.MFnMatrixData(value).matrix())
+        return breakMatrix(om.MFnMatrixData(matrix).matrix())
 
     else:
 
-        raise ValueError('getAxisVectors() expects an MMatrix (%s given)!' % type(value).__name__)
+        raise ValueError('getAxisVectors() expects an MMatrix (%s given)!' % type(matrix).__name__)
+
+
+def mirrorVector(vector, normal=om.MVector.kXaxisVector):
+    """
+    Mirrors the supplied vector across the specified normal.
+
+    :type vector: om.MVector
+    :type normal: om.MVector
+    :rtype: om.MVector
+    """
+
+    return vector - (2.0 * (vector * normal) * normal)
 
 
 def isArray(value):
