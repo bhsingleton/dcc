@@ -193,8 +193,9 @@ class AFnTexture(with_metaclass(ABCMeta, afnnode.AFnNode)):
         # Check if file needs syncing
         #
         stat = stats[0]
+        haveRev = stat.get('haveRev', 0)  # P4 omits `haveRev` if the file has not been synced!
 
-        if stat.get('haveRev', 0) != stat.get('headRev', 0):
+        if haveRev != stat['headRev']:
 
             cmds.sync(depotPath)
 
@@ -233,9 +234,21 @@ class AFnTexture(with_metaclass(ABCMeta, afnnode.AFnNode)):
         # Check if file needs syncing
         #
         depotPath = client.mapToDepot(fullFilePath)
-        stat = cmds.fstat(depotPath)[0]
 
-        if stat['haveRev'] != stat['headRev']:
+        stats = cmds.fstat(depotPath)
+        numStats = len(stats)
+
+        if numStats == 0:
+
+            log.warning('Unable to locate file stats: %s, from perforce!' % depotPath)
+            return
+
+        # Check if file is up to date
+        #
+        stat = stats[0]
+        haveRev = stat.get('haveRev', 0)  # P4 omits `haveRev` if the file has not been synced!
+
+        if haveRev != stat['headRev']:
 
             cmds.sync(depotPath)
 
