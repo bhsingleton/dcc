@@ -353,7 +353,7 @@ class MXSValueDecoder(json.JSONDecoder):
 
     # region Dunderscores
     __slots__ = ()
-    __ignore__ = ('MAXKey',)  # Values that have no constructors
+    __ignore__ = ('MAXKey', 'MAXKeyArray')  # Values that have no constructors
 
     def __init__(self, *args, **kwargs):
         """
@@ -417,41 +417,4 @@ class MXSValueDecoder(json.JSONDecoder):
         else:
 
             raise TypeError('deserializeValue() expects a valid class (%s given)!' % name)
-
-    def deserializeMaxKeyArray(self, maxKeyArray, controller=None):
-        """
-        Overwrites the keys on the supplied controller.
-
-        :type maxKeyArray: List[dict]
-        :type controller: pymxs.MXSWrapperBase
-        :rtype: None
-        """
-
-        # Iterate through array
-        #
-        maxKey = None
-
-        for (i, obj) in enumerate(maxKeyArray):
-
-            # Retrieve indexed max key
-            #
-            numKeys = pymxs.runtime.numKeys(controller)
-
-            if i == numKeys:
-
-                maxKey = pymxs.runtime.addNewKey(controller, obj['kwargs']['time'])
-
-            else:
-
-                maxKey = pymxs.runtiume.getKey(controller, i + 1)
-
-            # Assign max key properties
-            #
-            for (key, value) in obj['kwargs'].items():
-
-                pymxs.runtime.setProperty(maxKey, pymxs.runtime.Name(key), value)
-
-        # Resort keys to prevent any index errors
-        #
-        pymxs.runtime.sortKeys(controller)
     # endregion
