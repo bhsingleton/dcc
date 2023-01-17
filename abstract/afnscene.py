@@ -471,9 +471,24 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
             fnTexture.next()
             fnTexture.makeAbsolute()
 
-    def findMissingTextures(self):
+    def syncMissingTextures(self):
         """
-        Locates all the missing textures using perforce.
+        Syncs any missing textures using perforce.
+
+        :rtype: None
+        """
+
+        fnTexture = fntexture.FnTexture()
+        fnTexture.setQueue(fnTexture.instances())
+
+        while not fnTexture.isDone():
+
+            fnTexture.next()
+            fnTexture.getLatest()
+
+    def fixBrokenTextures(self):
+        """
+        Repairs any broken texture paths using perforce.
 
         :rtype: None
         """
