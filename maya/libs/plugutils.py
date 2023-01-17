@@ -3,6 +3,7 @@ import re
 from maya import cmds as mc
 from maya.api import OpenMaya as om
 from collections import deque
+from dcc.python import stringutils
 from dcc.maya.libs import attributeutils
 
 import logging
@@ -11,7 +12,7 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-__plugparser__ = re.compile(r'([a-zA-Z0-9_]+)(?:\[([0-9]+)\])?')
+__plug_parser__ = re.compile(r'([a-zA-Z0-9_]+)(?:\[([0-9]+)\])?')
 
 
 def getApiType(obj):
@@ -35,28 +36,28 @@ def getApiType(obj):
         return om.MFn.kUnknown
 
 
-def findPlug(dependNode, plugName):
+def findPlug(node, plugPath):
     """
     Returns the plug derived from the supplied string path relative to the given node.
     Unlike the API method derived from MFnDependencyNode this function supports indices and children.
     This method also accepts partial paths in that a parent attribute can be omitted and still resolved.
 
-    :type dependNode: om.MObject
-    :type plugName: str
+    :type node: om.MObject
+    :type plugPath: str
     :rtype: om.MPlug
     """
 
     # Break down string path into groups
     #
-    fnDependNode = om.MFnDependencyNode(dependNode)
+    fnDependNode = om.MFnDependencyNode(node)
     nodeName = fnDependNode.name()
 
-    groups = __plugparser__.findall(plugName)
+    groups = __plug_parser__.findall(plugPath)
     numGroups = len(groups)
 
     if numGroups == 0:
 
-        raise TypeError('findPlug() unable to split path: "%s"!' % plugName)
+        raise TypeError('findPlug() unable to split path: "%s"!' % plugPath)
 
     # Find leaf attribute
     #
@@ -84,7 +85,7 @@ def findPlug(dependNode, plugName):
         #
         if index == 0:
 
-            plug = om.MPlug(dependNode, attribute)
+            plug = om.MPlug(node, attribute)
 
         else:
 
@@ -115,7 +116,7 @@ def findPlug(dependNode, plugName):
     return plug
 
 
-def isPlugConstrained(plug):
+def isConstrained(plug):
     """
     Evaluates if the supplied plug is constrained.
 
@@ -123,10 +124,40 @@ def isPlugConstrained(plug):
     :rtype: bool
     """
 
+    # Check if plug has a connection
+    #
     source = plug.source()
-    node = source.node()
 
+    if source.isNull:
+
+        return False
+
+    # Evaluate node type
+    #
+    node = source.node()
     return node.hasFn(om.MFn.kConstraint)
+
+
+def isAnimated(plug):
+    """
+    Evaluates if the supplied plug is animated.
+
+    :type plug: om.MPlug
+    :rtype: bool
+    """
+
+    # Check if plug has a connection
+    #
+    source = plug.source()
+
+    if source.isNull:
+
+        return False
+
+    # Evaluate node type
+    #
+    node = source.node()
+    return node.hasFn(om.MFn.kAnimCurve)
 
 
 def connectPlugs(source, destination, force=False):
@@ -258,59 +289,61 @@ def breakConnections(plug, source=True, destination=True, recursive=False):
             breakConnections(childPlug, source=source, destination=destination)
 
 
-def iterTopLevelPlugs(dependNode):
+def iterTopLevelPlugs(node):
     """
     Returns a generator that yields top-level plugs from the supplied node.
 
-    :type dependNode: om.MObject
+    :type node: om.MObject
     :rtype: iter
     """
 
     # Iterate through attributes
     #
-    for attribute in attributeutils.iterAttributes(dependNode):
+    for attribute in attributeutils.iterAttributes(node):
 
         # Check if attribute is top-level
         #
         fnAttribute = om.MFnAttribute(attribute)
 
-        if not fnAttribute.parent.isNull():
+        if fnAttribute.parent.isNull():
+
+            yield om.MPlug(node, attribute)
+
+        else:
 
             continue
 
-        # Initialize and yield plug
-        #
-        yield om.MPlug(dependNode, attribute)
 
-
-def iterChannelBoxPlugs(dependNode):
+def iterChannelBoxPlugs(node):
     """
     Returns a generator that yields plugs that are in the channel-box.
 
-    :type dependNode: om.MObject
+    :type node: om.MObject
     :rtype: iter
     """
 
     # Iterate through top-level plugs
     #
-    for plug in iterTopLevelPlugs(dependNode):
+    for plug in iterTopLevelPlugs(node):
 
         # Check if this is a compound plug
         #
-        if plug.isChannelBox:
+        if plug.isCompound and not plug.isArray:
+
+            yield from iterChildren(plug, channelBox=True)
+
+        elif plug.isChannelBox:
 
             yield plug
 
-        # Check if this is a compound plug
-        #
-        for childPlug in iterChildren(plug, channelBox=True):
+        else:
 
-            yield childPlug
+            continue
 
 
 def walk(plug, writable=False, channelBox=False, keyable=False):
     """
-    Returns a generator that yields all descendants from the supplied plug.
+    Returns a generator that yields descendants from the supplied plug.
 
     :type plug: om.MPlug
     :type writable: bool
@@ -359,13 +392,13 @@ def iterElements(plug, writable=False):
 
     # Iterate through plug elements
     #
-    numElements = plug.numElements()
+    indices = plug.getExistingArrayAttributeIndices()
 
-    for i in range(numElements):
+    for (physicalIndex, logicalIndex) in enumerate(indices):
 
         # Check if element is writable
         #
-        element = plug.elementByPhysicalIndex(i)
+        element = plug.elementByPhysicalIndex(physicalIndex)
 
         if writable and not element.isFreeToChange():
 
@@ -443,6 +476,57 @@ def removeMultiInstances(plug, indices):
         mc.removeMultiInstance(elementName)
 
 
+def getConnectedNodes(plug, includeNullObjects=False):
+    """
+    Returns the nodes connected to the supplied plug.
+    If the plug is an array or compound then a list of nodes is returned instead!
+
+    :type plug: om.MPlug
+    :type includeNullObjects: bool
+    :rtype: Union[om.MObject, om.MObjectArray]
+    """
+
+    # Check if plug is array
+    #
+    nodes = om.MObjectArray()
+
+    if plug.isArray and not plug.isElement:
+
+        # Iterate through plug elements
+        #
+        for element in iterElements(plug):
+
+            nodes += getConnectedNodes(element, includeNullObjects=includeNullObjects)
+
+    elif plug.isCompound:
+
+        # Iterate through plug children
+        #
+        for child in iterChildren(plug):
+
+            nodes += getConnectedNodes(child, includeNullObjects=includeNullObjects)
+
+    else:
+
+        # Get source plug
+        #
+        otherPlug = plug.source()
+
+        if not otherPlug.isNull:
+
+            nodes.append(otherPlug.node())
+
+        elif includeNullObjects:
+
+            nodes.append(om.MObject.kNullObj)
+
+        else:
+
+            pass
+
+    return nodes
+
+
 def findConnectedMessage(dependNode, attribute):
     """
     Locates the connected destination plug for the given dependency node.
@@ -491,14 +575,10 @@ def getNextAvailableElement(plug):
 
     # Evaluate existing array indices
     #
-    numElements = plug.evaluateNumElements()
+    indices = plug.getExistingArrayAttributeIndices()
+    numIndices = len(indices)
 
-    for physicalIndex in range(numElements):
-
-        # Check if physical index matched logical index
-        #
-        element = plug.elementByPhysicalIndex(physicalIndex)
-        logicalIndex = element.logicalIndex()
+    for (physicalIndex, logicalIndex) in enumerate(indices):
 
         # Check if physical index does not match logical index
         #
@@ -510,7 +590,7 @@ def getNextAvailableElement(plug):
 
             continue
 
-    return numElements
+    return indices[-1] + 1 if numIndices > 0 else 0
 
 
 def getNextAvailableConnection(plug, child=om.MObject.kNullObj):
@@ -532,14 +612,14 @@ def getNextAvailableConnection(plug, child=om.MObject.kNullObj):
 
     # Evaluate existing array indices
     #
-    numElements = plug.evaluateNumElements()
+    indices = plug.getExistingArrayAttributeIndices()
+    numIndices = len(indices)
 
-    for physicalIndex in range(numElements):
+    for (physicalIndex, logicalIndex) in enumerate(indices):
 
         # Check if physical index matched logical index
         #
-        element = plug.elementByPhysicalIndex(physicalIndex)
-        logicalIndex = element.logicalIndex()
+        element = plug.elementByLogicalIndex(logicalIndex)
 
         if not child.isNull():
 
@@ -560,4 +640,91 @@ def getNextAvailableConnection(plug, child=om.MObject.kNullObj):
 
             continue
 
-    return numElements
+    return indices[-1] + 1 if numIndices > 0 else 0
+
+
+def hasAlias(plug):
+    """
+    Evaluates if the supplied node has an alias.
+
+    :type plug: om.MPlug
+    :rtype: bool
+    """
+
+    return not stringutils.isNullOrEmpty(getAlias(plug))
+
+
+def getAlias(plug):
+    """
+    Returns the alias for the supplied plug.
+
+    :type plugs: om.MPlug
+    :rtype: str
+    """
+
+    return om.MFnDependencyNode(plug.node()).plugsAlias(plug)
+
+
+def getAliases(node):
+    """
+    Returns a dictionary of aliases from the supplied node.
+
+    :type node: om.MObject
+    :rtype: Dict[str, str]
+    """
+
+    return dict(om.MFnDependencyNode(node).getAliasList())
+
+
+def setAlias(plug, alias):
+    """
+    Assigns the alias to the supplied plug.
+
+    :type plug: om.MPlug
+    :type alias: str
+    :rtype: bool
+    """
+
+    # Check if alias should be replaced
+    #
+    if hasAlias(plug):
+
+        removeAlias(plug)
+
+    # Create new plug alias
+    #
+    fnDependNode = om.MFnDependencyNode(plug.node())
+    return fnDependNode.setAlias(alias, plug.partialName(useLongNames=True), plug, add=True)
+
+
+def removeAlias(*plugs):
+    """
+    Removes any aliases from the supplied plugs.
+
+    :type plugs: Union[om.MPlug, Tuple[om.MPlug]]
+    :rtype: bool
+    """
+
+    # Iterate through plugs
+    #
+    fnDependNode = om.MFnDependencyNode()
+
+    numPlugs = len(plugs)
+    success = [None] * numPlugs
+
+    for (i, plug) in enumerate(plugs):
+
+        # Check if plug has an alias
+        #
+        alias = getAlias(plug)
+
+        if stringutils.isNullOrEmpty(alias):
+
+            continue
+
+        # Remove alias from plug
+        #
+        fnDependNode.setObject(plug.node())
+        success[i] = fnDependNode.setAlias(alias, plug.partialName(useLongNames=True), plug, add=False)
+
+    return all(success)

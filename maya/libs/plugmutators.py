@@ -9,156 +9,143 @@ log.setLevel(logging.INFO)
 
 
 # region Getters
-def getBoolean(plug, context=om.MDGContext.kNormal):
+def getBoolean(plug, **kwargs):
     """
     Gets the boolean value from the supplied plug.
 
     :type plug: om.MPlug
-    :type context: om.MDGContext
     :rtype: bool
     """
 
-    return plug.asBool(context=context)
+    return plug.asBool()
 
 
-def getInteger(plug, context=om.MDGContext.kNormal):
+def getInteger(plug, **kwargs):
     """
     Gets the integer value from the supplied plug.
 
     :type plug: om.MPlug
-    :type context: om.MDGContext
     :rtype: int
     """
 
-    return plug.asInt(context=context)
+    return plug.asInt()
 
 
-def getFloat(plug, context=om.MDGContext.kNormal):
+def getFloat(plug, **kwargs):
     """
     Gets the float value from the supplied plug.
 
     :type plug: om.MPlug
-    :type context: om.MDGContext
     :rtype: float
     """
 
-    return plug.asFloat(context=context)
+    return plug.asFloat()
 
 
-def getMatrix(plug, context=om.MDGContext.kNormal):
+def getMatrix(plug, **kwargs):
     """
     Gets the matrix value from the supplied plug.
 
     :type plug: om.MPlug
-    :type context: om.MDGContext
     :rtype: om.MMatrix
     """
 
-    return om.MFnMatrixData(plug.asMObject(context=context)).matrix()
+    return om.MFnMatrixData(plug.asMObject()).matrix()
 
 
-def getMatrixArray(plug, context=om.MDGContext.kNormal):
+def getMatrixArray(plug, **kwargs):
     """
     Gets the matrix array from the supplied plug.
 
     :type plug: om.MPlug
-    :type context: om.MDGContext
     :rtype: om.MMatrixArray
     """
 
-    return om.MFnMatrixArrayData(plug.asMObject(context=context)).array()
+    return om.MFnMatrixArrayData(plug.asMObject()).array()
 
 
-def getDoubleArray(plug, context=om.MDGContext.kNormal):
+def getDoubleArray(plug, **kwargs):
     """
     Gets the float array from the supplied plug.
 
     :type plug: om.MPlug
-    :type context: om.MDGContext
     :rtype: om.MDoubleArray
     """
 
-    return om.MFnDoubleArrayData(plug.asMObject(context=context)).array()
+    return om.MFnDoubleArrayData(plug.asMObject()).array()
 
 
-def getMObject(plug, context=om.MDGContext.kNormal):
+def getMObject(plug, **kwargs):
     """
     Gets the MObject from the supplied plug.
 
     :type plug: om.MPlug
-    :type context: om.MDGContext
     :rtype: om.MObject
     """
 
-    return plug.asMObject(context=context)
+    return plug.asMObject()
 
 
-def getString(plug, context=om.MDGContext.kNormal):
+def getString(plug, **kwargs):
     """
     Gets the string value from the supplied plug.
 
     :type plug: om.MPlug
-    :type context: om.MDGContext
     :rtype: str
     """
 
-    return plug.asString(context=context)
+    return plug.asString()
 
 
-def getStringArray(plug, context=om.MDGContext.kNormal):
+def getStringArray(plug, **kwargs):
     """
     Gets the string array from the supplied plug.
 
     :type plug: om.MPlug
-    :type context: om.MDGContext
     :rtype: om.MStringArray
     """
 
-    return om.MFnStringArrayData(plug.asMObject(context=context)).array()
+    return om.MFnStringArrayData(plug.asMObject()).array()
 
 
-def getMAngle(plug, context=om.MDGContext.kNormal):
+def getMAngle(plug, **kwargs):
     """
     Gets the MAngle value from the supplied plug.
 
     :type plug: om.MPlug
-    :type context: om.MDGContext
     :rtype: om.MAngle
     """
 
-    return plug.asMAngle(context=context)
+    return plug.asMAngle()
 
 
-def getMDistance(plug, context=om.MDGContext.kNormal):
+def getMDistance(plug, **kwargs):
     """
     Gets the MDistance value from the supplied plug.
 
     :type plug: om.MPlug
-    :type context: om.MDGContext
     :rtype: om.MDistance
     """
 
-    return plug.asMDistance(context=context)
+    return plug.asMDistance()
 
 
-def getMTime(plug, context=om.MDGContext.kNormal):
+def getMTime(plug, **kwargs):
     """
     Gets the MTime value from the supplied plug.
 
     :type plug: om.MPlug
-    :type context: om.MDGContext
     :rtype: om.MTime
     """
 
-    return plug.asMTime(context=context)
+    return plug.asMTime()
 
 
-def getMessage(plug, context=om.MDGContext.kNormal):
+def getMessage(plug, **kwargs):
     """
     Gets the connected message plug node.
 
     :type plug: om.MPlug
-    :type context: om.MDGContext
     :rtype: om.MObject
     """
 
@@ -173,24 +160,20 @@ def getMessage(plug, context=om.MDGContext.kNormal):
         return om.MObject.kNullObj
 
 
-def getCompound(plug, context=om.MDGContext.kNormal):
+def getCompound(plug, **kwargs):
     """
     Returns all the child values from the compound plug.
 
     :type plug: om.MPlug
-    :type context: om.MDGContext
     :rtype: dict
     """
 
-    numChildren = plug.numChildren()
     values = {}
 
-    for i in range(numChildren):
+    for child in plugutils.iterChildren(plug):
 
-        child = plug.child(i)
-        childName = child.partialName(useLongNames=True)
-
-        values[childName] = getValue(child, context=context)
+        name = child.partialName(useLongNames=True)
+        values[name] = getValue(child)
 
     return values
 
@@ -240,16 +223,15 @@ def getNumericType(attribute):
     return om.MFnNumericAttribute(attribute).numericType()
 
 
-def getNumericValue(plug, context=om.MDGContext.kNormal):
+def getNumericValue(plug, **kwargs):
     """
     Gets the numeric value from the supplied plug.
 
     :type plug: om.MPlug
-    :type context: om.MDGContext
     :rtype: Union[bool, int, float, tuple]
     """
 
-    return __get_numeric_value__[getNumericType(plug.attribute())](plug, context=context)
+    return __get_numeric_value__[getNumericType(plug.attribute())](plug, **kwargs)
 
 
 def getUnitType(attribute):
@@ -263,16 +245,15 @@ def getUnitType(attribute):
     return om.MFnUnitAttribute(attribute).unitType()
 
 
-def getUnitValue(plug, context=om.MDGContext.kNormal):
+def getUnitValue(plug, **kwargs):
     """
     Gets the unit value from the supplied plug.
 
     :type plug: om.MPlug
-    :type context: om.MDGContext
     :rtype: Union[om.MDistance, om.MAngle]
     """
 
-    return __get_unit_value__[getUnitType(plug.attribute())](plug, context=context)
+    return __get_unit_value__[getUnitType(plug.attribute())](plug, **kwargs)
 
 
 def getDataType(attribute):
@@ -286,16 +267,15 @@ def getDataType(attribute):
     return om.MFnTypedAttribute(attribute).attrType()
 
 
-def getTypedValue(plug, context=om.MDGContext.kNormal):
+def getTypedValue(plug, **kwargs):
     """
     Gets the typed value from the supplied plug.
 
     :type plug: om.MPlug
-    :type context: om.MDGContext
     :rtype: Union[om.MMatrix, om.MObject]
     """
 
-    return __get_typed_value__[getDataType(plug.attribute())](plug, context=context)
+    return __get_typed_value__[getDataType(plug.attribute())](plug, **kwargs)
 
 
 __get_value__ = {
@@ -311,13 +291,13 @@ __get_value__ = {
 }
 
 
-def getValue(plug, convertUnits=True, context=om.MDGContext.kNormal):
+def getValue(plug, convertUnits=True):
     """
     Gets the value from the supplied plug.
+    An optional `convertUnits` flag can be specified to convert values to UI units!
 
     :type plug: om.MPlug
     :type convertUnits: bool
-    :type context: om.MDGContext
     :rtype: object
     """
 
@@ -341,7 +321,7 @@ def getValue(plug, convertUnits=True, context=om.MDGContext.kNormal):
         for (physicalIndex, logicalIndex) in enumerate(indices):
 
             element = plug.elementByLogicalIndex(logicalIndex)
-            plugValues[physicalIndex] = getValue(element, convertUnits=convertUnits, context=context)
+            plugValues[physicalIndex] = getValue(element, convertUnits=convertUnits)
 
         return plugValues
 
@@ -349,7 +329,7 @@ def getValue(plug, convertUnits=True, context=om.MDGContext.kNormal):
 
         # Return list of values from parent plug
         #
-        return [getValue(plug.child(i), convertUnits=convertUnits, context=context) for i in range(plug.numChildren())]
+        return [getValue(child, convertUnits=convertUnits) for child in plugutils.iterChildren(plug)]
 
     else:
 
@@ -357,7 +337,7 @@ def getValue(plug, convertUnits=True, context=om.MDGContext.kNormal):
         # Check if units should also be converted
         #
         attributeType = plugutils.getApiType(plug)
-        plugValue = __get_value__[attributeType](plug, context=context)
+        plugValue = __get_value__[attributeType](plug)
 
         if convertUnits and isinstance(plugValue, (om.MDistance, om.MAngle, om.MTime)):
 
@@ -380,7 +360,7 @@ def isCompoundNumeric(plug):
     #
     if plug.isCompound:
 
-        return all([isNumeric(plug.child(i)) for i in range(plug.numChildren())])
+        return all([isNumeric(child) for child in plugutils.iterChildren(plug)])
 
     else:
 
@@ -397,18 +377,6 @@ def isNumeric(plug):
 
     attribute = plug.attribute()
     return attribute.hasFn(om.MFn.kNumericAttribute) or attribute.hasFn(om.MFn.kUnitAttribute)
-
-
-def getAliases(dependNode):
-    """
-    Returns a dictionary of all the attribute aliases belonging to the supplied node.
-    The keys represent the alias name and the values represent the original name.
-
-    :type dependNode: om.MObject
-    :rtype: Dict[str, str]
-    """
-
-    return dict(om.MFnDependencyNode(dependNode).getAliasList())
 # endregion
 
 
@@ -420,12 +388,12 @@ def setBoolean(plug, value, **kwargs):
 
     :type plug: om.MPlug
     :type value: bool
-    :rtype: bool
+    :key modifier: om.MDGModifier
+    :key force: bool
+    :rtype: None
     """
 
-    dagModifier = om.MDGModifier()
-    dagModifier.newPlugValueBool(plug, bool(value))
-    dagModifier.doIt()
+    kwargs['modifier'].newPlugValueBool(plug, bool(value))
 
 
 @locksmith
@@ -435,12 +403,12 @@ def setInteger(plug, value, **kwargs):
 
     :type plug: om.MPlug
     :type value: int
+    :key modifier: om.MDGModifier
+    :key force: bool
     :rtype: None
     """
 
-    dagModifier = om.MDGModifier()
-    dagModifier.newPlugValueInt(plug, int(value))
-    dagModifier.doIt()
+    kwargs['modifier'].newPlugValueInt(plug, int(value))
 
 
 @locksmith
@@ -450,12 +418,12 @@ def setFloat(plug, value, **kwargs):
 
     :type plug: om.MPlug
     :type value: float
+    :key modifier: om.MDGModifier
+    :key force: bool
     :rtype: None
     """
 
-    dagModifier = om.MDGModifier()
-    dagModifier.newPlugValueFloat(plug, float(value))
-    dagModifier.doIt()
+    kwargs['modifier'].newPlugValueFloat(plug, float(value))
 
 
 @locksmith
@@ -465,6 +433,8 @@ def setMatrix(plug, value, **kwargs):
 
     :type plug: om.MPlug
     :type value: om.MMatrix
+    :key modifier: om.MDGModifier
+    :key force: bool
     :rtype: None
     """
 
@@ -477,9 +447,7 @@ def setMatrix(plug, value, **kwargs):
 
     # Assign data object to plug
     #
-    dagModifier = om.MDGModifier()
-    dagModifier.newPlugValue(plug, matrixData)
-    dagModifier.doIt()
+    kwargs['modifier'].newPlugValue(plug, matrixData)
 
 
 @locksmith
@@ -489,6 +457,8 @@ def setMatrixArray(plug, value, **kwargs):
 
     :type plug: om.MPlug
     :type value: Union[List[om.MMatrix], om.MMatrixArray]
+    :key modifier: om.MDGModifier
+    :key force: bool
     :rtype: None
     """
 
@@ -519,9 +489,7 @@ def setMatrixArray(plug, value, **kwargs):
 
     # Assign data object to plug
     #
-    dagModifier = om.MDGModifier()
-    dagModifier.newPlugValue(plug, matrixArrayData)
-    dagModifier.doIt()
+    kwargs['modifier'].newPlugValue(plug, matrixArrayData)
 
 
 @locksmith
@@ -531,6 +499,8 @@ def setDoubleArray(plug, value, **kwargs):
 
     :type plug: om.MPlug
     :type value: Union[List[float], om.MFloatArray, om.MDoubleArray]
+    :key modifier: om.MDGModifier
+    :key force: bool
     :rtype: None
     """
 
@@ -561,9 +531,7 @@ def setDoubleArray(plug, value, **kwargs):
 
     # Assign MObject to plug
     #
-    dagModifier = om.MDGModifier()
-    dagModifier.newPlugValue(plug, doubleArrayData)
-    dagModifier.doIt()
+    kwargs['modifier'].newPlugValue(plug, doubleArrayData)
 
 
 @locksmith
@@ -573,12 +541,12 @@ def setMObject(plug, value, **kwargs):
 
     :type plug: om.MPlug
     :type value: om.MObject
+    :key modifier: om.MDGModifier
+    :key force: bool
     :rtype: None
     """
 
-    dagModifier = om.MDGModifier()
-    dagModifier.newPlugValue(plug, value)
-    dagModifier.doIt()
+    kwargs['modifier'].newPlugValue(plug, value)
 
 
 @locksmith
@@ -588,12 +556,12 @@ def setString(plug, value, **kwargs):
 
     :type plug: om.MPlug
     :type value: str
+    :key modifier: om.MDGModifier
+    :key force: bool
     :rtype: None
     """
 
-    dagModifier = om.MDGModifier()
-    dagModifier.newPlugValueString(plug, value)
-    dagModifier.doIt()
+    kwargs['modifier'].newPlugValueString(plug, value)
 
 
 @locksmith
@@ -603,6 +571,8 @@ def setStringArray(plug, value, **kwargs):
 
     :type plug: om.MPlug
     :type value: om.MStringArray
+    :key modifier: om.MDGModifier
+    :key force: bool
     :rtype: None
     """
 
@@ -629,9 +599,7 @@ def setStringArray(plug, value, **kwargs):
 
     # Assign data object to plug
     #
-    dagModifier = om.MDGModifier()
-    dagModifier.newPlugValue(plug, stringArrayData)
-    dagModifier.doIt()
+    kwargs['modifier'].newPlugValue(plug, stringArrayData)
 
 
 @locksmith
@@ -641,6 +609,8 @@ def setMAngle(plug, value, **kwargs):
 
     :type plug: om.MPlug
     :type value: Union[int, float, om.MAngle]
+    :key modifier: om.MDGModifier
+    :key force: bool
     :rtype: None
     """
 
@@ -652,9 +622,7 @@ def setMAngle(plug, value, **kwargs):
 
     # Assign value to plug
     #
-    dagModifier = om.MDGModifier()
-    dagModifier.newPlugValueMAngle(plug, value)
-    dagModifier.doIt()
+    kwargs['modifier'].newPlugValueMAngle(plug, value)
 
 
 @locksmith
@@ -664,6 +632,8 @@ def setMDistance(plug, value, **kwargs):
 
     :type plug: om.MPlug
     :type value: Union[int, float, om.MDistance]
+    :key modifier: om.MDGModifier
+    :key force: bool
     :rtype: None
     """
 
@@ -675,9 +645,7 @@ def setMDistance(plug, value, **kwargs):
 
     # Assign value to plug
     #
-    dagModifier = om.MDGModifier()
-    dagModifier.newPlugValueMDistance(plug, value)
-    dagModifier.doIt()
+    kwargs['modifier'].newPlugValueMDistance(plug, value)
 
 
 @locksmith
@@ -687,6 +655,8 @@ def setMTime(plug, value, **kwargs):
 
     :type plug: om.MPlug
     :type value: Union[int, float, om.MTime]
+    :key modifier: om.MDGModifier
+    :key force: bool
     :rtype: None
     """
 
@@ -698,9 +668,7 @@ def setMTime(plug, value, **kwargs):
 
     # Assign value to plug
     #
-    dagModifier = om.MDGModifier()
-    dagModifier.newPlugValueMTime(plug, value)
-    dagModifier.doIt()
+    kwargs['modifier'].newPlugValueMTime(plug, value)
 
 
 @locksmith
@@ -710,6 +678,8 @@ def setMessage(plug, value, **kwargs):
 
     :type plug: om.MPlug
     :type value: om.MObject
+    :key modifier: om.MDGModifier
+    :key force: bool
     :rtype: None
     """
 
@@ -732,6 +702,8 @@ def setCompound(plug, values, **kwargs):
 
     :type plug: om.MPlug
     :type values: Union[List[Any], Dict[str, Any]]
+    :key modifier: om.MDGModifier
+    :key force: bool
     :rtype: None
     """
 
@@ -756,7 +728,7 @@ def setCompound(plug, values, **kwargs):
             childAttribute = fnDependNode.attribute(name)
             childPlug = plug.child(childAttribute)
 
-            setValue(childPlug, value)
+            setValue(childPlug, value, **kwargs)
 
     elif hasattr(values, '__getitem__') and hasattr(values, '__len__'):
 
@@ -772,7 +744,7 @@ def setCompound(plug, values, **kwargs):
             childAttribute = fnCompoundAttribute.child(i)
             childPlug = plug.child(childAttribute)
 
-            setValue(childPlug, values[i])
+            setValue(childPlug, values[i], **kwargs)
 
     else:
 
@@ -820,6 +792,8 @@ def setNumericValue(plug, value, **kwargs):
 
     :type plug: om.MPlug
     :type value: Union[bool, int, float, tuple]
+    :key modifier: om.MDGModifier
+    :key force: bool
     :rtype: None
     """
 
@@ -833,6 +807,8 @@ def setUnitValue(plug, value, **kwargs):
 
     :type plug: om.MPlug
     :type value: Union[om.MDistance, om.MAngle]
+    :key modifier: om.MDGModifier
+    :key force: bool
     :rtype: None
     """
 
@@ -846,6 +822,8 @@ def setTypedValue(plug, value, **kwargs):
 
     :type plug: om.MPlug
     :type value: Union[om.MMatrix, om.MObject]
+    :key modifier: om.MDGModifier
+    :key force: bool
     :rtype: None
     """
 
@@ -875,13 +853,14 @@ __set_value__ = {
 }
 
 
-def setValue(plug, value, force=False):
+def setValue(plug, value, modifier=None, force=False):
     """
     Updates the value for the supplied plug.
     An optional force flag can be supplied to unlock the node before setting.
 
     :type plug: om.MPlug
     :type value: Any
+    :type modifier: Union[om.MDGModifier, None]
     :type force: bool
     :rtype: None
     """
@@ -891,7 +870,13 @@ def setValue(plug, value, force=False):
     if plug.isNull:
 
         return None
-
+    
+    # Check if dag modifier was supplied
+    #
+    if modifier is None:
+        
+        modifier = om.MDGModifier()
+    
     # Evaluate plug type
     #
     if plug.isArray and not plug.isElement:
@@ -924,7 +909,7 @@ def setValue(plug, value, force=False):
         for (physicalIndex, item) in enumerate(value):
 
             element = plug.elementByLogicalIndex(physicalIndex)
-            setValue(element, item, force=force)
+            setValue(element, item, modifier=modifier, force=force)
 
         # Remove any excess elements
         #
@@ -934,20 +919,25 @@ def setValue(plug, value, force=False):
 
     elif plug.isCompound:
 
-        setCompound(plug, value, force=force)
+        setCompound(plug, value, modifier=modifier, force=force)
 
     else:
 
         attributeType = plugutils.getApiType(plug)
-        __set_value__[attributeType](plug, value, force=force)
+        __set_value__[attributeType](plug, value, modifier=modifier, force=force)
+    
+    # Execute modifier
+    #
+    modifier.doIt()
+    
 
-
-def resetValue(plug, force=False):
+def resetValue(plug, modifier=None, force=False):
     """
     Resets the value for the supplied plug back to its default value.
 
     :type plug: om.MPlug
-    :type force: bool
+    :type modifier: Union[om.MDGModifier, None]
+    :key force: bool
     :rtype: None
     """
 
@@ -1000,65 +990,5 @@ def resetValue(plug, force=False):
 
         # Reset plug
         #
-        setValue(plug, defaultValue, force=force)
-
-
-def setAliases(plug, aliases):
-    """
-    Updates the values for the supplied plug while assigning aliases.
-    The physical index will be used for each dictionary item.
-
-    :type plug: om.MPlug
-    :type aliases: dict[str: object]
-    :rtype: None
-    """
-
-    # Check if this is an array plug
-    #
-    if not plug.isArray or plug.isElement:
-
-        raise TypeError('setAliases() expects an array plug!')
-
-    # Initialize function set
-    #
-    fnDependNode = om.MFnDependencyNode(plug.node())
-
-    # Check if space should be reallocated
-    #
-    numElements = plug.numElements()
-    numItems = len(aliases)
-
-    if numItems > numElements:
-
-        plug.setNumElements(numItems)
-
-    elif numItems < numElements:
-
-        plugutils.removeMultiInstances(plug, list(range(numItems, numElements)))
-
-    else:
-
-        pass
-
-    # Iterate through elements
-    #
-    for (physicalIndex, (alias, value)) in enumerate(aliases.items()):
-
-        # Update element value
-        #
-        element = plug.elementByLogicalIndex(physicalIndex)
-        setValue(element, value)
-
-        # Check if plug already has alias
-        #
-        plugAlias = fnDependNode.plugsAlias(element)
-        hasAlias = len(plugAlias)
-
-        if hasAlias and plugAlias != alias:
-
-            fnDependNode.setAlias(plugAlias, element.partialName(), element, add=False)
-
-        # Add new plug alias
-        #
-        fnDependNode.setAlias(alias, element.partialName(), element, add=True)
+        setValue(plug, defaultValue, modifier=modifier, force=force)
 # endregion
