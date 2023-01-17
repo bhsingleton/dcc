@@ -4,7 +4,7 @@ import json
 from maya.api import OpenMaya as om
 from six import string_types
 from dcc.maya.libs import dagutils
-from dcc.maya.json import attributeparser
+from dcc.maya.json import mattributeparser
 
 import logging
 logging.basicConfig()
@@ -52,7 +52,7 @@ def createAttribute(**kwargs):
     :rtype: om.MObject
     """
 
-    decoder = attributeparser.AttributeDecoder()
+    decoder = mattributeparser.MAttributeDecoder()
     return decoder.default(kwargs)
 
 
@@ -77,7 +77,7 @@ def applyAttributeTemplate(dependNode, filePath):
 
     with open(filePath, 'r') as jsonFile:
 
-        attributes = json.load(jsonFile, cls=attributeparser.AttributeDecoder, node=dependNode)
+        attributes = json.load(jsonFile, cls=mattributeparser.MAttributeDecoder, node=dependNode)
 
     # Iterate through attributes
     #
@@ -120,7 +120,7 @@ def applyAttributeExtensionTemplate(nodeClass, filePath):
 
     with open(filePath, 'r') as jsonFile:
 
-        attributes = json.load(jsonFile, cls=attributeparser.AttributeDecoder, nodeClass=nodeClass)
+        attributes = json.load(jsonFile, cls=mattributeparser.MAttributeDecoder, nodeClass=nodeClass)
 
     # Iterate through attributes
     #

@@ -9,15 +9,15 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-class AttributeDecoder(json.JSONDecoder):
+class MAttributeDecoder(json.JSONDecoder):
     """
-    Overload of JSONDecoder used to deserialize custom Maya attributes.
+    Overload of `JSONDecoder` used to deserialize custom Maya attributes.
     """
 
     # region Dunderscores
     __slots__ = ('_nodeHandle', '_nodeClass')
 
-    __numerictypes__ = {
+    __numeric_types__ = {
         'bool': om.MFnNumericData.kBoolean,
         'long': om.MFnNumericData.kLong,
         'short': om.MFnNumericData.kShort,
@@ -44,7 +44,7 @@ class AttributeDecoder(json.JSONDecoder):
         'matrixArray': om.MFnNumericData.kMatrixArray
     }
 
-    __unittypes__ = {
+    __unit_types__ = {
         'angle': om.MFnUnitAttribute.kAngle,
         'doubleAngle': om.MFnUnitAttribute.kAngle,
         'distance': om.MFnUnitAttribute.kDistance,
@@ -52,7 +52,7 @@ class AttributeDecoder(json.JSONDecoder):
         'time': om.MFnUnitAttribute.kTime
     }
 
-    __datatypes__ = {
+    __data_types__ = {
         'string': om.MFnData.kString,
         'str': om.MFnData.kString,
         'unicode': om.MFnData.kString,
@@ -63,7 +63,7 @@ class AttributeDecoder(json.JSONDecoder):
         'lattice': om.MFnNumericData.kLattice
     }
 
-    __matrixtypes__ = {
+    __matrix_types__ = {
         'matrix': om.MFnMatrixAttribute.kDouble,
         'doubleMatrix': om.MFnMatrixAttribute.kDouble,
         'fltMatrix': om.MFnMatrixAttribute.kFloat,
@@ -92,7 +92,7 @@ class AttributeDecoder(json.JSONDecoder):
 
         # Call parent method
         #
-        super(AttributeDecoder, self).__init__(*args, **kwargs)
+        super(MAttributeDecoder, self).__init__(*args, **kwargs)
     # endregion
 
     # region Properties
@@ -155,19 +155,19 @@ class AttributeDecoder(json.JSONDecoder):
         attribute = self.attribute(obj['longName'])
         attributeType = obj['attributeType']
 
-        if attributeType in self.__numerictypes__:
+        if attributeType in self.__numeric_types__:
 
             return self.deserializeNumericAttribute(obj, attribute=attribute)
 
-        elif attributeType in self.__unittypes__:
+        elif attributeType in self.__unit_types__:
 
             return self.deserializeUnitAttribute(obj, attribute=attribute)
 
-        elif attributeType in self.__datatypes__:
+        elif attributeType in self.__data_types__:
 
             return self.deserializeTypedAttribute(obj, attribute=attribute)
 
-        elif attributeType in self.__matrixtypes__:
+        elif attributeType in self.__matrix_types__:
 
             return self.deserializeMatrixAttribute(obj, attribute=attribute)
 
@@ -245,7 +245,7 @@ class AttributeDecoder(json.JSONDecoder):
             shortName = obj.get('shortName', longName)
             attributeType = obj['attributeType']
 
-            attribute = fnAttribute.create(longName, shortName, self.__numerictypes__[attributeType])
+            attribute = fnAttribute.create(longName, shortName, self.__numeric_types__[attributeType])
 
         else:
 
@@ -316,7 +316,7 @@ class AttributeDecoder(json.JSONDecoder):
             shortName = obj.get('shortName', longName)
             attributeType = obj['attributeType']
 
-            attribute = fnAttribute.create(longName, shortName, self.__unittypes__[attributeType])
+            attribute = fnAttribute.create(longName, shortName, self.__unit_types__[attributeType])
 
         else:
 
@@ -387,7 +387,7 @@ class AttributeDecoder(json.JSONDecoder):
             shortName = obj.get('shortName', longName)
             attributeType = obj['attributeType']
 
-            attribute = fnAttribute.create(longName, shortName, self.__datatypes__[attributeType])
+            attribute = fnAttribute.create(longName, shortName, self.__data_types__[attributeType])
 
         else:
 
@@ -524,7 +524,7 @@ class AttributeDecoder(json.JSONDecoder):
             shortName = obj.get('shortName', longName)
             attributeType = obj['attributeType']
 
-            attribute = fnAttribute.create(longName, shortName, self.__matrixtypes__[attributeType])
+            attribute = fnAttribute.create(longName, shortName, self.__matrix_types__[attributeType])
 
         else:
 
