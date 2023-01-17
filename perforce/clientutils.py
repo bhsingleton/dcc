@@ -147,7 +147,7 @@ class ClientSpec(object):
         :rtype: str
         """
 
-        return os.path.join(self.view[0].depotPath, self.mapToRoot(filePath))
+        return os.path.join(self.view[0].depotPath, self.mapToRoot(filePath)).replace(os.sep, os.altsep)
 
     def hasStream(self):
         """
