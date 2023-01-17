@@ -190,7 +190,7 @@ class MXSIterDependencies(object):
 
 class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
     """
-    Overload of MXSValueEncoder used to serialize MXS scenes.
+    Overload of `MXSValueEncoder` used to serialize Max scenes.
     All MXS objects are stored via JSON references.
     The scene objects collection contains handle-object pairs to allow for referencing.
     To avoid recursion errors this encoder queues objects for serialization.
