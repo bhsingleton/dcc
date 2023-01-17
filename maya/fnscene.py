@@ -3,8 +3,8 @@ import os
 from enum import IntEnum
 from maya import cmds as mc
 from maya.api import OpenMaya as om
-from dcc.abstract import afnscene
-from dcc.maya.libs import dagutils
+from .libs import dagutils, sceneutils
+from ..abstract import afnscene
 
 import logging
 logging.basicConfig()
@@ -36,7 +36,7 @@ class FnScene(afnscene.AFnScene):
         :rtype: bool
         """
 
-        return len(mc.file(query=True, sceneName=True)) == 0
+        return sceneutils.isNewScene()
 
     def isSaveRequired(self):
         """
@@ -45,7 +45,7 @@ class FnScene(afnscene.AFnScene):
         :rtype: bool
         """
 
-        return mc.file(query=True, modified=True)
+        return sceneutils.isSaveRequired()
 
     def new(self):
         """
@@ -124,7 +124,7 @@ class FnScene(afnscene.AFnScene):
         :rtype: bool
         """
 
-        return mc.about(query=True, batch=True)
+        return sceneutils.isBatchMode()
 
     def currentFilename(self):
         """
@@ -133,7 +133,7 @@ class FnScene(afnscene.AFnScene):
         :rtype: str
         """
 
-        return os.path.split(self.currentFilePath())[-1]
+        return sceneutils.currentFilename()
 
     def currentFilePath(self):
         """
@@ -142,13 +142,7 @@ class FnScene(afnscene.AFnScene):
         :rtype: str
         """
 
-        if not self.isNewScene():
-
-            return os.path.normpath(mc.file(query=True, sceneName=True))
-
-        else:
-
-            return ''
+        return sceneutils.currentFilePath()
 
     def currentDirectory(self):
         """
@@ -157,7 +151,7 @@ class FnScene(afnscene.AFnScene):
         :rtype: str
         """
 
-        return os.path.split(self.currentFilePath())[0]
+        return sceneutils.currentDirectory()
 
     def currentProjectDirectory(self):
         """
@@ -166,7 +160,7 @@ class FnScene(afnscene.AFnScene):
         :rtype: str
         """
 
-        return os.path.normpath(mc.workspace(query=True, directory=True))
+        return sceneutils.currentProjectDirectory()
 
     def getStartTime(self):
         """
@@ -175,7 +169,7 @@ class FnScene(afnscene.AFnScene):
         :rtype: int
         """
 
-        return int(mc.playbackOptions(query=True, min=True))
+        return sceneutils.getStartTime()
 
     def setStartTime(self, startTime):
         """
@@ -185,7 +179,7 @@ class FnScene(afnscene.AFnScene):
         :rtype: None
         """
 
-        mc.playbackOptions(edit=True, min=startTime)
+        sceneutils.setStartTime(startTime)
 
     def getEndTime(self):
         """
@@ -194,7 +188,7 @@ class FnScene(afnscene.AFnScene):
         :rtype: int
         """
 
-        return int(mc.playbackOptions(query=True, max=True))
+        return sceneutils.getEndTime()
 
     def setEndTime(self, endTime):
         """
@@ -204,7 +198,7 @@ class FnScene(afnscene.AFnScene):
         :rtype: None
         """
 
-        mc.playbackOptions(edit=True, max=endTime)
+        sceneutils.setEndTime(endTime)
 
     def getTime(self):
         """
@@ -213,7 +207,7 @@ class FnScene(afnscene.AFnScene):
         :rtype: int
         """
 
-        return int(mc.currentTime(query=True))
+        return sceneutils.getTime()
 
     def setTime(self, time):
         """
@@ -223,7 +217,7 @@ class FnScene(afnscene.AFnScene):
         :rtype: None
         """
 
-        mc.currentTime(time, edit=True)
+        sceneutils.setTime(time)
 
     def enableAutoKey(self):
         """
@@ -232,7 +226,7 @@ class FnScene(afnscene.AFnScene):
         :rtype: None
         """
 
-        mc.autoKeyframe(state=True)
+        sceneutils.enableAutoKey()
 
     def disableAutoKey(self):
         """
@@ -241,7 +235,7 @@ class FnScene(afnscene.AFnScene):
         :rtype: None
         """
 
-        mc.autoKeyframe(state=False)
+        sceneutils.disableAutoKey()
 
     def suspendViewport(self):
         """
@@ -250,9 +244,7 @@ class FnScene(afnscene.AFnScene):
         :rtype: None
         """
 
-        if not mc.ogs(query=True, pause=True):
-
-            mc.ogs(pause=True)
+        sceneutils.suspendViewport()
 
     def resumeViewport(self):
         """
@@ -261,9 +253,7 @@ class FnScene(afnscene.AFnScene):
         :rtype: None
         """
 
-        if mc.ogs(query=True, pause=True):
-
-            mc.ogs(pause=True)
+        sceneutils.resumeViewport()
 
     def playblast(self, filePath=None, startFrame=None, endFrame=None):
         """
@@ -285,12 +275,7 @@ class FnScene(afnscene.AFnScene):
         :rtype: iter
         """
 
-        properties = mc.fileInfo(query=True)
-        numProperties = len(properties)
-
-        for i in range(0, numProperties, 2):
-
-            yield properties[i], properties[i + 1].encode('ascii').decode('unicode-escape')
+        return sceneutils.iterFileProperties()
 
     def setFileProperty(self, key, value):
         """
@@ -311,7 +296,7 @@ class FnScene(afnscene.AFnScene):
         :rtype: str
         """
 
-        return mc.upAxis(query=True, axis=True)
+        return sceneutils.currentUpAxis()
 
     def markDirty(self):
         """
@@ -320,7 +305,7 @@ class FnScene(afnscene.AFnScene):
         :rtype: None
         """
 
-        mc.file(modified=True)
+        sceneutils.markDirty()
 
     def markClean(self):
         """
@@ -329,7 +314,7 @@ class FnScene(afnscene.AFnScene):
         :rtype: None
         """
 
-        mc.file(modified=False)
+        sceneutils.markClean()
 
     def execute(self, string, asPython=True):
         """

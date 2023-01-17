@@ -9,7 +9,7 @@ log.setLevel(logging.INFO)
 
 def isNewScene():
     """
-    Method used to check if this is an untitled scene file.
+    Evaluates whether this is an untitled scene file.
 
     :rtype: bool
     """
@@ -19,7 +19,7 @@ def isNewScene():
 
 def isSaveRequired():
     """
-    Method used to check if the open scene file has changes that need to be saved.
+    Evaluates whether the open scene file has changes that need to be saved.
 
     :rtype: bool
     """
@@ -27,9 +27,19 @@ def isSaveRequired():
     return mc.file(query=True, modified=True)
 
 
+def isBatchMode():
+    """
+    Evaluates if the scene is running in batch mode.
+
+    :rtype: bool
+    """
+
+    return mc.about(query=True, batch=True)
+
+
 def currentFilePath():
     """
-    Convenience method used to retrieve the path of the open scene file.
+    Returns the path of the open scene file.
 
     :rtype: str
     """
@@ -45,12 +55,12 @@ def currentFilePath():
 
 def currentFilename():
     """
-    Convenience method used to retrieve the name of the open scene file.
+    Returns the name of the open scene file.
 
     :rtype: str
     """
 
-    return os.path.split(currentFilePath())[1]
+    return os.path.split(currentFilePath())[-1]
 
 
 def currentDirectory():
@@ -61,6 +71,192 @@ def currentDirectory():
     """
 
     return os.path.split(currentFilePath())[0]
+
+
+def currentProjectDirectory():
+    """
+    Returns the current project directory.
+
+    :rtype: str
+    """
+
+    return os.path.normpath(mc.workspace(query=True, directory=True))
+
+
+def currentUpAxis():
+    """
+    Returns the up-axis that the scene is set to.
+
+    :rtype: str
+    """
+
+    return mc.upAxis(query=True, axis=True)
+
+
+def currentUnits():
+    """
+    Returns the current scene units.
+
+    :rtype: Dict[str, str]
+    """
+
+    return {
+        'linear': mc.currentUnit(query=True, linear=True),
+        'angle': mc.currentUnit(query=True, angle=True),
+        'time': mc.currentUnit(query=True, time=True)
+    }
+
+
+def iterFileProperties():
+    """
+    Returns a generator that yields file properties as key-value pairs.
+
+    :rtype: iter
+    """
+
+    properties = mc.fileInfo(query=True)
+    numProperties = len(properties)
+
+    for i in range(0, numProperties, 2):
+
+        yield properties[i], properties[i + 1].encode('ascii').decode('unicode-escape')
+
+
+def markDirty():
+    """
+    Marks the scene as dirty which will prompt the user for a save upon close.
+
+    :rtype: None
+    """
+
+    mc.file(modified=True)
+
+
+def markClean():
+    """
+    Marks the scene as clean which will not prompt the user for a save upon close.
+
+    :rtype: None
+    """
+
+    mc.file(modified=False)
+
+
+def getStartTime():
+    """
+    Returns the current start time.
+
+    :rtype: int
+    """
+
+    return int(mc.playbackOptions(query=True, min=True))
+
+
+def setStartTime(startTime):
+    """
+    Updates the start time.
+
+    :type startTime: int
+    :rtype: None
+    """
+
+    mc.playbackOptions(edit=True, min=startTime)
+
+
+def getEndTime():
+    """
+    Returns the current end time.
+
+    :rtype: int
+    """
+
+    return int(mc.playbackOptions(query=True, max=True))
+
+
+def setEndTime(endTime):
+    """
+    Updates the end time.
+
+    :type endTime: int
+    :rtype: None
+    """
+
+    mc.playbackOptions(edit=True, max=endTime)
+
+
+def getAnimationRange():
+    """
+    Returns the current start and end time.
+
+    :rtype: Tuple[int, int]
+    """
+
+    return getStartTime(), getEndTime()
+
+
+def getTime():
+    """
+    Returns the current time.
+
+    :rtype: int
+    """
+
+    return int(mc.currentTime(query=True))
+
+
+def setTime(time):
+    """
+    Updates the current time.
+
+    :type time: int
+    :rtype: None
+    """
+
+    mc.currentTime(time, edit=True)
+
+
+def enableAutoKey():
+    """
+    Enables the auto key mode.
+
+    :rtype: None
+    """
+
+    mc.autoKeyframe(state=True)
+
+
+def disableAutoKey():
+    """
+    Disables the auto key mode.
+
+    :rtype: None
+    """
+
+    mc.autoKeyframe(state=False)
+
+
+def suspendViewport():
+    """
+    Pauses the current viewport from executing any redraws.
+
+    :rtype: None
+    """
+
+    if not mc.ogs(query=True, pause=True):
+
+        mc.ogs(pause=True)
+
+
+def resumeViewport():
+    """
+    Un-pauses the current viewport to resume redraws.
+
+    :rtype: None
+    """
+
+    if mc.ogs(query=True, pause=True):
+
+        mc.ogs(pause=True)
 
 
 def removeUserAttributes():
