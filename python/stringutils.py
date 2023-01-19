@@ -9,7 +9,7 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-__title__ = re.compile(r'([A-Z]?[a-z0-9]+)')
+__title__ = re.compile(r'([A-Z]?[a-z0-9]*)')
 __number__ = re.compile(r'(?:[+-])?(?:[0-9])+(?:\.{1}[0-9]+)?(?:e{1}\-{1}[0-9]+)?')
 __states__ = ('true', 'on', 'yes')
 
