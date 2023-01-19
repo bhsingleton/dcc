@@ -1,10 +1,8 @@
-import json
-
 from maya.api import OpenMaya as om
-from six.moves import collections_abc
 from itertools import chain
 from ..libs import dagutils
 from ...python import stringutils
+from ...json import psonparser
 
 import logging
 logging.basicConfig()
@@ -36,7 +34,7 @@ def findDataFunctionSet(apiType):
         raise TypeError('findDataFunctionSet() expects a unique api type (%s given)!' % apiType)
 
 
-class MDataEncoder(json.JSONEncoder):
+class MDataEncoder(psonparser.PSONEncoder):
     """
     Overload of `JSONEncoder` used to serialize Maya data.
     """
@@ -45,7 +43,7 @@ class MDataEncoder(json.JSONEncoder):
     __slots__ = ()
 
     __value_types__ = {
-        'MObject': 'serializeObject',
+        'MObject': 'serializeMObject',
         'MObjectArray': 'serializeArray',
         'MDagPath': 'serializeDagPath',
         'MDagPathArray': 'serializeArray',
@@ -92,11 +90,19 @@ class MDataEncoder(json.JSONEncoder):
         om.MFn.kNurbsSurfaceData: 'serializeNurbsSurfaceData',
         om.MFn.kMeshData: 'serializeMeshData'
     }
-
-    __builtin_types__ = (bool, int, float, str, collections_abc.Sequence, collections_abc.Mapping)
     # endregion
 
     # region Methods
+    def acceptsType(self, T):
+        """
+        Evaluates whether this serializer accepts the supplied type.
+
+        :type T: Callable
+        :rtype: bool
+        """
+
+        return T.__name__ in self.__value_types__
+
     def default(self, obj):
         """
         Returns a serializable object for the supplied value.
@@ -105,25 +111,24 @@ class MDataEncoder(json.JSONEncoder):
         :rtype: Any
         """
 
-        # Check if this object has delegate
+        # Check if encoder accepts type
         #
-        className = type(obj).__name__
-        funcName = self.__value_types__.get(className, '')
-        delegate = getattr(self, funcName, None)
+        cls = type(obj)
 
-        if callable(delegate):
+        if self.acceptsType(cls):
 
-            return delegate(obj)
+            # Pass type to delegate
+            #
+            delegate = self.__value_types__[cls.__name__]
+            func = getattr(self, delegate)
 
-        elif isinstance(obj, self.__builtin_types__) or obj is None:
-
-            return obj
+            return func(obj)
 
         else:
 
             return super(MDataEncoder, self).default(obj)
 
-    def serializeClass(self, wrapper):
+    def serializeWrapper(self, wrapper):
         """
         Returns a serializable object for the supplied class.
 
@@ -134,7 +139,7 @@ class MDataEncoder(json.JSONEncoder):
         cls = type(wrapper)
         return {'__class__': cls.__name__, '__module__': f'maya.api.{cls.__module__}'}  # TODO: Find a cleaner way to get the module path!
 
-    def serializeObject(self, obj):
+    def serializeMObject(self, obj):
         """
         Serializes the supplied Maya object into a json object.
 
@@ -170,7 +175,7 @@ class MDataEncoder(json.JSONEncoder):
         :rtype: dict
         """
 
-        obj = self.serializeClass(node)
+        obj = self.serializeWrapper(node)
         obj['args'] = [dagutils.getNodeName(node, includePath=True, includeNamespace=True)]
         obj['kwargs'] = {}
 
@@ -184,7 +189,7 @@ class MDataEncoder(json.JSONEncoder):
         :rtype: dict
         """
 
-        obj = self.serializeClass(dagPath)
+        obj = self.serializeWrapper(dagPath)
         obj['args'] = [dagPath.fullPathName()]
         obj['kwargs'] = {}
 
@@ -198,7 +203,7 @@ class MDataEncoder(json.JSONEncoder):
         :rtype: dict
         """
 
-        obj = self.serializeClass(distance)
+        obj = self.serializeWrapper(distance)
         obj['args'] = [distance.value]
         obj['kwargs'] = {'unit': distance.unit}
 
@@ -212,7 +217,7 @@ class MDataEncoder(json.JSONEncoder):
         :rtype: dict
         """
 
-        obj = self.serializeClass(angle)
+        obj = self.serializeWrapper(angle)
         obj['args'] = [angle.value]
         obj['kwargs'] = {'unit': angle.unit}
 
@@ -226,7 +231,7 @@ class MDataEncoder(json.JSONEncoder):
         :rtype: dict
         """
 
-        obj = self.serializeClass(time)
+        obj = self.serializeWrapper(time)
         obj['args'] = [time.value]
         obj['kwargs'] = {'unit': time.unit}
 
@@ -240,7 +245,7 @@ class MDataEncoder(json.JSONEncoder):
         :rtype: dict
         """
 
-        obj = self.serializeClass(array)
+        obj = self.serializeWrapper(array)
         obj['args'] = [self.default(obj) for obj in array]
         obj['kwargs'] = {}
 
@@ -254,7 +259,7 @@ class MDataEncoder(json.JSONEncoder):
         :rtype: dict
         """
 
-        obj = self.serializeClass(vector)
+        obj = self.serializeWrapper(vector)
         obj['args'] = list(vector)
         obj['kwargs'] = {}
 
@@ -268,7 +273,7 @@ class MDataEncoder(json.JSONEncoder):
         :rtype: dict
         """
 
-        obj = self.serializeClass(point)
+        obj = self.serializeWrapper(point)
         obj['args'] = list(point)
         obj['kwargs'] = {}
 
@@ -282,7 +287,7 @@ class MDataEncoder(json.JSONEncoder):
         :rtype: dict
         """
 
-        obj = self.serializeClass(eulerRotation)
+        obj = self.serializeWrapper(eulerRotation)
         obj['args'] = list(eulerRotation)
         obj['kwargs'] = {'order': eulerRotation.order}
 
@@ -296,7 +301,7 @@ class MDataEncoder(json.JSONEncoder):
         :rtype: dict
         """
 
-        obj = self.serializeClass(quat)
+        obj = self.serializeWrapper(quat)
         obj['args'] = list(quat)
         obj['kwargs'] = {}
 
@@ -310,7 +315,7 @@ class MDataEncoder(json.JSONEncoder):
         :rtype: dict
         """
 
-        obj = self.serializeClass(boundingBox)
+        obj = self.serializeWrapper(boundingBox)
         obj['args'] = [boundingBox.min, boundingBox.max]
         obj['kwargs'] = {}
 
@@ -324,7 +329,7 @@ class MDataEncoder(json.JSONEncoder):
         :rtype: dict
         """
 
-        obj = self.serializeClass(matrix)
+        obj = self.serializeWrapper(matrix)
         obj['args'] = [
             (matrix.getElement(0, 0), matrix.getElement(0, 1), matrix.getElement(0, 2), matrix.getElement(0, 3)),
             (matrix.getElement(1, 0), matrix.getElement(1, 1), matrix.getElement(1, 2), matrix.getElement(1, 3)),
@@ -343,7 +348,7 @@ class MDataEncoder(json.JSONEncoder):
         :rtype: dict
         """
 
-        obj = self.serializeClass(transform)
+        obj = self.serializeWrapper(transform)
         obj['args'] = []
         obj['kwargs'] = {
             'translation': transform.translation(),
@@ -367,7 +372,7 @@ class MDataEncoder(json.JSONEncoder):
         :rtype: dict
         """
 
-        obj = self.serializeClass(color)
+        obj = self.serializeWrapper(color)
         obj['args'] = list(color)
         obj['kwargs'] = {}
 
@@ -381,7 +386,7 @@ class MDataEncoder(json.JSONEncoder):
         :rtype: dict
         """
 
-        obj = self.serializeClass(uuid)
+        obj = self.serializeWrapper(uuid)
         obj['args'] = [uuid.asString()]
         obj['kwargs'] = {}
 
@@ -422,7 +427,7 @@ class MDataEncoder(json.JSONEncoder):
 
         # Serialize class
         #
-        obj = self.serializeClass(array)
+        obj = self.serializeWrapper(array)
 
         # Serialize curve parameters
         #
@@ -443,7 +448,7 @@ class MDataEncoder(json.JSONEncoder):
 
         # Serialize class
         #
-        obj = self.serializeClass(matrix)
+        obj = self.serializeWrapper(matrix)
 
         # Serialize curve parameters
         #
@@ -470,7 +475,7 @@ class MDataEncoder(json.JSONEncoder):
 
         # Serialize class
         #
-        obj = self.serializeClass(curve)
+        obj = self.serializeWrapper(curve)
 
         # Serialize curve parameters
         #
@@ -492,7 +497,7 @@ class MDataEncoder(json.JSONEncoder):
 
         # Serialize class
         #
-        obj = self.serializeClass(surface)
+        obj = self.serializeWrapper(surface)
 
         # Serialize surface parameters
         #
@@ -517,7 +522,7 @@ class MDataEncoder(json.JSONEncoder):
 
         # Serialize class
         #
-        obj = self.serializeClass(mesh)
+        obj = self.serializeWrapper(mesh)
 
         # Serialize mesh parameters
         #
@@ -532,7 +537,7 @@ class MDataEncoder(json.JSONEncoder):
     # endregion
 
 
-class MDataDecoder(json.JSONDecoder):
+class MDataDecoder(psonparser.PSONDecoder):
     """
     Overload of `JSONDecoder` used to deserialize Maya data.
     """
@@ -541,8 +546,9 @@ class MDataDecoder(json.JSONDecoder):
     __slots__ = ()
 
     __value_types__ = {
-        'MDagPath': 'deserializeDagPath',
-        'MTransformationMatrix': 'deserializeTransformationMatrix',
+        'MDagPath': 'deserializeMDagPath',
+        'MMatrix': 'deserializeMMatrix',
+        'MTransformationMatrix': 'deserializeMTransformationMatrix',
     }
 
     __data_types__ = {
@@ -559,21 +565,19 @@ class MDataDecoder(json.JSONDecoder):
         om.MFn.kNurbsSurfaceData: 'deserializeNurbsSurfaceData',
         om.MFn.kMeshData: 'deserializeMeshData'
     }
-
-    def __init__(self, *args, **kwargs):
-        """
-        Private method called after a new instance has been created.
-
-        :rtype: None
-        """
-
-        # Call parent method
-        #
-        kwargs['object_hook'] = self.default
-        super(MDataDecoder, self).__init__(*args, **kwargs)
     # endregion
 
     # region Methods
+    def acceptsObject(self, obj):
+        """
+        Evaluates whether this deserializer accepts the supplied object.
+
+        :type obj: dict
+        :rtype: bool
+        """
+
+        return obj.get('__module__', '').startswith('maya')
+
     def default(self, obj):
         """
         Returns a deserialized object from the supplied dictionary.
@@ -582,17 +586,25 @@ class MDataDecoder(json.JSONDecoder):
         :rtype: Any
         """
 
-        # Inspect api type
+        # Check if decoder accepts object
         #
-        apiType = obj.get('__api_type__', None)
+        if self.acceptsObject(obj):
 
-        if apiType is not None:
+            # Inspect api type
+            #
+            isMObject = obj.get('__api_type__', None) is not None
 
-            return self.deserializeObject(obj)
+            if isMObject:
+
+                return self.deserializeMObject(obj)
+
+            else:
+
+                return self.deserializeValue(obj)
 
         else:
 
-            return self.deserializeValue(obj)
+            return super(MDataDecoder, self).default(obj)
 
     def deserializeValue(self, obj):
         """
@@ -612,11 +624,12 @@ class MDataDecoder(json.JSONDecoder):
 
         # Check if class has delegate
         #
-        func = self.__value_types__.get(className, None)
+        funcName = self.__value_types__.get(className, '')
+        delegate = getattr(self, funcName, None)
 
-        if callable(func):
+        if callable(delegate):
 
-            return func(obj)
+            return delegate(obj)
 
         # Get associated constructor
         #
@@ -630,7 +643,7 @@ class MDataDecoder(json.JSONDecoder):
 
             raise TypeError('deserializeValue() expects a valid class (%s given)!' % className)
 
-    def deserializeDagPath(self, obj):
+    def deserializeMDagPath(self, obj):
         """
         Returns a deserialized dag path from the supplied object.
 
@@ -640,7 +653,17 @@ class MDataDecoder(json.JSONDecoder):
 
         return dagutils.getMDagPath(obj['args'][0])
 
-    def deserializeTransformationMatrix(self, obj):
+    def deserializeMMatrix(self, obj):
+        """
+        Returns a deserialized matrix from the supplied object.
+
+        :type obj: dict
+        :rtype: om.MMatrix
+        """
+
+        return om.MMatrix(obj['args'])
+
+    def deserializeMTransformationMatrix(self, obj):
         """
         Returns a deserialized transformation matrix from the supplied object.
 
@@ -661,7 +684,7 @@ class MDataDecoder(json.JSONDecoder):
 
         return transform
 
-    def deserializeObject(self, obj):
+    def deserializeMObject(self, obj):
         """
         Returns a deserialized Maya object from the supplied object.
 
