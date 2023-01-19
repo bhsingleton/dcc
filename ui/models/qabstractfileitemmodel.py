@@ -83,8 +83,8 @@ class QAbstractFileItemModel(QtCore.QAbstractItemModel):
         """
         Evaluates if the two supplied paths are the same.
 
-        :type path: str
-        :type otherPath: str
+        :type path: Union[str, qfilepath.QFilePath]
+        :type otherPath: Union[str, qfilepath.QFilePath]
         :rtype: bool
         """
 
@@ -96,36 +96,14 @@ class QAbstractFileItemModel(QtCore.QAbstractItemModel):
 
             return False
 
-    def paths(self):
-        """
-        Returns the top-level paths for this model.
-
-        :rtype: List[Path]
-        """
-
-        return self._paths
-
-    def setPaths(self, paths):
-        """
-        Updates the top-level paths for this model.
-
-        :type paths: List[Path]
-        :rtype: None
-        """
-
-        self.beginResetModel()
-        self._paths = [qfilepath.QFilePath(path) for path in paths]
-        self.endResetModel()
-
     def cwd(self):
         """
-        Returns the top-level directory.
-        If there are multiple directories then None is returned!
+        Returns the current working directory.
 
-        :rtype: str
+        :rtype: Union[qfilepath.QFilePath, None]
         """
 
-        return str(self._cwd)
+        return self._cwd
 
     def setCwd(self, cwd):
         """
@@ -135,10 +113,33 @@ class QAbstractFileItemModel(QtCore.QAbstractItemModel):
         :rtype: None
         """
 
-        if os.path.isdir(cwd) and not self.isSameFile(cwd, self._cwd):
+        cwd = qfilepath.QFilePath(cwd)
 
-            self._cwd = qfilepath.QFilePath(cwd)
+        if cwd is not None and not self.isSameFile(cwd, self._cwd):
+
+            self._cwd = cwd
             self.setPaths(self._cwd.children)
+
+    def paths(self):
+        """
+        Returns the top-level paths for this model.
+
+        :rtype: List[qfilepath.QFilePath]
+        """
+
+        return self._paths
+
+    def setPaths(self, paths):
+        """
+        Updates the top-level paths for this model.
+
+        :type paths: List[qfilepath.QFilePath]
+        :rtype: None
+        """
+
+        self.beginResetModel()
+        self._paths = list(filter(lambda path: path is not None, map(qfilepath.QFilePath, paths)))
+        self.endResetModel()
 
     def headerLabels(self):
         """
@@ -408,4 +409,23 @@ class QAbstractFileItemModel(QtCore.QAbstractItemModel):
         else:
 
             return super(QAbstractFileItemModel, self).headerData(section, orientation, role=role)
+
+    def refresh(self):
+        """
+        Refreshes the current working directory.
+
+        :rtype: None
+        """
+
+        # Check if cwd exists
+        #
+        if self._cwd is None:
+
+            return
+
+        # Check if paths require updating
+        #
+        if len(self._cwd.children) != len(self._paths):
+
+            self.setPaths(self._cwd.children)
     # endregion

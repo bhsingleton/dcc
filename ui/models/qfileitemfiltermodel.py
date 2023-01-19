@@ -130,8 +130,9 @@ class QFileItemFilterModel(QtCore.QSortFilterProxyModel):
         index = sourceModel.index(row, 0, parent=parent)
         path = sourceModel.pathFromIndex(index)
 
+        # Check if path meets filtering criteria
+        #
         fileMasks = self.fileMasks()
-        extension = path.extension.lstrip('.')
 
         if self.ignoreSymLinks() and path.isLink():
 
@@ -141,7 +142,7 @@ class QFileItemFilterModel(QtCore.QSortFilterProxyModel):
 
             return False
 
-        elif extension not in fileMasks and (not stringutils.isNullOrEmpty(fileMasks) and not stringutils.isNullOrEmpty(extension)):
+        elif path.extension not in fileMasks and not any(map(stringutils.isNullOrEmpty, (path.extension, fileMasks))):
 
             return False
 

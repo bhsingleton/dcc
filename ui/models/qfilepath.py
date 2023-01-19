@@ -1,6 +1,5 @@
 import os
 import stat
-import win32api
 
 from Qt import QtCore, QtWidgets
 
@@ -41,7 +40,7 @@ class QFilePath(object):
 
         if not os.path.exists(absolutePath):
 
-            raise TypeError('__new__() expects a valid path (%s given)!' % absolutePath)
+            return None
 
         # Check if instance already exists for path
         #
@@ -75,13 +74,22 @@ class QFilePath(object):
 
         # Declare private variables
         #
-        self._path = win32api.GetLongPathName(win32api.GetShortPathName(path))
+        self._path = os.path.normpath(os.path.expandvars(path))
         self._name = os.path.basename(self._path)
-        self._basename, self._extension = os.path.splitext(self._name)
-        self._icon = None
+        self._basename, self._extension = '', ''
         self._stat = os.stat(self._path)
         self._parent = None
         self._children = None
+        self._icon = None
+
+        if os.path.isfile(self._path):
+
+            name, extension = os.path.splitext(self._name)
+            self._basename, self._extension = name, extension.lstrip('.')
+
+        else:
+
+            self._basename, self._extension = self._name, ''
 
     def __hash__(self):
         """
