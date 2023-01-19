@@ -330,7 +330,7 @@ def iterChannelBoxPlugs(node):
         #
         if plug.isCompound and not plug.isArray:
 
-            yield from iterChildren(plug, channelBox=True)
+            yield from iterChildren(plug, writable=True, keyable=True)
 
         elif plug.isChannelBox:
 
@@ -341,46 +341,14 @@ def iterChannelBoxPlugs(node):
             continue
 
 
-def walk(plug, writable=False, channelBox=False, keyable=False):
-    """
-    Returns a generator that yields descendants from the supplied plug.
-
-    :type plug: om.MPlug
-    :type writable: bool
-    :type channelBox: bool
-    :type keyable: bool
-    :rtype: iter
-    """
-
-    elements = list(iterElements(plug, writable=writable))
-    children = list(iterChildren(plug, writable=writable, channelBox=channelBox, keyable=keyable))
-    queue = deque(elements + children)
-
-    while len(queue):
-
-        plug = queue.popleft()
-        yield plug
-
-        if plug.isArray and not plug.isElement:
-
-            queue.extend(list(iterElements(plug, writable=writable)))
-
-        elif plug.isCompound:
-
-            queue.extend(list(iterChildren(plug, writable=writable, channelBox=channelBox, keyable=keyable)))
-
-        else:
-
-            continue
-
-
-def iterElements(plug, writable=False):
+def iterElements(plug, writable=False, nonDefault=False):
     """
     Returns a generator that yields all elements from the supplied plug.
     This generator only works on array plugs and not elements!
 
     :type plug: om.MPlug
     :type writable: bool
+    :type nonDefault: bool
     :rtype: iter
     """
 
@@ -400,21 +368,27 @@ def iterElements(plug, writable=False):
         #
         element = plug.elementByPhysicalIndex(physicalIndex)
 
-        if writable and not element.isFreeToChange():
+        if writable and not (element.isFreeToChange() == om.MPlug.kFreeToChange):
+
+            continue
+
+        # Check if element is in non-default
+        #
+        if nonDefault and element.isDefaultValue:
 
             continue
 
         yield element
 
 
-def iterChildren(plug, writable=False, channelBox=False, keyable=False):
+def iterChildren(plug, writable=False, nonDefault=False, keyable=False):
     """
-    Returns a generator that yields all children from the supplied plug.
-    This generator only works on compound plugs!
+    Returns a generator that yields the children from the supplied plug.
+    If the plug is not compound then no children are yielded!
 
     :type plug: om.MPlug
     :type writable: bool
-    :type channelBox: bool
+    :type nonDefault: bool
     :type keyable: bool
     :rtype: iter
     """
@@ -435,13 +409,13 @@ def iterChildren(plug, writable=False, channelBox=False, keyable=False):
         #
         child = plug.child(i)
 
-        if writable and not child.isFreeToChange():
+        if writable and not (child.isFreeToChange() == om.MPlug.kFreeToChange):
 
             continue
 
-        # Check if child is in channel-box
+        # Check if child is non-default
         #
-        if channelBox and not child.isChannelBox:
+        if nonDefault and child.isDefaultValue:
 
             continue
 
@@ -452,6 +426,43 @@ def iterChildren(plug, writable=False, channelBox=False, keyable=False):
             continue
 
         yield child
+
+
+def walk(plug, writable=False, channelBox=False, keyable=False):
+    """
+    Returns a generator that yields descendants from the supplied plug.
+
+    :type plug: om.MPlug
+    :type writable: bool
+    :type channelBox: bool
+    :type keyable: bool
+    :rtype: iter
+    """
+
+    # Iterate through plug elements/children
+    #
+    elements = list(iterElements(plug, writable=writable))
+    children = list(iterChildren(plug, writable=writable, channelBox=channelBox, keyable=keyable))
+    queue = deque(elements + children)
+
+    while len(queue):
+
+        # Evaluate plug type
+        #
+        plug = queue.popleft()
+        yield plug
+
+        if plug.isArray and not plug.isElement:
+
+            queue.extend(list(iterElements(plug, writable=writable)))
+
+        elif plug.isCompound:
+
+            queue.extend(list(iterChildren(plug, writable=writable, channelBox=channelBox, keyable=keyable)))
+
+        else:
+
+            continue
 
 
 def removeMultiInstances(plug, indices):
