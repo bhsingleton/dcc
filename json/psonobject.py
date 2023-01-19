@@ -178,7 +178,7 @@ class PSONObject(with_metaclass(ABCMeta, collections_abc.MutableMapping)):
     @classproperty
     def className(cls):
         """
-        Getter method used to return the class name.
+        Getter method that returns the class name.
 
         :rtype: str
         """
@@ -188,7 +188,7 @@ class PSONObject(with_metaclass(ABCMeta, collections_abc.MutableMapping)):
     @classproperty
     def moduleName(cls):
         """
-        Getter method used to return the class module.
+        Getter method that returns the class module.
 
         :rtype: str
         """
@@ -223,7 +223,7 @@ class PSONObject(with_metaclass(ABCMeta, collections_abc.MutableMapping)):
         """
         Evaluates whether the given type is json compatible.
 
-        :type T: Union[type, object, tuple]
+        :type T: Union[Callable, Tuple[Callable]]
         :rtype: bool
         """
 
@@ -239,9 +239,9 @@ class PSONObject(with_metaclass(ABCMeta, collections_abc.MutableMapping)):
     @classmethod
     def iterBases(cls):
         """
-        Returns a generator that yields all subclasses that make up this class.
+        Returns a generator that yields the subclasses from this class.
 
-        :rtype: Iterator[class]
+        :rtype: Iterator[Callable]
         """
 
         return reversed(inspect.getmro(cls))
@@ -249,7 +249,7 @@ class PSONObject(with_metaclass(ABCMeta, collections_abc.MutableMapping)):
     @classmethod
     def iterProperties(cls, readable=False, writable=True, deletable=False):
         """
-        Returns a generator for iterating over properties derived from this class.
+        Returns a generator that yields the properties from this class.
 
         :type readable: bool
         :type writable: bool
@@ -295,7 +295,7 @@ class PSONObject(with_metaclass(ABCMeta, collections_abc.MutableMapping)):
     @classmethod
     def properties(cls, readable=False, writable=True, deletable=False):
         """
-        Returns a dictionary of properties derived from this class.
+        Returns a dictionary of properties from this class.
 
         :type readable: bool
         :type writable: bool
