@@ -3,7 +3,8 @@ import maya.api.OpenMaya as om
 
 from dcc import fnnode
 from dcc.abstract import afnmesh
-from dcc.maya.libs import dagutils, meshutils
+from dcc.maya.libs import dagutils, transformutils, meshutils
+from dcc.dataclasses import vector, colour
 
 import logging
 logging.basicConfig()
@@ -37,6 +38,23 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
         # Call parent method
         #
         super(FnMesh, self).setObject(obj)
+
+    def objectMatrix(self):
+        """
+        Returns the object matrix for this mesh.
+
+        :rtype: om.MMatrix
+        """
+
+        obj = self.object()
+
+        if obj.hasFn(om.MFn.kDagNode):
+
+            return transformutils.getWorldMatrix(obj)
+
+        else:
+
+            return om.MMatrix()
 
     def triMesh(self):
         """
@@ -98,7 +116,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
         """
         Returns a list of selected vertex indices.
 
-        :rtype: list[int]
+        :rtype: List[int]
         """
 
         component = self.component()
@@ -115,7 +133,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
         """
         Returns a list of selected vertex indices.
 
-        :rtype: list[int]
+        :rtype: List[int]
         """
 
         component = self.component()
@@ -132,7 +150,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
         """
         Returns a list of selected vertex indices.
 
-        :rtype: list[int]
+        :rtype: List[int]
         """
 
         component = self.component()
@@ -145,12 +163,13 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
             return []
 
-    def iterVertices(self, *indices):
+    def iterVertices(self, *indices, worldSpace=False):
         """
         Returns a generator that yield vertex points.
         If no arguments are supplied then all vertices will be yielded.
 
-        :rtype: iter
+        :type worldSpace: bool
+        :rtype: Iterator[vector.Vector]
         """
 
         # Evaluate arguments
@@ -164,20 +183,25 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
         # Iterate through vertices
         #
         iterVertices = om.MItMeshVertex(self.object())
+        objectMatrix = self.objectMatrix()
 
         for index in indices:
 
             iterVertices.setIndex(index)
             point = iterVertices.position()
 
-            yield point.x, point.y, point.z
+            if worldSpace:
+
+                point = point * objectMatrix
+
+            yield vector.Vector(point.x, point.y, point.z)
 
     def iterVertexNormals(self, *indices):
         """
         Returns a generator that yields vertex normals.
         If no arguments are supplied then all vertex normals will be yielded.
 
-        :rtype: iter
+        :rtype: Iterator[vector.Vector]
         """
 
         # Evaluate arguments
@@ -197,7 +221,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
             iterVertices.setIndex(index)
             normal = iterVertices.getNormal()
 
-            yield normal.x, normal.y, normal.z
+            yield vector.Vector(normal.x, normal.y, normal.z)
 
     def hasEdgeSmoothings(self):
         """
@@ -212,7 +236,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
         """
         Returns a generator that yields edge smoothings.
 
-        :rtype: iter
+        :rtype: Iterator[bool]
         """
 
         # Evaluate arguments
@@ -254,7 +278,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
         """
         Returns a generator that yields face smoothing groups.
 
-        :rtype: iter
+        :rtype: Iterator[int]
         """
 
         return iter([])
@@ -264,7 +288,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
         Returns a generator that yields face vertex indices.
         If no arguments are supplied then all face vertex indices will be yielded.
 
-        :rtype: iter
+        :rtype: Iterator[List[int]]
         """
 
         # Evaluate arguments
@@ -290,7 +314,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
         """
         Returns a generator that yields face-vertex indices for the specified faces.
 
-        :rtype: Iterator[List[Tuple[float, float, float]]]
+        :rtype: Iterator[List[vector.Vector]]
         """
 
         # Evaluate arguments
@@ -308,14 +332,14 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
         for index in indices:
 
             normals = fnMesh.getFaceVertexNormals(index)
-            yield [(normal.x, normal.y, normal.z) for normal in normals]
+            yield [vector.Vector(normal.x, normal.y, normal.z) for normal in normals]
 
     def iterFaceCenters(self, *indices):
         """
         Returns a generator that yields face centers.
         If no arguments are supplied then all face centers will be yielded.
 
-        :rtype: iter
+        :rtype: Iterator[vector.Vector]
         """
 
         # Evaluate arguments
@@ -335,14 +359,14 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
             iterPolygons.setIndex(index)
             center = iterPolygons.center()
 
-            yield center.x, center.y, center.z
+            yield vector.Vector(center.x, center.y, center.z)
 
     def iterFaceNormals(self, *indices):
         """
         Returns a generator that yields face normals.
         If no arguments are supplied then all face normals will be yielded.
 
-        :rtype: iter
+        :rtype: Iterator[vector.Vector]
         """
 
         # Evaluate arguments
@@ -363,14 +387,14 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
             normals = iterPolygons.getNormals()
             normal = sum(normals) / len(normals)
 
-            yield normal.x, normal.y, normal.z
+            yield vector.Vector(normal.x, normal.y, normal.z)
 
     def iterFaceMaterialIndices(self, *indices):
         """
         Returns a generator that yields face material indices.
         If no arguments are supplied then all face-material indices will be yielded.
 
-        :rtype: iter
+        :rtype: Iterator[int]
         """
 
         # Evaluate arguments
@@ -433,7 +457,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
         return materials
 
-    def iterTriangleVertexIndices(self, *args):
+    def iterTriangleVertexIndices(self, *indices):
         """
         Returns a generator that yields face triangle vertex/point pairs.
 
@@ -445,21 +469,21 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
         faceTriangleIndices = self.faceTriangleIndices()
         triangleFaceIndices = self.triangleFaceIndices()
 
-        numArgs = len(args)
+        numIndices = len(indices)
 
-        if numArgs == 0:
+        if numIndices == 0:
 
             numTriangles = len(triangleFaceIndices)
-            args = self.range(numTriangles)
+            indices = self.range(numTriangles)
 
         # Iterate through triangles
         #
         fnMesh = om.MFnMesh(self.object())
 
-        for arg in args:
+        for index in indices:
 
-            faceIndex = triangleFaceIndices[arg]
-            localIndex = faceTriangleIndices[faceIndex].index(arg)
+            faceIndex = triangleFaceIndices[index]
+            localIndex = faceTriangleIndices[faceIndex].index(index)
 
             vertexIndices = fnMesh.getPolygonTriangleVertices(faceIndex, localIndex)
 
@@ -573,7 +597,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
         Returns a generator that yields face-vertex tangents and binormals for the specified channel.
 
         :type channel: int
-        :rtype: Iterator[List[Tuple[float, float, float]], List[Tuple[float, float, float]]]
+        :rtype: Iterator[List[vector.Vector], List[vector.Vector]]
         """
 
         # Evaluate arguments
@@ -594,7 +618,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
             tangents = fnMesh.getFaceVertexTangents(index, uvSet=uvSet)
             binormals = fnMesh.getFaceVertexBinormals(index, uvSet=uvSet)
 
-            yield list(map(tuple, tangents)), list(map(tuple, binormals))
+            yield list(map(vector.Vector, tangents)), list(map(vector.Vector, binormals))
 
     def numColorSets(self):
         """
@@ -638,7 +662,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
         Returns a generator that yields index-color pairs for the specified vertex color channel.
 
         :type channel: int
-        :rtype: Iterator[Tuple[float, float, float, float]]
+        :rtype: Iterator[colour.Colour]
         """
 
         colorSet = self.getColorSetName(channel)
@@ -646,7 +670,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
         for color in colors:
 
-            yield color.r, color.g, color.b, color.a
+            yield colour.Colour(color.r, color.g, color.b, color.a)
 
     def iterFaceVertexColorIndices(self, *indices, channel=0):
         """

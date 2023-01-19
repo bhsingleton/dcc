@@ -138,7 +138,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
         Returns a list of selected vertex indices.
 
-        :rtype: list[int]
+        :rtype: List[int]
         """
 
         pass
@@ -148,7 +148,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
         Returns a list of selected vertex indices.
 
-        :rtype: list[int]
+        :rtype: List[int]
         """
 
         pass
@@ -158,18 +158,19 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
         Returns a list of selected vertex indices.
 
-        :rtype: list[int]
+        :rtype: List[int]
         """
 
         pass
 
     @abstractmethod
-    def iterVertices(self, *indices):
+    def iterVertices(self, *indices, worldSpace=False):
         """
         Returns a generator that yields vertex points.
         If no arguments are supplied then all vertex points will be yielded.
 
-        :rtype: iter
+        :type worldSpace: bool
+        :rtype: Iterator[vector.Vector]
         """
 
         pass
@@ -178,7 +179,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
         Returns a list of vertex points.
 
-        :rtype: list[tuple[float, float, float]]
+        :rtype: List[vector.Vector]
         """
 
         return list(self.iterVertices(*indices))
@@ -189,7 +190,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         Returns a generator that yields vertex normals.
         If no arguments are supplied then all vertex normals will be yielded.
 
-        :rtype: iter
+        :rtype: Iterator[vector.Vector]
         """
 
         pass
@@ -198,7 +199,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
         Returns a list of vertex normals.
 
-        :rtype: list[tuple[float, float, float]]
+        :rtype: List[vector.Vector]
         """
 
         return list(self.iterVertexNormals(*indices))
@@ -218,7 +219,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
         Returns a generator that yields edge smoothings for the specified indices.
 
-        :rtype: iter
+        :rtype: Iterator[bool]
         """
 
         pass
@@ -227,7 +228,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
         Returns a list of edge of smoothings for the specified indices.
 
-        :rtype: List[int]
+        :rtype: List[bool]
         """
 
         return list(self.iterEdgeSmoothings(*indices))
@@ -257,7 +258,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
         Returns a generator that yields face smoothing groups for the specified indices.
 
-        :rtype: iter
+        :rtype: Iterator[int]
         """
 
         pass
@@ -296,7 +297,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
         Returns a generator that yields face-vertex indices for the specified faces.
 
-        :rtype: Iterator[List[Tuple[float, float, float]]]
+        :rtype: Iterator[List[vector.Vector]]
         """
 
         pass
@@ -305,7 +306,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
         Returns a list of face-vertex indices for the specified faces.
 
-        :rtype: List[List[Tuple[float, float, float]]]
+        :rtype: List[List[vector.Vector]]
         """
 
         return list(self.iterFaceVertexNormals(*indices))
@@ -358,7 +359,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
         Returns a generator that yields face-triangle indices.
 
-        :rtype: iter
+        :rtype: Iterator[List[int]]
         """
 
         # Evaluate arguments
@@ -414,7 +415,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         Returns a generator that yields face centers.
         If no arguments are supplied then all face centers will be yielded.
 
-        :rtype: iter
+        :rtype: Iterator[vector.Vector]
         """
 
         pass
@@ -423,7 +424,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
         Returns a list of face centers.
 
-        :rtype: Sequence[List[float, float, float]]
+        :rtype: List[vector.Vector]
         """
 
         return list(self.iterFaceCenters(*indices))
@@ -434,7 +435,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         Returns a generator that yields face normals.
         If no arguments are supplied then all face normals will be yielded.
 
-        :rtype: iter
+        :rtype: Iterator[vector.Vector]
         """
 
         pass
@@ -443,7 +444,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
         Returns a list of face normals.
 
-        :rtype: Sequence[List[float, float, float]]
+        :rtype: List[vector.Vector]
         """
 
         return list(self.iterFaceNormals(*indices))
@@ -454,7 +455,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         Returns a generator that yields face material indices.
         If no arguments are supplied then all face-material indices will be yielded.
 
-        :rtype: iter
+        :rtype: Iterator[int]
         """
 
         pass
@@ -484,11 +485,11 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
         Returns the centroid of the given triangle.
 
-        :type points: List[List[float, float, float]]
-        :rtype: List[float, float, float]
+        :type points: List[vector.Vector]
+        :rtype: vector.Vector
         """
 
-        return (sum(numpy.array(points)) / len(points)).tolist()
+        return sum(numpy.array(points)) / len(points)
 
     @abstractmethod
     def numUVSets(self):
@@ -537,7 +538,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         Returns a generator that yields UV face-vertex indices from the specified UV channel.
 
         :type channel: int
-        :rtype: iter
+        :rtype: Iterator[List[int]]
         """
 
         pass
@@ -557,7 +558,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         Returns a generator that yields face-vertex tangents and binormals for the specified channel.
 
         :type channel: int
-        :rtype: Iterator[Tuple[int]]
+        :rtype: Iterator[List[vector.Vector]]
         """
 
         pass
@@ -600,31 +601,31 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
         Returns the distance between the two points.
 
-        :type start: tuple[float, float, float]
-        :type end: tuple[float, float, float]
+        :type start: Tuple[float, float, float]
+        :type end: Tuple[float, float, float]
         :rtype: float
         """
 
         return math.sqrt(sum([math.pow((y - x), 2.0) for (x, y) in zip(start, end)]))
 
-    def distanceBetweenVertices(self, *args):
+    def distanceBetweenVertices(self, *indices):
         """
         Evaluates the distance between the supplied vertices.
 
         :rtype: float
         """
 
-        numArgs = len(args)
-        points = self.vertices(*args)
+        numIndices = len(indices)
+        points = self.vertices(*indices)
 
-        return sum([self.distanceBetween(points[x], points[x+1]) for x in range(numArgs - 1)])
+        return sum([self.distanceBetween(points[i], points[i+1]) for i in range(numIndices - 1)])
 
     def shortestPathBetweenVertices(self, *args):
         """
         Returns the shortest paths between the supplied vertices.
 
-        :type args: tuple[int]
-        :rtype: list[list[int]]
+        :type args: Tuple[int]
+        :rtype: List[List[int]]
         """
 
         # Check if we have enough arguments
@@ -647,7 +648,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         :type startVertex: int
         :type endVertex: int
         :type maxIterations: int
-        :rtype: deque[int]
+        :rtype: deque
         """
 
         # Iterate until we find a complete path
@@ -696,10 +697,10 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         Mirrors the supplied list of vertex indices.
         If no match is found then no key-value pair is created!
 
-        :type vertexIndices: list[int]
+        :type vertexIndices: List[int]
         :type axis: int
         :type tolerance: float
-        :rtype: dict[int:int]
+        :rtype: Dict[int, int]
         """
 
         # Check value type
@@ -732,8 +733,8 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
         Returns a list of the closest connected vertex indices.
 
-        :type vertexIndices: list[int]
-        :rtype: dict[int:int]
+        :type vertexIndices: List[int]
+        :rtype: Dict[int, int]
         """
 
         pass
@@ -771,7 +772,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         Returns the faces that are closest to the given points.
         An optional list of faces can be used to limit the range of centroids considered.
 
-        :type points: List[List[float, float, float]]
+        :type points: List[Tuple[float, float, float]]
         :type faceIndices: List[int]
         :rtype: int
         """
@@ -802,12 +803,11 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         :type point: numpy.array
         :type triangle: numpy.array
-        :rtype: List[float, float, float]
+        :rtype: Tuple[float, float, float]
         """
 
         # Get edge vectors
         #
-        point = point
         p0, p1, p2 = triangle
 
         v0 = p1 - p0
@@ -906,7 +906,6 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
         Returns the faces that are closest to the given points.
         An optional list of faces can be used to limit the range of surfaces considered.
-        The returns values are organized by: triangleIndex, hitPoint
 
         :type points: List[List[float, float, float]]
         :type faceIndices: List[int]
@@ -933,7 +932,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         tree = cKDTree(triangleCentroids)
         distances, indices = tree.query(points)
 
-        # Project points onto closest triangles
+        # Project points onto the closest triangles
         # Remember to use the triangle map to resolve the local indices!
         #
         closestTriangles = [triangleMap[index] for index in indices]

@@ -4,6 +4,7 @@ from six import integer_types
 from dcc import fnnode
 from dcc.abstract import afnmesh
 from dcc.max.libs import wrapperutils, meshutils, arrayutils
+from dcc.dataclasses import vector
 
 import logging
 logging.basicConfig()
@@ -63,6 +64,23 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
             raise TypeError('setObject() expects a valid MAXWrapper (%s given)!' % type(obj).__name__)
 
+    def objectTransform(self):
+        """
+        Returns the object transform for this mesh.
+
+        :rtype: pymxs.runtime.Matrix3
+        """
+
+        obj = self.object()
+
+        if pymxs.runtime.isValidNode(obj):
+
+            return obj.objectTransform
+
+        else:
+
+            return pymxs.runtime.Matrix3(1)
+
     def triMesh(self):
         """
         Returns the triangulated mesh data object for this mesh.
@@ -70,15 +88,8 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
         :rtype: pymxs.MXSWrapperBase
         """
 
-        obj = self.baseObject()
-
-        if pymxs.runtime.isProperty(obj, 'mesh'):
-
-            return obj.mesh
-
-        else:
-
-            return obj
+        baseObject = self.baseObject()
+        return getattr(baseObject, 'mesh', baseObject)
 
     def numVertices(self):
         """
@@ -111,7 +122,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
         """
         Returns a list of selected vertex indices.
 
-        :rtype: list[int]
+        :rtype: List[int]
         """
 
         return meshutils.getSelectedVertices(self.object())
@@ -120,7 +131,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
         """
         Returns a list of selected edge indices.
 
-        :rtype: list[int]
+        :rtype: List[int]
         """
 
         return meshutils.getSelectedEdges(self.object())
@@ -129,34 +140,43 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
         """
         Returns a list of selected face indices.
 
-        :rtype: list[int]
+        :rtype: List[int]
         """
 
         meshutils.getSelectedFaces(self.object())
 
-    def iterVertices(self, *indices):
+    def iterVertices(self, *indices, worldSpace=False):
         """
         Returns a generator that yields vertex points.
         If no arguments are supplied then all vertex points will be yielded.
 
-        :rtype: iter
+        :type worldSpace: bool
+        :rtype: Iterator[vector.Vector]
         """
+
+        # Iterate through vertices
+        #
+        objectTransform = self.objectTransform()
 
         for point in meshutils.iterVertices(self.baseObject(), indices=indices):
 
-            yield point.x, point.y, point.z
+            if worldSpace:
+
+                point = point * objectTransform
+
+            yield vector.Vector(point.x, point.y, point.z)
 
     def iterVertexNormals(self, *indices):
         """
         Returns a generator that yields vertex normals.
         If no arguments are supplied then all vertex normals will be yielded.
 
-        :rtype: iter
+        :rtype: Iterator[vector.Vector]
         """
 
         for normal in meshutils.iterVertexNormals(self.baseObject(), indices=indices):
 
-            yield normal.x, normal.y, normal.z
+            yield vector.Vector(normal.x, normal.y, normal.z)
 
     def hasEdgeSmoothings(self):
         """
@@ -171,7 +191,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
         """
         Returns a generator that yields edge smoothings.
 
-        :rtype: iter
+        :rtype: Iterator[bool]
         """
 
         return iter([])
@@ -198,7 +218,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
         """
         Returns a generator that yields face smoothing groups.
 
-        :rtype: iter
+        :rtype: Iterator[int]
         """
 
         return meshutils.iterSmoothingGroups(self.baseObject(), indices=indices)
@@ -208,7 +228,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
         Returns a generator that yields face vertex indices.
         If no arguments are supplied then all face vertex indices will be yielded.
 
-        :rtype: iter
+        :rtype: Iterator[List[int]]
         """
 
         return meshutils.iterFaceVertexIndices(self.baseObject(), indices=indices)
@@ -217,31 +237,31 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
         """
         Returns a generator that yields face-vertex indices for the specified faces.
 
-        :rtype: Iterator[List[Tuple[float, float, float]]]
+        :rtype: Iterator[List[vector.Vector]]
         """
 
-        for normal in meshutils.iterFaceVertexNormals(self.baseObject(), indices=indices):
+        for normals in meshutils.iterFaceVertexNormals(self.baseObject(), indices=indices):
 
-            yield normal.x, normal.y, normal.z
+            yield [vector.Vector(normal.x, normal.y, normal.z) for normal in normals]
 
     def iterFaceCenters(self, *indices):
         """
         Returns a generator that yields face centers.
         If no arguments are supplied then all face centers will be yielded.
 
-        :rtype: iter
+        :rtype: Iterator[vector.Vector]
         """
 
         for point in meshutils.iterFaceCenters(self.baseObject(), indices=indices):
 
-            yield point.x, point.y, point.z
+            yield vector.Vector(point.x, point.y, point.z)
 
     def iterFaceNormals(self, *indices):
         """
         Returns a generator that yields face normals.
         If no arguments are supplied then all face normals will be yielded.
 
-        :rtype: iter
+        :rtype: Iterator[vector.Vector]
         """
 
         for normal in meshutils.iterFaceNormals(self.baseObject(), indices=indices):
