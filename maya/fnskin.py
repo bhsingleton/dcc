@@ -19,9 +19,8 @@ class FnSkin(fnnode.FnNode, afnskin.AFnSkin):
     """
 
     __slots__ = ('_transform', '_shape', '_intermediateObject')
-    __loaded__ = mc.pluginInfo('TransferPaintWeightsCmd', query=True, loaded=True)
-    __colorsetname__ = 'paintWeightsColorSet1'
-    __colorramp__ = '1,0,0,1,1,1,0.5,0,0.8,1,1,1,0,0.6,1,0,1,0,0.4,1,0,0,1,0,1'
+    __color_set_name__ = 'paintWeightsColorSet1'
+    __color_ramp__ = '1,0,0,1,1,1,0.5,0,0.8,1,1,1,0,0.6,1,0,1,0,0.4,1,0,0,1,0,1'
 
     def __init__(self, *args, **kwargs):
         """
@@ -215,7 +214,7 @@ class FnSkin(fnnode.FnNode, afnskin.AFnSkin):
         :rtype: bool
         """
 
-        return cls.__loaded__
+        return mc.pluginInfo('TransferPaintWeightsCmd', query=True, loaded=True)
 
     def showColors(self):
         """
@@ -247,10 +246,10 @@ class FnSkin(fnnode.FnNode, afnskin.AFnSkin):
         fnMesh = om.MFnMesh(intermediateObject)
         colorSetNames = fnMesh.getColorSetNames()
 
-        if self.__colorsetname__ not in colorSetNames:
+        if self.__color_set_name__ not in colorSetNames:
 
-            fnMesh.createColorSet(self.__colorsetname__, False)
-            fnMesh.setCurrentColorSetName(self.__colorsetname__)
+            fnMesh.createColorSet(self.__color_set_name__, False)
+            fnMesh.setCurrentColorSetName(self.__color_set_name__)
 
         # Set shape attributes
         #
@@ -311,9 +310,9 @@ class FnSkin(fnnode.FnNode, afnskin.AFnSkin):
         fnMesh.setObject(intermediateObject)
         colorSetNames = fnMesh.getColorSetNames()
 
-        if self.__colorsetname__ in colorSetNames:
+        if self.__color_set_name__ in colorSetNames:
 
-            fnMesh.deleteColorSet(self.__colorsetname__)
+            fnMesh.deleteColorSet(self.__color_set_name__)
 
     def invalidateColors(self):
         """
@@ -342,14 +341,14 @@ class FnSkin(fnnode.FnNode, afnskin.AFnSkin):
         #
         fnMesh = om.MFnMesh(intermediateObject)
 
-        if fnMesh.currentColorSetName() == self.__colorsetname__:
+        if fnMesh.currentColorSetName() == self.__color_set_name__:
 
             mc.dgdirty('%s.paintTrans' % self.name())
 
             mc.transferPaintWeights(
                 '%s.paintWeights' % self.name(),
                 fnMesh.fullPathName(),
-                colorRamp=self.__colorramp__
+                colorRamp=self.__color_ramp__
             )
 
     def iterInfluences(self):
