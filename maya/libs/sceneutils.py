@@ -53,14 +53,23 @@ def currentFilePath():
         return ''
 
 
-def currentFilename():
+def currentFilename(includeExtension=True):
     """
     Returns the name of the open scene file.
 
+    :type includeExtension: bool
     :rtype: str
     """
 
-    return os.path.split(currentFilePath())[-1]
+    directory, fileName = os.path.split(currentFilePath())
+
+    if includeExtension:
+
+        return fileName
+
+    else:
+
+        return os.path.splitext(fileName)[0]
 
 
 def currentDirectory():
@@ -105,6 +114,25 @@ def currentUnits():
         'angle': mc.currentUnit(query=True, angle=True),
         'time': mc.currentUnit(query=True, time=True)
     }
+
+
+def currentNamespace():
+    """
+    Returns the current namespace.
+    Unlike the `namespaceInfo` command, this method will return an empty string for the root namespace!
+
+    :rtype: str
+    """
+
+    namespace = mc.namespaceInfo(currentNamespace=True)
+
+    if namespace == ':':
+
+        return ''
+
+    else:
+
+        return namespace
 
 
 def iterFileProperties():
@@ -192,6 +220,19 @@ def getAnimationRange():
     """
 
     return getStartTime(), getEndTime()
+
+
+def setAnimationRange(startTime, endTime):
+    """
+    Updates the current start and end time.
+
+    :type startTime: int
+    :type endTime: int
+    :rtype: None
+    """
+
+    setStartTime(startTime)
+    setEndTime(endTime)
 
 
 def getTime():
