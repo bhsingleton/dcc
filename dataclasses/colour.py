@@ -1,8 +1,7 @@
 import math
 
 from dataclasses import dataclass, fields, replace
-from six import string_types, integer_types
-from six.moves import collections_abc
+from . import adc
 from ..decorators.classproperty import classproperty
 
 import logging
@@ -12,7 +11,7 @@ log.setLevel(logging.INFO)
 
 
 @dataclass
-class Colour(collections_abc.Sequence):
+class Colour(adc.ADC):
     """
     Data class for RGB colours.
     """
@@ -53,69 +52,6 @@ class Colour(collections_abc.Sequence):
         else:
 
             raise TypeError(f'__post_init__() expects either an int or float ({type(arg).__name__} given)!')
-
-    def __getitem__(self, key):
-        """
-        Private method that returns an indexed item.
-
-        :type key: Union[str, int]
-        :rtype: float
-        """
-
-        # Evaluate key type
-        #
-        if isinstance(key, string_types):
-
-            return getattr(self, key)
-
-        elif isinstance(key, integer_types):
-
-            dataFields = fields(self.__class__)
-            numDataFields = len(dataFields)
-
-            if 0 <= key < numDataFields:
-
-                return getattr(self, dataFields[key].name)
-
-            else:
-
-                raise IndexError('__getitem__() index is out of range!')
-
-        else:
-
-            raise TypeError(f'__getitem__() expects either a str or int ({type(key).__name__} given)!')
-
-    def __setitem__(self, key, value):
-        """
-        Private method that updates an indexed item.
-
-        :type key: Union[str, int]
-        :type value: float
-        :rtype: None
-        """
-
-        # Evaluate key type
-        #
-        if isinstance(key, string_types):
-
-            return setattr(self, key, value)
-
-        elif isinstance(key, integer_types):
-
-            dataFields = fields(self.__class__)
-            numDataFields = len(dataFields)
-
-            if 0 <= key < numDataFields:
-
-                return setattr(self, dataFields[key].name, value)
-
-            else:
-
-                raise IndexError('__setitem__() index is out of range!')
-
-        else:
-
-            raise TypeError(f'__setitem__() expects either a str or int ({type(key).__name__} given)!')
 
     def __eq__(self, other):
         """

@@ -1,9 +1,8 @@
 import math
 
 from dataclasses import dataclass, fields, replace
-from six import string_types, integer_types
-from six.moves import collections_abc
-from . import transformationmatrix
+from collections.abc import Sequence
+from . import adc, transformationmatrix
 from ..decorators.classproperty import classproperty
 
 import logging
@@ -13,7 +12,7 @@ log.setLevel(logging.INFO)
 
 
 @dataclass
-class Vector(collections_abc.Sequence):
+class Vector(adc.ADC):
     """
     Data class for 3D vectors.
     """
@@ -40,82 +39,19 @@ class Vector(collections_abc.Sequence):
 
         # Check if sequence was passed to constructor
         #
-        arg = self.x
+        args = self.x
 
-        if hasattr(arg, '__getitem__') and hasattr(arg, '__len__'):
+        if isinstance(args, Sequence):
 
             # Un-package items into vector
             #
-            for (i, item) in enumerate(arg):
+            for (i, item) in enumerate(args):
 
                 self[i] = item
 
         else:
 
             raise TypeError(f'__post_init__() expects either an int or float ({type(arg).__name__} given)!')
-
-    def __getitem__(self, key):
-        """
-        Private method that returns an indexed item.
-
-        :type key: Union[str, int]
-        :rtype: float
-        """
-
-        # Evaluate key type
-        #
-        if isinstance(key, string_types):
-
-            return getattr(self, key)
-
-        elif isinstance(key, integer_types):
-
-            dataFields = fields(self.__class__)
-            numDataFields = len(dataFields)
-
-            if 0 <= key < numDataFields:
-
-                return getattr(self, dataFields[key].name)
-
-            else:
-
-                raise IndexError('__getitem__() index is out of range!')
-
-        else:
-
-            raise TypeError(f'__getitem__() expects either a str or int ({type(key).__name__} given)!')
-
-    def __setitem__(self, key, value):
-        """
-        Private method that updates an indexed item.
-
-        :type key: Union[str, int]
-        :type value: float
-        :rtype: None
-        """
-
-        # Evaluate key type
-        #
-        if isinstance(key, string_types):
-
-            return setattr(self, key, value)
-
-        elif isinstance(key, integer_types):
-
-            dataFields = fields(self.__class__)
-            numDataFields = len(dataFields)
-
-            if 0 <= key < numDataFields:
-
-                return setattr(self, dataFields[key].name, value)
-
-            else:
-
-                raise IndexError('__setitem__() index is out of range!')
-
-        else:
-
-            raise TypeError(f'__setitem__() expects either a str or int ({type(key).__name__} given)!')
 
     def __eq__(self, other):
         """
@@ -136,6 +72,46 @@ class Vector(collections_abc.Sequence):
         """
 
         return not self.isEquivalent(other)
+
+    def __lt__(self, other):
+        """
+        Private method that implements the less than operator.
+
+        :type other: Vector
+        :rtype: bool
+        """
+
+        return self.x < other.x and self.y < other.y and self.z < other.z
+
+    def __le__(self, other):
+        """
+        Private method that implements the less than or equal to operator.
+
+        :type other: Vector
+        :rtype: bool
+        """
+
+        return self < other or self.isEquivalent(other)
+
+    def __gt__(self, other):
+        """
+        Private method that implements the greater than operator.
+
+        :type other: Vector
+        :rtype: bool
+        """
+
+        return self.x > other.x and self.y > other.y and self.z > other.z
+
+    def __ge__(self, other):
+        """
+        Private method that implements the greater than or equal to operator.
+
+        :type other: Vector
+        :rtype: bool
+        """
+
+        return self > other or self.isEquivalent(other)
 
     def __add__(self, other):
         """
@@ -546,15 +522,6 @@ class Vector(collections_abc.Sequence):
         """
 
         return all(math.isclose(x, y, abs_tol=tolerance) for (x, y) in zip(self, other))
-
-    def copy(self):
-        """
-        Returns a copy of this vector.
-
-        :rtype: Vector
-        """
-
-        return replace(self)
 
     def toList(self):
         """

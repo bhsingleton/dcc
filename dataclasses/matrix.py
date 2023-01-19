@@ -4,10 +4,10 @@ import operator
 from functools import reduce
 from itertools import islice
 from dataclasses import dataclass
-from six import integer_types
-from six.moves import collections_abc
 from collections import deque
+from collections.abc import Sequence, Mapping
 from copy import deepcopy
+from . import adc
 from ..generators.flatten import flatten
 
 import logging
@@ -17,9 +17,9 @@ log.setLevel(logging.INFO)
 
 
 @dataclass
-class Shape:
+class Shape(adc.ADC):
     """
-    Data class for matrix shapes.
+    Overload of `ADC` that interfaces with matrix shape data.
     """
 
     # region Fields
@@ -60,7 +60,7 @@ class Shape:
         """
 
         isFlat = all(isinstance(item, (float, int)) for item in array)
-        isNested = all(isinstance(item, collections_abc.Sequence) for item in array)
+        isNested = all(isinstance(item, (Sequence, Mapping)) for item in array)
 
         if isFlat:
 
@@ -85,7 +85,7 @@ class Shape:
     # endregion
 
 
-class Matrix(collections_abc.Sequence):
+class Matrix(Sequence):
     """
     Data class for matrices.
     """
@@ -121,7 +121,7 @@ class Matrix(collections_abc.Sequence):
             #
             arg = args[0]
 
-            if isinstance(arg, integer_types):
+            if isinstance(arg, int):
 
                 self.reshape(Shape(arg, arg))
 
@@ -129,7 +129,7 @@ class Matrix(collections_abc.Sequence):
 
                 self.reshape(arg)
 
-            elif isinstance(arg, collections_abc.Sequence):
+            elif isinstance(arg, (Sequence, Mapping)):
 
                 self.assume(arg)
 
@@ -143,7 +143,7 @@ class Matrix(collections_abc.Sequence):
             #
             rows, columns = args
 
-            if isinstance(rows, integer_types) and isinstance(columns, integer_types):
+            if isinstance(rows, int) and isinstance(columns, int):
 
                 self.reshape(Shape(*args))
 
@@ -181,7 +181,7 @@ class Matrix(collections_abc.Sequence):
         :rtype: Union[float, deque]
         """
 
-        if isinstance(key, integer_types):
+        if isinstance(key, int):
 
             # Check if index is in range
             #
@@ -208,7 +208,7 @@ class Matrix(collections_abc.Sequence):
             rowIndex, columnIndex = key
             row = self.__getitem__(rowIndex)
 
-            if isinstance(columnIndex, integer_types):
+            if isinstance(columnIndex, int):
 
                 return row[columnIndex]
 
@@ -261,7 +261,7 @@ class Matrix(collections_abc.Sequence):
 
                 raise IndexError('__setitem__() index is out of range!')
 
-        elif isinstance(key, integer_types) and isinstance(value, collections_abc.Sequence):
+        elif isinstance(key, int) and isinstance(value, (Sequence, Mapping)):
 
             # Check if index is in range
             #
@@ -609,7 +609,7 @@ class Matrix(collections_abc.Sequence):
 
                 shape = arg
 
-            elif isinstance(arg, integer_types):
+            elif isinstance(arg, int):
 
                 shape = Shape(arg, arg)
 

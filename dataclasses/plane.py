@@ -1,5 +1,5 @@
-from dataclasses import dataclass, field, replace
-from . import vector
+from dataclasses import dataclass, field
+from . import adc, vector
 
 import logging
 logging.basicConfig()
@@ -8,13 +8,13 @@ log.setLevel(logging.INFO)
 
 
 @dataclass
-class Plane:
+class Plane(adc.ADC):
     """
-    Data class for planes.
+    Overload of `ADC` that interfaces with plane data.
     """
 
     # region Fields
-    origin: vector.Vector = field(default_factory=(lambda: vector.Vector.origin))
+    origin: vector.Vector = field(default_factory=(lambda: vector.Vector.zero))
     normal: vector.Vector = field(default_factory=(lambda: vector.Vector.xAxis))
     # endregion
 

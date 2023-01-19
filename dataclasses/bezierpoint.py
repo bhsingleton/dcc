@@ -1,5 +1,5 @@
-from dataclasses import dataclass, field, replace
-from . import vector
+from dataclasses import dataclass, field
+from . import adc, vector
 
 import logging
 logging.basicConfig()
@@ -8,9 +8,9 @@ log.setLevel(logging.INFO)
 
 
 @dataclass
-class BezierPoint:
+class BezierPoint(adc.ADC):
     """
-    Data class for bezier-curve points.
+    Overload of `ADC` that interfaces with bezier-curve point data.
     """
 
     # region Fields
@@ -41,15 +41,4 @@ class BezierPoint:
 
         self.point *= other
         return self
-    # endregion
-
-    # region Methods
-    def copy(self):
-        """
-        Returns a copy of this bezier point.
-
-        :rtype: Vector
-        """
-
-        return replace(self)
     # endregion

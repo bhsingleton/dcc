@@ -1,9 +1,8 @@
 import math
 
-from dataclasses import dataclass, fields, replace
-from six import string_types, integer_types
-from six.moves import collections_abc
-from . import transformationmatrix, vector
+from dataclasses import dataclass, replace
+from collections.abc import Collection
+from . import adc, vector, transformationmatrix
 
 import logging
 logging.basicConfig()
@@ -12,9 +11,9 @@ log.setLevel(logging.INFO)
 
 
 @dataclass
-class EulerAngles(collections_abc.Sequence):
+class EulerAngles(adc.ADC):
     """
-    Data class for euler angles.
+    Overload of `ADC` that interfaces with euler angle data.
     """
 
     # region Fields
@@ -34,7 +33,7 @@ class EulerAngles(collections_abc.Sequence):
         :rtype: None
         """
 
-        # Validate vector
+        # Validate euler angles
         #
         if all(isinstance(x, (int, float)) for x in self):
 
@@ -42,82 +41,19 @@ class EulerAngles(collections_abc.Sequence):
 
         # Check if sequence was passed to constructor
         #
-        arg = self.x
+        args = self.x
 
-        if hasattr(arg, '__getitem__') and hasattr(arg, '__len__'):
+        if isinstance(args, Collection):
 
             # Un-package items into vector
             #
-            for (i, item) in enumerate(arg):
+            for (i, item) in enumerate(args):
 
                 self[i] = item
 
         else:
 
-            raise TypeError(f'__post_init__() expects either an int or float ({type(arg).__name__} given)!')
-
-    def __getitem__(self, key):
-        """
-        Private method that returns an indexed item.
-
-        :type key: Union[str, int]
-        :rtype: float
-        """
-
-        # Evaluate key type
-        #
-        if isinstance(key, string_types):
-
-            return getattr(self, key)
-
-        elif isinstance(key, integer_types):
-
-            dataFields = fields(self.__class__)
-            numDataFields = len(dataFields)
-
-            if 0 <= key < numDataFields:
-
-                return getattr(self, dataFields[key].name)
-
-            else:
-
-                raise IndexError('__getitem__() index is out of range!')
-
-        else:
-
-            raise TypeError(f'__getitem__() expects either a str or int ({type(key).__name__} given)!')
-
-    def __setitem__(self, key, value):
-        """
-        Private method that updates an indexed item.
-
-        :type key: Union[str, int]
-        :type value: float
-        :rtype: None
-        """
-
-        # Evaluate key type
-        #
-        if isinstance(key, string_types):
-
-            return setattr(self, key, value)
-
-        elif isinstance(key, integer_types):
-
-            dataFields = fields(self.__class__)
-            numDataFields = len(dataFields)
-
-            if 0 <= key < numDataFields:
-
-                return setattr(self, dataFields[key].name, value)
-
-            else:
-
-                raise IndexError('__setitem__() index is out of range!')
-
-        else:
-
-            raise TypeError(f'__setitem__() expects either a str or int ({type(key).__name__} given)!')
+            raise TypeError(f'__post_init__() expects either an int or float ({type(args).__name__} given)!')
 
     def __eq__(self, other):
         """
@@ -286,15 +222,6 @@ class EulerAngles(collections_abc.Sequence):
             rotateMatrix *= matrices[index]
 
         return rotateMatrix
-
-    def copy(self):
-        """
-        Returns a copy of these euler angles.
-
-        :rtype: Vector
-        """
-
-        return replace(self)
 
     def isEquivalent(self, other, tolerance=1e-3):
         """
