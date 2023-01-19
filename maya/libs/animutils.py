@@ -41,6 +41,36 @@ def getAnimCurveType(attribute):
         return oma.MFnAnimCurve.kAnimCurveTT
 
 
+def ensureKeyed(plug):
+    """
+    Ensures the supplied plug is keyed.
+
+    :type plug: om.MPlug
+    :rtype: om.MObject
+    """
+
+    # Redundancy check
+    #
+    if not plug.isKeyable:
+
+        return
+
+    # Check if plug is already animated
+    #
+    if plugutils.isAnimated(plug):
+
+        return plug.source().node()
+
+    # Create anim curve for plug
+    #
+    animCurveType = getAnimCurveType(plug.attribute())
+
+    fnAnimCurve = oma.MFnAnimCurve()
+    animCurve = fnAnimCurve.create(plug, animCurveType=animCurveType)
+
+    return animCurve
+
+
 def clearKeys(animCurve):
     """
     Removes all keys from the supplied anim curve.
@@ -108,50 +138,6 @@ def internalToUiUnit(value, animCurveType=oma.MFnAnimCurve.kAnimCurveTL):
         return value
 
 
-def isAnimated(plug):
-    """
-    Evaluates if the supplied plug is animated.
-
-    :type plug: om.MPlug
-    :rtype: bool
-    """
-
-    # Check if plug has a connection
-    #
-    source = plug.source()
-
-    if source.isNull:
-
-        return False
-
-    # Evaluate node type
-    #
-    node = source.node()
-    return node.hasFn(om.MFn.kAnimCurve)
-
-
-def isConstrained(plug):
-    """
-    Evaluates if the supplied plug is constrained.
-
-    :type plug: om.MPlug
-    :rtype: bool
-    """
-
-    # Check if plug has a connection
-    #
-    source = plug.source()
-
-    if source.isNull:
-
-        return False
-
-    # Evaluate node type
-    #
-    node = source.node()
-    return node.hasFn(om.MFn.kConstraint)
-
-
 def synchronizeTangents(plug):
     """
     Synchronizes the in and out tangents on the start and last keys.
@@ -162,7 +148,7 @@ def synchronizeTangents(plug):
 
     # Check if plug is animated
     #
-    if not isAnimated(plug):
+    if not plugutils.isAnimated(plug):
 
         return
 
@@ -206,7 +192,7 @@ def cacheKeys(plug):
 
     # Evaluate if plug is animated
     #
-    if not isAnimated(plug):
+    if not plugutils.isAnimated(plug):
 
         return []
 
@@ -218,10 +204,12 @@ def cacheKeys(plug):
     for i in range(fnAnimCurve.numKeys):
 
         keys[i] = keyframe.Keyframe(
+            time=fnAnimCurve.input(i).value,
             value=fnAnimCurve.value(i),
-            frame=fnAnimCurve.input(i).value,
             inTangent=vector.Vector(*fnAnimCurve.getTangentXY(i, True)),
-            outTangent=vector.Vector(*fnAnimCurve.getTangentXY(i, False))
+            inTangentType=fnAnimCurve.inTangentType(i),
+            outTangent=vector.Vector(*fnAnimCurve.getTangentXY(i, False)),
+            outTangentType=fnAnimCurve.outTangentType(i)
         )
 
     return keys
@@ -277,7 +265,7 @@ def synchronizeCompoundInputs(plug):
         #
         childPlug = plug.child(i)
 
-        if isAnimated(childPlug):
+        if plugutils.isAnimated(childPlug):
 
             animCurve = childPlug.source().node()
             fnAnimCurve.setObject(animCurve)
@@ -586,7 +574,7 @@ def getAnimLayerCurves(animLayer, node=om.MObject.kNullObj, inputA=False, inputB
     animCurves = getBlendAnimCurves(*blends, inputA=inputA, inputB=inputB)
 
     if node.isNull():
-        
+
         return animCurves
 
     # Get indices associated with node
@@ -620,7 +608,7 @@ def getNodeAnimCurves(node):
 
         # Check if plug is animated
         #
-        if isAnimated(plug):
+        if plugutils.isAnimated(plug):
 
             name = plug.partialName(useLongNames=True)
             animCurves[name] = plug.source().node()
