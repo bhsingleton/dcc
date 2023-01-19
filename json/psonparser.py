@@ -1,8 +1,8 @@
 import json
 import sys
 
-from six.moves.collections_abc import MutableSequence, MutableMapping
-from dcc.python import importutils
+from six.moves import collections_abc
+from dcc.python import importutils, stringutils
 
 import logging
 logging.basicConfig()
@@ -15,7 +15,21 @@ class PSONEncoder(json.JSONEncoder):
     Overload of JSONEncoder used to translate python types into JSON objects.
     """
 
+    # region Dunderscores
     __slots__ = ()
+    __builtin_types__ = (bool, int, float, str, collections_abc.MutableSequence, collections_abc.MutableMapping)
+    # endregion
+
+    # region Methods
+    def acceptsType(self, T):
+        """
+        Evaluates whether this serializer accepts the supplied type.
+
+        :type T: Callable
+        :rtype: bool
+        """
+
+        return hasattr(T, '__getstate__') or issubclass(T, self.__builtin_types__)
 
     def default(self, obj):
         """
@@ -27,23 +41,24 @@ class PSONEncoder(json.JSONEncoder):
 
         # Check if object is mapped
         #
-        objType = type(obj)
+        cls = type(obj)
 
-        if hasattr(objType, '__getstate__'):
+        if hasattr(cls, '__getstate__'):
 
             return obj.__getstate__()
 
-        elif issubclass(objType, MutableSequence):
+        elif issubclass(cls, collections_abc.MutableSequence):
 
-            return [x for x in obj]
+            return list(iter(obj))
 
-        elif issubclass(objType, MutableMapping):
+        elif issubclass(cls, collections_abc.MutableMapping):
 
-            return {key: value for (key, value) in obj.items()}
+            return dict(obj.items())
 
         else:
 
             return super(PSONEncoder, self).default(obj)
+    # endregion
 
 
 class PSONDecoder(json.JSONDecoder):
@@ -51,6 +66,7 @@ class PSONDecoder(json.JSONDecoder):
     Overload of JSONDecoder used to translate JSON objects back into python objects.
     """
 
+    # region Dunderscores
     __slots__ = ()
 
     def __init__(self, *args, **kwargs):
@@ -81,6 +97,18 @@ class PSONDecoder(json.JSONDecoder):
         # Store the remaining keyword arguments
         #
         self.__kwdefaults__ = kwargs
+    # endregion
+
+    # region Methods
+    def acceptsObject(self, obj):
+        """
+        Evaluates whether this deserializer accepts the supplied object.
+
+        :type obj: dict
+        :rtype: bool
+        """
+
+        return True
 
     def default(self, obj):
         """
@@ -91,27 +119,22 @@ class PSONDecoder(json.JSONDecoder):
         :rtype: Any
         """
 
-        try:
+        # Find associated class
+        #
+        className = obj.pop('__name__', '')
+        moduleName = obj.pop('__module__', '')
 
-            className = obj.pop('__name__')
-            moduleName = obj.pop('__module__')
+        cls = self.findClass(className, moduleName)
 
-            cls = self.findClass(className, moduleName)
+        if callable(cls):
 
-            if cls is not None:
+            instance = cls(**self.__kwdefaults__)
+            instance.__setstate__(obj)
 
-                instance = cls(**self.__kwdefaults__)
-                instance.__setstate__(obj)
+            return instance
 
-                return instance
+        else:
 
-            else:
-
-                return obj
-
-        except KeyError as exception:
-
-            log.error(exception)
             return obj
 
     @classmethod
@@ -121,9 +144,18 @@ class PSONDecoder(json.JSONDecoder):
 
         :type className: str
         :type moduleName: str
-        :rtype: class
+        :rtype: Callable
         """
 
+        # Redundancy check
+        #
+        if any(map(stringutils.isNullOrEmpty, (className, moduleName))):
+
+            return None
+
+        # Check if module already exists inside `sys` modules
+        # If not, then import associated module
+        #
         module = sys.modules.get(moduleName, None)
 
         if module is not None:
@@ -133,3 +165,4 @@ class PSONDecoder(json.JSONDecoder):
         else:
 
             return importutils.findClass(className, moduleName)
+    # endregion
