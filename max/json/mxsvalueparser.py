@@ -13,7 +13,7 @@ log.setLevel(logging.INFO)
 
 class MXSValueEncoder(json.JSONEncoder):
     """
-    Overload of JSONEncoder used to serialize MXS values.
+    Overload of `JSONEncoder` used to serialize MXS values.
     """
 
     # region Dunderscores
@@ -348,7 +348,7 @@ class MXSValueEncoder(json.JSONEncoder):
 
 class MXSValueDecoder(json.JSONDecoder):
     """
-    Overload of JSONDecoder used to deserialize MXS values.
+    Overload of `JSONDecoder` used to deserialize MXS values.
     """
 
     # region Dunderscores
