@@ -35,6 +35,18 @@ class MXSIterDependencies(object):
     )
 
     def __init__(self, *args, **kwargs):
+        """
+        Private method called after a new instance is created.
+
+        :key selection: List[pymxs.MXSWrapperBase]
+        :key skipProperties: bool
+        :key skipSubAnims: bool
+        :key skipCustomAttributes: bool
+        :key skipChildren: bool
+        :key skipLayers: bool
+        :key skipSelectionSets: bool
+        :rtype: None
+        """
 
         # Call parent method
         #
@@ -229,10 +241,17 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
         """
         Private method called after a new instance has been created.
 
+        :key selection: List[pymxs.MXSWrapperBase]
+        :key skipProperties: bool
+        :key skipSubAnims: bool
+        :key skipCustomAttributes: bool
+        :key skipChildren: bool
+        :key skipLayers: bool
+        :key skipSelectionSets: bool
         :rtype: None
         """
 
-        # Declare private variables
+        # Declare public variables
         #
         self.objects = {handle: dependent for (handle, dependent) in MXSIterDependencies(**kwargs)}
         self.selection = kwargs.pop('selection', None)
