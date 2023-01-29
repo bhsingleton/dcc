@@ -1,6 +1,9 @@
+import pyperclip
+import json
+
 from PySide2 import QtCore, QtWidgets, QtGui
-from . import quicdialog
 from six import string_types
+from . import quicdialog
 
 import logging
 logging.basicConfig()
@@ -10,7 +13,7 @@ log.setLevel(logging.INFO)
 
 class QListDialog(quicdialog.QUicDialog):
     """
-    Overload of `QDialog` used to edit string list data.
+    Overload of `QUicDialog` used to edit string lists.
     """
 
     # region Dunderscores
@@ -24,15 +27,22 @@ class QListDialog(quicdialog.QUicDialog):
         :rtype: None
         """
 
-        # Call parent method
-        #
-        super(QListDialog, self).__init__(**kwargs)
-
         # Declare private variables
         #
         self._items = []
         self._textFilter = kwargs.get('textFilter', None)
         self._allowDuplicates = kwargs.get('allowDuplicates', False)
+
+        # Declare public variables
+        #
+        self.editMenu = None
+        self.copyItemsAction = None
+        self.pasteItemsAction = None
+        self.clearItemsAction = None
+
+        # Call parent method
+        #
+        super(QListDialog, self).__init__(**kwargs)
 
         # Check if any arguments were supplied
         #
@@ -44,6 +54,37 @@ class QListDialog(quicdialog.QUicDialog):
     # endregion
 
     # region Methods
+    def postLoad(self):
+        """
+        Called after the user interface has been loaded.
+
+        :rtype: None
+        """
+
+        # Call parent method
+        #
+        super(QListDialog, self).postLoad()
+
+        # Initialize context menu
+        #
+        self.copyItemsAction = QtWidgets.QAction('Copy')
+        self.copyItemsAction.setObjectName('copyItemsAction')
+        self.copyItemsAction.triggered.connect(self.on_copyItemsAction_triggered)
+
+        self.pasteItemsAction = QtWidgets.QAction('Paste')
+        self.pasteItemsAction.setObjectName('pasteItemsAction')
+        self.pasteItemsAction.triggered.connect(self.on_pasteItemsAction_triggered)
+
+        self.clearItemsAction = QtWidgets.QAction('Clear')
+        self.clearItemsAction.setObjectName('clearItemsAction')
+        self.clearItemsAction.triggered.connect(self.on_clearItemsAction_triggered)
+
+        self.editMenu = QtWidgets.QMenu(parent=self.listWidget)
+        self.editMenu.setObjectName('editMenu')
+        self.editMenu.addActions([self.copyItemsAction, self.pasteItemsAction])
+        self.editMenu.addSeparator()
+        self.editMenu.addAction(self.clearItemsAction)
+
     def iterItems(self):
         """
         Returns a generator that yields the current items.
@@ -86,7 +127,7 @@ class QListDialog(quicdialog.QUicDialog):
 
             # Add item to list widget
             #
-            listWidgetItem = self.createListWidgetItem(item)
+            listWidgetItem = QtWidgets.QListWidgetItem(item)
             self.listWidget.addItem(listWidgetItem)
 
         # Select first row
@@ -169,20 +210,58 @@ class QListDialog(quicdialog.QUicDialog):
         """
 
         return not any(item == text for item in self.iterItems())
-
-    @staticmethod
-    def createListWidgetItem(text):
-        """
-        Returns a new QListWidgetItem using the supplied text.
-
-        :type text: str
-        :rtype: QtWidgets.QListWidgetItem
-        """
-
-        return QtWidgets.QListWidgetItem(text)
     # endregion
 
     # region Slots
+    @QtCore.Slot(QtCore.QPoint)
+    def on_listWidget_customContextMenuRequested(self, point):
+        """
+        Slot method for the listWidget's `customContextMenuRequested` signal.
+
+        :type point: QtCore.QPoint
+        :rtype: None
+        """
+
+        globalPoint = self.sender().mapToGlobal(point)
+        self.editMenu.exec_(globalPoint)
+
+    def on_copyItemsAction_triggered(self, checked=False):
+        """
+        Slot method for the copyItemsAction's `triggered` signal.
+
+        :type checked: bool
+        :rtype: None
+        """
+
+        pyperclip.copy(json.dumps(self.items()))
+
+    def on_pasteItemsAction_triggered(self, checked=False):
+        """
+        Slot method for the pasteItemsAction's `triggered` signal.
+
+        :type checked: bool
+        :rtype: None
+        """
+
+        try:
+
+            items = json.loads(pyperclip.paste())
+            self.setItems(items)
+
+        except json.JSONDecodeError:
+
+            pass
+
+    def on_clearItemsAction_triggered(self, checked=False):
+        """
+        Slot method for the clearItemsAction's `triggered` signal.
+
+        :type checked: bool
+        :rtype: None
+        """
+
+        self.setItems([])
+
     @QtCore.Slot(bool)
     def on_addPushButton_clicked(self, checked=False):
         """
@@ -225,7 +304,7 @@ class QListDialog(quicdialog.QUicDialog):
 
             # Add item to list widget
             #
-            listWidgetItem = self.createListWidgetItem(text)
+            listWidgetItem = QtWidgets.QListWidgetItem(text)
             self.listWidget.addItem(listWidgetItem)
 
     @QtCore.Slot(bool)

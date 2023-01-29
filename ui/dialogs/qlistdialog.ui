@@ -28,6 +28,9 @@
   <layout class="QHBoxLayout" name="centralLayout">
    <item>
     <widget class="QListWidget" name="listWidget">
+     <property name="contextMenuPolicy">
+      <enum>Qt::CustomContextMenu</enum>
+     </property>
      <property name="styleSheet">
       <string notr="true">QTableView::item { height: 24; };</string>
      </property>
