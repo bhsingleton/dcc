@@ -30,7 +30,6 @@ class FnFbx(afnfbx.AFnFbx):
         includeSkins = kwargs.get('includeSkins', True)
         includeBlendshapes = kwargs.get('includeBlendshapes', False)
 
-        pymxs.runtime.FBXExporterSetParam('ResetExport', True)
         pymxs.runtime.FBXExporterSetParam('Animation', False)
         pymxs.runtime.FBXExporterSetParam('ExportAnimationOnly', False)
         pymxs.runtime.FBXExporterSetParam('ASCII', asAscii)
@@ -44,7 +43,6 @@ class FnFbx(afnfbx.AFnFbx):
         pymxs.runtime.FBXExporterSetParam('GeomAsBone', True)
         pymxs.runtime.FBXExporterSetParam('GenerateLog', True)
         pymxs.runtime.FBXExporterSetParam('Lights', False)
-        pymxs.runtime.FBXExporterSetParam('LoadExportPresetFile', '')
         pymxs.runtime.FBXExporterSetParam('NormalsPerPoly', False)
         pymxs.runtime.FBXExporterSetParam('PointCache', False)
         pymxs.runtime.FBXExporterSetParam('PopSettings', False)
