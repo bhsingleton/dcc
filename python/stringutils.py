@@ -53,6 +53,18 @@ def isBoolean(text):
     return text.lower() in __states__
 
 
+def titleize(text):
+    """
+    Returns a string where each split segment is titleized.
+    For example: "left_arm_01" > "Left_Arm_01"
+
+    :type text: str
+    :rtype: str
+    """
+
+    return ''.join([pascalize(string) for string in text.split('_')])
+
+
 def camelize(text, separator=''):
     """
     Returns a camel cased string using the supplied text.
@@ -76,7 +88,7 @@ def pascalize(text, separator=''):
     :rtype: str
     """
 
-    return separator.join([x.title() for x in __title__.findall(text)])
+    return separator.join([string.title() for string in __title__.findall(text)])
 
 
 def slugify(text, whitespace='_', illegal=''):
