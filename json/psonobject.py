@@ -1,14 +1,14 @@
 import inspect
 import weakref
-import copy
 
 from abc import ABCMeta
-from six import with_metaclass
+from six import with_metaclass, string_types
 from six.moves import collections_abc
 from typing import Any, Union, Tuple, List, Dict
+from copy import copy, deepcopy
 from Qt import QtGui
-from dcc.python import annotationutils, stringutils
-from dcc.decorators.classproperty import classproperty
+from ..python import annotationutils, stringutils
+from ..decorators.classproperty import classproperty
 
 import logging
 logging.basicConfig()
@@ -18,12 +18,11 @@ log.setLevel(logging.INFO)
 
 class PSONObject(with_metaclass(ABCMeta, collections_abc.MutableMapping)):
     """
-    Overload of MutableMapping that acts as a serializable object using python properties.
+    Overload of `MutableMapping` that uses python properties as form of mapping.
     """
 
     # region Dunderscores
     __slots__ = ()
-    __builtins__ = (bool, int, float, str, collections_abc.Sequence, collections_abc.Mapping)
 
     def __init__(self, *args, **kwargs):
         """
@@ -143,7 +142,7 @@ class PSONObject(with_metaclass(ABCMeta, collections_abc.MutableMapping)):
         """
         Private method that returns a copy of this instance.
 
-        :rtype: PropertyMapping
+        :rtype: PSONObject
         """
 
         # Create new instance
@@ -154,22 +153,22 @@ class PSONObject(with_metaclass(ABCMeta, collections_abc.MutableMapping)):
         for (name, func) in self.iterProperties():
 
             # Inspect property value
-            # Mutable sequences will require a deep copy
+            # Sequences will require a deep copy!
             #
             value = func.fget(self)
             cls = type(value)
 
-            if isinstance(value, collections_abc.MutableSequence):
+            if isinstance(value, collections_abc.Sequence) and not isinstance(value, string_types):
 
-                setattr(instance, name, list(map(copy.copy, value)))
+                setattr(instance, name, cls(map(copy, value)))
 
-            elif isinstance(value, collections_abc.MutableMapping):
+            elif isinstance(value, collections_abc.Mapping):
 
-                setattr(instance, name, cls({key: copy.copy(value) for (key, value) in value.items()}))
+                setattr(instance, name, cls({key: copy(value) for (key, value) in value.items()}))
 
             else:
 
-                setattr(instance, name, copy.copy(value))
+                setattr(instance, name, value)
 
         return instance
     # endregion

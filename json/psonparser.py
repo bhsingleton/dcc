@@ -2,7 +2,7 @@ import json
 import sys
 
 from six.moves import collections_abc
-from dcc.python import importutils, stringutils
+from ..python import importutils, stringutils
 
 import logging
 logging.basicConfig()
