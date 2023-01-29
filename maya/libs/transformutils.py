@@ -4,7 +4,7 @@ from maya import cmds as mc
 from maya.api import OpenMaya as om
 from six import string_types
 from dcc.maya.decorators.undo import undo
-from dcc.maya.libs import dagutils, plugutils
+from dcc.maya.libs import dagutils, plugutils, plugmutators
 
 import logging
 logging.basicConfig()
@@ -829,22 +829,22 @@ def freezeTranslation(node):
 
     # Create translation matrix
     #
-    dagPath = dagutils.getMDagPath(node)
+    translation = getTranslation(node)
+    translateMatrix = createTranslateMatrix(translation)
 
-    translateMatrix = createTranslateMatrix(dagPath.inclusiveMatrix())
-    resetTranslation(dagPath)
+    resetTranslation(node)
 
     # Check if offset requires compounding
     #
-    offsetParentMatrix = getOffsetParentMatrix(dagPath)
+    offsetParentMatrix = getOffsetParentMatrix(node)
 
-    if offsetParentMatrix != om.MMatrix.kIdentity:
+    if not offsetParentMatrix.isEquivalent(om.MMatrix.kIdentity):
 
         translateMatrix *= offsetParentMatrix
 
     # Commit offset parent matrix to plug
     #
-    setOffsetParentMatrix(dagPath, translateMatrix)
+    setOffsetParentMatrix(node, translateMatrix)
 
 
 def freezeRotation(node):
@@ -857,22 +857,22 @@ def freezeRotation(node):
 
     # Create rotation matrix
     #
-    dagPath = dagutils.getMDagPath(node)
+    eulerRotation = getEulerRotation(node)
+    rotateMatrix = createRotationMatrix(eulerRotation)
 
-    rotateMatrix = createRotationMatrix(dagPath.inclusiveMatrix())
-    resetEulerRotation(dagPath)
+    resetEulerRotation(node)
 
     # Check if offset requires compounding
     #
-    offsetParentMatrix = getOffsetParentMatrix(dagPath)
+    offsetParentMatrix = getOffsetParentMatrix(node)
 
-    if offsetParentMatrix != om.MMatrix.kIdentity:
+    if not offsetParentMatrix.isEquivalent(om.MMatrix.kIdentity):
 
         rotateMatrix *= offsetParentMatrix
 
     # Commit offset parent matrix to plug
     #
-    setOffsetParentMatrix(dagPath, rotateMatrix)
+    setOffsetParentMatrix(node, rotateMatrix)
 
 
 def freezeScale(node):
@@ -881,18 +881,16 @@ def freezeScale(node):
     Unlike translation and rotation, scale cannot be unfrozen.
     Technically we could push the scale into the offsetParentMatrix but scale loves to break shit!
 
-    :type node: om.MDagPath
+    :type node: Union[str, om.MObject, om.MDagPath]
     :rtype: None
     """
 
     # Iterate through all descendants
     #
-    dagPath = dagutils.getMDagPath(node)
+    scale = getScale(node)
+    scaleMatrix = createScaleMatrix(scale)
 
-    dagPath = dagutils.getMDagPath(dagPath)
-    scaleMatrix = createScaleMatrix(dagPath.inclusiveMatrix())
-
-    for child in dagutils.iterDescendants(dagPath):
+    for child in dagutils.iterDescendants(node):
 
         # Check api type
         #
@@ -941,19 +939,19 @@ def freezeScale(node):
             #
             plug = fnDagNode.findPlug('localPosition', True)
 
-            localPosition = om.MVector(plugutils.getValue(plug))
+            localPosition = om.MVector(plugmutators.getValue(plug))
             localPosition *= scaleMatrix
 
-            plugutils.setValue(plug, localPosition)
+            plugmutators.setValue(plug, localPosition)
 
             # Scale local scale
             #
             plug = fnDagNode.findPlug('localScale', True)
 
-            localScale = om.MVector(plugutils.getValue(plug))
+            localScale = om.MVector(plugmutators.getValue(plug))
             localScale *= scaleMatrix
 
-            plugutils.setValue(plug, localScale)
+            plugmutators.setValue(plug, localScale)
 
         elif child.hasFn(om.MFn.kMesh):
 
@@ -975,14 +973,14 @@ def freezeScale(node):
 
     # Reset scale on transform
     #
-    resetScale(dagPath)
+    resetScale(node)
 
 
 def matrixToList(matrix):
     """
-    Converts the supplied value to a matrix list comprised of 16 float values.
+    Converts the supplied matrix to a list of 16 float values.
 
-    :type matrix: Union[om.MMatrix, om.MTransformationMatrix and om.MFnMatrixData]
+    :type matrix: om.MMatrix
     :rtype: Tuple[float, float, float, float, float, float, float, float, float, float, float, float]
     """
 
@@ -1006,7 +1004,7 @@ def matrixToList(matrix):
 
 def listToMatrix(matrixList):
     """
-    Converts a list of values into a matrix.
+    Converts the supplied list into a matrix.
 
     :type matrixList: Tuple[float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float]
     :rtype: om.MMatrix
@@ -1100,11 +1098,12 @@ def getParentMatrix(node, asTransformationMatrix=False):
         return getMatrixData(matrixData)
 
 
-def getOffsetParentMatrix(node):
+def getOffsetParentMatrix(node, asTransformationMatrix=False):
     """
     Returns the offset parent matrix for the supplied node.
 
     :type node: Union[str, om.MObject, om.MDagPath]
+    :type asTransformationMatrix: bool
     :rtype: om.MMatrix
     """
 
@@ -1118,7 +1117,13 @@ def getOffsetParentMatrix(node):
 
     # Convert matrix data
     #
-    return getMatrixData(offsetParentMatrixData)
+    if asTransformationMatrix:
+
+        return getTransformData(offsetParentMatrixData)
+
+    else:
+
+        return getMatrixData(offsetParentMatrixData)
 
 
 def setOffsetParentMatrix(node, offsetParentMatrix):
@@ -1181,15 +1186,23 @@ def getMatrixData(matrixData):
     :rtype: om.MMatrix
     """
 
-    # Check for redundancy
+    # Redundancy check
     #
     if isinstance(matrixData, om.MMatrix):
 
         return matrixData
 
+    # Evaluate matrix data type
+    #
+    fnMatrixData = om.MFnMatrixData(matrixData)
+
+    if fnMatrixData.isTransformation():
+
+        return fnMatrixData.transformation().asMatrix()
+
     else:
 
-        return om.MFnMatrixData(matrixData).matrix()
+        return fnMatrixData.matrix()
 
 
 def getTransformData(matrixData):
@@ -1200,15 +1213,23 @@ def getTransformData(matrixData):
     :rtype: om.MTransformationMatrix
     """
 
-    # Check for redundancy
+    # Redundancy check
     #
     if isinstance(matrixData, om.MTransformationMatrix):
 
         return matrixData
 
+    # Evaluate matrix data type
+    #
+    fnMatrixData = om.MFnMatrixData(matrixData)
+
+    if fnMatrixData.isTransformation():
+
+        return fnMatrixData.transformation()
+
     else:
 
-        return om.MFnMatrixData(matrixData).transformation()
+        return om.MTransformationMatrix(fnMatrixData.matrix())
 
 
 def createMatrixData(matrix):
@@ -1219,19 +1240,17 @@ def createMatrixData(matrix):
     :rtype: om.MObject
     """
 
-    # Check for redundancy
+    # Redundancy check
     #
     if isinstance(matrix, om.MObject):
 
         return matrix
 
-    # Create new matrix data object
+    # Create matrix data object
     #
     fnMatrixData = om.MFnMatrixData()
     matrixData = fnMatrixData.create()
 
-    # Update matrix value
-    #
     fnMatrixData.set(matrix)
 
     return matrixData
