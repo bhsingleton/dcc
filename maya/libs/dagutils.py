@@ -1117,17 +1117,33 @@ def iterNodesByPattern(*patterns, apiType=om.MFn.kDependencyNode):
     :rtype: iter
     """
 
-    # Iterate through nodes
+    # Compose selection list from patterns
     #
-    for dependNode in iterNodes(apiType):
+    selectionList = om.MSelectionList()
+
+    for pattern in patterns:
+
+        try:
+
+            selectionList.add(pattern)
+
+        except RuntimeError:
+
+            continue
+
+    # Iterate through selection list
+    #
+    selectionCount = selectionList.length()
+
+    for i in range(selectionCount):
 
         # Check if there are any pattern matches
         #
-        name = getNodeName(dependNode)
+        node = selectionList.getDependNode(i)
 
-        if any(fnmatch.fnmatch(name, pattern) for pattern in patterns):
+        if node.hasFn(apiType):
 
-            yield dependNode
+            yield node
 
         else:
 
