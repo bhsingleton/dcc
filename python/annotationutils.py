@@ -2,7 +2,8 @@ import re
 import inspect
 
 from typing import Any, Union, List, Tuple, Dict
-from dcc.python import stringutils
+from six import string_types
+from six.moves import collections_abc
 
 import logging
 logging.basicConfig()
@@ -45,6 +46,23 @@ def decomposeAlias(alias):
     else:
 
         return type(alias), tuple()
+
+
+def isArray(T):
+    """
+    Evaluates if the supplied type is an array.
+
+    :type T: Any
+    :rtype: bool
+    """
+
+    if inspect.isclass(T):
+
+        return issubclass(T, collections_abc.Sequence) and not issubclass(T, string_types)
+
+    else:
+
+        return isArray(type(T))
 
 
 def isBuiltinType(T):
