@@ -390,7 +390,7 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
         self.asset.name = text
 
     @QtCore.Slot(bool)
-    def on_useLegacySerializer_triggered(self, checked=False):
+    def on_useLegacySerializerAction_triggered(self, checked=False):
         """
         Slot method for the useLegacySerializer's triggered signal.
 
