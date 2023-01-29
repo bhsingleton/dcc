@@ -253,12 +253,16 @@ class ADC(Mapping, metaclass=ABCMeta):
 
             setattr(self, key, value)
 
-    def copy(self):
+    def copy(self, **kwargs):
         """
-        Returns a copy of these euler angles.
+        Returns a copy of this instance.
+        Any keyword arguments supplied will be passed to the update method.
 
-        :rtype: Vector
+        :rtype: ADC
         """
 
-        return replace(self)
+        copy = replace(self)
+        copy.update(kwargs)
+
+        return copy
     # endregion
