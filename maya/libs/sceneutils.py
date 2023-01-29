@@ -1,5 +1,7 @@
-import maya.cmds as mc
 import os
+
+from maya import cmds as mc
+from maya import mel
 
 import logging
 logging.basicConfig()
@@ -212,14 +214,35 @@ def setEndTime(endTime):
     mc.playbackOptions(edit=True, max=endTime)
 
 
-def getAnimationRange():
+def getAnimationRange(selected=False):
     """
     Returns the current start and end time.
 
+    :type selected: bool
     :rtype: Tuple[int, int]
     """
 
-    return getStartTime(), getEndTime()
+    # Check if selection is required
+    #
+    if not selected:
+
+        return getStartTime(), getEndTime()
+
+    # Evaluate active selection
+    # By default, `timeControl` will return the current time if nothing is selected!
+    #
+    timeSlider = mel.eval('$tmpVar=$gPlayBackSlider')
+    startTime, endTime = mc.timeControl(timeSlider, query=True, rangeArray=True)
+
+    difference = endTime - startTime
+
+    if difference != 1.0:
+
+        return startTime, endTime
+
+    else:
+
+        return getStartTime(), getEndTime()
 
 
 def setAnimationRange(startTime, endTime):
