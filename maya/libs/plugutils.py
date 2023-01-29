@@ -36,14 +36,14 @@ def getApiType(obj):
         return om.MFn.kUnknown
 
 
-def findPlug(node, plugPath):
+def findPlug(node, path):
     """
     Returns the plug derived from the supplied string path relative to the given node.
     Unlike the API method derived from MFnDependencyNode this function supports indices and children.
     This method also accepts partial paths in that a parent attribute can be omitted and still resolved.
 
     :type node: om.MObject
-    :type plugPath: str
+    :type path: str
     :rtype: om.MPlug
     """
 
@@ -52,12 +52,12 @@ def findPlug(node, plugPath):
     fnDependNode = om.MFnDependencyNode(node)
     nodeName = fnDependNode.name()
 
-    groups = __plug_parser__.findall(plugPath)
+    groups = __plug_parser__.findall(path)
     numGroups = len(groups)
 
     if numGroups == 0:
 
-        raise TypeError('findPlug() unable to split path: "%s"!' % plugPath)
+        raise TypeError('findPlug() unable to split path: "%s"!' % path)
 
     # Find leaf attribute
     #
@@ -289,11 +289,13 @@ def breakConnections(plug, source=True, destination=True, recursive=False):
             breakConnections(childPlug, source=source, destination=destination)
 
 
-def iterTopLevelPlugs(node):
+def iterTopLevelPlugs(node, static=False, dynamic=False):
     """
     Returns a generator that yields top-level plugs from the supplied node.
 
     :type node: om.MObject
+    :type static: bool
+    :type dynamic: bool
     :rtype: iter
     """
 
@@ -305,26 +307,32 @@ def iterTopLevelPlugs(node):
         #
         fnAttribute = om.MFnAttribute(attribute)
 
-        if fnAttribute.parent.isNull():
-
-            yield om.MPlug(node, attribute)
-
-        else:
+        if not fnAttribute.parent.isNull():
 
             continue
 
+        # Check if attribute is dynamic
+        #
+        if (dynamic and not fnAttribute.dynamic) or (static and fnAttribute.dynamic):
 
-def iterChannelBoxPlugs(node):
+            continue
+
+        yield om.MPlug(node, attribute)
+
+
+def iterChannelBoxPlugs(node, static=False, dynamic=False):
     """
     Returns a generator that yields plugs that are in the channel-box.
 
     :type node: om.MObject
+    :type static: bool
+    :type dynamic: bool
     :rtype: iter
     """
 
     # Iterate through top-level plugs
     #
-    for plug in iterTopLevelPlugs(node):
+    for plug in iterTopLevelPlugs(node, static=static, dynamic=dynamic):
 
         # Check if this is a compound plug
         #
@@ -332,7 +340,7 @@ def iterChannelBoxPlugs(node):
 
             yield from iterChildren(plug, writable=True, keyable=True)
 
-        elif plug.isChannelBox:
+        elif plug.isChannelBox or plug.isKeyable:
 
             yield plug
 
@@ -421,7 +429,7 @@ def iterChildren(plug, writable=False, nonDefault=False, keyable=False):
 
         # Check if child is keyable
         #
-        if keyable and not child.isKeyable:
+        if keyable and (not child.isKeyable or not child.isChannelBox):
 
             continue
 
