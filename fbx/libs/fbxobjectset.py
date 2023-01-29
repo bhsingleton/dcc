@@ -237,19 +237,19 @@ class FbxObjectSet(fbxbase.FbxBase):
 
         if self.excludeType == FbxObjectSetType.Nodes:
 
-            return self.iterNodesFromNames(self.name, *self.excludeObjects, includeChildren=self.excludeChildren, namespace=namespace)
+            return self.iterNodesFromNames(*self.excludeObjects, includeChildren=self.excludeChildren, namespace=namespace)
 
         elif self.excludeType == FbxObjectSetType.Layers:
 
-            return self.iterNodesFromLayers(self.name, *self.excludeObjects, namespace=namespace)
+            return self.iterNodesFromLayers(*self.excludeObjects, namespace=namespace)
 
         elif self.excludeType == FbxObjectSetType.SelectionSets:
 
-            return self.iterNodesFromSelectionSets(self.name, *self.excludeObjects, namespace=namespace)
+            return self.iterNodesFromSelectionSets(*self.excludeObjects, namespace=namespace)
 
         elif self.excludeType == FbxObjectSetType.Regex:
 
-            return self.iterNodesFromRegex(self.name, *self.excludeObjects, namespace=namespace)
+            return self.iterNodesFromRegex(*self.excludeObjects, namespace=namespace)
 
         else:
 
