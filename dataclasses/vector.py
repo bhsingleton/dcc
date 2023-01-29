@@ -444,6 +444,16 @@ class Vector(adc.ADC):
 
         return Vector(x, y, z)
 
+    def distanceBetween(self, other):
+        """
+        Returns the distance between this and the supplied vector.
+
+        :type other: Vector
+        :rtype: float
+        """
+
+        return (other - self).length()
+
     def angleBetween(self, other, asDegrees=False):
         """
         Returns the angle, in radians, between this and the supplied vector.
