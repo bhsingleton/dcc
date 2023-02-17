@@ -1,6 +1,8 @@
 import re
+import ast
 import unicodedata
 
+from six import string_types
 from six.moves import collections_abc
 
 import logging
@@ -51,6 +53,32 @@ def isBoolean(text):
     """
 
     return text.lower() in __states__
+
+
+def eval(text):
+    """
+    Parses the supplied text for any numerical values and returns them.
+    If nothing is found then the original text is returned!
+
+    :type text: str
+    :rtype: Union[str, bool, int, float]
+    """
+
+    # Redundancy check
+    #
+    if not isinstance(text, string_types):
+
+        return text
+
+    # Evaluate if this is a number
+    #
+    if isNumber(text) or isBoolean(text):
+
+        return ast.literal_eval(text)
+
+    else:
+
+        return text
 
 
 def titleize(text):
