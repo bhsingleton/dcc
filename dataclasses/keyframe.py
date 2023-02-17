@@ -22,14 +22,3 @@ class Keyframe(adc.ADC):
     outTangent: vector.Vector = field(default_factory=vector.Vector)
     outTangentType: Union[int, str] = 0
     # endregion
-
-    # region Methods
-    def copy(self):
-        """
-        Returns a copy of this keyframe.
-
-        :rtype: Vector
-        """
-
-        return replace(self)
-    # endregion
