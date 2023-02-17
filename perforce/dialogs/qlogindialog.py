@@ -1,4 +1,4 @@
-from PySide2 import QtCore, QtWidgets, QtGui
+from Qt import QtCore, QtWidgets, QtGui
 from dcc.ui.dialogs import quicdialog
 
 import logging
@@ -22,14 +22,14 @@ class QLoginDialog(quicdialog.QUicDialog):
         :rtype: None
         """
 
+        # Call parent method
+        #
+        super(QLoginDialog, self).__init__(*args, **kwargs)
+
         # Declare private variables
         #
         self._username = ''
         self._port = ''
-
-        # Call parent method
-        #
-        super(QLoginDialog, self).__init__(*args, **kwargs)
     # endregion
 
     # region Properties
@@ -128,6 +128,10 @@ class QLoginDialog(quicdialog.QUicDialog):
         :rtype: None
         """
 
-        text = 'A password is required for user "{username}" on server "{port}".'.format(username=self.username, port=self.port)
+        text = 'A password is required for user "{username}" on server "{port}".'.format(
+            username=self.username,
+            port=self.port
+        )
+
         self.usernameLabel.setText(text)
     # endregion
