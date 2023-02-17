@@ -16,7 +16,7 @@ class QFilePath(object):
     """
 
     # region Dunderscores
-    __slots__ = ('_path', '_name', '_basename', '_extension', '_icon', '_stat', '_parent', '_children')
+    __slots__ = ('_path', '_name', '_basename', '_extension', '_icon', '_stat', '_parent', '_children', '_siblings')
     __instances__ = {}
     __icons__ = QtWidgets.QFileIconProvider()
 
@@ -80,6 +80,7 @@ class QFilePath(object):
         self._stat = os.stat(self._path)
         self._parent = None
         self._children = None
+        self._siblings = None
         self._icon = None
 
         if os.path.isfile(self._path):
@@ -179,9 +180,19 @@ class QFilePath(object):
         return self._stat
 
     @property
+    def basename(self):
+        """
+        Getter method that returns the base name of this path with no extensions.
+
+        :rtype: str
+        """
+
+        return self._basename
+
+    @property
     def name(self):
         """
-        Getter method that returns the base name of this path.
+        Getter method that returns the name from this path.
 
         :rtype: str
         """
@@ -217,7 +228,7 @@ class QFilePath(object):
     @property
     def children(self):
         """
-        Getter method that returns the children of this path.
+        Getter method that returns the children from this path.
 
         :rtype: List[Path]
         """
@@ -229,6 +240,22 @@ class QFilePath(object):
             self.update()
 
         return self._children
+
+    @property
+    def siblings(self):
+        """
+        Getter method that returns the siblings from this path.
+
+        :rtype: List[Path]
+        """
+
+        # Check if children have been initialized
+        #
+        if self._siblings is None or not self.isUpToDate():
+
+            self.update()
+
+        return self._siblings
     # endregion
 
     # region Methods
@@ -341,19 +368,27 @@ class QFilePath(object):
         :rtype: None
         """
 
+        # Update internal stats
+        #
         self._stat = os.stat(self._path)
         self._parent = QFilePath(os.path.dirname(self._path))
 
+        # Re-populate child array
+        #
         if self.isDir():
 
             paths = [os.path.join(self._path, filename) for filename in os.listdir(self._path)]
-            readablePaths = [path for path in paths if os.access(path, os.R_OK)]
+            accessible = [path for path in paths if os.access(path, os.R_OK)]
 
-            self._children = list(map(QFilePath, readablePaths))
+            self._children = list(map(QFilePath, accessible))
 
         else:
 
             self._children = []
+
+        # Re-populate siblings array
+        #
+        self._siblings = [path for path in self._parent.children if path is not self]
 
     def toString(self):
         """
