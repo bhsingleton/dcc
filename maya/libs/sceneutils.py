@@ -152,6 +152,16 @@ def iterFileProperties():
         yield properties[i], properties[i + 1].encode('ascii').decode('unicode-escape')
 
 
+def isDirty():
+    """
+    Evaluates if the scene is dirty.
+
+    :rtype: bool
+    """
+
+    return mc.file(query=True, modified=True)
+
+
 def markDirty():
     """
     Marks the scene as dirty which will prompt the user for a save upon close.
@@ -277,6 +287,27 @@ def setTime(time):
     """
 
     mc.currentTime(time, edit=True)
+
+
+def autoKey():
+    """
+    Returns the auto-key state.
+
+    :rtype: bool
+    """
+
+    return mc.autoKeyframe(query=True, state=True)
+
+
+def setAutoKey(state):
+    """
+    Updates the auto-key state.
+
+    :type state: bool
+    :rtype: None
+    """
+
+    mc.autoKeyframe(state=state)
 
 
 def enableAutoKey():
