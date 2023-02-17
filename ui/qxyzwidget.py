@@ -29,25 +29,20 @@ class QXyzWidget(QtWidgets.QWidget):
         # Create push buttons
         #
         self.matchPushButton = QtWidgets.QPushButton(title)
-        self.matchPushButton.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.Fixed)
-        self.matchPushButton.setFixedHeight(24)
-        self.matchPushButton.setMinimumWidth(24)
+        self.matchPushButton.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.MinimumExpanding)
         self.matchPushButton.setCheckable(True)
         self.matchPushButton.toggled.connect(self.on_matchPushButton_toggled)
 
         self.matchXPushButton = QtWidgets.QPushButton('X')
-        self.matchXPushButton.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
-        self.matchXPushButton.setFixedSize(QtCore.QSize(15, 24))
+        self.matchXPushButton.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.MinimumExpanding)
         self.matchXPushButton.setCheckable(True)
 
         self.matchYPushButton = QtWidgets.QPushButton('Y')
-        self.matchYPushButton.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
-        self.matchYPushButton.setFixedSize(QtCore.QSize(15, 24))
+        self.matchYPushButton.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.MinimumExpanding)
         self.matchYPushButton.setCheckable(True)
 
         self.matchZPushButton = QtWidgets.QPushButton('Z')
-        self.matchZPushButton.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
-        self.matchZPushButton.setFixedSize(QtCore.QSize(15, 24))
+        self.matchZPushButton.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.MinimumExpanding)
         self.matchZPushButton.setCheckable(True)
 
         self.matchButtonGroup = QtWidgets.QButtonGroup(parent=self)
