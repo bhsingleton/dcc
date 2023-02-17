@@ -10,7 +10,7 @@ log.setLevel(logging.INFO)
 
 class DefaultType(IntEnum):
     """
-    Overload of IntEnum that contains all the valid reset types.
+    Enum class that contains all the valid reset types.
     """
 
     StartTime = 0
@@ -22,6 +22,10 @@ class QTimeSpinBox(QtWidgets.QSpinBox):
     """
     Overload of QSpinBox used to display time range values.
     """
+
+    # region Enums
+    DefaultType = DefaultType
+    # endregion
 
     # region Dunderscores
     def __init__(self, *args, **kwargs):
@@ -136,17 +140,17 @@ class QTimeSpinBox(QtWidgets.QSpinBox):
             options = QtWidgets.QStyleOptionSpinBox()
             options.initFrom(self)
 
-            # Check if either arrows were clicked
-            # If they were then ignore this event and reset the value
+            # Check if either arrows were right-clicked
+            # If they were then consume this event and reset the spinner value
             #
             upRect = QtWidgets.QApplication.style().subControlRect(QtWidgets.QStyle.CC_SpinBox, options, QtWidgets.QStyle.SC_SpinBoxUp, self)
             downRect = QtWidgets.QApplication.style().subControlRect(QtWidgets.QStyle.CC_SpinBox, options, QtWidgets.QStyle.SC_SpinBoxDown, self)
-            mousePos = event.pos()
+            mousePos = self.mapFromGlobal(QtGui.QCursor.pos())
 
             if upRect.contains(mousePos) or downRect.contains(mousePos):
 
-                self.setValue(self.defaultValue())
                 event.accept()
+                self.setValue(self.defaultValue())
 
             else:
 
