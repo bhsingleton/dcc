@@ -112,7 +112,7 @@ def setTranslation(node, translation, **kwargs):
 
     if not skipTranslateX and not translateXPlug.isLocked:
 
-        translateXPlug.setDouble(translation.x)
+        plugmutators.setValue(translateXPlug, translation.x)
 
     # Check if translateY can be set
     #
@@ -121,7 +121,7 @@ def setTranslation(node, translation, **kwargs):
 
     if not skipTranslateY and not translateYPlug.isLocked:
 
-        translateYPlug.setDouble(translation.y)
+        plugmutators.setValue(translateYPlug, translation.y)
 
     # Check if translateZ can be set
     #
@@ -130,7 +130,7 @@ def setTranslation(node, translation, **kwargs):
 
     if not skipTranslateZ and not translateZPlug.isLocked:
 
-        translateZPlug.setDouble(translation.z)
+        plugmutators.setValue(translateZPlug, translation.z)
 
 
 def resetTranslation(node):
@@ -261,7 +261,7 @@ def setEulerRotation(node, eulerRotation, **kwargs):
 
     if not skipRotateX and not rotateXPlug.isLocked:
 
-        rotateXPlug.setMAngle(om.MAngle(eulerRotation.x, om.MAngle.kRadians))
+        plugmutators.setValue(rotateXPlug, om.MAngle(eulerRotation.x, om.MAngle.kRadians))
 
     # Check if rotateY can be set
     #
@@ -270,7 +270,7 @@ def setEulerRotation(node, eulerRotation, **kwargs):
 
     if not skipRotateY and not rotateYPlug.isLocked:
 
-        rotateYPlug.setMAngle(om.MAngle(eulerRotation.y, om.MAngle.kRadians))
+        plugmutators.setValue(rotateYPlug, om.MAngle(eulerRotation.y, om.MAngle.kRadians))
 
     # Check if rotateZ can be set
     #
@@ -279,7 +279,7 @@ def setEulerRotation(node, eulerRotation, **kwargs):
 
     if not skipRotateZ and not rotateZPlug.isLocked:
 
-        rotateZPlug.setMAngle(om.MAngle(eulerRotation.z, om.MAngle.kRadians))
+        plugmutators.setValue(rotateZPlug, om.MAngle(eulerRotation.z, om.MAngle.kRadians))
 
 
 def resetEulerRotation(node):
@@ -360,13 +360,17 @@ def getJointOrient(joint):
         return om.MEulerRotation()
 
 
-def setJointOrient(joint, jointOrient):
+def setJointOrient(joint, orientation, **kwargs):
     """
     Updates the joint orient angles on the supplied joint.
     If the node is not derived from a joint then no changes are made.
 
     :type joint: Union[str, om.MObject, om.MDagPath]
-    :type jointOrient: om.MEulerRotation
+    :type orientation: om.MEulerRotation
+    :key skipJointOrient: bool
+    :key skipJointOrientX: bool
+    :key skipJointOrientY: bool
+    :key skipJointOrientZ: bool
     :rtype: None
     """
 
@@ -378,15 +382,47 @@ def setJointOrient(joint, jointOrient):
 
         raise TypeError('setJointOrient() expects a valid dag path!')
 
-    # Update joint orient plugs
+    # Check if dag path contains a joint
+    #
+    if not dagPath.hasFn(om.MFn.kJoint):
+
+        raise TypeError('setJointOrient() expects a valid joint!')
+
+    # Initialize transform function set
+    # Update rotate order
     #
     fnTransform = om.MFnTransform(dagPath)
 
-    if dagPath.hasFn(om.MFn.kJoint):
+    rotateOrderPlug = fnTransform.findPlug('rotateOrder', True)
+    orientation.reorderIt(rotateOrderPlug.asInt())
 
-        fnTransform.findPlug('jointOrientX', False).setMAngle(om.MAngle(jointOrient.x, om.MAngle.kRadians))
-        fnTransform.findPlug('jointOrientY', False).setMAngle(om.MAngle(jointOrient.y, om.MAngle.kRadians))
-        fnTransform.findPlug('jointOrientZ', False).setMAngle(om.MAngle(jointOrient.z, om.MAngle.kRadians))
+    # Check if rotateX can be set
+    #
+    skipJointOrient = kwargs.get('skipJointOrient', False)
+    skipJointOrientX = kwargs.get('skipJointOrientX', skipJointOrient)
+    jointOrientXPlug = fnTransform.findPlug('jointOrientX', True)
+
+    if not skipJointOrientX and not jointOrientXPlug.isLocked:
+
+        plugmutators.setValue(jointOrientXPlug, om.MAngle(orientation.x, om.MAngle.kRadians))
+
+    # Check if rotateY can be set
+    #
+    skipJointOrientY = kwargs.get('skipJointOrientY', skipJointOrient)
+    jointOrientYPlug = fnTransform.findPlug('jointOrientY', True)
+
+    if not skipJointOrientY and not jointOrientYPlug.isLocked:
+
+        plugmutators.setValue(jointOrientYPlug, om.MAngle(orientation.y, om.MAngle.kRadians))
+
+    # Check if rotateZ can be set
+    #
+    skipJointOrientZ = kwargs.get('skipJointOrientZ', skipJointOrient)
+    jointOrientZPlug = fnTransform.findPlug('jointOrientZ', True)
+
+    if not skipJointOrientZ and not jointOrientZPlug.isLocked:
+
+        plugmutators.setValue(jointOrientZPlug, om.MAngle(orientation.z, om.MAngle.kRadians))
 
 
 def resetJointOrient(joint):
@@ -432,7 +468,7 @@ def setScale(node, scale, **kwargs):
     Updates the scale values on the supplied node.
 
     :type node: om.MDagPath
-    :type scale: list[float, float, float]
+    :type scale: Tuple[float, float, float]
     :key skipScale: bool
     :key skipScaleX: bool
     :key skipScaleY: bool
@@ -460,7 +496,7 @@ def setScale(node, scale, **kwargs):
 
     if not skipScaleX and not scaleXPlug.isLocked:
 
-        scaleXPlug.setDouble(scale[0])
+        plugmutators.setValue(scaleXPlug, scale[0])
 
     # Check if scaleY can be set
     #
@@ -469,7 +505,7 @@ def setScale(node, scale, **kwargs):
 
     if not skipScaleY and not scaleYPlug.isLocked:
 
-        scaleYPlug.setDouble(scale[1])
+        plugmutators.setValue(scaleYPlug, scale[1])
 
     # Check if scaleZ can be set
     #
@@ -478,7 +514,7 @@ def setScale(node, scale, **kwargs):
 
     if not skipScaleZ and not scaleZPlug.isLocked:
 
-        scaleZPlug.setDouble(scale[2])
+        plugmutators.setValue(scaleZPlug, scale[2])
 
 
 def resetScale(node):
@@ -578,12 +614,9 @@ def applyTransformMatrix(node, matrix, **kwargs):
 
     :type node: Union[str, om.MObject, om.MDagPath]
     :type matrix: om.MMatrix
-    :key skipTranslateX: bool
-    :key skipTranslateY: bool
-    :key skipTranslateZ: bool
-    :key skipRotateX: bool
-    :key skipRotateY: bool
-    :key skipRotateZ: bool
+    :key skipTranslate: bool
+    :key skipRotate: bool
+    :key skipScale: bool
     :key preserveChildren: bool
     :rtype: None
     """
@@ -720,7 +753,7 @@ def copyTransform(*args, **kwargs):
 
     # Compose local matrix
     #
-    matrix = scalePivotMatrix * scaleMatrix * scalePivotTranslateMatrix * rotatePivotMatrix * rotationMatrix * jointOrientMatrix * rotatePivotTranslateMatrix * translateMatrix
+    matrix = scalePivotMatrix * scaleMatrix * scalePivotTranslateMatrix * rotatePivotMatrix * orientationMatrix * rotationMatrix * jointOrientMatrix * rotatePivotTranslateMatrix * translateMatrix
     worldMatrix = matrix * parentMatrix
 
     log.debug('Composed world matrix: %s' % worldMatrix)
@@ -1557,9 +1590,9 @@ def decomposeTransformMatrix(matrix, rotateOrder=om.MEulerRotation.kXYZ):
     Breaks apart the matrix into its individual translate, rotate and scale components.
     A rotation order must be supplied in order to be resolved correctly.
 
-    :type matrix: Union[str, list, tuple, om.MMatrix, om.MObject]
+    :type matrix: Union[list, tuple, om.MMatrix, om.MObject]
     :type rotateOrder: int
-    :rtype: om.MVector, om.MEulerRotation, list[float, float, float]
+    :rtype: Tuple[om.MVector, om.MEulerRotation, Tuple[float, float, float]]
     """
 
     # Check value type
@@ -1658,6 +1691,40 @@ def breakMatrix(matrix, normalize=False):
     else:
 
         raise ValueError('getAxisVectors() expects an MMatrix (%s given)!' % type(matrix).__name__)
+
+
+def lerpMatrix(matrix, otherMatrix, weight=0.5):
+    """
+    Lerps the two transform matrices by the specified amount.
+
+    :type matrix: om.MMatrix
+    :type otherMatrix: om.MMatrix
+    :type weight: float
+    :rtype: om.MMatrix
+    """
+
+    # Linearly interpolate position and scale components
+    #
+    position, eulerRotation, scale = decomposeTransformMatrix(matrix)
+    otherPosition, otherEulerRotation, otherScale = decomposeTransformMatrix(otherMatrix)
+
+    lerpPos = (position * weight) + (otherPosition * (1.0 - weight))
+    lerpScale = (om.MVector(scale) * weight) + (om.MVector(otherScale) * (1.0 - weight))
+
+    # Spherically interpolate rotation component
+    #
+    quat = om.MQuaternion().setValue(matrix)
+    otherQuat = om.MQuaternion().setValue(otherMatrix)
+
+    slerpQuat = om.MQuaternion.slerp(quat, otherQuat, weight)
+
+    # Compose interpolated matrix
+    #
+    positionMatrix = createTranslateMatrix(lerpPos)
+    rotateMatrix = slerpQuat.asMatrix()
+    scaleMatrix = createScaleMatrix(lerpScale)
+
+    return scaleMatrix * rotateMatrix * positionMatrix
 
 
 def mirrorVector(vector, normal=om.MVector.kXaxisVector):
