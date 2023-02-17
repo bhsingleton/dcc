@@ -27,6 +27,10 @@ class QListDialog(quicdialog.QUicDialog):
         :rtype: None
         """
 
+        # Call parent method
+        #
+        super(QListDialog, self).__init__(**kwargs)
+
         # Declare private variables
         #
         self._items = []
@@ -39,22 +43,10 @@ class QListDialog(quicdialog.QUicDialog):
         self.copyItemsAction = None
         self.pasteItemsAction = None
         self.clearItemsAction = None
-
-        # Call parent method
-        #
-        super(QListDialog, self).__init__(**kwargs)
-
-        # Check if any arguments were supplied
-        #
-        numArgs = len(args)
-
-        if numArgs == 1:
-
-            self.setWindowTitle(args[0])
     # endregion
 
     # region Methods
-    def postLoad(self):
+    def postLoad(self, *args, **kwargs):
         """
         Called after the user interface has been loaded.
 
@@ -63,7 +55,7 @@ class QListDialog(quicdialog.QUicDialog):
 
         # Call parent method
         #
-        super(QListDialog, self).postLoad()
+        super(QListDialog, self).postLoad(*args, **kwargs)
 
         # Initialize context menu
         #
@@ -84,6 +76,14 @@ class QListDialog(quicdialog.QUicDialog):
         self.editMenu.addActions([self.copyItemsAction, self.pasteItemsAction])
         self.editMenu.addSeparator()
         self.editMenu.addAction(self.clearItemsAction)
+
+        # Check if any arguments were supplied
+        #
+        numArgs = len(args)
+
+        if numArgs == 1:
+
+            self.setWindowTitle(args[0])
 
     def iterItems(self):
         """
