@@ -19,9 +19,7 @@ log.setLevel(logging.INFO)
 
 class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
     """
-    Overload of AFnBase used to outline function set behaviour for meshes.
-    When dealing with indices it's encouraged to use dictionaries since there are DCCs that use one-based arrays.
-    Don't shoot the messenger, shoot 3ds Max instead...
+    Overload of `AFnBase` that outlines DCC function set behaviour for meshes.
     """
 
     __slots__ = ()
@@ -564,7 +562,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         pass
 
     @abstractmethod
-    def iterConnectedVertices(self, *args, **kwargs):
+    def iterConnectedVertices(self, *indices, **kwargs):
         """
         Returns a generator that yields the connected vertex elements.
 
@@ -575,7 +573,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         pass
 
     @abstractmethod
-    def iterConnectedEdges(self, *args, **kwargs):
+    def iterConnectedEdges(self, *indices, **kwargs):
         """
         Returns a generator that yields the connected edge elements.
 
@@ -586,7 +584,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         pass
 
     @abstractmethod
-    def iterConnectedFaces(self, *args, **kwargs):
+    def iterConnectedFaces(self, *indices, **kwargs):
         """
         Returns a generator that yields the connected face elements.
 
@@ -595,18 +593,6 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
 
         pass
-
-    @staticmethod
-    def distanceBetween(start, end):
-        """
-        Returns the distance between the two points.
-
-        :type start: Tuple[float, float, float]
-        :type end: Tuple[float, float, float]
-        :rtype: float
-        """
-
-        return math.sqrt(sum([math.pow((y - x), 2.0) for (x, y) in zip(start, end)]))
 
     def distanceBetweenVertices(self, *indices):
         """
@@ -618,19 +604,19 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         numIndices = len(indices)
         points = self.vertices(*indices)
 
-        return sum([self.distanceBetween(points[i], points[i+1]) for i in range(numIndices - 1)])
+        return sum([points[i].distanceBetween(points[i+1]) for i in range(numIndices - 1)])
 
-    def shortestPathBetweenVertices(self, *args):
+    def shortestPathBetweenVertices(self, *indices):
         """
         Returns the shortest paths between the supplied vertices.
 
-        :type args: Tuple[int]
+        :type indices: Tuple[int]
         :rtype: List[List[int]]
         """
 
         # Check if we have enough arguments
         #
-        numArgs = len(args)
+        numArgs = len(indices)
 
         if numArgs < 2:
 
@@ -638,7 +624,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         # Iterate through vertex pairs
         #
-        return [self.shortestPathBetweenTwoVertices(args[x], args[x+1]) for x in range(numArgs - 1)]
+        return [self.shortestPathBetweenTwoVertices(indices[x], indices[x+1]) for x in range(numArgs - 1)]
 
     def shortestPathBetweenTwoVertices(self, startVertex, endVertex, maxIterations=20):
         """
@@ -717,8 +703,8 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         inverse = {x: -1 if x == axis else 1 for x in range(3)}
         mirrorPoints = [[value * inverse[index] for (index, value) in enumerate(point)] for point in points]
 
-        # Query closest points from point tree
-        # Might be worth trying to optimize this with only opposite points?
+        # Query the closest points from point tree
+        # TODO: Might be worth trying to optimize this with only opposite points?
         #
         tree = cKDTree(self.vertices())
         distances, indices = tree.query(mirrorPoints, distance_upper_bound=tolerance)
@@ -734,19 +720,40 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         Returns a list of the closest connected vertex indices.
 
         :type vertexIndices: List[int]
-        :rtype: Dict[int, int]
+        :rtype: List[int]
         """
 
-        pass
+        # Iterate through vertices
+        #
+        numVertexIndices = len(vertexIndices)
+        neighbours = [None] * numVertexIndices
+
+        for (i, vertexIndex) in enumerate(vertexIndices):
+
+            # Get connected points
+            #
+            point = self.vertices(vertexIndex)[0]
+
+            connectedIndices = self.iterConnectedVertices(vertexIndex)
+            connectedPoints = self.vertices(*connectedIndices)
+
+            # Evaluate distance between points
+            #
+            distances = [point.distanceBetween(otherPoint) for otherPoint in connectedPoints]
+            minDistance = min(distances)
+
+            neighbours[i] = connectedIndices[distances.index(minDistance)]
+
+        return neighbours
 
     def closestVertices(self, points, vertexIndices=None):
         """
         Returns the vertices that are closest to the given points.
         An optional list of vertices can be used to limit the range of points considered.
 
-        :type points: Sequence[List[float, float, float]]
+        :type points: List[Tuple[float, float, float]]
         :type vertexIndices: List[int]
-        :rtype: int
+        :rtype: List[int]
         """
 
         # Check if vertices were supplied
@@ -774,7 +781,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         :type points: List[Tuple[float, float, float]]
         :type faceIndices: List[int]
-        :rtype: int
+        :rtype: List[int]
         """
 
         # Check if vertices were supplied
