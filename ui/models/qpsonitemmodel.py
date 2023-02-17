@@ -663,11 +663,11 @@ class QPSONItemModel(QtCore.QAbstractItemModel):
 
         if size < numRows:
 
-            return self.removeRows(numRows - size, size, parent=parent)
+            return self.removeRows(size, numRows - size, parent=parent)
 
         elif size > numRows:
 
-            items = [T() for x in range(numRows, size, 1)]
+            items = [T() for i in range(numRows, size, 1)]
             return self.extendRow(items, parent=parent)
 
         else:
