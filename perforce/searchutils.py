@@ -1,6 +1,8 @@
 import os
+import P4
 
 from collections import defaultdict
+from dcc.python import stringutils
 from dcc.perforce import clientutils, cmds
 
 import logging
@@ -94,20 +96,21 @@ class SearchEngine(object):
 
         # Collect files from client view
         #
-        log.info('Searching for: %s' % search)
-        fileSpecs = cmds.files(search, client=client.name, ignoreDeleted=True)
+        fileSpecs = None
 
-        if fileSpecs is not None:
+        try:
+
+            log.info('Searching for: %s' % search)
+            fileSpecs = cmds.files(search, client=client.name, ignoreDeleted=True)
+
+        except P4.P4Exception as exception:
+
+            log.error(exception)
+
+        finally:
 
             log.info('Found: %s' % fileSpecs)
-            history[search] = fileSpecs
-
-            return fileSpecs
-
-        else:
-
-            log.warning('No results found!')
-            return []
+            return fileSpecs if not stringutils.isNullOrEmpty(fileSpecs) else []
 
     def searchClients(self, search):
         """
