@@ -1,6 +1,7 @@
 from maya.api import OpenMaya as om
 from . import plugutils
 from ..decorators.locksmith import locksmith
+from ..decorators.autokey import autokey
 
 import logging
 logging.basicConfig()
@@ -389,60 +390,52 @@ def isNumeric(plug):
 
 
 # region Setters
-@locksmith
-def setBoolean(plug, value, **kwargs):
+def setBoolean(plug, value, modifier=None, **kwargs):
     """
     Updates the boolean value on the supplied plug.
 
     :type plug: om.MPlug
     :type value: bool
-    :key modifier: om.MDGModifier
-    :key force: bool
+    :type modifier: om.MDGModifier
     :rtype: None
     """
 
-    kwargs['modifier'].newPlugValueBool(plug, bool(value))
+    modifier.newPlugValueBool(plug, bool(value))
 
 
-@locksmith
-def setInteger(plug, value, **kwargs):
+def setInteger(plug, value, modifier=None, **kwargs):
     """
     Updates the integer value for the supplied plug.
 
     :type plug: om.MPlug
     :type value: int
-    :key modifier: om.MDGModifier
-    :key force: bool
+    :type modifier: om.MDGModifier
     :rtype: None
     """
 
-    kwargs['modifier'].newPlugValueInt(plug, int(value))
+    modifier.newPlugValueInt(plug, int(value))
 
 
-@locksmith
-def setFloat(plug, value, **kwargs):
+def setFloat(plug, value, modifier=None, **kwargs):
     """
     Updates the float value for the supplied plug.
 
     :type plug: om.MPlug
     :type value: float
-    :key modifier: om.MDGModifier
-    :key force: bool
+    :type modifier: om.MDGModifier
     :rtype: None
     """
 
-    kwargs['modifier'].newPlugValueFloat(plug, float(value))
+    modifier.newPlugValueFloat(plug, float(value))
 
 
-@locksmith
-def setMatrix(plug, value, **kwargs):
+def setMatrix(plug, value, modifier=None, **kwargs):
     """
     Updates the matrix value on the supplied plug.
 
     :type plug: om.MPlug
     :type value: om.MMatrix
-    :key modifier: om.MDGModifier
-    :key force: bool
+    :type modifier: om.MDGModifier
     :rtype: None
     """
 
@@ -455,18 +448,16 @@ def setMatrix(plug, value, **kwargs):
 
     # Assign data object to plug
     #
-    kwargs['modifier'].newPlugValue(plug, matrixData)
+    modifier.newPlugValue(plug, matrixData)
 
 
-@locksmith
-def setMatrixArray(plug, value, **kwargs):
+def setMatrixArray(plug, value, modifier=None, **kwargs):
     """
     Updates the matrix array for the supplied plug.
 
     :type plug: om.MPlug
     :type value: Union[List[om.MMatrix], om.MMatrixArray]
-    :key modifier: om.MDGModifier
-    :key force: bool
+    :type modifier: om.MDGModifier
     :rtype: None
     """
 
@@ -497,18 +488,16 @@ def setMatrixArray(plug, value, **kwargs):
 
     # Assign data object to plug
     #
-    kwargs['modifier'].newPlugValue(plug, matrixArrayData)
+    modifier.newPlugValue(plug, matrixArrayData)
 
 
-@locksmith
-def setDoubleArray(plug, value, **kwargs):
+def setDoubleArray(plug, value, modifier=None, **kwargs):
     """
     Updates the double array for the supplied plug.
 
     :type plug: om.MPlug
     :type value: Union[List[float], om.MFloatArray, om.MDoubleArray]
-    :key modifier: om.MDGModifier
-    :key force: bool
+    :type modifier: om.MDGModifier
     :rtype: None
     """
 
@@ -539,48 +528,42 @@ def setDoubleArray(plug, value, **kwargs):
 
     # Assign MObject to plug
     #
-    kwargs['modifier'].newPlugValue(plug, doubleArrayData)
+    modifier.newPlugValue(plug, doubleArrayData)
 
 
-@locksmith
-def setMObject(plug, value, **kwargs):
+def setMObject(plug, value, modifier=None, **kwargs):
     """
     Updates the MObject for the supplied plug.
 
     :type plug: om.MPlug
     :type value: om.MObject
-    :key modifier: om.MDGModifier
-    :key force: bool
+    :type modifier: om.MDGModifier
     :rtype: None
     """
 
-    kwargs['modifier'].newPlugValue(plug, value)
+    modifier.newPlugValue(plug, value)
 
 
-@locksmith
-def setString(plug, value, **kwargs):
+def setString(plug, value, modifier=None, **kwargs):
     """
     Updates the string value for the supplied plug.
 
     :type plug: om.MPlug
     :type value: str
-    :key modifier: om.MDGModifier
-    :key force: bool
+    :type modifier: om.MDGModifier
     :rtype: None
     """
 
-    kwargs['modifier'].newPlugValueString(plug, value)
+    modifier.newPlugValueString(plug, value)
 
 
-@locksmith
-def setStringArray(plug, value, **kwargs):
+def setStringArray(plug, value, modifier=None, **kwargs):
     """
     Gets the string array from the supplied plug.
 
     :type plug: om.MPlug
     :type value: om.MStringArray
-    :key modifier: om.MDGModifier
-    :key force: bool
+    :type modifier: om.MDGModifier
     :rtype: None
     """
 
@@ -607,18 +590,16 @@ def setStringArray(plug, value, **kwargs):
 
     # Assign data object to plug
     #
-    kwargs['modifier'].newPlugValue(plug, stringArrayData)
+    modifier.newPlugValue(plug, stringArrayData)
 
 
-@locksmith
-def setMAngle(plug, value, **kwargs):
+def setMAngle(plug, value, modifier=None, **kwargs):
     """
     Updates the MAngle value for the supplied plug.
 
     :type plug: om.MPlug
     :type value: Union[int, float, om.MAngle]
-    :key modifier: om.MDGModifier
-    :key force: bool
+    :type modifier: om.MDGModifier
     :rtype: None
     """
 
@@ -630,18 +611,16 @@ def setMAngle(plug, value, **kwargs):
 
     # Assign value to plug
     #
-    kwargs['modifier'].newPlugValueMAngle(plug, value)
+    modifier.newPlugValueMAngle(plug, value)
 
 
-@locksmith
-def setMDistance(plug, value, **kwargs):
+def setMDistance(plug, value, modifier=None, **kwargs):
     """
     Updates the MDistance value for the supplied plug.
 
     :type plug: om.MPlug
     :type value: Union[int, float, om.MDistance]
-    :key modifier: om.MDGModifier
-    :key force: bool
+    :type modifier: om.MDGModifier
     :rtype: None
     """
 
@@ -653,18 +632,16 @@ def setMDistance(plug, value, **kwargs):
 
     # Assign value to plug
     #
-    kwargs['modifier'].newPlugValueMDistance(plug, value)
+    modifier.newPlugValueMDistance(plug, value)
 
 
-@locksmith
-def setMTime(plug, value, **kwargs):
+def setMTime(plug, value, modifier=None, **kwargs):
     """
     Updates the MTime value for the supplied plug.
 
     :type plug: om.MPlug
     :type value: Union[int, float, om.MTime]
-    :key modifier: om.MDGModifier
-    :key force: bool
+    :type modifier: om.MDGModifier
     :rtype: None
     """
 
@@ -676,18 +653,16 @@ def setMTime(plug, value, **kwargs):
 
     # Assign value to plug
     #
-    kwargs['modifier'].newPlugValueMTime(plug, value)
+    modifier.newPlugValueMTime(plug, value)
 
 
-@locksmith
-def setMessage(plug, value, **kwargs):
+def setMessage(plug, value, modifier=None, **kwargs):
     """
     Updates the connected message plug node.
 
     :type plug: om.MPlug
     :type value: om.MObject
-    :key modifier: om.MDGModifier
-    :key force: bool
+    :type modifier: om.MDGModifier
     :rtype: None
     """
 
@@ -703,15 +678,13 @@ def setMessage(plug, value, **kwargs):
         plugutils.breakConnections(plug, source=True, destination=False)
 
 
-@locksmith
-def setCompound(plug, values, **kwargs):
+def setCompound(plug, values, modifier=None, **kwargs):
     """
     Updates the compound value for the supplied plug.
 
     :type plug: om.MPlug
     :type values: Union[List[Any], Dict[str, Any]]
-    :key modifier: om.MDGModifier
-    :key force: bool
+    :type modifier: om.MDGModifier
     :rtype: None
     """
 
@@ -736,7 +709,7 @@ def setCompound(plug, values, **kwargs):
             childAttribute = fnDependNode.attribute(name)
             childPlug = plug.child(childAttribute)
 
-            setValue(childPlug, value, **kwargs)
+            setValue(childPlug, value, modifier=modifier, **kwargs)
 
     elif hasattr(values, '__getitem__') and hasattr(values, '__len__'):
 
@@ -793,49 +766,46 @@ __set_unit_value__ = {
 }
 
 
-@locksmith
-def setNumericValue(plug, value, **kwargs):
+def setNumericValue(plug, value, modifier=None, **kwargs):
     """
     Updates the numeric value for the supplied plug.
 
     :type plug: om.MPlug
     :type value: Union[bool, int, float, tuple]
-    :key modifier: om.MDGModifier
+    :type modifier: om.MDGModifier
     :key force: bool
     :rtype: None
     """
 
-    return __set_numeric_value__[getNumericType(plug.attribute())](plug, value, **kwargs)
+    return __set_numeric_value__[getNumericType(plug.attribute())](plug, value, modifier=modifier, **kwargs)
 
 
-@locksmith
-def setUnitValue(plug, value, **kwargs):
+def setUnitValue(plug, value, modifier=None, **kwargs):
     """
     Updates the unit value for the supplied unit plug.
 
     :type plug: om.MPlug
     :type value: Union[om.MDistance, om.MAngle]
-    :key modifier: om.MDGModifier
+    :type modifier: om.MDGModifier
     :key force: bool
     :rtype: None
     """
 
-    return __set_unit_value__[getUnitType(plug.attribute())](plug, value, **kwargs)
+    return __set_unit_value__[getUnitType(plug.attribute())](plug, value, modifier=modifier, **kwargs)
 
 
-@locksmith
-def setTypedValue(plug, value, **kwargs):
+def setTypedValue(plug, value, modifier=None, **kwargs):
     """
     Gets the typed value from the supplied plug.
 
     :type plug: om.MPlug
     :type value: Union[om.MMatrix, om.MObject]
-    :key modifier: om.MDGModifier
+    :type modifier: om.MDGModifier
     :key force: bool
     :rtype: None
     """
 
-    return __set_typed_value__[getDataType(plug.attribute())](plug, value, **kwargs)
+    return __set_typed_value__[getDataType(plug.attribute())](plug, value, modifier=modifier, **kwargs)
 
 
 __set_value__ = {
@@ -861,7 +831,9 @@ __set_value__ = {
 }
 
 
-def setValue(plug, value, modifier=None, force=False):
+@locksmith
+@autokey
+def setValue(plug, value, modifier=None, **kwargs):
     """
     Updates the value for the supplied plug.
     An optional force flag can be supplied to unlock the node before setting.
@@ -869,7 +841,6 @@ def setValue(plug, value, modifier=None, force=False):
     :type plug: om.MPlug
     :type value: Any
     :type modifier: Union[om.MDGModifier, None]
-    :type force: bool
     :rtype: None
     """
 
@@ -917,7 +888,7 @@ def setValue(plug, value, modifier=None, force=False):
         for (physicalIndex, item) in enumerate(value):
 
             element = plug.elementByLogicalIndex(physicalIndex)
-            setValue(element, item, modifier=modifier, force=force)
+            setValue(element, item, modifier=modifier, **kwargs)
 
         # Remove any excess elements
         #
@@ -927,25 +898,24 @@ def setValue(plug, value, modifier=None, force=False):
 
     elif plug.isCompound:
 
-        setCompound(plug, value, modifier=modifier, force=force)
+        setCompound(plug, value, modifier=modifier, **kwargs)
 
     else:
 
         attributeType = plugutils.getApiType(plug)
-        __set_value__[attributeType](plug, value, modifier=modifier, force=force)
+        __set_value__[attributeType](plug, value, modifier=modifier, **kwargs)
     
     # Execute modifier
     #
     modifier.doIt()
     
 
-def resetValue(plug, modifier=None, force=False):
+def resetValue(plug, modifier=None, **kwargs):
     """
     Resets the value for the supplied plug back to its default value.
 
     :type plug: om.MPlug
     :type modifier: Union[om.MDGModifier, None]
-    :key force: bool
     :rtype: None
     """
 
@@ -965,7 +935,7 @@ def resetValue(plug, modifier=None, force=False):
 
         for i in range(numElements):
 
-            resetValue(plug.elementByPhysicalIndex(i), force=force)
+            resetValue(plug.elementByPhysicalIndex(i), modifier=modifier, **kwargs)
 
     elif plug.isCompound:
 
@@ -975,7 +945,7 @@ def resetValue(plug, modifier=None, force=False):
 
         for i in range(numChildren):
 
-            resetValue(plug.child(i), force=force)
+            resetValue(plug.child(i), modifier=modifier, **kwargs)
 
     else:
 
@@ -992,11 +962,15 @@ def resetValue(plug, modifier=None, force=False):
 
             defaultValue = om.MFnUnitAttribute(attribute).default
 
+        elif attribute.hasFn(om.MFn.kEnumAttribute):
+
+            defaultValue = om.MFnEnumAttribute(attribute).default
+
         else:
 
             pass
 
         # Reset plug
         #
-        setValue(plug, defaultValue, modifier=modifier, force=force)
+        setValue(plug, defaultValue, modifier=modifier, **kwargs)
 # endregion

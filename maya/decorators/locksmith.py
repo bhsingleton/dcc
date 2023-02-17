@@ -9,11 +9,11 @@ log.setLevel(logging.INFO)
 
 class Locksmith(abstractdecorator.AbstractDecorator):
     """
-    Overload of AbstractDecorator used to toggle lock states when calling plug mutators.
+    Overload of `AbstractDecorator` that toggles the lock state on plugs when mutating values.
     """
 
     # region Dunderscores
-    __slots__ = ('_plug', '_value', '_wasLocked', '_force')
+    __slots__ = ('_plug', '_value', '_isLocked', '_force')
 
     def __init__(self, *args, **kwargs):
         """
@@ -30,7 +30,7 @@ class Locksmith(abstractdecorator.AbstractDecorator):
         #
         self._plug = None
         self._value = None
-        self._wasLocked = False
+        self._isLocked = False
         self._force = False
 
     def __enter__(self, *args, **kwargs):
@@ -51,14 +51,14 @@ class Locksmith(abstractdecorator.AbstractDecorator):
         # Check if force was used
         #
         self._plug, self._value = args
-        self._wasLocked = bool(self._plug.isLocked)
+        self._isLocked = bool(self.plug.isLocked)
         self._force = kwargs.get('force', False)
 
         if self._force:
 
-            self._plug.isLocked = False
+            self.plug.isLocked = False
 
-        elif self._plug.isLocked and not self._force:
+        elif self.plug.isLocked and not self.force:
 
             raise TypeError('__enter__() cannot mutate locked plug!')
 
@@ -78,9 +78,51 @@ class Locksmith(abstractdecorator.AbstractDecorator):
 
         # Check if plug should be relocked
         #
-        if self._force and self._wasLocked:
+        if self.force and self.isLocked:
 
-            self._plug.isLocked = True
+            self.plug.isLocked = True
+    # endregion
+
+    # region Properties
+    @property
+    def plug(self):
+        """
+        Getter method that returns the current plug.
+
+        :rtype: om.MPlug
+        """
+
+        return self._plug
+
+    @property
+    def value(self):
+        """
+        Getter method that returns the current value.
+
+        :rtype: Any
+        """
+
+        return self._value
+
+    @property
+    def force(self):
+        """
+        Getter method that returns the force flag.
+
+        :rtype: bool
+        """
+
+        return self._force
+
+    @property
+    def isLocked(self):
+        """
+        Getter method that returns the locked state.
+
+        :rtype: bool
+        """
+
+        return self._isLocked
     # endregion
 
 

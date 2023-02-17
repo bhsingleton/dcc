@@ -289,18 +289,27 @@ def breakConnections(plug, source=True, destination=True, recursive=False):
             breakConnections(childPlug, source=source, destination=destination)
 
 
-def iterTopLevelPlugs(node, static=False, dynamic=False):
+def iterTopLevelPlugs(node, **kwargs):
     """
     Returns a generator that yields top-level plugs from the supplied node.
 
     :type node: om.MObject
-    :type static: bool
-    :type dynamic: bool
+    :key readable: bool
+    :key writable: bool
+    :key keyable: bool
+    :key affectsWorldSpace: bool
+    :key skipUserAttributes: bool
     :rtype: iter
     """
 
     # Iterate through attributes
     #
+    readable = kwargs.get('readable', False)
+    writable = kwargs.get('writable', False)
+    keyable = kwargs.get('keyable', False)
+    affectsWorldSpace = kwargs.get('affectsWorldSpace', False)
+    skipUserAttributes = kwargs.get('skipUserAttributes', False)
+
     for attribute in attributeutils.iterAttributes(node):
 
         # Check if attribute is top-level
@@ -311,36 +320,63 @@ def iterTopLevelPlugs(node, static=False, dynamic=False):
 
             continue
 
+        # Check if attribute is readable
+        #
+        if readable and not fnAttribute.readable:
+
+            continue
+
+        # Check if attribute is writable
+        #
+        if writable and not fnAttribute.writable:
+
+            continue
+
+        # Check if attribute is writable
+        #
+        if keyable and not fnAttribute.keyable:
+
+            continue
+
+        # Check if attribute affects world-space
+        #
+        if affectsWorldSpace and not fnAttribute.affectsWorldSpace:
+
+            continue
+
         # Check if attribute is dynamic
         #
-        if (dynamic and not fnAttribute.dynamic) or (static and fnAttribute.dynamic):
+        if skipUserAttributes and fnAttribute.dynamic:
 
             continue
 
         yield om.MPlug(node, attribute)
 
 
-def iterChannelBoxPlugs(node, static=False, dynamic=False):
+def iterChannelBoxPlugs(node, **kwargs):
     """
     Returns a generator that yields plugs that are in the channel-box.
 
     :type node: om.MObject
-    :type static: bool
-    :type dynamic: bool
+    :key readable: bool
+    :key writable: bool
+    :key nonDefault: bool
+    :key affectsWorldSpace: bool
+    :key skipUserAttributes: bool
     :rtype: iter
     """
 
     # Iterate through top-level plugs
     #
-    for plug in iterTopLevelPlugs(node, static=static, dynamic=dynamic):
+    for plug in iterTopLevelPlugs(node, **kwargs):
 
         # Check if this is a compound plug
         #
         if plug.isCompound and not plug.isArray:
 
-            yield from iterChildren(plug, writable=True, keyable=True)
+            yield from iterChildren(plug, keyable=True, channelBox=True)
 
-        elif plug.isChannelBox or plug.isKeyable:
+        elif plug.isKeyable or plug.isChannelBox:
 
             yield plug
 
@@ -349,14 +385,14 @@ def iterChannelBoxPlugs(node, static=False, dynamic=False):
             continue
 
 
-def iterElements(plug, writable=False, nonDefault=False):
+def iterElements(plug, **kwargs):
     """
     Returns a generator that yields all elements from the supplied plug.
     This generator only works on array plugs and not elements!
 
     :type plug: om.MPlug
-    :type writable: bool
-    :type nonDefault: bool
+    :key writable: bool
+    :key nonDefault: bool
     :rtype: iter
     """
 
@@ -368,6 +404,9 @@ def iterElements(plug, writable=False, nonDefault=False):
 
     # Iterate through plug elements
     #
+    writable = kwargs.get('writable', False)
+    nonDefault = kwargs.get('nonDefault', False)
+
     indices = plug.getExistingArrayAttributeIndices()
 
     for (physicalIndex, logicalIndex) in enumerate(indices):
@@ -389,15 +428,17 @@ def iterElements(plug, writable=False, nonDefault=False):
         yield element
 
 
-def iterChildren(plug, writable=False, nonDefault=False, keyable=False):
+def iterChildren(plug, **kwargs):
     """
     Returns a generator that yields the children from the supplied plug.
     If the plug is not compound then no children are yielded!
 
     :type plug: om.MPlug
-    :type writable: bool
-    :type nonDefault: bool
-    :type keyable: bool
+    :key readable: bool
+    :key writable: bool
+    :key nonDefault: bool
+    :key keyable: bool
+    :key channelBox: bool
     :rtype: iter
     """
 
@@ -409,6 +450,11 @@ def iterChildren(plug, writable=False, nonDefault=False, keyable=False):
 
     # Iterate through children
     #
+    writable = kwargs.get('writable', False)
+    nonDefault = kwargs.get('nonDefault', False)
+    keyable = kwargs.get('keyable', False)
+    channelBox = kwargs.get('channelBox', False)
+
     numChildren = plug.numChildren()
 
     for i in range(numChildren):
@@ -429,7 +475,13 @@ def iterChildren(plug, writable=False, nonDefault=False, keyable=False):
 
         # Check if child is keyable
         #
-        if keyable and (not child.isKeyable or not child.isChannelBox):
+        if keyable and not child.isKeyable:
+
+            continue
+
+        # Check if child is in channel-box
+        #
+        if channelBox and (not child.isChannelBox and not child.isKeyable):
 
             continue
 
@@ -447,10 +499,11 @@ def walk(plug, writable=False, channelBox=False, keyable=False):
     :rtype: iter
     """
 
-    # Iterate through plug elements/children
+    # Iterate through plug elements and children
     #
     elements = list(iterElements(plug, writable=writable))
     children = list(iterChildren(plug, writable=writable, channelBox=channelBox, keyable=keyable))
+
     queue = deque(elements + children)
 
     while len(queue):
