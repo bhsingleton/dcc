@@ -1,8 +1,8 @@
 import os
 import sys
-import inspect
 
 from Qt import QtCore, QtWidgets, QtCompat
+from . import qmetaclass
 
 import logging
 logging.basicConfig()
@@ -10,18 +10,29 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-class QUicMixin(object):
+class QUicMixin(object, metaclass=qmetaclass.QMetaclass):
     """
-    Abstract base class used with Qt widgets to create layouts at runtime via .ui files.
-    This class must come first when declaring your base classes!
-    For connections Qt expects the following slot syntax: on_{objectName}_{signal} complete with a slot decorator!
+    Mixin class used to dynamically create layouts at runtime via .ui files.
+    This class must come first when declaring your derived classes to avoid MRO clashes!
+    For connections Qt expects the following slot syntax: on_{objectName}_{signalName} complete with a slot decorator!
     """
 
     # region Dunderscores
+    def __post_init__(self, *args, **kwargs):
+        """
+        Private method called after an instance has initialized.
+
+        :rtype: None
+        """
+
+        self.preLoad(*args, **kwargs)
+        self.__load__(*args, **kwargs)
+        self.postLoad(*args, **kwargs)
+
     def __getattribute__(self, item):
         """
-        Private method used to lookup an attribute.
-        Sadly all pointers are lost from QUicLoader, so we have to rebuild them on demand.
+        Private method returns an internal attribute with the associated name.
+        Sadly all pointers are lost from QUicLoader, so we have to relocate them on demand.
 
         :type item: str
         :rtype: Any
@@ -98,7 +109,7 @@ class QUicMixin(object):
 
         return os.path.dirname(os.path.abspath(sys.modules[cls.__module__].__file__))
 
-    def preLoad(self):
+    def preLoad(self, *args, **kwargs):
         """
         Called before the user interface has been loaded.
 
@@ -107,7 +118,7 @@ class QUicMixin(object):
 
         pass
 
-    def postLoad(self):
+    def postLoad(self, *args, **kwargs):
         """
         Called after the user interface has been loaded.
 

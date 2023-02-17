@@ -97,7 +97,7 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
     # endregion
 
     # region Methods
-    def postLoad(self):
+    def postLoad(self, *args, **kwargs):
         """
         Called after the user interface has been loaded.
 
