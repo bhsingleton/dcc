@@ -8,7 +8,7 @@ from copy import deepcopy
 from collections import OrderedDict
 
 from dcc import fnnode, fnmesh
-from dcc.abstract import afnbase, afnnode
+from dcc.abstract import afnnode
 from dcc.naming import namingutils
 from dcc.math import linearalgebra
 
@@ -299,7 +299,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         """
         Getter method that returns the clipboard.
 
-        :rtype: Dict[int,Dict[int, float]]
+        :rtype: Dict[int, Dict[int, float]]
         """
 
         return self._clipboard
@@ -433,7 +433,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
     @abstractmethod
     def iterInfluences(self):
         """
-        Returns a generator that yields all of the influence objects from this deformer.
+        Returns a generator that yields all the influence objects from this deformer.
 
         :rtype: iter
         """
@@ -566,7 +566,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
     def getUnusedInfluenceIds(self, *args):
         """
         Returns a list of unused influence IDs.
-        An optional list of vertices can used to narrow down this search.
+        An optional list of vertices can be used to narrow down this search.
 
         :rtype: List[int]
         """
@@ -762,7 +762,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         Returns the weights for the supplied vertex indices.
         If no vertex indices are supplied then all weights are returned instead.
 
-        :rtype: Dict[int,Dict[int, float]]
+        :rtype: Dict[int, Dict[int, float]]
         """
 
         return dict(self.iterVertexWeights(*args))
@@ -1183,7 +1183,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         """
         Assigns the supplied vertex weights to this deformer.
 
-        :type vertices: Dict[int,Dict[int, float]]
+        :type vertices: Dict[int, Dict[int, float]]
         :rtype: None
         """
 
@@ -1387,14 +1387,66 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
 
     def slabPasteWeights(self, vertexIndices, mode=0):
         """
-        Copies the supplied vertex indices to the nearest neighbour.
+        Copies the supplied vertex indices to the nearest neighbour based on the specified mode.
 
         :type vertexIndices: List[int]
         :type mode: int
         :rtype: None
         """
 
-        pass
+        # Get selected vertices
+        #
+        numVertices = len(vertexIndices)
+
+        if numVertices == 0:
+
+            return
+
+        # Check which method to use
+        #
+        mesh = fnmesh.FnMesh(self.intermediateObject())
+        closestIndices = []
+
+        log.debug('Getting closest vertices for %s.' % vertexIndices)
+
+        if mode == 0:  # Closest point
+
+            closestIndices = mesh.closestVertices(mesh.vertices(*vertexIndices))
+
+        elif mode == 1:  # Nearest neighbour
+
+            closestIndices = mesh.nearestNeighbours(vertexIndices)
+
+        elif mode == 2:  # Along vertex normal
+
+            pass
+
+        else:
+
+            raise TypeError('slabPasteWeights() expects a valid slab mode (%s given)!' % mode)
+
+        # Check if lists are the same size
+        #
+        closestCount = len(closestIndices)
+        log.debug('Using %s for closest vertices.' % closestIndices)
+
+        if closestCount == numVertices:
+
+            # Get vertex weights
+            #
+            vertexIndices = set(vertexIndices + closestIndices)
+            log.debug('Getting weights for %s.' % vertexIndices)
+
+            vertexWeights = self.vertexWeights(*vertexIndices)
+
+            # Compose new weights dictionary
+            #
+            updates = {closestIndex: deepcopy(vertexWeights[vertexIndex]) for (vertexIndex, closestIndex) in zip(vertexIndices, closestIndices)}
+            return self.applyVertexWeights(updates)
+
+        else:
+
+            log.warning('Unable to slab paste selection!')
 
     def mirrorVertexWeights(self, vertexIndices, pull=False, axis=0, tolerance=1e-3):
         """
@@ -1617,7 +1669,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
             #
             if blendByDistance:
 
-                param += fnMesh.distanceBetween(points[i], points[i+1])
+                param += points[i].distanceBetween(points[i+1])
 
             else:
 
