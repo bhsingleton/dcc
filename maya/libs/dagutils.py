@@ -959,7 +959,7 @@ def iterIntermediateObjects(node, apiType=om.MFn.kShape):
 
 def iterFunctionSets():
     """
-    Returns a generator that yields all functions sets compatible with dependency nodes.
+    Returns a generator that yields functions sets compatible with dependency nodes.
 
     :rtype: iter
     """
@@ -986,21 +986,16 @@ def iterNodes(apiType=om.MFn.kDependencyNode, typeName=None):
     """
 
     # Check if a type name was supplied
-    # If not, then use the api type enumerator instead
     #
     if not stringutils.isNullOrEmpty(typeName):
 
-        # Iterate through nodes from `ls` command
+        # Yield nodes from `ls` command
         #
         nodeNames = mc.ls(type=typeName, long=True)
 
-        if stringutils.isNullOrEmpty(nodeNames):
+        for nodeName in nodeNames:
 
-            return map(getMObjectByName, nodeNames)
-
-        else:
-
-            return iter([])
+            yield getMObjectByName(nodeName)
 
     else:
 
