@@ -44,36 +44,36 @@ class MDataEncoder(psonparser.PSONEncoder):
 
     __value_types__ = {
         'MObject': 'serializeMObject',
-        'MObjectArray': 'serializeArray',
-        'MDagPath': 'serializeDagPath',
-        'MDagPathArray': 'serializeArray',
-        'MDistance': 'serializeDistance',
-        'MAngle': 'serializeAngle',
-        'MTime': 'serializeTime',
-        'MTimeArray': 'serializeArray',
-        'MStringArray': 'serializeArray',
-        'MIntArray': 'serializeArray',
-        'MInt64Array': 'serializeArray',
-        'MFloatArray': 'serializeArray',
-        'MDoubleArray': 'serializeArray',
-        'MVector': 'serializeVector',
-        'MVectorArray': 'serializeArray',
-        'MFloatVector': 'serializeVector',
-        'MFloatVectorArray': 'serializeArray',
-        'MPoint': 'serializePoint',
-        'MPointArray': 'serializeArray',
-        'MFloatPoint': 'serializePoint',
-        'MFloatPointArray': 'serializeArray',
-        'MEulerRotation': 'serializeEulerRotation',
-        'MQuaternion': 'serializeQuaternion',
-        'MBoundingBox': 'serializeBoundingBox',
-        'MMatrix': 'serializeMatrix',
-        'MFloatMatrix': 'serializeMatrix',
-        'MMatrixArray': 'serializeArray',
-        'MTransformationMatrix': 'serializeTransformationMatrix',
-        'MColor': 'serializeColor',
-        'MColorArray': 'serializeArray',
-        'MUuid': 'serializeUUID'
+        'MObjectArray': 'serializeMArray',
+        'MDagPath': 'serializeMDagPath',
+        'MDagPathArray': 'serializeMArray',
+        'MDistance': 'serializeMDistance',
+        'MAngle': 'serializeMAngle',
+        'MTime': 'serializeMTime',
+        'MTimeArray': 'serializeMArray',
+        'MStringArray': 'serializeMArray',
+        'MIntArray': 'serializeMArray',
+        'MInt64Array': 'serializeMArray',
+        'MFloatArray': 'serializeMArray',
+        'MDoubleArray': 'serializeMArray',
+        'MVector': 'serializeMVector',
+        'MVectorArray': 'serializeMArray',
+        'MFloatVector': 'serializeMVector',
+        'MFloatVectorArray': 'serializeMArray',
+        'MPoint': 'serializeMPoint',
+        'MPointArray': 'serializeMArray',
+        'MFloatPoint': 'serializeMPoint',
+        'MFloatPointArray': 'serializeMArray',
+        'MEulerRotation': 'serializeMEulerRotation',
+        'MQuaternion': 'serializeMQuaternion',
+        'MBoundingBox': 'serializeMBoundingBox',
+        'MMatrix': 'serializeMMatrix',
+        'MFloatMatrix': 'serializeMMatrix',
+        'MMatrixArray': 'serializeMArray',
+        'MTransformationMatrix': 'serializeMTransformationMatrix',
+        'MColor': 'serializeMColor',
+        'MColorArray': 'serializeMArray',
+        'MUuid': 'serializeMUuid'
     }
 
     __data_types__ = {
@@ -181,7 +181,7 @@ class MDataEncoder(psonparser.PSONEncoder):
 
         return obj
 
-    def serializeDagPath(self, dagPath):
+    def serializeMDagPath(self, dagPath):
         """
         Serializes the supplied dag path into a json object.
 
@@ -190,12 +190,12 @@ class MDataEncoder(psonparser.PSONEncoder):
         """
 
         obj = self.serializeWrapper(dagPath)
-        obj['args'] = [dagPath.fullPathName()]
+        obj['args'] = [dagPath.partialPathName()]
         obj['kwargs'] = {}
 
         return obj
 
-    def serializeDistance(self, distance):
+    def serializeMDistance(self, distance):
         """
         Serializes the supplied distance into a json object.
 
@@ -209,7 +209,7 @@ class MDataEncoder(psonparser.PSONEncoder):
 
         return obj
 
-    def serializeAngle(self, angle):
+    def serializeMAngle(self, angle):
         """
         Serializes the supplied angle into a json object.
 
@@ -223,7 +223,7 @@ class MDataEncoder(psonparser.PSONEncoder):
 
         return obj
 
-    def serializeTime(self, time):
+    def serializeMTime(self, time):
         """
         Serializes the supplied distance into a json object.
 
@@ -237,7 +237,7 @@ class MDataEncoder(psonparser.PSONEncoder):
 
         return obj
 
-    def serializeArray(self, array):
+    def serializeMArray(self, array):
         """
         Serializes the supplied array into a json object.
 
@@ -251,7 +251,7 @@ class MDataEncoder(psonparser.PSONEncoder):
 
         return obj
 
-    def serializeVector(self, vector):
+    def serializeMVector(self, vector):
         """
         Serializes the supplied vector into a json object.
 
@@ -265,7 +265,7 @@ class MDataEncoder(psonparser.PSONEncoder):
 
         return obj
 
-    def serializePoint(self, point):
+    def serializeMPoint(self, point):
         """
         Serializes the supplied point into a json object.
 
@@ -279,7 +279,7 @@ class MDataEncoder(psonparser.PSONEncoder):
 
         return obj
 
-    def serializeEulerRotation(self, eulerRotation):
+    def serializeMEulerRotation(self, eulerRotation):
         """
         Serializes the supplied euler rotation into a json object.
 
@@ -293,7 +293,7 @@ class MDataEncoder(psonparser.PSONEncoder):
 
         return obj
 
-    def serializeQuaternion(self, quat):
+    def serializeMQuaternion(self, quat):
         """
         Serializes the supplied quaternion into a json object.
 
@@ -307,7 +307,7 @@ class MDataEncoder(psonparser.PSONEncoder):
 
         return obj
 
-    def serializeBoundingBox(self, boundingBox):
+    def serializeMBoundingBox(self, boundingBox):
         """
         Serializes the supplied bounding box into a json object.
 
@@ -321,7 +321,7 @@ class MDataEncoder(psonparser.PSONEncoder):
 
         return obj
 
-    def serializeMatrix(self, matrix):
+    def serializeMMatrix(self, matrix):
         """
         Serializes the supplied matrix into a json object.
 
@@ -340,7 +340,7 @@ class MDataEncoder(psonparser.PSONEncoder):
 
         return obj
 
-    def serializeTransformationMatrix(self, transform):
+    def serializeMTransformationMatrix(self, transform):
         """
         Serializes the supplied transformation matrix into a json object.
 
@@ -363,7 +363,7 @@ class MDataEncoder(psonparser.PSONEncoder):
 
         return obj
 
-    def serializeColor(self, color):
+    def serializeMColor(self, color):
         """
         Serializes the supplied color into a json object.
         TODO: Find a way to serialize the color model and data type!
@@ -378,7 +378,7 @@ class MDataEncoder(psonparser.PSONEncoder):
 
         return obj
 
-    def serializeUUID(self, uuid):
+    def serializeMUuid(self, uuid):
         """
         Serializes the supplied UUID into a json object.
 
