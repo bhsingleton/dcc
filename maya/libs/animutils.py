@@ -1,6 +1,8 @@
 from maya import cmds as mc
 from maya.api import OpenMaya as om, OpenMayaAnim as oma
+from dcc.python import stringutils
 from dcc.dataclasses import vector, keyframe, bezierpoint
+from dcc.generators.inclusiverange import inclusiveRange
 from . import dagutils, plugutils
 
 import logging
@@ -71,19 +73,45 @@ def ensureKeyed(plug):
     return animCurve
 
 
-def clearKeys(animCurve):
+def clearKeys(animCurve, animationRange=None):
     """
     Removes all keys from the supplied anim curve.
 
     :type animCurve: om.MObject
+    :type animationRange: Union[Tuple[int, int], None]
     :rtype: None
     """
 
+    # Check if an animation range was specified
+    #
     fnAnimCurve = oma.MFnAnimCurve(animCurve)
 
-    for i in reversed(range(fnAnimCurve.numKeys)):
+    if not stringutils.isNullOrEmpty(animationRange):
 
-        fnAnimCurve.remove(i)
+        # Iterate through inputs in reverse
+        #
+        times = [fnAnimCurve.input(i).value for i in range(fnAnimCurve.numKeys)]
+        startTime, endTime = animationRange
+
+        for (i, time) in reversed(list(enumerate(times))):
+
+            # Check if time is in range
+            #
+            if startTime <= time <= endTime:
+
+                fnAnimCurve.remove(i)
+
+            else:
+
+                continue
+
+    else:
+
+        # Remove inputs in reverse
+        #
+        for i in reversed(list(range(fnAnimCurve.numKeys))):
+
+            fnAnimCurve.remove(i)
 
 
 def uiToInternalUnit(value, animCurveType=oma.MFnAnimCurve.kAnimCurveTL):
@@ -99,12 +127,14 @@ def uiToInternalUnit(value, animCurveType=oma.MFnAnimCurve.kAnimCurveTL):
 
         uiUnit = om.MDistance.uiUnit()
         internalUnit = om.MDistance.internalUnit()
+
         return om.MDistance(value, unit=uiUnit).asUnits(internalUnit)
 
     elif animCurveType == oma.MFnAnimCurve.kAnimCurveTA:
 
         uiUnit = om.MAngle.uiUnit()
         internalUnit = om.MAngle.internalUnit()
+
         return om.MAngle(value, unit=uiUnit).asUnits(internalUnit)
 
     else:
@@ -125,12 +155,14 @@ def internalToUiUnit(value, animCurveType=oma.MFnAnimCurve.kAnimCurveTL):
 
         uiUnit = om.MDistance.uiUnit()
         internalUnit = om.MDistance.internalUnit()
+
         return om.MDistance(value, unit=internalUnit).asUnits(uiUnit)
 
     elif animCurveType == oma.MFnAnimCurve.kAnimCurveTA:
 
         uiUnit = om.MAngle.uiUnit()
         internalUnit = om.MAngle.internalUnit()
+
         return om.MAngle(value, unit=internalUnit).asUnits(uiUnit)
 
     else:
@@ -274,7 +306,7 @@ def synchronizeCompoundInputs(plug):
 
             animCurveType = getAnimCurveType(childPlug.attribute())
 
-            fnAnimCurve.create(plug.node(), childPlug.attribute(), animCurveType=animCurveType)
+            fnAnimCurve.create(childPlug, animCurveType=animCurveType)
             fnAnimCurve.setPreInfinityType(oma.MFnAnimCurve.kConstant)
             fnAnimCurve.setPostInfinityType(oma.MFnAnimCurve.kConstant)
             fnAnimCurve.setIsWeighted(True)
