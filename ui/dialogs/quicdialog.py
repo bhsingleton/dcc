@@ -10,7 +10,7 @@ log.setLevel(logging.INFO)
 
 class QUicDialog(quicmixin.QUicMixin, QtWidgets.QDialog):
     """
-    Overload of QUicInterface and QDialog used to dynamically create dialogs at runtime.
+    Overload of `QUicMixin` and `QDialog` that dynamically creates dialogs at runtime.
     """
 
     # region Dunderscores
@@ -29,11 +29,6 @@ class QUicDialog(quicmixin.QUicMixin, QtWidgets.QDialog):
         f = kwargs.pop('f', QtCore.Qt.WindowFlags())
 
         super(QUicDialog, self).__init__(parent=parent, f=f)
-
-        # Build user interface
-        #
-        self.__build__(*args, **kwargs)
-        self.__setstate__(kwargs)
 
     def __setstate__(self, state):
         """
@@ -60,25 +55,6 @@ class QUicDialog(quicmixin.QUicMixin, QtWidgets.QDialog):
             if callable(func.fset):
 
                 func.fset(self, value)
-
-    def __build__(self, *args, **kwargs):
-        """
-        Private method that builds the user interface.
-
-        :rtype: None
-        """
-
-        # Modify window properties
-        #
-        self.setObjectName(self.className)
-        self.setWindowFlags(self.windowFlags() | QtCore.Qt.Dialog)
-        self.setModal(True)
-
-        # Load user interface
-        #
-        self.preLoad()
-        self.__load__(*args, **kwargs)
-        self.postLoad()
     # endregion
 
     # region Properties
@@ -91,4 +67,26 @@ class QUicDialog(quicmixin.QUicMixin, QtWidgets.QDialog):
         """
 
         return cls.__name__
+    # endregion
+
+    # region Methods
+    def preLoad(self, *args, **kwargs):
+        """
+        Called before the user interface has been loaded.
+
+        :rtype: None
+        """
+
+        self.setObjectName(self.className)
+        self.setWindowFlags(self.windowFlags() | QtCore.Qt.Dialog)
+        self.setModal(True)
+
+    def postLoad(self, *args, **kwargs):
+        """
+        Called after the user interface has been loaded.
+
+        :rtype: None
+        """
+
+        self.__setstate__(kwargs)
     # endregion
