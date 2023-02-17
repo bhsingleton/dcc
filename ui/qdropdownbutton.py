@@ -8,9 +8,10 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-class QDropDownButton(QtWidgets.QAbstractButton):
+class QDropDownButton(QtWidgets.QToolButton):
     """
-    Overload of QAbstractButton used as a push button with drop-down menu options.
+    Overload of `QToolButton` used as a push button with drop-down menu options.
+    The style is also overriden to closer resemble a regular push button.
     """
 
     # region Dunderscores
@@ -24,22 +25,25 @@ class QDropDownButton(QtWidgets.QAbstractButton):
 
         # Call parent method
         #
-        super(QDropDownButton, self).__init__(parent=parent)
-
-        # Declare private variables
-        #
-        self._menu = None
+        super(QDropDownButton, self).__init__(parent)
 
         # Edit widget properties
         #
-        self.setMouseTracking(True)
-        self.customContextMenuRequested.connect(self.executeMenu)
+        self.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
+        self.setAutoRaise(False)
+        self.setArrowType(QtCore.Qt.DownArrow)
+        self.setToolButtonStyle(QtCore.Qt.ToolButtonTextOnly)
+        self.setPopupMode(QtWidgets.QToolButton.MenuButtonPopup)
 
         # Evaluate arguments
         #
         numArgs = len(args)
 
-        if numArgs == 1:
+        if numArgs == 0:
+
+            pass
+
+        elif numArgs == 1:
 
             # Inspect argument
             #
@@ -48,10 +52,6 @@ class QDropDownButton(QtWidgets.QAbstractButton):
             if isinstance(arg, string_types):
 
                 self.setText(arg)
-
-            elif isinstance(arg, QtWidgets.QWidget):
-
-                self.setParent(arg)
 
             else:
 
@@ -74,273 +74,111 @@ class QDropDownButton(QtWidgets.QAbstractButton):
 
         else:
 
-            pass
+            raise TypeError('__init__() expects 1 or 2 arguments (%s given)!' % numArgs)
     # endregion
 
     # region Methods
-    def pushButtonRect(self):
+    def hasMenu(self):
         """
-        Returns the bounding box for the push button component.
+        Evaluates if this button already has a menu.
 
-        :rtype: QtCore.QRect
-        """
-
-        return QtCore.QRect(0, 0, self.width() - 12, self.height())
-
-    def dropDownMenuButtonRect(self):
-        """
-        Returns the bounding box for the drop-down menu button component.
-
-        :rtype: QtCore.QRect
-        """
-
-        return QtCore.QRect(self.width() - 12, 0, 12, self.height())
-
-    def menu(self):
-        """
-        Returns the drop-down menu.
-
-        :rtype: QtWidgets.QMenu
-        """
-
-        if isinstance(self._menu, QtWidgets.QMenu):
-
-            return self._menu
-
-        else:
-
-            return self.findChildMenu()
-
-    def setMenu(self, menu):
-        """
-        Updates the drop-down menu.
-
-        :rtype: QtWidgets.QMenu
-        """
-
-        self._menu = menu
-
-    def findChildMenu(self):
-        """
-        Returns the first menu derived from this widget's children.
-
-        :rtype: QtWidgets.QMenu
-        """
-
-        menus = [x for x in self.children() if isinstance(x, QtWidgets.QMenu)]
-        numMenus = len(menus)
-
-        if numMenus == 0:
-
-            return None
-
-        elif numMenus == 1:
-
-            return menus[0]
-
-        else:
-
-            raise TypeError('customContextMenu() multiple context menus found in children!')
-
-    def sizeHint(self):
-        """
-        Returns a size hint for this widget.
-
-        :rtype: QtCore.QSize
-        """
-
-        fontMetric = self.fontMetrics()
-        fontWidth = fontMetric.width(self.text())
-        fontHeight = fontMetric.height()
-
-        margins = self.contentsMargins()
-        width = fontWidth + (margins.left() + margins.right()) + self.pushButtonRect().width()
-        height = fontHeight + (margins.top() + margins.bottom())
-
-        return QtCore.QSize(width, height)
-
-    def hitButton(self, pos):
-        """
-        Returns true if pos is inside the clickable button rectangle; otherwise returns false.
-
-        :type pos: QtCore.QPoint
         :rtype: bool
         """
 
-        return self.pushButtonRect().contains(pos)
+        return self.menu() is not None
 
-    def initPushButtonStyleOption(self, styleOption):
+    def setMenu(self, menu):
+        """
+        Associates the given menu with this tool button.
+        The menu will be shown according to the button's popupMode.
+        Ownership of the menu is not transferred to the tool button.
+
+        :type menu: QtWidgets.QMenu
+        :rtype: None
+        """
+
+        # Cleanup any former connections
+        #
+        if self.hasMenu():
+
+            self.menu().aboutToShow.disconnect(self.aboutToShowMenu)
+
+        # Call parent method
+        #
+        super(QDropDownButton, self).setMenu(menu)
+
+        # Connect display signal to this button
+        #
+        menu.aboutToShow.connect(self.aboutToShowMenu)
+
+    def initStyleOption(self, styleOption):
         """
         Initializes the supplied push button style option.
 
-        :type styleOption: QtWidgets.QStyleOptionButton
+        :type styleOption: Union[QtWidgets.QStyleOptionToolButton, QtWidgets.QStyleOptionButton]
         :rtype: None
         """
 
-        # Edit button features
+        # Evaluate option type
         #
-        styleOption.rect = self.pushButtonRect()
-        styleOption.text = self.text()
-        styleOption.icon = self.icon()
-        styleOption.iconSize = self.iconSize()
+        if isinstance(styleOption, QtWidgets.QStyleOptionToolButton):
 
-        # Edit enabled state
-        #
-        if self.isEnabled():
+            # Call parent method
+            #
+            super(QDropDownButton, self).initStyleOption(styleOption)
 
+        elif isinstance(styleOption, QtWidgets.QStyleOptionButton):
+
+            # Edit button features
+            #
+            styleOption.rect = self.rect()
+            styleOption.text = self.text()
+            styleOption.icon = self.icon()
+            styleOption.iconSize = self.iconSize()
+            styleOption.features = QtWidgets.QStyleOptionButton.HasMenu
+
+            # Edit enabled state
+            #
+            if not self.isEnabled():
+
+                styleOption.state = QtWidgets.QStyle.State_None
+                return
+
+            # Edit focus state
+            #
             styleOption.state = QtWidgets.QStyle.State_Active | QtWidgets.QStyle.State_Enabled
 
-        else:
+            if self.hasFocus():
 
-            styleOption.state = QtWidgets.QStyle.State_None
+                styleOption.state |= QtWidgets.QStyle.State_HasFocus
 
-        # Edit focus state
-        #
-        if self.hasFocus():
+            # Edit mouse over state
+            #
+            mousePos = self.mapFromGlobal(QtGui.QCursor.pos())
+            underMouse = styleOption.rect.contains(mousePos)
 
-            styleOption.state |= QtWidgets.QStyle.State_HasFocus
+            if underMouse:
 
-        # Edit mouse over state
-        #
-        mousePos = self.mapFromGlobal(QtGui.QCursor.pos())
-        underMouse = styleOption.rect.contains(mousePos)
+                styleOption.state |= QtWidgets.QStyle.State_MouseOver
 
-        if underMouse:
+            # Edit down state
+            #
+            if self.isDown() and underMouse:
 
-            styleOption.state |= QtWidgets.QStyle.State_MouseOver
+                styleOption.state |= QtWidgets.QStyle.State_On
 
-        # Edit down state
-        #
-        if self.isDown() and underMouse:
+            else:
 
-            styleOption.state |= QtWidgets.QStyle.State_On
+                styleOption.state |= QtWidgets.QStyle.State_Off
 
-        else:
-
-            styleOption.state |= QtWidgets.QStyle.State_Off
-
-        return styleOption
-
-    def initDropDownMenuButtonStyleOption(self, styleOption):
-        """
-        Initializes the supplied drop-down menu button style option.
-
-        :type styleOption: QtWidgets.QStyleOptionButton
-        :rtype: None
-        """
-
-        # Edit button features
-        #
-        styleOption.rect = self.dropDownMenuButtonRect()
-        styleOption.text = '▼'
-
-        # Edit enabled state
-        #
-        if self.isEnabled():
-
-            styleOption.state = QtWidgets.QStyle.State_Active | QtWidgets.QStyle.State_Enabled
+            return styleOption
 
         else:
 
-            styleOption.state = QtWidgets.QStyle.State_None
-
-        # Edit focus state
-        #
-        if self.hasFocus():
-
-            styleOption.state |= QtWidgets.QStyle.State_HasFocus
-
-        # Edit mouse over state
-        #
-        mousePos = self.mapFromGlobal(QtGui.QCursor.pos())
-        underMouse = styleOption.rect.contains(mousePos)
-
-        if underMouse:
-
-            styleOption.state |= QtWidgets.QStyle.State_MouseOver
-
-        # Edit down state
-        #
-        if self.isDown() and underMouse:
-
-            styleOption.state |= QtWidgets.QStyle.State_On
-
-        else:
-
-            styleOption.state |= QtWidgets.QStyle.State_Off
+            raise TypeError('initStyleOption() expects a QStyleOptionToolButton (%s given)!' % type(styleOption).__name__)
     # endregion
 
     # region Events
-    def enterEvent(self, event):
-        """
-        Event for whenever the mouse enters this widget.
-
-        :type event: QtGui.QMouseEvent
-        :rtype: None
-        """
-
-        # Call parent method
-        #
-        super(QDropDownButton, self).enterEvent(event)
-
-        # Repaint widget
-        #
-        self.repaint()
-
-    def leaveEvent(self, event):
-        """
-        Event for whenever the mouse leaves this widget.
-
-        :type event: QtGui.QMouseEvent
-        :rtype: None
-        """
-
-        # Call parent method
-        #
-        super(QDropDownButton, self).leaveEvent(event)
-
-        # Repaint widget
-        #
-        self.repaint()
-
-    def mouseMoveEvent(self, event):
-        """
-        Event for whenever the mouse is moving over this widget.
-
-        :type event: QtGui.QMouseEvent
-        :rtype: None
-        """
-
-        # Call parent method
-        #
-        super(QDropDownButton, self).mouseMoveEvent(event)
-
-        # Repaint widget
-        #
-        self.repaint()
-
-    def mouseReleaseEvent(self, event):
-        """
-        Event for whenever a mouse button has been released on this widget.
-
-        :type event: QtGui.QMouseEvent
-        :rtype: None
-        """
-
-        # Evaluate which button was released
-        #
-        dropDownMenuRect = self.dropDownMenuButtonRect()
-        mouseButton = event.button()
-        mousePos = event.pos()
-
-        if dropDownMenuRect.contains(mousePos) and mouseButton == QtCore.Qt.LeftButton:
-
-            self.customContextMenuRequested.emit(mousePos)
-
-        # Call parent method
-        #
-        super(QDropDownButton, self).mouseReleaseEvent(event)
-
     def paintEvent(self, event):
         """
         Event for whenever this widget needs to be re-painted.
@@ -357,42 +195,19 @@ class QDropDownButton(QtWidgets.QAbstractButton):
         # Paint push button control
         #
         pushButtonStyleOption = QtWidgets.QStyleOptionButton()
-        self.initPushButtonStyleOption(pushButtonStyleOption)
+        self.initStyleOption(pushButtonStyleOption)
 
         QtWidgets.QApplication.style().drawControl(QtWidgets.QStyle.CE_PushButton, pushButtonStyleOption, painter)
-
-        # Paint drop-down menu control
-        #
-        dropDownMenuButtonStyleOption = QtWidgets.QStyleOptionButton()
-        self.initDropDownMenuButtonStyleOption(dropDownMenuButtonStyleOption)
-
-        QtWidgets.QApplication.style().drawControl(QtWidgets.QStyle.CE_PushButton, dropDownMenuButtonStyleOption, painter)
     # endregion
 
     # region Slots
     @QtCore.Slot()
-    def executeMenu(self):
+    def aboutToShowMenu(self):
         """
-        Custom context menu requested slot method responsible for executing the associated menu.
+        Slot method that updates the sender menu's minimum width before displaying.
 
         :rtype: None
         """
 
-        # Check if menu exists
-        #
-        menu = self.menu()
-
-        if menu is None:
-
-            return
-
-        # Synchronize width with button
-        #
-        menu.setMinimumWidth(self.width())
-
-        # Execute context menu
-        #
-        localPos = self.rect().bottomLeft()
-        globalPos = self.mapToGlobal(localPos)
-        menu.exec_(globalPos)
+        self.sender().setMinimumWidth(self.width())
     # endregion
