@@ -2,6 +2,7 @@ import json
 
 from maya.api import OpenMaya as om
 from six import string_types
+from enum import Enum, IntEnum
 
 import logging
 logging.basicConfig()
@@ -469,6 +470,10 @@ class MAttributeDecoder(json.JSONDecoder):
         elif isinstance(fields, (list, tuple)):
 
             fields = dict(enumerate(fields))
+
+        elif hasattr(fields, '__members__'):  # Reserved for enum types
+
+            fields = dict(fields.__members__.items())
 
         else:
 
