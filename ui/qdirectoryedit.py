@@ -1,3 +1,5 @@
+import os
+
 from Qt import QtCore, QtWidgets, QtGui
 from ..python import stringutils
 
@@ -11,10 +13,6 @@ class QDirectoryEdit(QtWidgets.QLineEdit):
     """
     Overload of QLineEdit that includes a directory explorer button.
     """
-
-    # region Signals
-    programmaticallyChanged = QtCore.Signal(str)
-    # endregion
 
     # region Dunderscores
     def __init__(self, *args, **kwargs):
@@ -36,13 +34,19 @@ class QDirectoryEdit(QtWidgets.QLineEdit):
         #
         super(QDirectoryEdit, self).__init__(*args, **kwargs)
 
-        # Add custom action
+        # Add directory actions
         #
-        action = QtWidgets.QAction(QtGui.QIcon(':dcc/icons/open_folder.svg'), '', parent=self)
-        action.setToolTip('Select directory from dialog.')
-        action.triggered.connect(self.on_action_triggered)
+        self.getExistingDirectoryAction = QtWidgets.QAction(QtGui.QIcon(':/qt-project.org/styles/commonstyle/images/diropen-16.png'), '', parent=self)
+        self.getExistingDirectoryAction.setObjectName('getExistingDirectoryAction')
+        self.getExistingDirectoryAction.setToolTip('Get existing dialog.')
+        self.getExistingDirectoryAction.triggered.connect(self.on_getExistingDirectoryAction_triggered)
 
-        self.addAction(action, QtWidgets.QLineEdit.TrailingPosition)
+        self.parentDirectoryAction = QtWidgets.QAction(QtGui.QIcon(':/qt-project.org/styles/commonstyle/images/up-16.png'), '', parent=self)
+        self.parentDirectoryAction.setObjectName('parentDirectoryAction')
+        self.parentDirectoryAction.triggered.connect(self.on_parentDirectoryAction_triggered)
+
+        self.addAction(self.getExistingDirectoryAction, QtWidgets.QLineEdit.TrailingPosition)
+        self.addAction(self.parentDirectoryAction, QtWidgets.QLineEdit.TrailingPosition)
     # endregion
 
     # region Methods
@@ -68,19 +72,6 @@ class QDirectoryEdit(QtWidgets.QLineEdit):
         # Call parent method
         #
         return super(QDirectoryEdit, self).text()
-
-    def setText(self, text):
-        """
-        Updates the line edit's text.
-
-        :type text: str
-        :rtype: None
-        """
-
-        # Call parent method
-        #
-        super(QDirectoryEdit, self).setText(text)
-        self.programmaticallyChanged.emit(text)
 
     def isEditor(self):
         """
@@ -113,9 +104,9 @@ class QDirectoryEdit(QtWidgets.QLineEdit):
 
     # region Slots
     @QtCore.Slot(bool)
-    def on_action_triggered(self, checked=False):
+    def on_getExistingDirectoryAction_triggered(self, checked=False):
         """
-        Slot method for the associated action's triggered signal.
+        Slot method for the getExistingDirectoryAction's `triggered` signal.
 
         :type checked: bool
         :rtype: None
@@ -125,15 +116,29 @@ class QDirectoryEdit(QtWidgets.QLineEdit):
         #
         if self.isEditor():
 
+            # Clear focus to trigger text accessor
+            #
             self._requiresUserInput = True
             self.clearFocus()
-            return
 
-        # Evaluate user input
-        #
-        directory = self.getExistingDirectory()
+        else:
 
-        if not stringutils.isNullOrEmpty(directory):
+            # Evaluate user input
+            #
+            directory = self.getExistingDirectory()
 
-            self.setText(directory)
+            if not stringutils.isNullOrEmpty(directory):
+
+                self.setText(directory)
+
+    @QtCore.Slot(bool)
+    def on_parentDirectoryAction_triggered(self, checked=False):
+        """
+        Slot method for the parentDirectoryAction's `triggered` signal.
+
+        :type checked: bool
+        :rtype: None
+        """
+
+        self.setText(os.path.dirname(self.text()))
     # endregion

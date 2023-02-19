@@ -1,6 +1,6 @@
 import os
 
-from PySide2 import QtCore, QtWidgets, QtGui
+from Qt import QtCore, QtWidgets, QtGui
 from ..python import stringutils
 
 import logging
@@ -13,10 +13,6 @@ class QFileEdit(QtWidgets.QLineEdit):
     """
     Overload of QLineEdit that includes a directory explorer button.
     """
-
-    # region Signals
-    programmaticallyChanged = QtCore.Signal(str)
-    # endregion
 
     # region Dunderscores
     def __init__(self, *args, **kwargs):
@@ -39,12 +35,13 @@ class QFileEdit(QtWidgets.QLineEdit):
         #
         super(QFileEdit, self).__init__(*args, **kwargs)
 
-        # Add custom action
+        # Add file action
         #
-        action = QtWidgets.QAction(QtGui.QIcon(':dcc/icons/open_folder.svg'), '', parent=self)
-        action.triggered.connect(self.on_action_triggered)
+        self.getExistingFileAction = QtWidgets.QAction(QtGui.QIcon(':/qt-project.org/styles/commonstyle/images/diropen-16.png'), '', parent=self)
+        self.getExistingFileAction.setObjectName('getExistingFileAction')
+        self.getExistingFileAction.triggered.connect(self.on_getExistingFileAction_triggered)
 
-        self.addAction(action, QtWidgets.QLineEdit.TrailingPosition)
+        self.addAction(self.getExistingFileAction, QtWidgets.QLineEdit.TrailingPosition)
     # endregion
 
     # region Methods
@@ -69,19 +66,6 @@ class QFileEdit(QtWidgets.QLineEdit):
         # Call parent method
         #
         return super(QFileEdit, self).text()
-
-    def setText(self, text):
-        """
-        Updates the line edit's text.
-
-        :type text: str
-        :rtype: None
-        """
-
-        # Call parent method
-        #
-        super(QFileEdit, self).setText(text)
-        self.programmaticallyChanged.emit(text)
 
     def isEditor(self):
         """
@@ -114,7 +98,7 @@ class QFileEdit(QtWidgets.QLineEdit):
 
     # region Slots
     @QtCore.Slot(bool)
-    def on_action_triggered(self, checked=False):
+    def on_getExistingFileAction_triggered(self, checked=False):
         """
         Slot method for the associated action's triggered signal.
 
@@ -126,15 +110,18 @@ class QFileEdit(QtWidgets.QLineEdit):
         #
         if self.isEditor():
 
+            # Clear focus to trigger text accessor
+            #
             self._requiresUserInput = True
             self.clearFocus()
-            return
 
-        # Evaluate user input
-        #
-        filePath = self.getOpenFileName()
+        else:
 
-        if not stringutils.isNullOrEmpty(filePath):
+            # Evaluate user input
+            #
+            filePath = self.getOpenFileName()
 
-            self.setText(filePath)
+            if not stringutils.isNullOrEmpty(filePath):
+
+                self.setText(filePath)
     # endregion
