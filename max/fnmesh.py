@@ -242,7 +242,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
         for normals in meshutils.iterFaceVertexNormals(self.baseObject(), indices=indices):
 
-            yield [vector.Vector(normal.x, normal.y, normal.z) for normal in normals]
+            yield tuple(vector.Vector(normal.x, normal.y, normal.z) for normal in normals)
 
     def iterFaceCenters(self, *indices):
         """
@@ -267,6 +267,33 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
         for normal in meshutils.iterFaceNormals(self.baseObject(), indices=indices):
 
             yield normal.x, normal.y, normal.z
+
+    def getFaceTriangleIndices(self):
+        """
+        Returns the face-triangle indices.
+
+        :rtype: Dict[int, List[int]]
+        """
+
+        return meshutils.getFaceTriangleIndices(self.object())
+
+    def getFaceTriangleVertexIndices(self):
+        """
+        Returns a dictionary of faces and their corresponding triangle-vertex indices.
+
+        :rtype: Dict[int, List[Tuple[int, int, int]]]
+        """
+
+        triMesh = self.triMesh()
+        faceTriangleIndices = self.getFaceTriangleIndices()
+
+        faceTriangleVertexIndices = {}
+
+        for (faceIndex, faceTriangleIndices) in faceTriangleIndices.items():
+
+            faceTriangleVertexIndices[faceIndex] = [tuple(map(int, pymxs.runtime.meshOp.getFace(triMesh, triangleIndex))) for triangleIndex in faceTriangleIndices]
+
+        return faceTriangleVertexIndices
 
     def iterFaceMaterialIndices(self, *indices):
         """
@@ -376,17 +403,17 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
         # Inspect component type
         #
         mesh = self.object()
-        componentType = kwargs.get('componentType', self.Components.Vertex)
+        componentType = kwargs.get('componentType', self.ComponentType.Vertex)
 
-        if componentType == self.Components.Vertex:
+        if componentType == self.ComponentType.Vertex:
 
             return iter(meshutils.getConnectedVerts(mesh, indices))
 
-        elif componentType == self.Components.Edge:
+        elif componentType == self.ComponentType.Edge:
 
             return arrayutils.iterBitArray(pymxs.runtime.polyOp.getEdgesUsingVert(mesh, indices))
 
-        elif componentType == self.Components.Face:
+        elif componentType == self.ComponentType.Face:
 
             return arrayutils.iterBitArray(pymxs.runtime.polyOp.getFacesUsingVert(mesh, indices))
 
@@ -405,17 +432,17 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
         # Inspect component type
         #
         mesh = self.object()
-        componentType = kwargs.get('componentType', self.Components.Vertex)
+        componentType = kwargs.get('componentType', self.ComponentType.Vertex)
 
-        if componentType == self.Components.Vertex:
+        if componentType == self.ComponentType.Vertex:
 
             return arrayutils.iterBitArray(pymxs.runtime.polyOp.getEdgesUsingVert(mesh, indices))
 
-        elif componentType == self.Components.Edge:
+        elif componentType == self.ComponentType.Edge:
 
             return iter(meshutils.getConnectedEdges(mesh, indices))
 
-        elif componentType == self.Components.Face:
+        elif componentType == self.ComponentType.Face:
 
             return arrayutils.iterElements(pymxs.runtime.polyOp.getFaceEdges(mesh, indices))
 
@@ -434,17 +461,17 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
         # Inspect component type
         #
         mesh = self.object()
-        componentType = kwargs.get('componentType', self.Components.Vertex)
+        componentType = kwargs.get('ComponentType', self.Components.Vertex)
 
-        if componentType == self.Components.Vertex:
+        if componentType == self.ComponentType.Vertex:
 
             return arrayutils.iterBitArray(pymxs.runtime.polyOp.getFacesUsingVert(mesh, indices))
 
-        elif componentType == self.Components.Edge:
+        elif componentType == self.ComponentType.Edge:
 
             return arrayutils.iterElements(pymxs.runtime.polyOp.getEdgeFaces(mesh, indices))
 
-        elif componentType == self.Components.Face:
+        elif componentType == self.ComponentType.Face:
 
             return iter(meshutils.getConnectedFaces(mesh, indices))
 
@@ -455,7 +482,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
     @classmethod
     def iterInstances(cls):
         """
-        Returns a generator that yields texture instances.
+        Returns a generator that yields mesh instances.
 
         :rtype: iter
         """

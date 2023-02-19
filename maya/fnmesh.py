@@ -5,6 +5,8 @@ from dcc import fnnode
 from dcc.abstract import afnmesh
 from dcc.maya.libs import dagutils, transformutils, meshutils
 from dcc.dataclasses import vector, colour
+from dcc.generators.package import package
+from dcc.generators.chunks import chunks
 
 import logging
 logging.basicConfig()
@@ -55,15 +57,6 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
         else:
 
             return om.MMatrix()
-
-    def triMesh(self):
-        """
-        Returns the triangulated mesh data object for this mesh.
-
-        :rtype: om.MObject
-        """
-
-        return meshutils.getTriMeshData(self.object())
 
     def numVertices(self):
         """
@@ -120,10 +113,19 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
         """
 
         component = self.component()
+        elements = om.MFnSingleIndexedComponent(component).getElements()
 
         if component.hasFn(om.MFn.kMeshVertComponent):
 
-            return om.MFnSingleIndexedComponent(component).getElements()
+            return elements
+
+        elif component.hasFn(om.MFn.kMeshEdgeComponent):
+
+            return self.getConnectedVertices(*elements, componentType=self.ComponentType.Edge)
+
+        elif component.hasFn(om.MFn.kMeshPolygonComponent):
+
+            return self.getConnectedVertices(*elements, componentType=self.ComponentType.Face)
 
         else:
 
@@ -131,16 +133,25 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
     def selectedEdges(self):
         """
-        Returns a list of selected vertex indices.
+        Returns a list of selected edge indices.
 
         :rtype: List[int]
         """
 
         component = self.component()
+        elements = om.MFnSingleIndexedComponent(component).getElements()
 
         if component.hasFn(om.MFn.kMeshEdgeComponent):
 
-            return om.MFnSingleIndexedComponent(component).getElements()
+            return elements
+
+        elif component.hasFn(om.MFn.kMeshVertComponent):
+
+            return self.getConnectedEdges(*elements, componentType=self.ComponentType.Vertex)
+
+        elif component.hasFn(om.MFn.kMeshPolygonComponent):
+
+            return self.getConnectedEdges(*elements, componentType=self.ComponentType.Face)
 
         else:
 
@@ -148,16 +159,25 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
     def selectedFaces(self):
         """
-        Returns a list of selected vertex indices.
+        Returns a list of selected face indices.
 
         :rtype: List[int]
         """
 
         component = self.component()
+        elements = om.MFnSingleIndexedComponent(component).getElements()
 
         if component.hasFn(om.MFn.kMeshPolygonComponent):
 
-            return om.MFnSingleIndexedComponent(component).getElements()
+            return elements
+
+        elif component.hasFn(om.MFn.kMeshVertComponent):
+
+            return self.getConnectedFaces(*elements, componentType=self.ComponentType.Vertex)
+
+        elif component.hasFn(om.MFn.kMeshEdgeComponent):
+
+            return self.getConnectedFaces(*elements, componentType=self.ComponentType.Edge)
 
         else:
 
@@ -389,6 +409,24 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
             yield vector.Vector(normal.x, normal.y, normal.z)
 
+    def getFaceTriangleVertexIndices(self):
+        """
+        Returns a dictionary of faces and their corresponding triangle-vertex indices.
+
+        :rtype: Dict[int, List[Tuple[int, int, int]]]
+        """
+
+        triangleCounts, triangleVertexIndices = om.MFnMesh(self.object()).getTriangles()
+        vertexCounts = [3 * count for count in triangleCounts]
+
+        faceTriangleVertexIndices = {}
+
+        for (i, vertexIndices) in enumerate(package(vertexCounts, triangleVertexIndices)):
+
+            faceTriangleVertexIndices[i] = list(chunks(list(vertexIndices), 3))
+
+        return faceTriangleVertexIndices
+
     def iterFaceMaterialIndices(self, *indices):
         """
         Returns a generator that yields face material indices.
@@ -456,38 +494,6 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
                 materials[i] = (material, '')
 
         return materials
-
-    def iterTriangleVertexIndices(self, *indices):
-        """
-        Returns a generator that yields face triangle vertex/point pairs.
-
-        :rtype: iter
-        """
-
-        # Evaluate arguments
-        #
-        faceTriangleIndices = self.faceTriangleIndices()
-        triangleFaceIndices = self.triangleFaceIndices()
-
-        numIndices = len(indices)
-
-        if numIndices == 0:
-
-            numTriangles = len(triangleFaceIndices)
-            indices = self.range(numTriangles)
-
-        # Iterate through triangles
-        #
-        fnMesh = om.MFnMesh(self.object())
-
-        for index in indices:
-
-            faceIndex = triangleFaceIndices[index]
-            localIndex = faceTriangleIndices[faceIndex].index(index)
-
-            vertexIndices = fnMesh.getPolygonTriangleVertices(faceIndex, localIndex)
-
-            yield tuple(vertexIndices)
 
     def numUVSets(self):
         """
@@ -692,15 +698,16 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
         """
         Returns a generator that yields the connected vertex elements.
 
-        :key componentType: int
-        :rtype: iter
+        :type indices: Union[int, List[int]]
+        :key componentType: ComponentType
+        :rtype: Iterator[int]
         """
 
         # Inspect component type
         #
-        componentType = kwargs.get('componentType', self.Components.Vertex)
+        componentType = kwargs.get('componentType', self.ComponentType.Vertex)
 
-        if componentType == self.Components.Vertex:
+        if componentType == self.ComponentType.Vertex:
 
             iterVertices = om.MItMeshVertex(self.object())
 
@@ -713,7 +720,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
                     yield connectedVertex
 
-        elif componentType == self.Components.Edge:
+        elif componentType == self.ComponentType.Edge:
 
             iterEdges = om.MItMeshEdge(self.object())
 
@@ -725,7 +732,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
                     yield iterEdges.vertexId(edgeVertIndex)
 
-        elif componentType == self.Components.Face:
+        elif componentType == self.ComponentType.Face:
 
             iterFaces = om.MItMeshPolygon(self.object())
 
@@ -746,15 +753,16 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
         """
         Returns a generator that yields the connected edge elements.
 
-        :key componentType: int
-        :rtype: iter
+        :type indices: Union[int, List[int]]
+        :key componentType: ComponentType
+        :rtype: Iterator[int]
         """
 
         # Inspect component type
         #
-        componentType = kwargs.get('componentType', self.Components.Vertex)
+        componentType = kwargs.get('componentType', self.ComponentType.Edge)
 
-        if componentType == self.Components.Vertex:
+        if componentType == self.ComponentType.Vertex:
 
             iterVertices = om.MItMeshVertex(self.object())
 
@@ -767,7 +775,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
                     yield connectedEdge
 
-        elif componentType == self.Components.Edge:
+        elif componentType == self.ComponentType.Edge:
 
             iterEdges = om.MItMeshEdge(self.object())
 
@@ -780,7 +788,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
                     yield connectedEdge
 
-        elif componentType == self.Components.Face:
+        elif componentType == self.ComponentType.Face:
 
             iterFaces = om.MItMeshPolygon(self.object())
             connectedEdges = iterFaces.getConnectedEdges()
@@ -797,15 +805,16 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
         """
         Returns a generator that yields the connected face elements.
 
-        :key componentType: int
-        :rtype: iter
+        :type indices: Union[int, List[int]]
+        :key componentType: ComponentType
+        :rtype: Iterator[int]
         """
 
         # Inspect component type
         #
-        componentType = kwargs.get('componentType', self.Components.Vertex)
+        componentType = kwargs.get('componentType', self.ComponentType.Face)
 
-        if componentType == self.Components.Vertex:
+        if componentType == self.ComponentType.Vertex:
 
             iterVertices = om.MItMeshVertex(self.object())
 
@@ -818,7 +827,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
                     yield connectedFace
 
-        elif componentType == self.Components.Edge:
+        elif componentType == self.ComponentType.Edge:
 
             iterEdges = om.MItMeshEdge(self.object())
 
@@ -831,7 +840,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
                     yield connectedFace
 
-        elif componentType == self.Components.Face:
+        elif componentType == self.ComponentType.Face:
 
             iterFaces = om.MItMeshPolygon(self.object())
 
@@ -847,3 +856,14 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
         else:
 
             raise TypeError('iterConnectedFaces() expects a valid component type (%s given)' % componentType)
+
+    @classmethod
+    def iterInstances(cls, apiType=om.MFn.kMesh):
+        """
+        Returns a generator that yields mesh instances.
+
+        :type apiType: int
+        :rtype: iter
+        """
+
+        return dagutils.iterNodes(apiType)

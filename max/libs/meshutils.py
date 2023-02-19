@@ -432,12 +432,11 @@ def iterFaceVertexNormals(mesh, indices=None):
 
                 for (vertexIndex, vertexNormal) in zip(triangleVertexIndices, triangleVertexNormals):
 
-                    faceVertexNormals[vertexNormal].append(vertexNormal)
+                    faceVertexNormals[vertexIndex].append(vertexNormal)
 
-            # Average vertex normals
+            # Yield averaged face-vertex normals
             #
-            vertexNormals = tuple([sum(faceVertexNormals[vertexIndex]) / len(faceVertexNormals[vertexNormal]) for vertexIndex in faceVertexIndices])
-            yield vertexNormals
+            yield tuple(sum(faceVertexNormals[vertexIndex]) / len(faceVertexNormals[vertexIndex]) for vertexIndex in faceVertexIndices)
 
 
 @coordsysoverride.coordSysOverride(mode='local')
@@ -723,7 +722,7 @@ def getConnectedVerts(mesh, vertices):
         edgeVerts = pymxs.runtime.polyOp.getEdgeVerts(mesh, edge)
         connectedVerts = connectedVerts.union(set(arrayutils.iterElements(edgeVerts)))
 
-    return list(connectedVerts)
+    return list(connectedVerts.difference(set(vertices)))
 
 
 def getConnectedEdges(mesh, edges):
@@ -743,7 +742,7 @@ def getConnectedEdges(mesh, edges):
         faceEdges = pymxs.runtime.polyOp.getFaceEdges(mesh, face)
         connectedEdges = connectedEdges.union(set(arrayutils.iterElements(faceEdges)))
 
-    return list(connectedEdges)
+    return list(connectedEdges.difference(set(edges)))
 
 
 def getConnectedFaces(mesh, faces):
@@ -763,7 +762,7 @@ def getConnectedFaces(mesh, faces):
         faces = pymxs.runtime.polyOp.getFacesUsingVert(mesh, vert)
         connectedFaces = connectedFaces.union(set(arrayutils.iterBitArray(faces)))
 
-    return list(connectedFaces)
+    return list(connectedFaces.difference(set(faces)))
 
 
 def decomposeSmoothingGroups(bits):
@@ -893,8 +892,7 @@ def iterMapVertices(mesh, channel=0, indices=None):
         #
         for index in indices:
 
-            point = pymxs.runtime.polyOp.getMapVert(mesh, channel, index)
-            yield point.x, point.y, point.z
+            yield pymxs.runtime.polyOp.getMapVert(mesh, channel, index)
 
     else:
 
@@ -902,8 +900,7 @@ def iterMapVertices(mesh, channel=0, indices=None):
         #
         for index in indices:
 
-            point = pymxs.runtime.meshOp.getMapVert(mesh, channel, index)
-            yield point.x, point.y, point.z
+            yield pymxs.runtime.meshOp.getMapVert(mesh, channel, index)
 
 
 def iterMapFaceVertexIndices(mesh, channel=0, indices=None):

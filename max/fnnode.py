@@ -421,7 +421,7 @@ class FnNode(afnnode.AFnNode):
     @classmethod
     def iterInstances(cls):
         """
-        Returns a generator that yields texture instances.
+        Returns a generator that yields node instances.
 
         :rtype: iter
         """

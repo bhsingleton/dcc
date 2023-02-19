@@ -1,20 +1,28 @@
-import math
 import numpy
 
 from abc import ABCMeta, abstractmethod
 from six import with_metaclass
-from six.moves import collections_abc
 from enum import IntEnum
 from itertools import chain
 from collections import deque, namedtuple
 from scipy.spatial import cKDTree
-
 from dcc.abstract import afnbase
+from dcc.dataclasses import vector
 
 import logging
 logging.basicConfig()
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
+
+
+class ComponentType(IntEnum):
+    """
+    Enum class of all the available mesh components.
+    """
+
+    Vertex = 0
+    Edge = 1
+    Face = 2
 
 
 class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
@@ -25,8 +33,8 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
     __slots__ = ()
     __face_triangles__ = {}  # Lookup optimization
 
-    Components = IntEnum('Components', {'Unknown': -1, 'Vertex': 0, 'Edge': 1, 'Face': 2})
-    Hit = namedtuple('Hit', ['hitIndex', 'hitPoint', 'hitBary'])
+    ComponentType = ComponentType
+    Hit = namedtuple('Hit', ['faceIndex', 'triangleIndex', 'vertexIndices', 'point', 'baryCoords'])
 
     def range(self, *args):
         """
@@ -74,16 +82,6 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         return enumerate(elements, start=self.arrayIndexType)
 
     @abstractmethod
-    def triMesh(self):
-        """
-        Returns the triangulated mesh data object for this mesh.
-
-        :rtype: object
-        """
-
-        pass
-
-    @abstractmethod
     def numVertices(self):
         """
         Returns the number of vertices in this mesh.
@@ -129,7 +127,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         :rtype: int
         """
 
-        return self.__class__(self.triMesh()).numFaces()
+        return sum(len(x) * 3 for x in self.iterFaceTriangleIndices())
 
     @abstractmethod
     def selectedVertices(self):
@@ -144,7 +142,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
     @abstractmethod
     def selectedEdges(self):
         """
-        Returns a list of selected vertex indices.
+        Returns a list of selected edge indices.
 
         :rtype: List[int]
         """
@@ -154,7 +152,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
     @abstractmethod
     def selectedFaces(self):
         """
-        Returns a list of selected vertex indices.
+        Returns a list of selected face indices.
 
         :rtype: List[int]
         """
@@ -173,14 +171,15 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         pass
 
-    def vertices(self, *indices):
+    def getVertices(self, *indices, worldSpace=False):
         """
         Returns a list of vertex points.
 
+        :type worldSpace: bool
         :rtype: List[vector.Vector]
         """
 
-        return list(self.iterVertices(*indices))
+        return list(self.iterVertices(*indices, worldSpace=worldSpace))
 
     @abstractmethod
     def iterVertexNormals(self, *indices):
@@ -193,7 +192,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         pass
 
-    def vertexNormals(self, *indices):
+    def getVertexNormals(self, *indices):
         """
         Returns a list of vertex normals.
 
@@ -281,7 +280,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         pass
 
-    def faceVertexIndices(self, *indices):
+    def getFaceVertexIndices(self, *indices):
         """
         Returns a list of face-vertex indices.
 
@@ -300,7 +299,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         pass
 
-    def faceVertexNormals(self, *indices):
+    def getFaceVertexNormals(self, *indices):
         """
         Returns a list of face-vertex indices for the specified faces.
 
@@ -308,104 +307,6 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
 
         return list(self.iterFaceVertexNormals(*indices))
-
-    def cacheFaceTriangleIndices(self):
-        """
-        Returns a dictionary of face-triangle indices.
-
-        :rtype: Dict[int, List[int]]
-        """
-
-        # Check if map has already been generated
-        #
-        handle = self.handle()
-        faceTriangleIndices = self.__face_triangles__.get(handle, {})
-
-        if len(faceTriangleIndices) == self.numFaces():
-
-            return faceTriangleIndices
-
-        # Iterate through faces
-        #
-        faceVertexIndices = self.faceVertexIndices()
-        faceTriangleIndices = {}
-
-        start = self.arrayIndexType
-
-        for (faceIndex, vertexIndices) in self.enumerate(faceVertexIndices):
-
-            # Get triangle count
-            #
-            faceVertexCount = len(vertexIndices)
-            triangleCount = faceVertexCount - 2
-
-            # Yield triangle range
-            #
-            end = start + triangleCount
-            faceTriangleIndices[faceIndex] = list(range(start, end))
-
-            # Increment start position
-            #
-            start += triangleCount
-
-        # Store map and return value
-        #
-        self.__face_triangles__[handle] = faceTriangleIndices
-        return faceTriangleIndices
-
-    def iterFaceTriangleIndices(self, *args):
-        """
-        Returns a generator that yields face-triangle indices.
-
-        :rtype: Iterator[List[int]]
-        """
-
-        # Evaluate arguments
-        #
-        numArgs = len(args)
-
-        if numArgs == 0:
-
-            args = self.range(self.numFaces())
-
-        # Iterate through arguments
-        #
-        faceTriangleIndices = self.cacheFaceTriangleIndices()
-
-        for arg in args:
-
-            yield faceTriangleIndices[arg]
-
-    def faceTriangleIndices(self, *args):
-        """
-        Returns a list of face-triangle indices.
-
-        :rtype: List[List[int]]
-        """
-
-        return list(self.iterFaceTriangleIndices(*args))
-
-    def triangleFaceIndices(self):
-        """
-        Returns a reverse lookup map for triangle-face indices.
-
-        :rtype: Dict[int, int]
-        """
-
-        # Iterate through face-triangle indices
-        #
-        faceTriangleIndices = self.cacheFaceTriangleIndices()
-        triangleFaceIndices = {}
-
-        for (faceIndex, triangleIndices) in faceTriangleIndices.items():
-
-            # Create reverse lookup for triangle
-            #
-            for triangleIndex in triangleIndices:
-
-                triangleFaceIndices[triangleIndex] = faceIndex
-
-        return triangleFaceIndices
 
     @abstractmethod
     def iterFaceCenters(self, *indices):
@@ -418,7 +319,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         pass
 
-    def faceCenters(self, *indices):
+    def getFaceCenters(self, *indices):
         """
         Returns a list of face centers.
 
@@ -438,7 +339,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         pass
 
-    def faceNormals(self, *indices):
+    def getFaceNormals(self, *indices):
         """
         Returns a list of face normals.
 
@@ -446,6 +347,16 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
 
         return list(self.iterFaceNormals(*indices))
+
+    @abstractmethod
+    def getFaceTriangleVertexIndices(self):
+        """
+        Returns a dictionary of faces and their corresponding triangle-vertex indices.
+
+        :rtype: Dict[int, List[Tuple[int, int, int]]]
+        """
+
+        pass
 
     @abstractmethod
     def iterFaceMaterialIndices(self, *indices):
@@ -477,17 +388,6 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
 
         pass
-
-    @staticmethod
-    def getCentroid(points):
-        """
-        Returns the centroid of the given triangle.
-
-        :type points: List[vector.Vector]
-        :rtype: vector.Vector
-        """
-
-        return sum(numpy.array(points)) / len(points)
 
     @abstractmethod
     def numUVSets(self):
@@ -561,38 +461,84 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         pass
 
+    def getTangentsAndBinormals(self, *indices, channel=0):
+        """
+        Returns a list of face-vertex tangents and binormals for the specified channel.
+
+        :type channel: int
+        :rtype: List[List[vector.Vector]]
+        """
+
+        return list(self.iterTangentsAndBinormals(*indices, channel=channel))
+
     @abstractmethod
     def iterConnectedVertices(self, *indices, **kwargs):
         """
         Returns a generator that yields the connected vertex elements.
 
-        :key componentType: int
-        :rtype: iter
+        :type indices: Union[int, List[int]]
+        :key componentType: ComponentType
+        :rtype: Iterator[int]
         """
 
         pass
+
+    def getConnectedVertices(self, *indices, **kwargs):
+        """
+        Returns a list of connected vertex elements.
+
+        :type indices: Union[int, List[int]]
+        :key componentType: ComponentType
+        :rtype: List[int]
+        """
+
+        return list(self.iterConnectedVertices(*indices, **kwargs))
 
     @abstractmethod
     def iterConnectedEdges(self, *indices, **kwargs):
         """
         Returns a generator that yields the connected edge elements.
 
-        :key componentType: int
-        :rtype: iter
+        :type indices: Union[int, List[int]]
+        :key componentType: ComponentType
+        :rtype: Iterator[int]
         """
 
         pass
+
+    def getConnectedEdges(self, *indices, **kwargs):
+        """
+        Returns a list of connected edge elements.
+
+        :type indices: Union[int, List[int]]
+        :key componentType: ComponentType
+        :rtype: List[int]
+        """
+
+        return list(self.iterConnectedEdges(*indices, **kwargs))
 
     @abstractmethod
     def iterConnectedFaces(self, *indices, **kwargs):
         """
         Returns a generator that yields the connected face elements.
 
-        :key componentType: int
-        :rtype: iter
+        :type indices: Union[int, List[int]]
+        :key componentType: ComponentType
+        :rtype: Iterator[int]
         """
 
         pass
+
+    def getConnectedFaces(self, *indices, **kwargs):
+        """
+        Returns a list of connected face elements.
+
+        :type indices: Union[int, List[int]]
+        :key componentType: ComponentType
+        :rtype: List[int]
+        """
+
+        return list(self.iterConnectedFaces(*indices, **kwargs))
 
     def distanceBetweenVertices(self, *indices):
         """
@@ -602,7 +548,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
 
         numIndices = len(indices)
-        points = self.vertices(*indices)
+        points = self.getVertices(*indices)
 
         return sum([points[i].distanceBetween(points[i+1]) for i in range(numIndices - 1)])
 
@@ -616,15 +562,15 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         # Check if we have enough arguments
         #
-        numArgs = len(indices)
+        numIndices = len(indices)
 
-        if numArgs < 2:
+        if numIndices < 2:
 
-            raise TypeError('shortestPathBetweenVertices() expects at least 2 vertices (%s given)!' % numArgs)
+            raise TypeError('shortestPathBetweenVertices() expects at least 2 vertices (%s given)!' % numIndices)
 
         # Iterate through vertex pairs
         #
-        return [self.shortestPathBetweenTwoVertices(indices[x], indices[x+1]) for x in range(numArgs - 1)]
+        return [self.shortestPathBetweenTwoVertices(indices[x], indices[x + 1]) for x in range(numIndices - 1)]
 
     def shortestPathBetweenTwoVertices(self, startVertex, endVertex, maxIterations=20):
         """
@@ -691,22 +637,22 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         # Check value type
         #
-        if not isinstance(vertexIndices, collections_abc.MutableSequence):
+        if not isinstance(vertexIndices, (list, tuple, set)):
 
             raise TypeError('mirrorVertices() expects a list (%s given)!' % type(vertexIndices).__name__)
 
         # Define inverse map
         # This will be used to inverse out input data
         #
-        points = self.vertices(*vertexIndices)
+        points = self.getVertices(*vertexIndices)
 
-        inverse = {x: -1 if x == axis else 1 for x in range(3)}
+        inverse = {i: -1 if i == axis else 1 for i in range(3)}
         mirrorPoints = [[value * inverse[index] for (index, value) in enumerate(point)] for point in points]
 
         # Query the closest points from point tree
         # TODO: Might be worth trying to optimize this with only opposite points?
         #
-        tree = cKDTree(self.vertices())
+        tree = cKDTree(self.getVertices())
         distances, indices = tree.query(mirrorPoints, distance_upper_bound=tolerance)
 
         # Generate mirror map
@@ -715,85 +661,107 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         numVertices = self.numVertices()
         return {vertexIndex: int(index + self.arrayIndexType) for (vertexIndex, index) in zip(vertexIndices, indices) if index != numVertices}
 
-    def nearestNeighbours(self, vertexIndices):
+    def nearestNeighbours(self, *indices):
         """
         Returns a list of the closest connected vertex indices.
 
-        :type vertexIndices: List[int]
+        :type indices: Union[int, List[int]]
         :rtype: List[int]
         """
 
         # Iterate through vertices
         #
-        numVertexIndices = len(vertexIndices)
-        neighbours = [None] * numVertexIndices
+        numIndices = len(indices)
+        neighbours = [None] * numIndices
 
-        for (i, vertexIndex) in enumerate(vertexIndices):
+        for (localIndex, globalIndex) in enumerate(indices):
 
             # Get connected points
             #
-            point = self.vertices(vertexIndex)[0]
+            point = self.getVertices(globalIndex)[0]
 
-            connectedIndices = self.iterConnectedVertices(vertexIndex)
-            connectedPoints = self.vertices(*connectedIndices)
+            connectedIndices = self.getConnectedVertices(globalIndex)
+            connectedPoints = self.getVertices(*connectedIndices)
 
             # Evaluate distance between points
             #
             distances = [point.distanceBetween(otherPoint) for otherPoint in connectedPoints]
             minDistance = min(distances)
 
-            neighbours[i] = connectedIndices[distances.index(minDistance)]
+            neighbours[localIndex] = connectedIndices[distances.index(minDistance)]
 
         return neighbours
 
-    def closestVertices(self, points, vertexIndices=None):
+    def nearestVertices(self, *indices):
         """
-        Returns the vertices that are closest to the given points.
+        Returns a list of the closest vertex indices.
+
+        :type indices: Union[int, List[int]]
+        :rtype: List[int]
+        """
+
+        # Initialize point tree
+        #
+        otherIndices = list(set(self.range(self.numVertices())).difference(set(indices)))
+        indexMap = dict(enumerate(otherIndices))
+
+        tree = cKDTree(self.getVertices(*otherIndices))
+
+        # Find the closest vertices
+        #
+        points = self.getVertices(*indices)
+        distances, closestIndices = tree.query(points)
+
+        return [indexMap[index] for index in closestIndices]
+
+    def closestVertices(self, points, dataset=None):
+        """
+        Returns the vertices that are closest to the supplied points.
         An optional list of vertices can be used to limit the range of points considered.
 
-        :type points: List[Tuple[float, float, float]]
-        :type vertexIndices: List[int]
+        :type points: List[vector.Vector]
+        :type dataset: List[int]
         :rtype: List[int]
         """
 
         # Check if vertices were supplied
         #
-        if vertexIndices is None:
+        if dataset is None:
 
-            vertexIndices = list(self.range(self.numVertices()))
+            dataset = list(self.range(self.numVertices()))
 
-        # Get control points
+        # Get vertex points
         #
-        controlPoints = self.vertices(*vertexIndices)
-        vertexMap = dict(enumerate(vertexIndices))
+        vertexPoints = self.getVertices(*dataset, worldSpace=True)
+        vertexMap = dict(enumerate(dataset))
 
         # Query point tree
         #
-        tree = cKDTree(controlPoints)
+        tree = cKDTree(vertexPoints)
         distances, indices = tree.query(points)
 
         return [vertexMap[x] for x in indices]
 
-    def closestFaces(self, points, faceIndices=None):
+    def closestFaces(self, points, dataset=None):
         """
         Returns the faces that are closest to the given points.
         An optional list of faces can be used to limit the range of centroids considered.
 
-        :type points: List[Tuple[float, float, float]]
-        :type faceIndices: List[int]
+        :type points: List[vector.Vector]
+        :type dataset: List[int]
         :rtype: List[int]
         """
 
         # Check if vertices were supplied
         #
-        if faceIndices is None:
+        if dataset is None:
 
-            faceIndices = list(self.range(self.numFaces()))
+            dataset = list(self.range(self.numFaces()))
 
-        # Get control points
+        # Get face centers
         #
-        faceCenters = self.faceCenters(*faceIndices)
-        faceMap = dict(enumerate(faceCenters))
+        faceCenters = self.getFaceCenters(*dataset)
+        faceMap = dict(enumerate(dataset))
 
         # Query point tree
         #
@@ -803,14 +771,14 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         return [faceMap[x] for x in indices]
 
     @staticmethod
-    def getBarycentricCoordinates(point, triangle):
+    def closestPointOnTriangle(point, triangle):
         """
-        Finds the closest point on the given triangle.
+        Returns the closest point on the supplied triangle in barycentric co-ordinates.
         Shamelessly ripped from: http://www.geometrictools.com/Documentation/DistancePoint3Triangle3.pdf
 
-        :type point: numpy.array
-        :type triangle: numpy.array
-        :rtype: Tuple[float, float, float]
+        :type point: vector.Vector
+        :type triangle: Tuple[vector.Vector, vector.Vector, vector.Vector]
+        :rtype: vector.Vector
         """
 
         # Get edge vectors
@@ -909,54 +877,52 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         return float(1.0 - s - t), float(s), float(t)
 
-    def closestPointsOnSurface(self, points, faceIndices=None):
+    def closestPointOnSurface(self, *points, dataset=None):
         """
         Returns the faces that are closest to the given points.
         An optional list of faces can be used to limit the range of surfaces considered.
 
-        :type points: List[List[float, float, float]]
-        :type faceIndices: List[int]
+        :type points: Union[vector.Vector, List[vector.Vector]]
+        :type dataset: List[int]
         :rtype: List[AFnMesh.Hit]
         """
 
         # Check if faces were supplied
         #
-        if faceIndices is None:
+        if dataset is None:
 
-            faceIndices = list(self.range(self.numFaces()))
+            dataset = list(self.range(self.numFaces()))
 
         # Get control points
         #
-        faceTriangleIndices = self.faceTriangleIndices(*faceIndices)
-        triangleIndices = list(chain(*faceTriangleIndices))
+        faceTriangleVertexIndices = self.getFaceTriangleVertexIndices()
+
+        triangleIndices = list(chain(*[[(faceIndex, triangleIndex) for triangleIndex in range(len(faceTriangleVertexIndices[faceIndex]))] for faceIndex in dataset]))
         triangleMap = dict(enumerate(triangleIndices))
 
-        triMesh = self.__class__(self.triMesh())
-        triangleCentroids = triMesh.faceCenters(*triangleIndices)
+        triangles = [faceTriangleVertexIndices[faceIndex][triangleIndex] for (faceIndex, triangleIndex) in triangleIndices]
+        trianglePoints = [self.getVertices(*vertexIndices, worldSpace=True) for vertexIndices in triangles]
+        triangleCentroids = [sum(vertexPoints) / len(vertexPoints) for vertexPoints in trianglePoints]
 
         # Get the closest triangles using point tree
         #
         tree = cKDTree(triangleCentroids)
-        distances, indices = tree.query(points)
+        distances, closestIndices = tree.query(points)
 
         # Project points onto the closest triangles
         # Remember to use the triangle map to resolve the local indices!
         #
-        closestTriangles = [triangleMap[index] for index in indices]
-        triangleVertexIndices = dict(zip(closestTriangles, triMesh.faceVertexIndices(*closestTriangles)))
-
-        numHits = len(indices)
+        numHits = len(closestIndices)
         hits = [None] * numHits
 
-        for (index, (triangleIndex, point)) in enumerate(zip(closestTriangles, points)):
+        for (i, (index, point)) in enumerate(zip(closestIndices, points)):
 
-            point = numpy.array(point)
-            triangle = numpy.array(self.vertices(*triangleVertexIndices[triangleIndex]))
-
-            baryCoords = self.getBarycentricCoordinates(point, triangle)
-            closestPoint = (triangle[0] * baryCoords[0]) + (triangle[1] * baryCoords[1]) + (triangle[2] * baryCoords[2])
+            point = vector.Vector(*point)
+            vertexPoints = trianglePoints[index]
+            baryCoords = self.closestPointOnTriangle(point, vertexPoints)
+            closestPoint = (vertexPoints[0] * baryCoords[0]) + (vertexPoints[1] * baryCoords[1]) + (vertexPoints[2] * baryCoords[2])
 
             log.debug('Hit: point=%s -> closestPoint=%s, bary=%s' % (point, closestPoint, baryCoords))
-            hits[index] = self.Hit(hitIndex=triangleIndex, hitPoint=closestPoint, hitBary=baryCoords)
+            hits[i] = self.Hit(faceIndex=triangleMap[index][0], triangleIndex=triangleMap[index][1], vertexIndices=triangles[index], point=closestPoint, baryCoords=baryCoords)
 
         return hits

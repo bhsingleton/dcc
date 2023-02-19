@@ -341,7 +341,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         :rtype: list
         """
 
-        return fnmesh.FnMesh(self.intermediateObject()).vertices(*args)
+        return fnmesh.FnMesh(self.intermediateObject()).getVertices(*args)
 
     def numControlPoints(self):
         """
@@ -1411,11 +1411,11 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
 
         if mode == 0:  # Closest point
 
-            closestIndices = mesh.closestVertices(mesh.vertices(*vertexIndices))
+            closestIndices = mesh.nearestVertices(*vertexIndices)
 
         elif mode == 1:  # Nearest neighbour
 
-            closestIndices = mesh.nearestNeighbours(vertexIndices)
+            closestIndices = mesh.nearestNeighbours(*vertexIndices)
 
         elif mode == 2:  # Along vertex normal
 
@@ -1656,7 +1656,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         # Iterate through elements
         #
         fnMesh = fnmesh.FnMesh(self.shape())
-        points = fnMesh.vertices(*path)
+        points = fnMesh.getVertices(*path)
 
         vertexWeights = self.vertexWeights(startVertex, endVertex)
         startWeights, endWeights = vertexWeights[startVertex], vertexWeights[endVertex]

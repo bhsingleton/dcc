@@ -51,7 +51,7 @@ class Vector(adc.ADC):
 
         else:
 
-            raise TypeError(f'__post_init__() expects either an int or float ({type(arg).__name__} given)!')
+            raise TypeError(f'__post_init__() expects either an int or float ({type(args).__name__} given)!')
 
     def __eq__(self, other):
         """

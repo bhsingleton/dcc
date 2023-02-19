@@ -480,7 +480,7 @@ class FnNode(afnnode.AFnNode):
     @classmethod
     def iterInstances(cls, apiType=om.MFn.kDependencyNode):
         """
-        Returns a generator that yields texture instances.
+        Returns a generator that yields node instances.
 
         :type apiType: int
         :rtype: iter
