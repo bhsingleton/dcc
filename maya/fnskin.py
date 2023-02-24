@@ -2,7 +2,7 @@ import maya.cmds as mc
 import maya.api.OpenMaya as om
 
 from dcc.abstract import afnskin
-from dcc.maya import fnnode
+from dcc.maya import fnnode, fnmesh
 from dcc.maya.libs import dagutils, skinutils
 from dcc.maya.decorators import undo
 
@@ -87,9 +87,9 @@ class FnSkin(fnnode.FnNode, afnskin.AFnSkin):
 
     def iterVertices(self):
         """
-        Returns a generator that yields all vertex indices.
+        Returns a generator that yields vertex indices.
 
-        :rtype: iter
+        :rtype: Iterator[int]
         """
 
         return range(self.numControlPoints())
@@ -128,9 +128,9 @@ class FnSkin(fnnode.FnNode, afnskin.AFnSkin):
 
     def iterSelection(self):
         """
-        Returns a generator that yields the selected vertex indices.
+        Returns a generator that yields the selected vertex elements.
 
-        :rtype: iter
+        :rtype: Iterator[int]
         """
 
         # Inspect component selection
@@ -177,9 +177,9 @@ class FnSkin(fnnode.FnNode, afnskin.AFnSkin):
 
     def iterSoftSelection(self):
         """
-        Returns a generator that yields selected vertex and soft value pairs.
+        Returns a generator that yields selected vertex-weight pairs.
 
-        :rtype iter
+        :rtype Iterator[Dict[int, float]]
         """
 
         # Inspect component selection
@@ -188,7 +188,7 @@ class FnSkin(fnnode.FnNode, afnskin.AFnSkin):
 
         if not component.hasFn(om.MFn.kMeshVertComponent):
 
-            return
+            return iter([])
 
         # Iterate through component
         #
@@ -196,15 +196,15 @@ class FnSkin(fnnode.FnNode, afnskin.AFnSkin):
 
         for i in range(fnComponent.elementCount):
 
-            element = fnComponent.element(i)
-
+            # Check if element has weights
+            #
             if fnComponent.hasWeights:
 
-                yield element, fnComponent.weight(i)
+                yield fnComponent.element(i), fnComponent.weight(i)
 
             else:
 
-                yield element, 1.0
+                yield fnComponent.element(i), 1.0
 
     @classmethod
     def isPluginLoaded(cls):
@@ -274,7 +274,7 @@ class FnSkin(fnnode.FnNode, afnskin.AFnSkin):
 
     def hideColors(self):
         """
-        Disable color feedback for the associated shape.
+        Disable color feedback for the associated mesh.
 
         :rtype: None
         """
@@ -314,7 +314,7 @@ class FnSkin(fnnode.FnNode, afnskin.AFnSkin):
 
             fnMesh.deleteColorSet(self.__color_set_name__)
 
-    def invalidateColors(self):
+    def refreshColors(self):
         """
         Forces the vertex colour display to redraw.
 
@@ -353,16 +353,16 @@ class FnSkin(fnnode.FnNode, afnskin.AFnSkin):
 
     def iterInfluences(self):
         """
-        Returns a generator that yields all of the influence objects from this skin.
+        Returns a generator that yields the influence id-objects pairs from this skin.
 
-        :rtype: iter
+        :rtype: Iterator[Tuple[int, Any]]
         """
 
         return skinutils.iterInfluences(self.object())
 
     def numInfluences(self):
         """
-        Returns the number of influences being use by this skin.
+        Returns the number of influences in use by this skin.
 
         :rtype: int
         """
@@ -371,7 +371,7 @@ class FnSkin(fnnode.FnNode, afnskin.AFnSkin):
 
     def maxInfluences(self):
         """
-        Getter method that returns the max number of influences for this skin.
+        Returns the max number of influences for this skin.
 
         :rtype: int
         """
@@ -388,48 +388,50 @@ class FnSkin(fnnode.FnNode, afnskin.AFnSkin):
 
         skinutils.selectInfluence(self.object(), influenceId)
 
-    def addInfluence(self, influence):
+    def addInfluence(self, *influences):
         """
-        Adds an influence to this deformer.
+        Adds an influence to this skin.
 
-        :type influence: om.MObject
+        :type influences: Union[Any, List[Any]]
         :rtype: bool
         """
 
-        index = skinutils.addInfluence(self.object(), influence)
-        self.influences()[index] = influence
+        for influence in influences:
 
-    def removeInfluence(self, influenceId):
+            skinutils.addInfluence(self.object(), influence)
+
+    def removeInfluence(self, *influenceIds):
         """
-        Removes an influence from this deformer.
+        Removes an influence from this skin by id.
 
-        :type influenceId: int
-        :rtype: bool
+        :type influenceIds: Union[int, List[int]]
+        :rtype: None
         """
 
-        skinutils.removeInfluence(self.object(), influenceId)
-        del self.influences()[influenceId]
+        for influenceId in influenceIds:
+
+            skinutils.removeInfluence(self.object(), influenceId)
 
     def iterVertexWeights(self, *args):
         """
-        Returns a generator that yields weights for the supplied vertex indices.
+        Returns a generator that yields vertex-weights pairs from this skin.
         If no vertex indices are supplied then all weights are yielded instead.
 
-        :rtype: iter
+        :rtype: Iterator[Tuple[int, Dict[int, float]]]
         """
 
         return skinutils.iterWeightList(self.object(), vertexIndices=args)
 
     @undo.undo(name='Apply Vertex Weights')
-    def applyVertexWeights(self, vertices):
+    def applyVertexWeights(self, vertexWeights):
         """
-        Assigns the supplied vertex weights to this deformer.
+        Assigns the supplied vertex weights to this skin.
 
-        :type vertices: Dict[int, Dict[int, float]]
+        :type vertexWeights: Dict[int, Dict[int, float]]
         :rtype: None
         """
 
-        skinutils.setWeightList(self.object(), vertices)
+        skinutils.setWeightList(self.object(), vertexWeights)
 
     @undo.undo(name='Reset Pre-Bind Matrices')
     def resetPreBindMatrices(self):

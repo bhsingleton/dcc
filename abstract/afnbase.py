@@ -110,6 +110,38 @@ class AFnBase(with_metaclass(ABCMeta, object)):
 
             raise TypeError('__getattribute__() function set object does not exist!')
 
+    def __eq__(self, other):
+        """
+        Private method that evaluates if this object is equivalent to the other object.
+
+        :type other: Any
+        :rtype: None
+        """
+
+        if isinstance(other, AFnBase):
+
+            return self.object() == other.object()
+
+        else:
+
+            return self.object() == other
+
+    def __ne__(self, other):
+        """
+        Private method that evaluates if this object is not equivalent to the other object.
+
+        :type other: Any
+        :rtype: None
+        """
+
+        if isinstance(other, AFnBase):
+
+            return self.object() != other.object()
+
+        else:
+
+            return self.object() != other
+
     def __iter__(self):
         """
         Returns a generator that yields objects from the queue.

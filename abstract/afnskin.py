@@ -1,16 +1,14 @@
-import os
-import json
-
 from abc import ABCMeta, abstractmethod
-from six import with_metaclass, integer_types
+from six import with_metaclass, integer_types, string_types
 from six.moves import collections_abc
 from copy import deepcopy
-from collections import OrderedDict
-
+from itertools import chain
 from dcc import fnnode, fnmesh
 from dcc.abstract import afnnode
 from dcc.naming import namingutils
+from dcc.python import stringutils
 from dcc.math import linearalgebra
+from dcc.dataclasses.vector import Vector
 
 import logging
 logging.basicConfig()
@@ -23,7 +21,8 @@ class Influences(collections_abc.MutableMapping):
     Overload of MutableMapping used to store influence objects.
     """
 
-    __slots__ = ('_influences',)
+    # region Dunderscores
+    __slots__ = ('__objects__',)
 
     def __init__(self, *args, **kwargs):
         """
@@ -36,7 +35,7 @@ class Influences(collections_abc.MutableMapping):
 
         # Declare private variables
         #
-        self._influences = {}
+        self.__objects__ = {}
 
         # Evaluate arguments
         #
@@ -46,29 +45,19 @@ class Influences(collections_abc.MutableMapping):
 
             self.update(args[0])
 
-    def __call__(self, index):
-        """
-        Private method that returns an indexed influence as a function set.
-
-        :type index: int
-        :rtype: fnnode.FnNode
-        """
-
-        return fnnode.FnNode(self.__getitem__(index))
-
     def __getitem__(self, index):
         """
         Private method that returns an indexed influence.
 
         :type index: int
-        :rtype: Union[om.MObject, pymxs.MXSWrapperBase]
+        :rtype: Union[fnnode.FnNode, None]
         """
 
         # Check key type
         #
         if isinstance(index, integer_types):
 
-            return self.get(index)
+            return self.get(index, None)
 
         else:
 
@@ -79,18 +68,18 @@ class Influences(collections_abc.MutableMapping):
         Private method that updates an indexed influence.
 
         :type key: int
-        :type value: Union[om.MObject, pymxs.MXSWrapperBase]
+        :type value: Any
         :rtype: None
         """
 
         # Check if value is accepted
         #
-        fnNode = fnnode.FnNode()
-        success = fnNode.trySetObject(value)
+        influence = fnnode.FnNode()
+        success = influence.trySetObject(value)
 
         if success:
 
-            self._influences[key] = fnNode.handle()
+            self.__objects__[key] = influence
 
         else:
 
@@ -104,25 +93,7 @@ class Influences(collections_abc.MutableMapping):
         :rtype: None
         """
 
-        del self._influences[key]
-
-    def __iter__(self):
-        """
-        Returns a generator that yields all influence objects.
-
-        :rtype: iter
-        """
-
-        return iter(self._influences)
-
-    def __len__(self):
-        """
-        Private method that evaluates the size of this collection.
-
-        :rtype: int
-        """
-
-        return len(self._influences)
+        del self.__objects__[key]
 
     def __contains__(self, item):
         """
@@ -132,17 +103,28 @@ class Influences(collections_abc.MutableMapping):
         :rtype: bool
         """
 
-        fnNode = fnnode.FnNode()
-        success = fnNode.trySetObject(item)
+        return item in self.__objects__.values()
 
-        if success:
+    def __iter__(self):
+        """
+        Returns a generator that yields all influence objects.
 
-            return fnNode.handle() in self._influences.values()
+        :rtype: iter
+        """
 
-        else:
+        return iter(self.__objects__)
 
-            return False
+    def __len__(self):
+        """
+        Private method that evaluates the size of this collection.
 
+        :rtype: int
+        """
+
+        return len(self.__objects__)
+    # endregion
+
+    # region Methods
     def keys(self):
         """
         Returns a key view for this collection.
@@ -150,7 +132,7 @@ class Influences(collections_abc.MutableMapping):
         :rtype: collections_abc.KeysView
         """
 
-        return self._influences.keys()
+        return self.__objects__.keys()
 
     def values(self):
         """
@@ -159,9 +141,7 @@ class Influences(collections_abc.MutableMapping):
         :rtype: collections_abc.ValuesView
         """
 
-        for influenceId in self._influences.keys():
-
-            yield self.get(influenceId)
+        return self.__objects__.values()
 
     def items(self):
         """
@@ -170,9 +150,7 @@ class Influences(collections_abc.MutableMapping):
         :rtype: collections_abc.ItemsView
         """
 
-        for (influenceId, influenceHandle) in self._influences.items():
-
-            yield influenceId, self.get(influenceId)
+        return self.__objects__.items()
 
     def get(self, index, default=None):
         """
@@ -180,23 +158,40 @@ class Influences(collections_abc.MutableMapping):
 
         :type index: int
         :type default: Any
-        :rtype: Union[om.MObject, pymxs.MXSWrapperBase]
+        :rtype: Union[fnnode.FnNode, None]
         """
 
-        handle = self._influences.get(index, 0)
-        return fnnode.FnNode.getNodeByHandle(handle)
+        return self.__objects__.get(index, None)
 
     def index(self, influence):
         """
         Returns the index for the given influence.
-        If no index is found then none is returned!
+        If no index is found then None is returned!
 
-        :type influence: Union[str, om.MObject, pymxs.MXSWrapperBase]
+
+        :type influence: Any
         :rtype: int
         """
 
-        handle = fnnode.FnNode(influence).handle()
-        return {influenceHandle: influenceId for (influenceId, influenceHandle) in self._influences.items()}.get(handle, None)
+        try:
+
+            # Check influence type
+            #
+            if isinstance(influence, string_types):
+
+                influence = fnnode.FnNode(influence)
+
+            # Get associated value key
+            #
+            keys = list(self.__objects__.keys())
+            values = list(self.__objects__.values())
+            index = values.index(influence)
+
+            return keys[index]
+
+        except (ValueError, TypeError):
+
+            return None
 
     def lastIndex(self):
         """
@@ -235,7 +230,8 @@ class Influences(collections_abc.MutableMapping):
         :rtype: None
         """
 
-        self._influences.clear()
+        self.__objects__.clear()
+    # endregion
 
 
 class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
@@ -248,6 +244,8 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
     def __init__(self, *args, **kwargs):
         """
         Private method called after a new instance is created.
+
+        :rtype: None
         """
 
         # Declare private variables
@@ -259,25 +257,10 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         #
         super(AFnSkin, self).__init__(*args, **kwargs)
 
-    def __getstate__(self):
-        """
-        Private method that returns an object state for this instance.
-
-        :rtype: dict
-        """
-
-        return {
-            'name': self.name(),
-            'influences': self.influenceNames(),
-            'maxInfluences': self.maxInfluences(),
-            'vertices': self.vertexWeights(),
-            'points': self.controlPoints()
-        }
-
     @abstractmethod
     def shape(self):
         """
-        Returns the shape node associated with the deformer.
+        Returns the shape node associated with this skin.
 
         :rtype: Any
         """
@@ -287,7 +270,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
     @abstractmethod
     def intermediateObject(self):
         """
-        Returns the intermediate object associated with the deformer.
+        Returns the intermediate object associated with this skin.
 
         :rtype: Any
         """
@@ -307,9 +290,9 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
     @abstractmethod
     def iterVertices(self):
         """
-        Returns a generator that yields all vertex indices.
+        Returns a generator that yields vertex indices.
 
-        :rtype: iter
+        :rtype: Iterator[int]
         """
 
         pass
@@ -323,25 +306,29 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
 
         return list(self.iterVertices())
 
-    def iterControlPoints(self, *args):
+    def iterControlPoints(self, *indices, cls=Vector):
         """
-        Returns a generator that yields control points.
+        Returns a generator that yields the intermediate control points.
         If no arguments are supplied then all control points are yielded.
 
-        :rtype: iter
+        :type indices: Union[int, List[int]]
+        :type cls: Callable
+        :rtype: Iterator[vector.Vector]
         """
 
-        return fnmesh.FnMesh(self.intermediateObject()).iterVertices(*args)
+        return fnmesh.FnMesh(self.intermediateObject()).iterVertices(*indices, cls=cls)
 
-    def controlPoints(self, *args):
+    def controlPoints(self, *indices, cls=Vector):
         """
-        Returns control points.
+        Returns the intermediate control points.
         If no arguments are supplied then all control points are returned.
 
-        :rtype: list
+        :type indices: Union[int, List[int]]
+        :type cls: Callable
+        :rtype: List[vector.Vector]
         """
 
-        return fnmesh.FnMesh(self.intermediateObject()).getVertices(*args)
+        return list(self.iterControlPoints(*indices, cls=cls))
 
     def numControlPoints(self):
         """
@@ -355,9 +342,9 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
     @abstractmethod
     def iterSelection(self):
         """
-        Returns a generator that yields the selected vertex indices.
+        Returns a generator that yields the selected vertex elements.
 
-        :rtype: iter
+        :rtype: Iterator[int]
         """
 
         pass
@@ -385,26 +372,26 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
     @abstractmethod
     def iterSoftSelection(self):
         """
-        Returns a generator that yields selected vertex and soft value pairs.
+        Returns a generator that yields selected vertex-weight pairs.
 
-        :rtype iter
+        :rtype Iterator[Dict[int, float]]
         """
 
         pass
 
     def softSelection(self):
         """
-        Returns a dictionary of selected vertex and soft value pairs.
+        Returns a dictionary of the selected vertex-weight pairs.
 
         :rtype Dict[int, float]
         """
 
-        return OrderedDict(self.iterSoftSelection())
+        return dict(self.iterSoftSelection())
 
     @abstractmethod
     def showColors(self):
         """
-        Enables color feedback for the associated shape.
+        Enables color feedback for the associated mesh.
 
         :rtype: None
         """
@@ -414,14 +401,14 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
     @abstractmethod
     def hideColors(self):
         """
-        Disable color feedback for the associated shape.
+        Disable color feedback for the associated mesh.
 
         :rtype: None
         """
 
         pass
 
-    def invalidateColors(self):
+    def refreshColors(self):
         """
         Forces the vertex colour display to redraw.
 
@@ -433,16 +420,16 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
     @abstractmethod
     def iterInfluences(self):
         """
-        Returns a generator that yields all the influence objects from this deformer.
+        Returns a generator that yields the influence id-objects pairs from this skin.
 
-        :rtype: iter
+        :rtype: Iterator[Tuple[int, Any]]
         """
 
         pass
 
     def influences(self):
         """
-        Returns the influence objects derived from this deformer.
+        Returns the influence id-object pairs from this skin.
 
         :rtype: Influences
         """
@@ -460,18 +447,17 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
 
     def influenceNames(self):
         """
-        Returns the influence names derived from this deformer.
+        Returns the influence names from this skin.
 
         :rtype: Dict[int, str]
         """
 
-        influences = self.influences()
-        return {influenceId: influences(influenceId).name() for influenceId in influences}
+        return {influenceId: influence.name() for (influenceId, influence) in self.influences().items()}
 
     @abstractmethod
     def numInfluences(self):
         """
-        Returns the number of influences being use by this deformer.
+        Returns the number of influences in use by this skin.
 
         :rtype: int
         """
@@ -479,55 +465,31 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         pass
 
     @abstractmethod
-    def addInfluence(self, influence):
+    def addInfluence(self, *influences):
         """
-        Adds an influence to this deformer.
+        Adds an influence to this skin.
 
-        :type influence: Any
-        :rtype: bool
-        """
-
-        pass
-
-    def addInfluences(self, influences):
-        """
-        Adds a list of influences to this deformer.
-
-        :type influences: list
+        :type influences: Union[Any, List[Any]]
         :rtype: None
         """
 
-        for influence in influences:
-
-            self.addInfluence(influence)
+        pass
 
     @abstractmethod
-    def removeInfluence(self, influenceId):
+    def removeInfluence(self, *influenceIds):
         """
-        Removes an influence from this deformer by id.
+        Removes an influence from this skin by id.
 
-        :type influenceId: int
-        :rtype: bool
-        """
-
-        pass
-
-    def removeInfluences(self, influences):
-        """
-        Removes a list of influences from this deformer.
-
-        :type influences: list
+        :type influenceIds: Union[int, List[int]]
         :rtype: None
         """
 
-        for influence in influences:
-
-            self.removeInfluence(influence)
+        pass
 
     @abstractmethod
     def maxInfluences(self):
         """
-        Getter method that returns the max number of influences for this deformer.
+        Returns the max number of influences for this skin.
 
         :rtype: int
         """
@@ -545,11 +507,12 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
 
         pass
 
-    def getUsedInfluenceIds(self, *args):
+    def getUsedInfluenceIds(self, *indices):
         """
-        Returns a list of used influence IDs.
-        An optional list of vertices can used to narrow down this search.
+        Returns a list of active influence IDs from the specified vertices.
+        If no vertices are supplied then all vertices are evaluated instead!
 
+        :type indices: Union[int, List[int]]
         :rtype: List[int]
         """
 
@@ -557,30 +520,31 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         #
         influenceIds = set()
 
-        for (vertexIndex, vertexWeights) in self.iterVertexWeights(*args):
+        for (vertexIndex, vertexWeights) in self.iterVertexWeights(*indices):
 
             influenceIds = influenceIds.union(set(vertexWeights.keys()))
 
         return list(influenceIds)
 
-    def getUnusedInfluenceIds(self, *args):
+    def getUnusedInfluenceIds(self, *indices):
         """
-        Returns a list of unused influence IDs.
-        An optional list of vertices can be used to narrow down this search.
+        Returns a list of inactive influence IDs from the specified vertices.
+        If no vertices are supplied then all vertices are evaluated instead!
 
+        :type indices: Union[int, List[int]]
         :rtype: List[int]
         """
 
-        return list(set(self.influences().keys()) - set(self.getUsedInfluenceIds(*args)))
+        return list(set(self.influences().keys()) - set(self.getUsedInfluenceIds(*indices)))
 
     def createInfluenceMap(self, otherSkin, influenceIds=None):
         """
-        Creates an influence map for transferring weights from this instance to the supplied skin.
-        An optional list of influence IDs can be used to simplify the binder.
+        Creates an influence map for transferring weights from this skin to the other skin.
+        An optional list of influence IDs can be supplied to simplify the map.
 
         :type otherSkin: AFnSkin
         :type influenceIds: Union[list, tuple, set]
-        :rtype: Dict[int,int]
+        :rtype: Dict[int, int]
         """
 
         # Check if skin is valid
@@ -606,7 +570,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
 
             # Try and find a match for the influence name
             #
-            influenceName = influences(influenceId).name()
+            influenceName = influences[influenceId].name()
             remappedId = otherInfluences.index(influenceName)
 
             if remappedId is not None:
@@ -619,16 +583,16 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
 
         # Return influence map
         #
-        log.debug('Successfully created %s influence binder.' % influenceMap)
+        log.debug('Successfully created %s influence map!' % influenceMap)
         return influenceMap
 
     def remapVertexWeights(self, vertexWeights, influenceMap):
         """
         Remaps the supplied vertex weights using the specified influence map.
 
-        :type vertexWeights: Dict[int,Dict[int, float]]
-        :type influenceMap: Dict[int,int]
-        :rtype: Dict[int,Dict[int, float]]
+        :type vertexWeights: Dict[int, Dict[int, float]]
+        :type influenceMap: Dict[int, int]
+        :rtype: Dict[int, Dict[int, float]]
         """
 
         # Check if arguments are valid
@@ -664,7 +628,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
 
         return updates
 
-    def getVerticesByInfluenceId(self, *args):
+    def getVerticesByInfluenceId(self, *influenceIds):
         """
         Returns a list of vertices associated with the supplied influence ids.
         This can be an expensive operation so use sparingly.
@@ -680,7 +644,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
 
             # Check if weights contain influence ID
             #
-            if any([x in weights for x in args]):
+            if any([influenceId in weights for influenceId in influenceIds]):
 
                 vertexIndices.append(vertexIndex)
 
@@ -692,72 +656,37 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
 
     def findRoot(self):
         """
-        Returns the skeleton root associated with this deformer.
+        Returns the skeleton root associated with this skin.
 
-        :rtype: Union[om.MObject, pymxs.MXSWrapperBase]
+        :rtype: Any
         """
 
-        # Get all influences
+        # Find common path
         #
         influences = self.influences()
+        commonPath = self.findCommonPath(*influences.values())
 
-        fullPathNames = [influences(x).dagPath() for x in influences.keys()]
-        commonPrefix = os.path.commonprefix(fullPathNames)
+        if not stringutils.isNullOrEmpty(commonPath):
 
-        if commonPrefix is None:
+            strings = commonPath.split('/')
+            return fnnode.FnNode(strings[0]).object()
 
-            raise TypeError('Influence objects do not share a common root!')
+        else:
 
-        # Split pipes
-        # It is possible for commonprefix to return an incomplete node name!
-        #
-        strings = [x for x in commonPrefix.split('|') if fnnode.FnNode.doesNodeExist(x)]
-        numStrings = len(strings)
-
-        fnNode = fnnode.FnNode(strings[-1])
-        root = fnNode.object()
-
-        # Check number of strings
-        #
-        if numStrings == 0:
-
-            return root
-
-        # Walk up hierarchy until we find the root joint
-        #
-        while True:
-
-            # Check if this joint has a parent
-            #
-            if not fnNode.hasParent():
-
-                return root
-
-            # Check if parent is still a joint
-            #
-            parent = fnNode.parent()
-            fnNode.setObject(parent)
-
-            if not fnNode.isJoint():
-
-                return root
-
-            else:
-
-                root = parent
+            return None
 
     @abstractmethod
-    def iterVertexWeights(self, *args):
+    def iterVertexWeights(self, *indices):
         """
-        Returns a generator that yields weights for the supplied vertex indices.
+        Returns a generator that yields vertex-weights pairs from this skin.
         If no vertex indices are supplied then all weights are yielded instead.
 
-        :rtype: iter
+        :rtype: Iterator[Tuple[int, Dict[int, float]]]
         """
 
         pass
 
-    def vertexWeights(self, *args):
+    def vertexWeights(self, *indices):
         """
         Returns the weights for the supplied vertex indices.
         If no vertex indices are supplied then all weights are returned instead.
@@ -765,7 +694,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         :rtype: Dict[int, Dict[int, float]]
         """
 
-        return dict(self.iterVertexWeights(*args))
+        return dict(self.iterVertexWeights(*indices))
 
     def setWeights(self, weights, target, source, amount, falloff=1.0):
         """
@@ -1015,7 +944,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
             log.debug('Vertex weights have already been normalized.')
             return weights
 
-        # Get total weight we can normalize
+        # Check if can be normalized
         #
         total = sum(weights.values())
 
@@ -1023,24 +952,22 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
 
             raise TypeError('Cannot normalize influences from zero weights!')
 
-        else:
+        # Scale weights to equal one
+        #
+        scale = 1.0 / total
 
-            # Calculate adjusted scale factor
-            #
-            scale = 1.0 / total
+        for (influenceId, weight) in weights.items():
 
-            for (influenceId, weight) in weights.items():
+            normalized = (weight * scale)
+            weights[influenceId] = normalized
 
-                normalized = (weight * scale)
-                weights[influenceId] = normalized
-
-                log.debug(
-                    'Scaling influence ID: {index}, from {weight} to {normalized}'.format(
-                        index=influenceId,
-                        weight=weight,
-                        normalized=normalized
-                    )
+            log.debug(
+                'Normalizing influence ID: {index}, from {weight} to {normalized}'.format(
+                    index=influenceId,
+                    weight=weight,
+                    normalized=normalized
                 )
+            )
 
         return weights
 
@@ -1105,7 +1032,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
     def averageWeights(self, *args, **kwargs):
         """
         Averages the supplied vertex weights.
-        By default maintain max influences is enabled.
+        By default, maintain max influences is enabled.
 
         :key maintainMaxInfluences: bool
         :rtype: Dict[int, float]
@@ -1179,11 +1106,11 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         return self.normalizeWeights(weights)
 
     @abstractmethod
-    def applyVertexWeights(self, vertices):
+    def applyVertexWeights(self, vertexWeights):
         """
-        Assigns the supplied vertex weights to this deformer.
+        Assigns the supplied vertex weights to this skin.
 
-        :type vertices: Dict[int, Dict[int, float]]
+        :type vertexWeights: Dict[int, Dict[int, float]]
         :rtype: None
         """
 
@@ -1197,15 +1124,8 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         :rtype: dict
         """
 
-        # Iterate through arguments
-        #
-        keys = set()
-
-        for arg in args:
-
-            keys = keys.union(set(arg.keys()))
-
-        return {key: 0.0 for key in keys}
+        influenceIds = set(chain(*[arg.keys() for arg in args]))
+        return dict.fromkeys(influenceIds, 0.0)
 
     def inverseDistanceWeights(self, vertexWeights, distances):
         """
@@ -1236,8 +1156,8 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
 
         # Merge dictionary keys using null values
         #
-        weights = self.mergeDictionaries(*list(vertexWeights.values()))
-        influenceIds = weights.keys()
+        inverseWeights = self.mergeDictionaries(*list(vertexWeights.values()))
+        influenceIds = inverseWeights.keys()
 
         # Iterate through influences
         #
@@ -1259,12 +1179,12 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
 
             # Assign average to updates
             #
-            weights[influenceId] = float(numerator / denominator)
+            inverseWeights[influenceId] = float(numerator / denominator)
 
         # Return normalized weights
         #
-        log.debug('Inverse Distance: %s' % weights)
-        return weights
+        log.debug('Inverse Distance: %s' % inverseWeights)
+        return inverseWeights
 
     def barycentricWeights(self, vertexIndices, baryCoords):
         """
@@ -1288,8 +1208,8 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         #
         vertexWeights = self.vertexWeights(*vertexIndices)
 
-        weights = self.mergeDictionaries(*list(vertexWeights.values()))
-        influenceIds = weights.keys()
+        baryWeights = self.mergeDictionaries(*list(vertexWeights.values()))
+        influenceIds = baryWeights.keys()
 
         # Iterate through influences
         #
@@ -1305,12 +1225,30 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
 
             # Assign average to updates
             #
-            weights[influenceId] = weight
+            baryWeights[influenceId] = weight
 
         # Return normalized weights
         #
-        log.debug('Barycentric Average: %s' % weights)
-        return self.normalizeWeights(weights)
+        log.debug('Barycentric Average: %s' % baryWeights)
+        return self.normalizeWeights(baryWeights)
+
+    def bilinearWeights(self, vertexIndices, biCoords):
+        """
+        Returns the bilinear average for the specified vertices.
+
+        :type vertexIndices: Tuple[int, int, int, int]
+        :type biCoords: Tuple[int, int]
+        :rtype: Dict[int, float]
+        """
+
+        u, v = biCoords
+        v0, v1, v2, v3 = vertexIndices
+        vertexWeights = self.vertexWeights(*vertexIndices)
+
+        w0 = self.weightedAverageWeights(vertexWeights[v0], vertexWeights[v1], percent=u)
+        w1 = self.weightedAverageWeights(vertexWeights[v3], vertexWeights[v2], percent=u)
+
+        return self.weightedAverageWeights(w0, w1, percent=v)
 
     def copyWeights(self):
         """
@@ -1351,9 +1289,9 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
 
         else:
 
-            # Iterate through vertices
+            # Apply last set of weights to selected vertices
             #
-            vertexWeights = self._clipboard.values()[-1]
+            vertexWeights = list(self._clipboard.values())[-1]
             vertices = {vertexIndex: deepcopy(vertexWeights) for vertexIndex in selection}
 
         # Apply weights
@@ -1423,7 +1361,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
 
         else:
 
-            raise TypeError('slabPasteWeights() expects a valid slab mode (%s given)!' % mode)
+            raise TypeError('slabPasteWeights() expects a valid mode (%s given)!' % mode)
 
         # Check if lists are the same size
         #
@@ -1434,14 +1372,12 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
 
             # Get vertex weights
             #
-            vertexIndices = set(vertexIndices + closestIndices)
-            log.debug('Getting weights for %s.' % vertexIndices)
-
+            log.debug('Pasting weights from %s to %s.' % (vertexIndices, closestIndices))
             vertexWeights = self.vertexWeights(*vertexIndices)
 
             # Compose new weights dictionary
             #
-            updates = {closestIndex: deepcopy(vertexWeights[vertexIndex]) for (vertexIndex, closestIndex) in zip(vertexIndices, closestIndices)}
+            updates = {closestIndex: vertexWeights[vertexIndex] for (vertexIndex, closestIndex) in zip(vertexIndices, closestIndices)}
             return self.applyVertexWeights(updates)
 
         else:
@@ -1509,7 +1445,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
             # Concatenate mirror name
             # Be sure to check for redundancy
             #
-            influenceName = influences(influenceId).name()
+            influenceName = influences[influenceId].name()
             mirrorName = namingutils.mirrorName(influenceName)
 
             if influenceName == mirrorName:
@@ -1703,27 +1639,3 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         """
 
         pass
-
-    def saveWeights(self, filePath):
-        """
-        Saves the skin weights to the specified file path.
-
-        :type filePath: str
-        :rtype: None
-        """
-
-        with open(filePath, 'w') as jsonFile:
-
-            json.dump(self.__getstate__(), jsonFile, indent=4, sort_keys=True)
-
-    def loadWeights(self, filePath):
-        """
-        Loads the skin weights from the specified file path.
-
-        :type filePath: str
-        :rtype: dict
-        """
-
-        with open(filePath, 'r') as jsonFile:
-
-            return json.load(jsonFile)

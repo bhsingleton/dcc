@@ -134,18 +134,18 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
     def iterVertices(self):
         """
-        Returns a generator that yields all vertex indices.
+        Returns a generator that yields vertex indices.
 
-        :rtype: iter
+        :rtype: Iterator[int]
         """
 
         return range(1, self.numControlPoints() + 1, 1)
 
     def iterSelection(self):
         """
-        Returns a generator that yields the selected vertex indices.
+        Returns a generator that yields the selected vertex elements.
 
-        :rtype: iter
+        :rtype: Iterator[int]
         """
 
         return skinutils.iterSelection(self.object())
@@ -162,9 +162,9 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
     def iterSoftSelection(self):
         """
-        Returns a generator that yields selected vertex and soft value pairs.
+        Returns a generator that yields selected vertex-weight pairs.
 
-        :rtype iter
+        :rtype Iterator[Dict[int, float]]
         """
 
         for vertexIndex in self.iterSelection():
@@ -191,36 +191,40 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
     def iterInfluences(self):
         """
-        Returns a generator that yields all the influence objects from this deformer.
+        Returns a generator that yields the influence id-objects pairs from this skin.
 
-        :rtype: iter
+        :rtype: Iterator[Tuple[int, Any]]
         """
 
         return skinutils.iterInfluences(self.object())
 
-    def addInfluence(self, influence):
+    def addInfluence(self, *influences):
         """
-        Adds an influence to this deformer.
+        Adds an influence to this skin.
 
-        :type influence: pymxs.MXSWrapperBase
-        :rtype: bool
-        """
-
-        skinutils.addInfluence(self.object(), influence)
-
-    def removeInfluence(self, influenceId):
-        """
-        Removes an influence from this deformer.
-
-        :type influenceId: int
-        :rtype: bool
+        :type influences: Union[Any, List[Any]]
+        :rtype: None
         """
 
-        skinutils.removeInfluence(self.object(), influenceId)
+        for influence in influences:
+
+            skinutils.addInfluence(self.object(), influence)
+
+    def removeInfluence(self, *influenceIds):
+        """
+        Removes an influence from this skin by id.
+
+        :type influenceIds: Union[int, List[int]]
+        :rtype: None
+        """
+
+        for influenceId in influenceIds:
+
+            skinutils.removeInfluence(self.object(), influenceId)
 
     def numInfluences(self):
         """
-        Returns the number of influences being use by this deformer.
+        Returns the number of influences in use by this skin.
 
         :rtype: int
         """
@@ -229,7 +233,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
     def maxInfluences(self):
         """
-        Getter method that returns the max number of influences for this deformer.
+        Returns the max number of influences for this skin.
 
         :rtype: int
         """
@@ -248,17 +252,17 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
     def iterVertexWeights(self, *args):
         """
-        Returns a generator that yields weights for the supplied vertex indices.
+        Returns a generator that yields vertex-weights pairs from this skin.
         If no vertex indices are supplied then all weights are yielded instead.
 
-        :rtype: iter
+        :rtype: Iterator[Tuple[int, Dict[int, float]]]
         """
 
         return skinutils.iterVertexWeights(self.object(), vertexIndices=args)
 
     def applyVertexWeights(self, vertexWeights):
         """
-        Assigns the supplied vertex weights to this deformer.
+        Assigns the supplied vertex weights to this skin.
 
         :type vertexWeights: Dict[int, Dict[int, float]]
         :rtype: None

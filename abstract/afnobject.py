@@ -76,15 +76,50 @@ class AFnObject(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
             return name
 
-    def dagPath(self):
+    def path(self, delimiter='/'):
         """
-        Returns a dag path to this object.
-        This uses pipes to delimit a break between two object.
+        Returns a path to this object.
 
+        :type delimiter: str
         :rtype: str
         """
 
-        return '|'.join([self.__class__(x).absoluteName() for x in self.trace()])
+        return delimiter.join([self.__class__(x).absoluteName() for x in self.trace()])
+
+    def findCommonPath(self, *objects, delimiter='/'):
+        """
+        Returns the common path from the supplied objects.
+
+        :type objects: Union[AFnNode, List[AFnNode]]
+        :type delimiter: str
+        :rtype: str
+        """
+
+        # Iterate through path segments
+        #
+        paths = [obj.path(delimiter=delimiter) for obj in objects]
+        substrings = [path.split(delimiter) for path in paths]
+
+        depths = [len(substring) for substring in substrings]
+        minDepth = min(depths)
+
+        commonPath = []
+
+        for i in range(minDepth):
+
+            # Check if segments are identical
+            #
+            identical = len(set([substring[i] for substring in substrings])) == 1
+
+            if identical:
+
+                commonPath.append(substrings[0][i])
+
+            else:
+
+                break
+
+        return delimiter.join(commonPath)
 
     @abstractmethod
     def parent(self):

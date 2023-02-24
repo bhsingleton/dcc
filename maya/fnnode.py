@@ -347,7 +347,7 @@ class FnNode(afnnode.AFnNode):
         :rtype: bool
         """
 
-        return self.object().hasFn(om.MFn.kJoint)
+        return self.isTransform and not self.object().hasFn(om.MFn.kConstraint)
 
     def isMesh(self):
         """
