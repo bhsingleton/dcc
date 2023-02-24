@@ -39,7 +39,6 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
         self._currentExportSet = None
         self._scene = fnscene.FnScene()
         self._notifies = fnnotify.FnNotify()
-        self._notifyId = None
 
         # Declare public variables
         #
@@ -255,9 +254,9 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
         #
         super(QFbxExportSetEditor, self).showEvent(event)
 
-        # Create post file-open notify
+        # Add post file-open notify
         #
-        self._notifyId = self._notifies.addPostFileOpenNotify(self.sceneChanged)
+        self._notifies.addPostFileOpenNotify(self.sceneChanged)
         self.sceneChanged()
 
     def closeEvent(self, event):
@@ -272,10 +271,9 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
         #
         super(QFbxExportSetEditor, self).closeEvent(event)
 
-        # Remove post file-open notify
+        # Clear notifies
         #
-        self._notifies.removeNotify(self._notifyId)
-        self._notifies = None  # Clean up resources
+        self._notifies.clear()
     # endregion
 
     # region Slots

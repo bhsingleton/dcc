@@ -32,8 +32,7 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
         self._sequencers = []
         self._currentSequencer = None
         self._scene = fnscene.FnScene()
-        self._fnNotify = fnnotify.FnNotify()
-        self._notifyId = None
+        self._notifies = fnnotify.FnNotify()
 
         # Declare public variables
         #
@@ -198,9 +197,9 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
         #
         super(QFbxSequenceEditor, self).showEvent(event)
 
-        # Create post file-open notify
+        # Add post file-open notify
         #
-        self._notifyId = self._fnNotify.addPostFileOpenNotify(self.sceneChanged)
+        self._notifies.addPostFileOpenNotify(self.sceneChanged)
         self.sceneChanged()
 
     def closeEvent(self, event):
@@ -215,10 +214,9 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
         #
         super(QFbxSequenceEditor, self).closeEvent(event)
 
-        # Remove post file-open notify
+        # Clear notifies
         #
-        self._fnNotify.removeNotify(self._notifyId)
-        self._fnNotify = None
+        self._notifies.clear()
     # endregion
 
     # region Slots
