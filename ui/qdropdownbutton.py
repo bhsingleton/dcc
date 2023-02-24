@@ -171,8 +171,6 @@ class QDropDownButton(QtWidgets.QToolButton):
 
                 styleOption.state |= QtWidgets.QStyle.State_Off
 
-            return styleOption
-
         else:
 
             raise TypeError('initStyleOption() expects a QStyleOptionToolButton (%s given)!' % type(styleOption).__name__)
