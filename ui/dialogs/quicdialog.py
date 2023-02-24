@@ -16,7 +16,7 @@ class QUicDialog(quicmixin.QUicMixin, QtWidgets.QDialog):
     # region Dunderscores
     def __init__(self, *args, **kwargs):
         """
-        Private method called before a new instance has been created.
+        Private method called after a new instance has been created.
 
         :key parent: QtWidgets.QWidget
         :key f: QtCore.Qt.WindowFlags
@@ -29,6 +29,21 @@ class QUicDialog(quicmixin.QUicMixin, QtWidgets.QDialog):
         f = kwargs.pop('f', QtCore.Qt.WindowFlags())
 
         super(QUicDialog, self).__init__(parent=parent, f=f)
+
+    def __post_init__(self, *args, **kwargs):
+        """
+        Private method called after an instance has initialized.
+
+        :rtype: None
+        """
+
+        # Call parent method
+        #
+        super(QUicDialog, self).__post_init__(*args, **kwargs)
+
+        # Update object state
+        #
+        self.__setstate__(kwargs)
 
     def __setstate__(self, state):
         """
@@ -80,13 +95,4 @@ class QUicDialog(quicmixin.QUicMixin, QtWidgets.QDialog):
         self.setObjectName(self.className)
         self.setWindowFlags(self.windowFlags() | QtCore.Qt.Dialog)
         self.setModal(True)
-
-    def postLoad(self, *args, **kwargs):
-        """
-        Called after the user interface has been loaded.
-
-        :rtype: None
-        """
-
-        self.__setstate__(kwargs)
     # endregion
