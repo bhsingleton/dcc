@@ -720,7 +720,7 @@ def getConnectedVerts(mesh, vertices):
     for edge in arrayutils.iterBitArray(edges):
 
         edgeVerts = pymxs.runtime.polyOp.getEdgeVerts(mesh, edge)
-        connectedVerts = connectedVerts.union(set(arrayutils.iterElements(edgeVerts)))
+        connectedVerts = connectedVerts.union(set(arrayutils.iterBitArray(edgeVerts)))
 
     return list(connectedVerts.difference(set(vertices)))
 
@@ -734,13 +734,13 @@ def getConnectedEdges(mesh, edges):
     :rtype: List[int]
     """
 
-    faces = pymxs.runtime.polyOp.getFacesUsingEdge(mesh, edges)
+    verts = pymxs.runtime.polyOp.getVertsUsingEdge(mesh, edges)
     connectedEdges = set()
 
-    for face in arrayutils.iterBitArray(faces):
+    for vert in arrayutils.iterBitArray(verts):
 
-        faceEdges = pymxs.runtime.polyOp.getFaceEdges(mesh, face)
-        connectedEdges = connectedEdges.union(set(arrayutils.iterElements(faceEdges)))
+        vertEdges = pymxs.runtime.polyOp.getEdgesUsingVert(mesh, vert)
+        connectedEdges = connectedEdges.union(set(arrayutils.iterBitArray(vertEdges)))
 
     return list(connectedEdges.difference(set(edges)))
 
@@ -759,8 +759,8 @@ def getConnectedFaces(mesh, faces):
 
     for vert in arrayutils.iterBitArray(verts):
 
-        faces = pymxs.runtime.polyOp.getFacesUsingVert(mesh, vert)
-        connectedFaces = connectedFaces.union(set(arrayutils.iterBitArray(faces)))
+        vertFaces = pymxs.runtime.polyOp.getFacesUsingVert(mesh, vert)
+        connectedFaces = connectedFaces.union(set(arrayutils.iterBitArray(vertFaces)))
 
     return list(connectedFaces.difference(set(faces)))
 

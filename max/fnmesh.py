@@ -1,10 +1,9 @@
 import pymxs
 
-from six import integer_types
 from dcc import fnnode
 from dcc.abstract import afnmesh
 from dcc.max.libs import wrapperutils, meshutils, arrayutils
-from dcc.dataclasses import vector
+from dcc.dataclasses.vector import Vector
 
 import logging
 logging.basicConfig()
@@ -19,27 +18,6 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
     __slots__ = ()
 
-    def object(self):
-        """
-        Returns the object assigned to this function set.
-
-        :rtype: pymxs.MXSWrapperBase
-        """
-
-        # Call parent method
-        #
-        obj = super(fnnode.FnNode, self).object()
-
-        # Inspect object type
-        #
-        if isinstance(obj, integer_types):
-
-            return self.getNodeByHandle(obj)
-
-        else:
-
-            return obj
-
     def setObject(self, obj):
         """
         Assigns an object to this function set for manipulation.
@@ -52,13 +30,9 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
         #
         obj = self.getMXSWrapper(obj)
 
-        if wrapperutils.isValidWrapper(obj):
+        if meshutils.isEditableMesh(obj) or meshutils.isEditablePoly(obj):
 
             super(FnMesh, self).setObject(obj)
-
-        elif wrapperutils.isKindOf(obj, pymxs.runtime.TriMesh):
-
-            super(fnnode.FnNode, self).setObject(obj)  # TriMesh objects don't support anim handles!
 
         else:
 
@@ -145,13 +119,14 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
         meshutils.getSelectedFaces(self.object())
 
-    def iterVertices(self, *indices, worldSpace=False):
+    def iterVertices(self, *indices, cls=Vector, worldSpace=False):
         """
         Returns a generator that yields vertex points.
         If no arguments are supplied then all vertex points will be yielded.
 
+        :type cls: Callable
         :type worldSpace: bool
-        :rtype: Iterator[vector.Vector]
+        :rtype: Iterator[Vector]
         """
 
         # Iterate through vertices
@@ -164,19 +139,20 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
                 point = point * objectTransform
 
-            yield vector.Vector(point.x, point.y, point.z)
+            yield cls(point.x, point.y, point.z)
 
-    def iterVertexNormals(self, *indices):
+    def iterVertexNormals(self, *indices, cls=Vector):
         """
         Returns a generator that yields vertex normals.
         If no arguments are supplied then all vertex normals will be yielded.
 
-        :rtype: Iterator[vector.Vector]
+        :type cls: Callable
+        :rtype: Iterator[Vector]
         """
 
         for normal in meshutils.iterVertexNormals(self.baseObject(), indices=indices):
 
-            yield vector.Vector(normal.x, normal.y, normal.z)
+            yield cls(normal.x, normal.y, normal.z)
 
     def hasEdgeSmoothings(self):
         """
@@ -233,40 +209,43 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
         return meshutils.iterFaceVertexIndices(self.baseObject(), indices=indices)
 
-    def iterFaceVertexNormals(self, *indices):
+    def iterFaceVertexNormals(self, *indices, cls=Vector):
         """
         Returns a generator that yields face-vertex indices for the specified faces.
 
-        :rtype: Iterator[List[vector.Vector]]
+        :type cls: Callable
+        :rtype: Iterator[List[Vector]]
         """
 
         for normals in meshutils.iterFaceVertexNormals(self.baseObject(), indices=indices):
 
-            yield tuple(vector.Vector(normal.x, normal.y, normal.z) for normal in normals)
+            yield tuple(cls(normal.x, normal.y, normal.z) for normal in normals)
 
-    def iterFaceCenters(self, *indices):
+    def iterFaceCenters(self, *indices, cls=Vector):
         """
         Returns a generator that yields face centers.
         If no arguments are supplied then all face centers will be yielded.
 
-        :rtype: Iterator[vector.Vector]
+        :type cls: Callable
+        :rtype: Iterator[Vector]
         """
 
         for point in meshutils.iterFaceCenters(self.baseObject(), indices=indices):
 
-            yield vector.Vector(point.x, point.y, point.z)
+            yield cls(point.x, point.y, point.z)
 
-    def iterFaceNormals(self, *indices):
+    def iterFaceNormals(self, *indices, cls=Vector):
         """
         Returns a generator that yields face normals.
         If no arguments are supplied then all face normals will be yielded.
 
-        :rtype: Iterator[vector.Vector]
+        :type cls: Callable
+        :rtype: Iterator[Vector]
         """
 
         for normal in meshutils.iterFaceNormals(self.baseObject(), indices=indices):
 
-            yield normal.x, normal.y, normal.z
+            yield cls(normal.x, normal.y, normal.z)
 
     def getFaceTriangleIndices(self):
         """
@@ -432,7 +411,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
         # Inspect component type
         #
         mesh = self.object()
-        componentType = kwargs.get('componentType', self.ComponentType.Vertex)
+        componentType = kwargs.get('componentType', self.ComponentType.Edge)
 
         if componentType == self.ComponentType.Vertex:
 
@@ -444,7 +423,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
         elif componentType == self.ComponentType.Face:
 
-            return arrayutils.iterElements(pymxs.runtime.polyOp.getFaceEdges(mesh, indices))
+            return arrayutils.iterBitArray(pymxs.runtime.polyOp.getFaceEdges(mesh, indices))
 
         else:
 
@@ -461,7 +440,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
         # Inspect component type
         #
         mesh = self.object()
-        componentType = kwargs.get('ComponentType', self.Components.Vertex)
+        componentType = kwargs.get('componentType', self.ComponentType.Face)
 
         if componentType == self.ComponentType.Vertex:
 
@@ -469,7 +448,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
         elif componentType == self.ComponentType.Edge:
 
-            return arrayutils.iterElements(pymxs.runtime.polyOp.getEdgeFaces(mesh, indices))
+            return arrayutils.iterBitArray(pymxs.runtime.polyOp.getEdgeFaces(mesh, indices))
 
         elif componentType == self.ComponentType.Face:
 

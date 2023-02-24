@@ -4,10 +4,12 @@ from abc import ABCMeta, abstractmethod
 from six import with_metaclass
 from enum import IntEnum
 from itertools import chain
-from collections import deque, namedtuple
+from collections import deque
+from dataclasses import dataclass, field
+from typing import List, Tuple
 from scipy.spatial import cKDTree
 from dcc.abstract import afnbase
-from dcc.dataclasses import vector
+from dcc.dataclasses.vector import Vector
 
 import logging
 logging.basicConfig()
@@ -25,6 +27,21 @@ class ComponentType(IntEnum):
     Face = 2
 
 
+@dataclass
+class Hit:
+    """
+    Data class for interfacing with face-hits.
+    """
+
+    point: Vector = field(default_factory=lambda: Vector())
+    faceIndex: int = 0
+    faceVertexIndices: List[int] = field(default_factory=lambda: [])
+    biCoords: Tuple[float, float] = field(default_factory=lambda: (0.0, 0.0))
+    triangleIndex: int = 0
+    triangleVertexIndices: List[int] = field(default_factory=lambda: [])
+    baryCoords: Tuple[float, float, float] = field(default_factory=lambda: (0.0, 0.0, 0.0))
+
+
 class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
     """
     Overload of `AFnBase` that outlines DCC function set behaviour for meshes.
@@ -34,7 +51,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
     __face_triangles__ = {}  # Lookup optimization
 
     ComponentType = ComponentType
-    Hit = namedtuple('Hit', ['faceIndex', 'triangleIndex', 'vertexIndices', 'point', 'baryCoords'])
+    Hit = Hit
 
     def range(self, *args):
         """
@@ -111,14 +128,15 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         pass
 
-    def numFaceVertexIndices(self):
+    def numFaceVertexIndices(self, *indices):
         """
         Returns the number of face-vertex indices.
 
+        :type indices: Union[int, List[int]]
         :rtype: int
         """
 
-        return sum([len(faceVertexIndices) for faceVertexIndices in self.iterFaceVertexIndices()])
+        return sum([len(faceVertexIndices) for faceVertexIndices in self.iterFaceVertexIndices(*indices)])
 
     def numTriangles(self):
         """
@@ -160,46 +178,48 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         pass
 
     @abstractmethod
-    def iterVertices(self, *indices, worldSpace=False):
+    def iterVertices(self, *indices, cls=Vector, worldSpace=False):
         """
         Returns a generator that yields vertex points.
         If no arguments are supplied then all vertex points will be yielded.
 
+        :type cls: Callable
         :type worldSpace: bool
-        :rtype: Iterator[vector.Vector]
+        :rtype: Iterator[Vector]
         """
 
         pass
 
-    def getVertices(self, *indices, worldSpace=False):
+    def getVertices(self, *indices, cls=Vector, worldSpace=False):
         """
         Returns a list of vertex points.
 
+        :type cls: Callable
         :type worldSpace: bool
-        :rtype: List[vector.Vector]
+        :rtype: List[Vector]
         """
 
-        return list(self.iterVertices(*indices, worldSpace=worldSpace))
+        return list(self.iterVertices(*indices, cls=cls, worldSpace=worldSpace))
 
     @abstractmethod
-    def iterVertexNormals(self, *indices):
+    def iterVertexNormals(self, *indices, cls=Vector):
         """
         Returns a generator that yields vertex normals.
         If no arguments are supplied then all vertex normals will be yielded.
 
-        :rtype: Iterator[vector.Vector]
+        :rtype: Iterator[Vector]
         """
 
         pass
 
-    def getVertexNormals(self, *indices):
+    def getVertexNormals(self, *indices, cls=Vector):
         """
         Returns a list of vertex normals.
 
-        :rtype: List[vector.Vector]
+        :rtype: List[Vector]
         """
 
-        return list(self.iterVertexNormals(*indices))
+        return list(self.iterVertexNormals(*indices, cls=cls))
 
     @abstractmethod
     def hasEdgeSmoothings(self):
@@ -290,63 +310,69 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         return list(self.iterFaceVertexIndices(*indices))
 
     @abstractmethod
-    def iterFaceVertexNormals(self, *indices):
+    def iterFaceVertexNormals(self, *indices, cls=Vector):
         """
         Returns a generator that yields face-vertex indices for the specified faces.
 
-        :rtype: Iterator[List[vector.Vector]]
+        :type cls: Callable
+        :rtype: Iterator[List[Vector]]
         """
 
         pass
 
-    def getFaceVertexNormals(self, *indices):
+    def getFaceVertexNormals(self, *indices, cls=Vector):
         """
         Returns a list of face-vertex indices for the specified faces.
 
-        :rtype: List[List[vector.Vector]]
+        :type cls: Callable
+        :rtype: List[List[Vector]]
         """
 
-        return list(self.iterFaceVertexNormals(*indices))
+        return list(self.iterFaceVertexNormals(*indices, cls=cls))
 
     @abstractmethod
-    def iterFaceCenters(self, *indices):
+    def iterFaceCenters(self, *indices, cls=Vector):
         """
         Returns a generator that yields face centers.
         If no arguments are supplied then all face centers will be yielded.
 
-        :rtype: Iterator[vector.Vector]
+        :type cls: Callable
+        :rtype: Iterator[Vector]
         """
 
         pass
 
-    def getFaceCenters(self, *indices):
+    def getFaceCenters(self, *indices, cls=Vector):
         """
         Returns a list of face centers.
 
-        :rtype: List[vector.Vector]
+        :type cls: Callable
+        :rtype: List[Vector]
         """
 
-        return list(self.iterFaceCenters(*indices))
+        return list(self.iterFaceCenters(*indices, cls=cls))
 
     @abstractmethod
-    def iterFaceNormals(self, *indices):
+    def iterFaceNormals(self, *indices, cls=Vector):
         """
         Returns a generator that yields face normals.
         If no arguments are supplied then all face normals will be yielded.
 
-        :rtype: Iterator[vector.Vector]
+        :type cls: Callable
+        :rtype: Iterator[Vector]
         """
 
         pass
 
-    def getFaceNormals(self, *indices):
+    def getFaceNormals(self, *indices, cls=Vector):
         """
         Returns a list of face normals.
 
-        :rtype: List[vector.Vector]
+        :type cls: Callable
+        :rtype: List[Vector]
         """
 
-        return list(self.iterFaceNormals(*indices))
+        return list(self.iterFaceNormals(*indices, cls=cls))
 
     @abstractmethod
     def getFaceTriangleVertexIndices(self):
@@ -451,25 +477,27 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         return list(self.iterAssignedUVs(*indices, channel=channel))
 
     @abstractmethod
-    def iterTangentsAndBinormals(self, *indices, channel=0):
+    def iterTangentsAndBinormals(self, *indices, cls=Vector, channel=0):
         """
         Returns a generator that yields face-vertex tangents and binormals for the specified channel.
 
+        :type cls: Callable
         :type channel: int
-        :rtype: Iterator[List[vector.Vector]]
+        :rtype: Iterator[List[Vector]]
         """
 
         pass
 
-    def getTangentsAndBinormals(self, *indices, channel=0):
+    def getTangentsAndBinormals(self, *indices, cls=Vector, channel=0):
         """
         Returns a list of face-vertex tangents and binormals for the specified channel.
 
+        :type cls: Callable
         :type channel: int
-        :rtype: List[List[vector.Vector]]
+        :rtype: List[List[Vector]]
         """
 
-        return list(self.iterTangentsAndBinormals(*indices, channel=channel))
+        return list(self.iterTangentsAndBinormals(*indices, cls=cls, channel=channel))
 
     @abstractmethod
     def iterConnectedVertices(self, *indices, **kwargs):
@@ -544,6 +572,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
         Evaluates the distance between the supplied vertices.
 
+        :type indices: Union[int, List[int]]
         :rtype: float
         """
 
@@ -556,7 +585,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
         Returns the shortest paths between the supplied vertices.
 
-        :type indices: Tuple[int]
+        :type indices: Union[int, List[int]]
         :rtype: List[List[int]]
         """
 
@@ -703,9 +732,10 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         # Initialize point tree
         #
         otherIndices = list(set(self.range(self.numVertices())).difference(set(indices)))
+        otherPoints = self.getVertices(*otherIndices)
         indexMap = dict(enumerate(otherIndices))
 
-        tree = cKDTree(self.getVertices(*otherIndices))
+        tree = cKDTree(otherPoints)
 
         # Find the closest vertices
         #
@@ -719,7 +749,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         Returns the vertices that are closest to the supplied points.
         An optional list of vertices can be used to limit the range of points considered.
 
-        :type points: List[vector.Vector]
+        :type points: List[Vector]
         :type dataset: List[int]
         :rtype: List[int]
         """
@@ -742,43 +772,43 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         return [vertexMap[x] for x in indices]
 
-    def closestFaces(self, points, dataset=None):
+    def closestVerticesInRange(self, points, radius, dataset=None):
         """
-        Returns the faces that are closest to the given points.
-        An optional list of faces can be used to limit the range of centroids considered.
+        Returns the vertices that are closest to the specified point radius.
+        An optional list of vertices can be used to limit the range of points considered.
 
-        :type points: List[vector.Vector]
+        :type points: List[Vector]
+        :type radius: float
         :type dataset: List[int]
-        :rtype: List[int]
+        :rtype: List[List[int]]
         """
 
         # Check if vertices were supplied
         #
         if dataset is None:
 
-            dataset = list(self.range(self.numFaces()))
+            dataset = list(self.range(self.numVertices()))
 
-        # Get face centers
+        # Get vertex points
         #
-        faceCenters = self.getFaceCenters(*dataset)
-        faceMap = dict(enumerate(dataset))
+        vertexPoints = self.getVertices(*dataset, worldSpace=True)
+        vertexMap = dict(enumerate(dataset))
 
         # Query point tree
         #
-        tree = cKDTree(faceCenters)
-        distances, indices = tree.query(points)
+        tree = cKDTree(vertexPoints)
+        indices = tree.query_ball_point(points, radius)
 
-        return [faceMap[x] for x in indices]
+        return [tuple(map(vertexMap.get, x)) for x in indices]
 
-    @staticmethod
-    def closestPointOnTriangle(point, triangle):
+    def getBarycentricCoordinates(self, point, triangle):
         """
-        Returns the closest point on the supplied triangle in barycentric co-ordinates.
+        Returns the barycentric co-ordinates for the point on the supplied triangle.
         Shamelessly ripped from: http://www.geometrictools.com/Documentation/DistancePoint3Triangle3.pdf
 
-        :type point: vector.Vector
-        :type triangle: Tuple[vector.Vector, vector.Vector, vector.Vector]
-        :rtype: vector.Vector
+        :type point: Vector
+        :type triangle: Tuple[Vector, Vector, Vector]
+        :rtype: Tuple[float, float, float]
         """
 
         # Get edge vectors
@@ -877,12 +907,40 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         return float(1.0 - s - t), float(s), float(t)
 
+    def getBilinearCoordinates(self, point, faceIndex):
+        """
+        Returns the bilinear co-ordinates for the point on the specified face.
+        Shamelessly ripped from: https://math.stackexchange.com/questions/13404/mapping-irregular-quadrilateral-to-a-rectangle
+
+        :type point: Vector
+        :type faceIndex: int
+        :rtype: Tuple[float, float]
+        """
+
+        # Get tangent vectors
+        #
+        faceVertexIndices = self.getFaceVertexIndices(faceIndex)[0]
+        p0, p1, p2, p3 = self.getVertices(*faceVertexIndices, worldSpace=True)
+        n = self.getFaceNormals(faceIndex)[0]
+
+        n0 = ((p3 - p0) ^ n).normal()
+        n1 = (n ^ (p1 - p0)).normal()
+        n2 = (n ^ (p2 - p1)).normal()
+        n3 = ((p2 - p3) ^ n).normal()
+
+        # Calculate bi-linear co-ordinates
+        #
+        u = ((point - p0) * n0) / (((point - p0) * n0) + ((point - p2) * n2))
+        v = ((point - p0) * n1) / (((point - p0) * n1) + ((point - p3) * n3))
+
+        return u, v
+
     def closestPointOnSurface(self, *points, dataset=None):
         """
         Returns the faces that are closest to the given points.
         An optional list of faces can be used to limit the range of surfaces considered.
 
-        :type points: Union[vector.Vector, List[vector.Vector]]
+        :type points: Union[Vector, List[Vector]]
         :type dataset: List[int]
         :rtype: List[AFnMesh.Hit]
         """
@@ -915,14 +973,27 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         numHits = len(closestIndices)
         hits = [None] * numHits
 
-        for (i, (index, point)) in enumerate(zip(closestIndices, points)):
+        for (i, (closestIndex, point)) in enumerate(zip(closestIndices, points)):
 
-            point = vector.Vector(*point)
-            vertexPoints = trianglePoints[index]
-            baryCoords = self.closestPointOnTriangle(point, vertexPoints)
+            point = Vector(*point)
+            faceIndex, triangleIndex = triangleMap[closestIndex]
+            faceVertexIndices = self.getFaceVertexIndices(faceIndex)[0]
+            triangleVertexIndices = triangles[closestIndex]
+
+            vertexPoints = trianglePoints[closestIndex]
+            baryCoords = self.getBarycentricCoordinates(point, vertexPoints)
             closestPoint = (vertexPoints[0] * baryCoords[0]) + (vertexPoints[1] * baryCoords[1]) + (vertexPoints[2] * baryCoords[2])
+            biCoords = self.getBilinearCoordinates(closestPoint, faceIndex) if len(faceVertexIndices) == 4 else None
 
             log.debug('Hit: point=%s -> closestPoint=%s, bary=%s' % (point, closestPoint, baryCoords))
-            hits[i] = self.Hit(faceIndex=triangleMap[index][0], triangleIndex=triangleMap[index][1], vertexIndices=triangles[index], point=closestPoint, baryCoords=baryCoords)
+            hits[i] = self.Hit(
+                point=closestPoint,
+                faceIndex=faceIndex,
+                faceVertexIndices=faceVertexIndices,
+                biCoords=biCoords,
+                triangleIndex=triangleIndex,
+                triangleVertexIndices=triangleVertexIndices,
+                baryCoords=baryCoords
+            )
 
         return hits

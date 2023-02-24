@@ -4,7 +4,8 @@ import maya.api.OpenMaya as om
 from dcc import fnnode
 from dcc.abstract import afnmesh
 from dcc.maya.libs import dagutils, transformutils, meshutils
-from dcc.dataclasses import vector, colour
+from dcc.dataclasses.vector import Vector
+from dcc.dataclasses.colour import Colour
 from dcc.generators.package import package
 from dcc.generators.chunks import chunks
 
@@ -182,14 +183,15 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
         else:
 
             return []
-
-    def iterVertices(self, *indices, worldSpace=False):
+    
+    def iterVertices(self, *indices, cls=Vector, worldSpace=False):
         """
         Returns a generator that yield vertex points.
         If no arguments are supplied then all vertices will be yielded.
-
+        
+        :type cls: Callable
         :type worldSpace: bool
-        :rtype: Iterator[vector.Vector]
+        :rtype: Iterator[Vector]
         """
 
         # Evaluate arguments
@@ -214,14 +216,15 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
                 point = point * objectMatrix
 
-            yield vector.Vector(point.x, point.y, point.z)
+            yield cls(point.x, point.y, point.z)
 
-    def iterVertexNormals(self, *indices):
+    def iterVertexNormals(self, *indices, cls=Vector):
         """
         Returns a generator that yields vertex normals.
         If no arguments are supplied then all vertex normals will be yielded.
-
-        :rtype: Iterator[vector.Vector]
+        
+        :type cls: Callable
+        :rtype: Iterator[Vector]
         """
 
         # Evaluate arguments
@@ -241,7 +244,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
             iterVertices.setIndex(index)
             normal = iterVertices.getNormal()
 
-            yield vector.Vector(normal.x, normal.y, normal.z)
+            yield cls(normal.x, normal.y, normal.z)
 
     def hasEdgeSmoothings(self):
         """
@@ -330,11 +333,12 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
             yield tuple(vertexIndices)
 
-    def iterFaceVertexNormals(self, *indices):
+    def iterFaceVertexNormals(self, *indices, cls=Vector):
         """
         Returns a generator that yields face-vertex indices for the specified faces.
-
-        :rtype: Iterator[List[vector.Vector]]
+        
+        :type cls: Callable
+        :rtype: Iterator[List[Vector]]
         """
 
         # Evaluate arguments
@@ -352,14 +356,15 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
         for index in indices:
 
             normals = fnMesh.getFaceVertexNormals(index)
-            yield [vector.Vector(normal.x, normal.y, normal.z) for normal in normals]
+            yield [cls(normal.x, normal.y, normal.z) for normal in normals]
 
-    def iterFaceCenters(self, *indices):
+    def iterFaceCenters(self, *indices, cls=Vector):
         """
         Returns a generator that yields face centers.
         If no arguments are supplied then all face centers will be yielded.
-
-        :rtype: Iterator[vector.Vector]
+        
+        :type cls: Callable
+        :rtype: Iterator[Vector]
         """
 
         # Evaluate arguments
@@ -379,14 +384,15 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
             iterPolygons.setIndex(index)
             center = iterPolygons.center()
 
-            yield vector.Vector(center.x, center.y, center.z)
+            yield cls(center.x, center.y, center.z)
 
-    def iterFaceNormals(self, *indices):
+    def iterFaceNormals(self, *indices, cls=Vector):
         """
         Returns a generator that yields face normals.
         If no arguments are supplied then all face normals will be yielded.
-
-        :rtype: Iterator[vector.Vector]
+        
+        :type cls: Callable
+        :rtype: Iterator[Vector]
         """
 
         # Evaluate arguments
@@ -405,9 +411,10 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
             iterPolygons.setIndex(index)
             normals = iterPolygons.getNormals()
-            normal = sum(normals) / len(normals)
 
-            yield vector.Vector(normal.x, normal.y, normal.z)
+            normal = sum(normals, start=om.MVector()) / len(normals)
+
+            yield cls(normal.x, normal.y, normal.z)
 
     def getFaceTriangleVertexIndices(self):
         """
@@ -598,12 +605,13 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
             yield faceVertexIndices[index]
 
-    def iterTangentsAndBinormals(self, *indices, channel=0):
+    def iterTangentsAndBinormals(self, *indices, cls=Vector, channel=0):
         """
         Returns a generator that yields face-vertex tangents and binormals for the specified channel.
 
+        :type cls: Callable
         :type channel: int
-        :rtype: Iterator[List[vector.Vector], List[vector.Vector]]
+        :rtype: Iterator[List[Vector], List[Vector]]
         """
 
         # Evaluate arguments
@@ -624,7 +632,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
             tangents = fnMesh.getFaceVertexTangents(index, uvSet=uvSet)
             binormals = fnMesh.getFaceVertexBinormals(index, uvSet=uvSet)
 
-            yield list(map(vector.Vector, tangents)), list(map(vector.Vector, binormals))
+            yield list(map(cls, tangents)), list(map(cls, binormals))
 
     def numColorSets(self):
         """
@@ -663,10 +671,11 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
             return ''
 
-    def iterColors(self, channel=0):
+    def iterColors(self, cls=Colour, channel=0):
         """
         Returns a generator that yields index-color pairs for the specified vertex color channel.
 
+        :type cls: Callable
         :type channel: int
         :rtype: Iterator[colour.Colour]
         """
@@ -676,7 +685,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
         for color in colors:
 
-            yield colour.Colour(color.r, color.g, color.b, color.a)
+            yield cls(color.r, color.g, color.b, color.a)
 
     def iterFaceVertexColorIndices(self, *indices, channel=0):
         """

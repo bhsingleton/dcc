@@ -7,12 +7,11 @@ def package(counts, items):
     :rtype: Iterator[List[Any]]
     """
 
-    startIndex = 0
-    endIndex = 0
+    startIndex, endIndex = 0, 0
 
     for count in counts:
 
-        startIndex += endIndex
+        startIndex = endIndex
         endIndex = startIndex + count
 
         yield items[startIndex:endIndex]
