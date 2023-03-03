@@ -681,6 +681,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         Returns a generator that yields vertex-weights pairs from this skin.
         If no vertex indices are supplied then all weights are yielded instead.
 
+        :type indices: Union[int, List[int]]
         :rtype: Iterator[Tuple[int, Dict[int, float]]]
         """
 
@@ -691,6 +692,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         Returns the weights for the supplied vertex indices.
         If no vertex indices are supplied then all weights are returned instead.
 
+        :type indices: Union[int, List[int]]
         :rtype: Dict[int, Dict[int, float]]
         """
 
