@@ -154,7 +154,6 @@ def iterVertexWeights(skin, vertexIndices=None):
         # Iterate through bones
         #
         numBones = pymxs.runtime.skinOps.getVertexWeightCount(skin, vertexIndex)
-
         vertexWeights = {}
 
         for i in inclusiveRange(1, numBones):

@@ -250,15 +250,16 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
         skinutils.selectInfluence(self.object(), influenceId)
 
-    def iterVertexWeights(self, *args):
+    def iterVertexWeights(self, *indices):
         """
         Returns a generator that yields vertex-weights pairs from this skin.
         If no vertex indices are supplied then all weights are yielded instead.
 
+        :type indices: Union[int, List[int]]
         :rtype: Iterator[Tuple[int, Dict[int, float]]]
         """
 
-        return skinutils.iterVertexWeights(self.object(), vertexIndices=args)
+        return skinutils.iterVertexWeights(self.object(), vertexIndices=indices)
 
     def applyVertexWeights(self, vertexWeights):
         """
