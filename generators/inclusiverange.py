@@ -17,12 +17,12 @@ def inclusiveRange(*args, **kwargs):
 
         start = 0
         end = args[0]
-        step = 1 if start <= end else -1
+        step = 1
 
     elif numArgs == 2:
 
         start, end = args
-        step = 1 if start <= end else -1
+        step = 1
 
     elif numArgs == 3:
 
