@@ -390,11 +390,11 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
         elif componentType == self.ComponentType.Edge:
 
-            return arrayutils.iterBitArray(pymxs.runtime.polyOp.getEdgesUsingVert(mesh, indices))
+            return arrayutils.iterBitArray(pymxs.runtime.polyOp.getVertsUsingEdge(mesh, indices))
 
         elif componentType == self.ComponentType.Face:
 
-            return arrayutils.iterBitArray(pymxs.runtime.polyOp.getFacesUsingVert(mesh, indices))
+            return arrayutils.iterBitArray(pymxs.runtime.polyOp.getVertsUsingFace(mesh, indices))
 
         else:
 
@@ -423,7 +423,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
         elif componentType == self.ComponentType.Face:
 
-            return arrayutils.iterBitArray(pymxs.runtime.polyOp.getFaceEdges(mesh, indices))
+            return arrayutils.iterBitArray(pymxs.runtime.polyOp.getEdgesUsingFace(mesh, indices))
 
         else:
 
@@ -448,7 +448,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
         elif componentType == self.ComponentType.Edge:
 
-            return arrayutils.iterBitArray(pymxs.runtime.polyOp.getEdgeFaces(mesh, indices))
+            return arrayutils.iterBitArray(pymxs.runtime.polyOp.getFacesUsingEdge(mesh, indices))
 
         elif componentType == self.ComponentType.Face:
 
