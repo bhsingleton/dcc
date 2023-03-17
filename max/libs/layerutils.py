@@ -2,6 +2,7 @@ import pymxs
 
 from collections import deque
 from dcc.python import stringutils
+from dcc.max.libs import wrapperutils
 from dcc.generators.inclusiverange import inclusiveRange
 
 import logging
@@ -28,7 +29,7 @@ def isValidLayer(layer):
     :rtype: bool
     """
 
-    return pymxs.runtime.isKindOf(layer, pymxs.runtime.Base_Layer)
+    return wrapperutils.isKindOf(layer, (pymxs.runtime.Base_Layer, pymxs.runtime.MixinInterface))
 
 
 def resetCurrentLayer():
@@ -179,6 +180,8 @@ def iterNodesFromLayers(*layers):
     #
     for layer in layers:
 
+        # Get nodes from layer
+        #
         success, nodes = layer.nodes(pymxs.byref(None))
 
         if success and not stringutils.isNullOrEmpty(nodes):
