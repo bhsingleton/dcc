@@ -31,7 +31,7 @@ def getTranslation(node):
 
     # Get position controller
     #
-    positionController = pymxs.runtime.getPropertyController(node, pymxs.runtime.Name('Position'))
+    positionController = pymxs.runtime.getPropertyController(transformController, pymxs.runtime.Name('Position'))
 
     if controllerutils.isXYZController(positionController) or controllerutils.isBezierController(positionController):
 
@@ -205,7 +205,7 @@ def getEulerRotation(node):
 
     # Get position controller
     #
-    rotationController = pymxs.runtime.getPropertyController(node, pymxs.runtime.Name('Rotation'))
+    rotationController = pymxs.runtime.getPropertyController(transformController, pymxs.runtime.Name('Rotation'))
 
     if controllerutils.isXYZController(rotationController):
 
@@ -349,7 +349,7 @@ def getScale(node):
 
     # Get position controller
     #
-    scaleController = pymxs.runtime.getPropertyController(node, pymxs.runtime.Name('Scale'))
+    scaleController = pymxs.runtime.getPropertyController(transformController, pymxs.runtime.Name('Scale'))
 
     if controllerutils.isXYZController(scaleController) or controllerutils.isBezierController(scaleController):
 
@@ -626,8 +626,8 @@ def applyWorldMatrix(node, worldMatrix, **kwargs):
     :rtype: None
     """
 
-    parentMatrix = getParentMatrix(node)
-    matrix = worldMatrix * pymxs.runtime.inverse(parentMatrix)
+    parentInverseMatrix = getParentInverseMatrix(node)
+    matrix = worldMatrix * parentInverseMatrix
 
     applyTransformMatrix(node, matrix, **kwargs)
 
@@ -1200,7 +1200,7 @@ def decomposeTransformNode(node, worldSpace=False):
 
     :type node: pymxs.runtime.Node
     :type worldSpace: bool
-    :rtype: pymxs.runtime.Point3, pymxs.runtime.EulerAngles, list[float, float, float]
+    :rtype: Tuple[pymxs.runtime.Point3, pymxs.runtime.EulerAngles, List[float, float, float]]
     """
 
     rotateOrder = getRotationOrder(node)
@@ -1225,7 +1225,7 @@ def decomposeTransformMatrix(matrix, rotateOrder=1):
 
     :type matrix: pymxs.runtime.Matrix3
     :type rotateOrder: int
-    :rtype: pymxs.runtime.Point3, pymxs.runtime.EulerAngles, list[float, float, float]
+    :rtype: Tuple[pymxs.runtime.Point3, pymxs.runtime.EulerAngles, List[float, float, float]]
     """
 
     translation = pymxs.runtime.copy(matrix.row4)
