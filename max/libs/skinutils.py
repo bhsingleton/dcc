@@ -1,10 +1,10 @@
 import pymxs
 
-from dcc.python import stringutils
-from dcc.math import linearalgebra
-from dcc.max.libs import controllerutils, transformutils, meshutils
-from dcc.generators.inclusiverange import inclusiveRange
-from dcc.max.decorators.commandpaneloverride import commandPanelOverride
+from ..libs import controllerutils, transformutils, meshutils
+from ..decorators.modifypaneloverride import modifyPanelOverride
+from ...python import stringutils
+from ...math import linearalgebra
+from ...generators.inclusiverange import inclusiveRange
 
 import logging
 logging.basicConfig()
@@ -12,7 +12,7 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-@commandPanelOverride(mode='modify', select=0)
+@modifyPanelOverride(currentObject=0)
 def iterSelection(skin):
     """
     Returns a generator that yields the active vertex selection from the supplied skin.
@@ -49,7 +49,7 @@ def getSelection(skin):
     return list(iterSelection(skin))
 
 
-@commandPanelOverride(mode='modify', select=0)
+@modifyPanelOverride(currentObject=0)
 def setSelection(skin, vertexIndices):
     """
     Updates the active vertex selection for the specified skin.
@@ -62,7 +62,7 @@ def setSelection(skin, vertexIndices):
     pymxs.runtime.skinOps.selectVertices(skin, vertexIndices)
 
 
-@commandPanelOverride(mode='modify', select=0)
+@modifyPanelOverride(currentObject=0)
 def influenceCount(skin):
     """
     Evaluates the number of influences currently in use by the supplied skin.
@@ -74,7 +74,7 @@ def influenceCount(skin):
     return pymxs.runtime.skinOps.getNumberBones(skin)
 
 
-@commandPanelOverride(mode='modify', select=0)
+@modifyPanelOverride(currentObject=0)
 def iterInfluences(skin):
     """
     Returns a generator that yields the influence objects from the supplied skin.
@@ -116,7 +116,7 @@ def iterInfluences(skin):
         yield boneId, bone
 
 
-@commandPanelOverride(mode='modify', select=0)
+@modifyPanelOverride(currentObject=0)
 def selectInfluence(skin, influenceId):
     """
     Updates the active influence selection inside the skin modifier's list box.
@@ -129,7 +129,7 @@ def selectInfluence(skin, influenceId):
     pymxs.runtime.skinOps.selectBone(skin, influenceId)
 
 
-@commandPanelOverride(mode='modify', select=0)
+@modifyPanelOverride(currentObject=0)
 def iterVertexWeights(skin, vertexIndices=None):
     """
     Returns a generator that yields vertex weights from the specified vertex indices.
@@ -181,7 +181,7 @@ def getVertexWeights(skin, vertexIndices=None):
     return dict(iterVertexWeights(skin, vertexIndices=vertexIndices))
 
 
-@commandPanelOverride(mode='modify', select=0)
+@modifyPanelOverride(currentObject=0)
 def setVertexWeights(skin, vertexWeights):
     """
     Updates the vertex weights for the specified skin.
@@ -219,7 +219,7 @@ def setVertexWeights(skin, vertexWeights):
     pymxs.runtime.completeRedraw()
 
 
-@commandPanelOverride(mode='modify', select=0)
+@modifyPanelOverride(currentObject=0)
 def addInfluence(skin, influence):
     """
     Adds an influence to the specified skin.
@@ -232,7 +232,7 @@ def addInfluence(skin, influence):
     pymxs.runtime.skinOps.addBone(skin, influence, 0)
 
 
-@commandPanelOverride(mode='modify', select=0)
+@modifyPanelOverride(currentObject=0)
 def removeInfluence(skin, influenceId):
     """
     Adds an influence to the specified skin.
@@ -277,7 +277,7 @@ def resetSkin(skin):
     #
     baseObject = getattr(node, 'baseObject', node)
 
-    verts = [pymxs.runtime.Point3(*point) * (objectMatrix * meshBindMatrix) for point in meshutils.iterVertices(baseObject)]
+    verts = [point * (objectMatrix * meshBindMatrix) for point in meshutils.iterVertices(baseObject)]
     numVerts = len(verts)
 
     log.info('Baking object-transform on "%s" node into base-object!' % node.name)

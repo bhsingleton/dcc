@@ -1,8 +1,7 @@
 import pymxs
 
 from functools import partial
-from six import integer_types
-from dcc.decorators import abstractdecorator
+from ...decorators import abstractdecorator
 
 import logging
 logging.basicConfig()
@@ -12,15 +11,19 @@ log.setLevel(logging.INFO)
 
 class CommandPanelOverride(abstractdecorator.AbstractDecorator):
     """
-    Overload of AbstractDecorator that overrides the command panel task mode at runtime.
+    Overload of `AbstractDecorator` that overrides the command panel task mode at runtime.
     """
 
     # region Dunderscores
-    __slots__ = ('_mode', '_revert', '_previous', '_select', '_subObjectLevel')
+    __slots__ = ('_mode', '_revert', '_previous')
 
     def __init__(self, *args, **kwargs):
         """
         Private method called after a new instance has been created.
+
+        :key mode: str
+        :key revert: bool
+        :rtype: None
         """
 
         # Call parent method
@@ -32,8 +35,6 @@ class CommandPanelOverride(abstractdecorator.AbstractDecorator):
         self._mode = pymxs.runtime.Name(kwargs.get('mode', 'create'))
         self._revert = kwargs.get('revert', False)
         self._previous = pymxs.runtime.getCommandPanelTaskMode()
-        self._select = kwargs.get('select', None)
-        self._subObjectLevel = kwargs.get('subObjectLevel', None)
 
     def __enter__(self, *args, **kwargs):
         """
@@ -49,42 +50,6 @@ class CommandPanelOverride(abstractdecorator.AbstractDecorator):
         if self.previous != self.mode:
 
             pymxs.runtime.setCommandPanelTaskMode(self.mode)
-
-        # Check if modifier should be selected
-        #
-        if isinstance(self.select, integer_types):
-
-            # Evaluate number of arguments
-            #
-            numArgs = len(args)
-
-            if not (0 <= self.select < numArgs):
-
-                raise TypeError('__enter__() selection index is out of range!')
-
-            # Evaluate argument type
-            #
-            modifier = args[self.select]
-
-            if not pymxs.runtime.isKindOf(modifier, pymxs.runtime.Modifier):
-
-                raise TypeError('__enter__() expects a valid modifier!')
-
-            # Evaluate current modifier
-            # Calling "setCurrentObject" will evoke a selection changed callback!
-            #
-            currentModifier = pymxs.runtime.modPanel.getCurrentObject()
-
-            if modifier != currentModifier:
-
-                node = pymxs.runtime.refs.dependentNodes(modifier, firstOnly=True)
-                pymxs.runtime.modPanel.setCurrentObject(modifier, node=node)
-
-        # Check if the sub-object level should be changed
-        #
-        if isinstance(self.subObjectLevel, integer_types):
-
-            pymxs.runtime.subObjectLevel = self.subObjectLevel
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """
@@ -144,26 +109,6 @@ class CommandPanelOverride(abstractdecorator.AbstractDecorator):
         """
 
         self._previous = previous
-
-    @property
-    def select(self):
-        """
-        Getter method that returns the argument index to select from.
-
-        :rtype: int
-        """
-
-        return self._select
-
-    @property
-    def subObjectLevel(self):
-        """
-        Getter method that returns the sub-object level override.
-
-        :rtype: int
-        """
-
-        return self._subObjectLevel
     # endregion
 
 
@@ -171,6 +116,8 @@ def commandPanelOverride(*args, **kwargs):
     """
     Returns a CommandPanelOverride wrapper for the supplied function.
 
+    :key mode: str
+    :key revert: bool
     :rtype: method
     """
 
