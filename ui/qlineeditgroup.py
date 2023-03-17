@@ -8,14 +8,15 @@ log.setLevel(logging.INFO)
 
 class QLineEditGroup(QtCore.QObject):
     """
-    Overload of QObject used to group line edits as a collection.
+    Overload of `QObject` that groups line edits together into a collection.
     """
 
+    # region Signals
     lineEditTextChanged = QtCore.Signal(QtCore.QObject)
     idTextChanged = QtCore.Signal(int)
-
     lineEditTextEdited = QtCore.Signal(QtCore.QObject)
     idTextEdited = QtCore.Signal(int)
+    # endregion
 
     # region Dunderscores
     def __init__(self, parent=None):
