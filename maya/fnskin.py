@@ -60,7 +60,7 @@ class FnSkin(fnnode.FnNode, afnskin.AFnSkin):
 
     def transform(self):
         """
-        Returns the transform component of this deformer.
+        Returns the transform node associated with this skin.
 
         :rtype: om.MObject
         """
@@ -69,7 +69,7 @@ class FnSkin(fnnode.FnNode, afnskin.AFnSkin):
 
     def shape(self):
         """
-        Returns the shape component of this deformer.
+        Returns the shape node associated with this skin.
 
         :rtype: om.MObject
         """
@@ -78,7 +78,7 @@ class FnSkin(fnnode.FnNode, afnskin.AFnSkin):
 
     def intermediateObject(self):
         """
-        Returns the intermediate object of this deformer.
+        Returns the intermediate object associated with this skin.
 
         :rtype: om.MObject
         """

@@ -258,6 +258,16 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         super(AFnSkin, self).__init__(*args, **kwargs)
 
     @abstractmethod
+    def transform(self):
+        """
+        Returns the transform node associated with this skin.
+
+        :rtype: Any
+        """
+
+        pass
+
+    @abstractmethod
     def shape(self):
         """
         Returns the shape node associated with this skin.

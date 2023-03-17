@@ -55,9 +55,18 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         self._shape = pymxs.runtime.getHandleByAnim(shape)
         self._intermediateObject = pymxs.runtime.getHandleByAnim(shape.baseObject)
 
+    def transform(self):
+        """
+        Returns the transform node associated with the skin.
+
+        :rtype: Any
+        """
+
+        return self.shape()  # They're the same thing in 3ds Max
+
     def shape(self):
         """
-        Returns the shape node associated with the deformer.
+        Returns the shape node associated with the skin.
 
         :rtype: Any
         """
@@ -66,7 +75,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
     def intermediateObject(self):
         """
-        Returns the intermediate object associated with the deformer.
+        Returns the intermediate object associated with the skin.
 
         :rtype: Any
         """
