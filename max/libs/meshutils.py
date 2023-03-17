@@ -297,15 +297,28 @@ def setVertices(mesh, indices, points):
     :rtype: None
     """
 
+    # Evaluate supplied arguments
+    #
+    numIndices = len(indices)
+    numPoints = len(points)
+
+    if not pymxs.runtime.isValidObj(mesh) or numIndices != numPoints:
+
+        raise TypeError('setVertices() expects a valid mesh and matching index-point pairs!')
+
     # Check if this is an editable poly
     #
     if isEditablePoly(mesh):
 
-        pymxs.runtime.polyOp.setVert(mesh, indices, points)
+        for (index, point) in zip(indices, points):
+
+            pymxs.runtime.polyOp.setVert(mesh, index, point)
 
     else:
 
-        pymxs.runtime.meshOp.setVert(mesh, indices, points)
+        for (index, point) in zip(indices, points):
+
+            pymxs.runtime.meshOp.setVert(mesh, index, point)
 
 
 @coordsysoverride.coordSysOverride(mode='local')
