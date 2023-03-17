@@ -46,19 +46,23 @@ class FnLayer(afnlayer.AFnLayer):
         :rtype: None
         """
 
-        # Check object type
+        # Evaluate object type
         #
-        if isinstance(obj, string_types):
+        if isinstance(obj, pymxs.MXSWrapperBase):
+
+            obj = getattr(obj, 'name', '')
+
+        # Check if layer exists
+        #
+        layer = pymxs.runtime.LayerManager.getLayerFromName(obj)
+
+        if layer is not None:
 
             super(FnLayer, self).setObject(obj)
 
-        elif isinstance(obj, pymxs.MXSWrapperBase):
-
-            self.setObject(obj.name)
-
         else:
 
-            raise TypeError('setObject() expects a MXSWrapperBase (%s given)!' % type(obj).__name__)
+            raise TypeError('setObject() expects a valid layer (%s given)!' % obj)
 
     def acceptsObject(self, obj):
         """
