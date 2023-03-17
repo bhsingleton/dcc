@@ -1,4 +1,7 @@
 import pymxs
+
+from .libs import modifierutils, wrapperutils
+from .decorators.commandpaneloverride import commandPanelOverride
 from ..fbx.libs import FbxFileVersion
 from ..abstract import afnfbx
 
@@ -81,6 +84,39 @@ class FnFbx(afnfbx.AFnFbx):
         pymxs.runtime.FBXExporterSetParam('FilterKeyReducer', False)
         pymxs.runtime.FBXExporterSetParam('SplitAnimationIntoTakes', False)
 
+    @commandPanelOverride(mode='modify')
+    def enforceMeshTriangulation(self, nodes):
+        """
+        Ensures that the supplied meshes are triangulated correctly.
+
+        :type nodes: List[pymxs.MXSWrapperBase]
+        :rtype: None
+        """
+
+        # Iterate through nodes
+        #
+        for node in nodes:
+
+            # Check if this is a mesh
+            #
+            if not wrapperutils.isKindOf(node, (pymxs.runtime.Editable_Mesh, pymxs.runtime.Editable_Poly, pymxs.runtime.PolyMeshObject)):
+
+                continue
+
+            # Redundancy check
+            #
+            if modifierutils.hasModifier(node, pymxs.runtime.Turn_to_Poly):
+
+                continue
+
+            # Insert turn-to-poly modifier
+            #
+            modifier = pymxs.runtime.Turn_To_Poly()
+            modifier.limitPolySize = True
+            modifier.maxPolySize = 3
+
+            pymxs.runtime.addModifier(node, modifier, before=1)
+
     def exportSelection(self, filePath):
         """
         Exports the active selection to the specified file path.
@@ -91,7 +127,9 @@ class FnFbx(afnfbx.AFnFbx):
 
         try:
 
+            self.enforceMeshTriangulation(pymxs.runtime.Selection)
             pymxs.runtime.exportFile(filePath, pymxs.runtime.name('noPrompt'), selectedOnly=True, using='FBXEXP')
+
             return True
 
         except (RuntimeError, IOError) as exception:
