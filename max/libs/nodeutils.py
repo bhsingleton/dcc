@@ -28,6 +28,18 @@ def isValidNode(obj):
     return pymxs.runtime.isValidNode(obj) and not pymxs.runtime.isDeleted(obj)
 
 
+def doesNodeExist(*names, ignoreCase=False):
+    """
+    Evaluates if a node with the specified name exists.
+
+    :type names: Union[str, List[str]]
+    :type ignoreCase: bool
+    :rtype: bool
+    """
+
+    return all(pymxs.runtime.getNodeByName(name, ignoreCase=ignoreCase, all=True).count > 0 for name in names)
+
+
 def isValidBaseObject(obj):
     """
     Evaluates if the supplied object is a valid base object.
