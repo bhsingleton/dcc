@@ -185,6 +185,12 @@ class QVectorEdit(QtWidgets.QWidget):
         :rtype: None
         """
 
-        self._vector[index] = float(self[index].text())
-        self.vectorChanged.emit(self._vector)
+        try:
+
+            self._vector[index] = float(self.vectorLineEditGroup[index].text())
+            self.vectorChanged.emit(self._vector)
+
+        except ValueError:
+
+            pass
     # endregion
