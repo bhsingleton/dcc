@@ -45,6 +45,10 @@ class ModifyPanelOverride(commandpaneloverride.CommandPanelOverride):
         :rtype: None
         """
 
+        # Call parent method
+        #
+        super(ModifyPanelOverride, self).__enter__(*args, **kwargs)
+
         # Check if modifier should be selected
         #
         if isinstance(self.currentObject, integer_types):
