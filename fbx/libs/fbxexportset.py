@@ -13,6 +13,9 @@ log.setLevel(logging.INFO)
 
 
 class FbxExportStatus(IntEnum):
+    """
+    Enum class of all the possible export states.
+    """
 
     Pending = 0
     Pre = 1
@@ -22,7 +25,7 @@ class FbxExportStatus(IntEnum):
 
 class FbxExportSet(fbxbase.FbxBase):
     """
-    Overload of FbxObject that outlines fbx export set data.
+    Overload of `FbxBase` that interfaces fbx export set data.
     """
 
     # region Dunderscores
@@ -471,6 +474,8 @@ class FbxExportSet(fbxbase.FbxBase):
         )
 
         exportPath = self.exportPath()
+        self.scene.ensureDirectory(exportPath)
+
         success = self.fbx.exportSelection(exportPath)
 
         if not success:
