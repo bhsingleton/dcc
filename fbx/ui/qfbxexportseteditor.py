@@ -754,7 +754,7 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
         # Prompt user
         #
         dialog = qlistdialog.QListDialog('Reorder Export Sets', parent=self)
-        dialog.setTextFilter(self.slugify)
+        dialog.setTextFilter(stringutils.slugify)
         dialog.setItems([x.name for x in self.asset.exportSets])
 
         response = dialog.exec_()
