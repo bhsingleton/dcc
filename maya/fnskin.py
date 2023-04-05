@@ -14,10 +14,11 @@ log.setLevel(logging.INFO)
 
 class FnSkin(fnnode.FnNode, afnskin.AFnSkin):
     """
-    Overload of AFnSkin that outlines function set behaviour for skin weighting in Maya.
+    Overload of `AFnSkin` that outlines function set behaviour for skin weighting in Maya.
     This class also inherits from FnNode since skin clusters are node objects.
     """
 
+    # region Dunderscores
     __slots__ = ('_transform', '_shape', '_intermediateObject')
     __color_set_name__ = 'paintWeightsColorSet1'
     __color_ramp__ = '1,0,0,1,1,1,0.5,0,0.8,1,1,1,0,0.6,1,0,1,0,0.4,1,0,0,1,0,1'
@@ -25,6 +26,8 @@ class FnSkin(fnnode.FnNode, afnskin.AFnSkin):
     def __init__(self, *args, **kwargs):
         """
         Private method called after a new instance is created.
+
+        :rtype: None
         """
 
         # Declare class variables
@@ -36,6 +39,19 @@ class FnSkin(fnnode.FnNode, afnskin.AFnSkin):
         # Call parent method
         #
         super(FnSkin, self).__init__(*args, **kwargs)
+    # endregion
+
+    # region Methods
+    @classmethod
+    def create(cls, mesh):
+        """
+        Creates a skin and assigns it to the supplied shape.
+
+        :type mesh: fnmesh.FnMesh
+        :rtype: FnSkin
+        """
+
+        return cls(mc.deformer(mesh.name(), type='skinCluster')[0])
 
     def setObject(self, obj):
         """
@@ -462,3 +478,4 @@ class FnSkin(fnnode.FnNode, afnskin.AFnSkin):
         """
 
         return super(FnSkin, cls).iterInstances(apiType=apiType)
+    # endregion

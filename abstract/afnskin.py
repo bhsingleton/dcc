@@ -239,6 +239,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
     Overload of AFnBase that outlines function set behaviour for DCC skinning.
     """
 
+    # region Dunderscores
     __slots__ = ('_influences', '_clipboard')
 
     def __init__(self, *args, **kwargs):
@@ -256,6 +257,32 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         # Call parent method
         #
         super(AFnSkin, self).__init__(*args, **kwargs)
+    # endregion
+
+    # region Properties
+    @property
+    def clipboard(self):
+        """
+        Getter method that returns the clipboard.
+
+        :rtype: Dict[int, Dict[int, float]]
+        """
+
+        return self._clipboard
+    # endregion
+
+    # region Methods
+    @classmethod
+    @abstractmethod
+    def create(cls, mesh):
+        """
+        Creates a skin and assigns it to the supplied shape.
+
+        :type mesh: fnmesh.FnMesh
+        :rtype: AFnSkin
+        """
+
+        pass
 
     @abstractmethod
     def transform(self):
@@ -286,16 +313,6 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         """
 
         pass
-
-    @property
-    def clipboard(self):
-        """
-        Getter method that returns the clipboard.
-
-        :rtype: Dict[int, Dict[int, float]]
-        """
-
-        return self._clipboard
 
     @abstractmethod
     def iterVertices(self):
@@ -1651,3 +1668,4 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         """
 
         pass
+    # endregion

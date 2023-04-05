@@ -12,26 +12,45 @@ log.setLevel(logging.INFO)
 
 class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
     """
-    Overload of AFnSkin that outlines function set behaviour for skin weighting in 3ds Max.
+    Overload of `AFnSkin` that outlines function set behaviour for skin weighting in 3ds Max.
     This class also inherits from FnNode but be aware not all functions will be compatible.
     Because of the UI dependency in 3ds Max we have to actively make sure we're in the modify panel.
     """
 
-    __slots__ = ('_shape', '_intermediateObject')
+    # region Dunderscores
+    __slots__ = ('_node', '_baseObject')
 
     def __init__(self, *args, **kwargs):
         """
         Private method called after a new instance is created.
+
+        :rtype: None
         """
 
         # Declare class variables
         #
-        self._shape = None
-        self._intermediateObject = None
+        self._node = None
+        self._baseObject = None
 
         # Call parent method
         #
         super(FnSkin, self).__init__(*args, **kwargs)
+    # endregion
+
+    # region Methods
+    @classmethod
+    def create(cls, mesh):
+        """
+        Creates a skin and assigns it to the supplied shape.
+
+        :type mesh: fnmesh.FnMesh
+        :rtype: FnSkin
+        """
+
+        skin = pymxs.runtime.Skin()
+        pymxs.runtime.addModifier(mesh.object(), skin)
+
+        return cls(skin)
 
     def setObject(self, obj):
         """
@@ -48,12 +67,12 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
         super(FnSkin, self).setObject(skinModifier)
 
-        # Store reference to shape node
+        # Store reference to base object
         #
-        shape = modifierutils.getNodeFromModifier(skinModifier)
+        node = modifierutils.getNodeFromModifier(skinModifier)
 
-        self._shape = pymxs.runtime.getHandleByAnim(shape)
-        self._intermediateObject = pymxs.runtime.getHandleByAnim(shape.baseObject)
+        self._node = pymxs.runtime.getHandleByAnim(node)
+        self._baseObject = pymxs.runtime.getHandleByAnim(node.baseObject)
 
     def transform(self):
         """
@@ -62,7 +81,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         :rtype: Any
         """
 
-        return self.shape()  # They're the same thing in 3ds Max
+        return pymxs.runtime.getAnimByHandle(self._node)
 
     def shape(self):
         """
@@ -71,7 +90,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         :rtype: Any
         """
 
-        return pymxs.runtime.getAnimByHandle(self._shape)
+        return self.transform()  # They're the same thing in 3ds Max
 
     def intermediateObject(self):
         """
@@ -80,7 +99,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         :rtype: Any
         """
 
-        return pymxs.runtime.getAnimByHandle(self._intermediateObject)
+        return pymxs.runtime.getAnimByHandle(self._baseObject)
 
     def select(self, replace=True):
         """
@@ -330,4 +349,4 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         """
 
         return iter(pymxs.runtime.getClassInstances(pymxs.runtime.Skin))
-
+    # endregion
