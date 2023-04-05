@@ -787,7 +787,7 @@ def getParent(node):
     dagPath = getMDagPath(node)
     fnDagNode = om.MFnDagNode(dagPath)
 
-    parentCount = fnDagNode.childCount()
+    parentCount = fnDagNode.parentCount()
 
     if parentCount == 0:
 
