@@ -146,6 +146,8 @@ def rebuildPositionList(node):
             propertyutils.copyProperties(subController, constraint)
             controllerutils.copySubAnims(subController, constraint)
 
+            constraint.relative = True  # Ensures subsequent offset matrices are computed correctly!
+
         else:  # Default
 
             pymxs.runtime.setPropertyController(controller, 'Available', subController)
@@ -236,6 +238,8 @@ def rebuildRotationList(node):
             copyTargets(subController, constraint)
             propertyutils.copyProperties(subController, constraint)
             controllerutils.copySubAnims(subController, constraint)
+
+            constraint.relative = True  # Ensures subsequent offset matrices are computed correctly!
 
         else:  # Default
 
