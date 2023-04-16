@@ -76,6 +76,26 @@ def getDefaultPropertyValue(cls, name):
         return None
 
 
+def tryGetPropertyValue(obj, name, default=None):
+    """
+    Returns the value from the specified property.
+    If no property exists then the default value is returned instead.
+
+    :type obj: pymxs.MXSWrapperBase
+    :type name: str
+    :type default: Any
+    :rtype: Any
+    """
+
+    if pymxs.runtime.isProperty(obj, name):
+
+        return pymxs.runtime.getProperty(obj, name)
+
+    else:
+
+        return default
+
+
 def inspectClassProperties(maxClassName):
     """
     Inspects the supplied class names for writable properties.

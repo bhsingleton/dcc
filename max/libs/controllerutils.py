@@ -1,5 +1,4 @@
 import pymxs
-import re
 
 from collections import deque
 from . import nodeutils, propertyutils, attributeutils, wrapperutils
@@ -13,10 +12,10 @@ log.setLevel(logging.INFO)
 
 SUPER_TYPES = dict(wrapperutils.iterClassesByPattern('*Controller', superOnly=True))
 XYZ_TYPES = dict(wrapperutils.iterClassesByPattern('*XYZ'))
-BEZIER_TYPES = dict(wrapperutils.iterClassesByPattern('bezier_*'))
-LIST_TYPES = dict(wrapperutils.iterClassesByPattern('*_list'))
+BEZIER_TYPES = dict(wrapperutils.iterClassesByPattern('Bezier_*'))
+LIST_TYPES = dict(wrapperutils.iterClassesByPattern('*_List'))
 CONSTRAINT_TYPES = dict(wrapperutils.iterClassesByPattern('*_Constraint'))
-SCRIPT_TYPES = dict(wrapperutils.iterClassesByPattern('*_script'))
+SCRIPT_TYPES = dict(wrapperutils.iterClassesByPattern('*_Script'))
 WIRE_TYPES = dict(wrapperutils.iterClassesByPattern('*_Wire'))
 DUMMY_TYPES = dict(wrapperutils.iterClassesByPattern('*_ListDummyEntry'))
 
@@ -74,6 +73,18 @@ def isConstrained(obj):
     """
 
     return any([isConstraint(controller) for controller in walkControllers(obj)])
+
+
+def hasConstraint(obj, maxClass):
+    """
+    Evaluates if the supplied object contains any of the specified constraints.
+
+    :type obj: pymxs.MXSWrapperBase
+    :type maxClass: Union[pymxs.MXSWrapperBase, List[pymxs.MXSWrapperBase]]
+    :rtype: bool
+    """
+
+    return any([wrapperutils.isKindOf(controller, maxClass) for controller in walkControllers(obj)])
 
 
 def isWire(obj):
@@ -170,19 +181,25 @@ def ensureFrozenNames(controller):
     :rtype: bool
     """
 
-    # Evaluate controller type
+    # Check if controller is valid
+    #
+    if not isListController(controller):
+
+        return False
+
+    # Get frozen controller type-name pairs
     #
     frozenSubAnims = []
 
-    if pymxs.runtime.isKindOf(controller, pymxs.runtime.Position_List):
+    if wrapperutils.isKindOf(controller, pymxs.runtime.Position_List):
 
         frozenSubAnims = [(pymxs.runtime.Bezier_Position, 'Frozen Position'), (pymxs.runtime.Position_XYZ, 'Zero Pos XYZ')]
 
-    elif pymxs.runtime.isKindOf(controller, pymxs.runtime.Rotation_List):
+    elif wrapperutils.isKindOf(controller, pymxs.runtime.Rotation_List):
 
         frozenSubAnims = [(pymxs.runtime.Euler_XYZ, 'Frozen Rotation'), (pymxs.runtime.Euler_XYZ, 'Zero Euler XYZ')]
 
-    elif pymxs.runtime.isKindOf(controller, pymxs.runtime.Scale_List):
+    elif wrapperutils.isKindOf(controller, pymxs.runtime.Scale_List):
 
         frozenSubAnims = [(pymxs.runtime.Bezier_Scale, 'Frozen Scale'), (pymxs.runtime.ScaleXYZ, 'Zero Scale XYZ')]
 
@@ -192,32 +209,38 @@ def ensureFrozenNames(controller):
 
     # Check if there are enough sub-controllers
     #
+    frozenCount = len(frozenSubAnims)
     listCount = controller.getCount()
 
-    if len(frozenSubAnims) > listCount:
+    if frozenCount > listCount:
 
         return False
 
-    # Evaluate sub-anim names
+    # Check if sub-controller types are compatible
     #
-    for (i, (maxClass, name)) in enumerate(frozenSubAnims):
+    subControllers = [subController for (subController, name, weight) in iterListController(controller)]
+    isCompatible = all([wrapperutils.isKindOf(subController, maxClass) for (subController, (maxClass, name)) in zip(subControllers, frozenSubAnims)])
 
-        # Get indexed sub-anim
-        # Evaluate sub-controller class
+    if not isCompatible:
+
+        return False
+
+    # Replace sub-anim names
+    #
+    for (i, (maxClass, name)) in enumerate(frozenSubAnims, start=1):
+
+        # Redundancy check
         #
-        index = i + 1
-        subAnim = pymxs.runtime.getSubAnim(controller, index)
+        subAnim = pymxs.runtime.getSubAnim(controller, i)
 
-        if not pymxs.runtime.isKindOf(subAnim.controller, maxClass):
-
-            return False
-
-        # Check if names match
-        #
         if subAnim.name != name:
 
             log.info('Renaming list sub-controller: "%s" > "%s"' % (subAnim.name, name))
-            controller.setName(index, name)
+            controller.setName(i, name)
+
+        else:
+
+            continue
 
     return True
 
@@ -542,7 +565,7 @@ def iterListController(controller):
     Returns a generator that yields sub-controller and name-weight pairs from the supplied list controller.
 
     :type controller: pymxs.MXSWrapperBase
-    :rtype: iter
+    :rtype: Iterator[Tuple[pymxs.MXSWrapperBase, str, float]]
     """
 
     listCount = controller.getCount()

@@ -806,6 +806,13 @@ def freezeTranslation(node, **kwargs):
 
     else:
 
+        # Replace active controller with bezier position
+        #
+        frozenPosition = pymxs.runtime.Bezier_Position()
+        frozenPosition.value = matrix.translationPart
+
+        pymxs.runtime.setPropertyController(transformController, 'Position', frozenPosition)
+
         # Create new position-list
         # This will append the current controller to the new list!
         #
@@ -814,14 +821,6 @@ def freezeTranslation(node, **kwargs):
         positionController = pymxs.runtime.Position_List()
         pymxs.runtime.setPropertyController(transformController, 'Position', positionController)
 
-        controllerutils.clearListController(positionController)  # Removes pre-existing sub-controllers
-
-        # Add frozen position sub-controller
-        #
-        frozenController = pymxs.runtime.Bezier_Position()
-        frozenController.value = matrix.translationPart
-
-        pymxs.runtime.setPropertyController(positionController, 'Available', frozenController)
         positionController.setName(1, 'Frozen Position')
 
         # Add zero position sub-controller
@@ -851,9 +850,11 @@ def freezeRotation(node, **kwargs):
     # Check if position-list exists
     #
     transformController = controllerutils.getPRSController(node)
-    rotationController = controllerutils.decomposePRSController(transformController)[1]
+    positionController, rotationController, scaleController = controllerutils.decomposePRSController(transformController)
 
+    hasPreRotation = controllerutils.hasConstraint(positionController, (pymxs.runtime.Attachment, pymxs.runtime.Surface, pymxs.runtime.Path_Constraint))
     matrix = getMatrix(node)
+    frozenRotation = pymxs.runtime.copy(rotationController.value) if hasPreRotation else pymxs.runtime.copy(matrix.rotationPart)
 
     if controllerutils.isListController(rotationController):
 
@@ -887,7 +888,7 @@ def freezeRotation(node, **kwargs):
         if not isFrozen or not isZero:
 
             log.info('Freezing $%s[#rotation].controller!' % node.name)
-            frozenController.value = matrix.rotationPart
+            frozenController.value = frozenRotation
             zeroController.value = pymxs.runtime.Quat(1)
 
         else:
@@ -904,14 +905,6 @@ def freezeRotation(node, **kwargs):
         rotationController = pymxs.runtime.Rotation_List()
         pymxs.runtime.setPropertyController(transformController, 'Rotation', rotationController)
 
-        controllerutils.clearListController(rotationController)  # Removes pre-existing sub-controllers
-
-        # Add frozen rotation sub-controller
-        #
-        frozenController = pymxs.runtime.Euler_XYZ()
-        frozenController.value = matrix.rotationPart
-
-        pymxs.runtime.setPropertyController(rotationController, 'Available', frozenController)
         rotationController.setName(1, 'Frozen Rotation')
 
         # Add zero rotation sub-controller
@@ -974,6 +967,13 @@ def freezeScale(node, **kwargs):
 
     else:
 
+        # Replace active controller with bezier scale
+        #
+        frozenScale = pymxs.runtime.Bezier_Scale()
+        frozenScale.value = matrix.scalePart
+
+        pymxs.runtime.setPropertyController(transformController, 'Scale', frozenScale)
+
         # Create new scale-list
         # This will append the current controller to the new list!
         #
@@ -982,14 +982,6 @@ def freezeScale(node, **kwargs):
         scaleController = pymxs.runtime.Scale_List()
         pymxs.runtime.setPropertyController(transformController, 'Scale', scaleController)
 
-        controllerutils.clearListController(scaleController)  # Removes pre-existing sub-controllers
-
-        # Add frozen scale sub-controller
-        #
-        frozenController = pymxs.runtime.Bezier_Scale()
-        frozenController.value = matrix.scalePart
-
-        pymxs.runtime.setPropertyController(scaleController, 'Available', frozenController)
         scaleController.setName(1, 'Frozen Scale')
 
         # Add zero scale sub-controller

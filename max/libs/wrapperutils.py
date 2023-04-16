@@ -171,36 +171,41 @@ def hasValidExpression(obj):
         return False
 
 
-def iterClassesByPattern(search, superOnly=False):
+def iterClassesByPattern(*patterns, superOnly=False):
     """
     Returns a generator that yields MXS classes by search pattern.
     Apropos patterns should consist of the following: {variableName}:{className}
     For example: *XYZ:MAXClass, which returns XYZ controller classes.
 
-    :type search: str
+    :type patterns: Union[str, List[str]]
     :type superOnly: bool
-    :rtype: iter
+    :rtype: Iterator[str, pymxs.MXSWrapperBase]
     """
 
     # Initialize string-stream for apropos
     #
-    stringStream = pymxs.runtime.StringStream('')
     className = 'MAXSuperClass' if superOnly else 'MAXClass'
-    pattern = '{search}:{className}'.format(search=search, className=className)
 
-    pymxs.runtime.apropos(pattern, implicitWild=False, to=stringStream)
+    for pattern in patterns:
 
-    # Iterate through string stream
-    #
-    pymxs.runtime.seek(stringStream, 0)
+        # Search for global variables
+        #
+        stringStream = pymxs.runtime.StringStream('')
+        search = '{variablePattern}:{className}'.format(variablePattern=pattern, className=className)
 
-    while not pymxs.runtime.eof(stringStream):
+        pymxs.runtime.apropos(search, implicitWild=False, to=stringStream)
 
-        line = pymxs.runtime.readLine(stringStream)
-        name = line.split(' ', 1)[0]
-        cls = getattr(pymxs.runtime, name)
+        # Iterate through string stream
+        #
+        pymxs.runtime.seek(stringStream, 0)
 
-        yield name, cls
+        while not pymxs.runtime.eof(stringStream):
+
+            line = pymxs.runtime.readLine(stringStream)
+            name = line.split(' ', 1)[0]
+            cls = getattr(pymxs.runtime, name)
+
+            yield name, cls
 
 
 def getAssociatedNode(obj):
