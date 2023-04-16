@@ -2,6 +2,7 @@ from maya.api import OpenMaya as om
 from . import plugutils
 from ..decorators.locksmith import locksmith
 from ..decorators.autokey import autokey
+from ..decorators.undo import commit
 
 import logging
 logging.basicConfig()
@@ -850,7 +851,7 @@ def setValue(plug, value, modifier=None, **kwargs):
 
         return None
     
-    # Check if dag modifier was supplied
+    # Check if a dag modifier was supplied
     #
     if modifier is None:
         
@@ -905,8 +906,9 @@ def setValue(plug, value, modifier=None, **kwargs):
         attributeType = plugutils.getApiType(plug)
         __set_value__[attributeType](plug, value, modifier=modifier, **kwargs)
     
-    # Execute modifier
+    # Cache and execute modifier
     #
+    commit(modifier.doIt, modifier.undoIt)
     modifier.doIt()
     
 

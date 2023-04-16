@@ -1,7 +1,10 @@
-import maya.cmds as mc
+import os
+import sys
 
+from maya import cmds as mc
 from functools import partial
-from dcc.decorators import abstractdecorator
+from .. import plugins
+from ...decorators import abstractdecorator
 
 import logging
 logging.basicConfig()
@@ -11,11 +14,12 @@ log.setLevel(logging.INFO)
 
 class Undo(abstractdecorator.AbstractDecorator):
     """
-    Base class used to manage undo chunks either as a decorator or with statement.
+    Overload of `AbstractDecorator` that defines Maya undo chunks.
     """
 
     # region Dunderscores
     __slots__ = ('_name',)
+    __plugins__ = os.path.dirname(os.path.abspath(plugins.__file__))
 
     def __init__(self, *args, **kwargs):
         """
@@ -29,35 +33,9 @@ class Undo(abstractdecorator.AbstractDecorator):
         #
         super(Undo, self).__init__(*args, **kwargs)
 
-        # Declare public variables
+        # Declare private variables
         #
         self._name = kwargs.get('name')
-
-    def __call__(self, *args, **kwargs):
-        """
-        Private method that is called whenever this instance is evoked.
-
-        :type func: function
-        :rtype: function
-        """
-
-        # Execute order of operations
-        #
-        results = None
-
-        try:
-
-            self.__enter__(*args, **kwargs)
-            results = self.func(*args, **kwargs)
-            self.__exit__(None, None, None)
-
-        except RuntimeError as exception:
-
-            log.error(exception)
-
-        finally:
-
-            return results
 
     def __enter__(self, *args, **kwargs):
         """
@@ -66,7 +44,28 @@ class Undo(abstractdecorator.AbstractDecorator):
         :rtype: None
         """
 
+        self.loadPlugin()
         mc.undoInfo(openChunk=True, chunkName=self.name)
+
+    def __call__(self, *args, **kwargs):
+        """
+        Private method that is called whenever this instance is evoked.
+
+        :rtype: Any
+        """
+
+        try:
+
+            self.__enter__(*args, **kwargs)
+            results = self.func(*args, **kwargs)
+            self.__exit__(None, None, None)
+
+            return results
+
+        except RuntimeError as exception:
+
+            log.error(exception)
+            return None
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """
@@ -93,6 +92,28 @@ class Undo(abstractdecorator.AbstractDecorator):
         return self._name
     # endregion
 
+    # region Methods
+    def isPluginLoaded(self):
+        """
+        Evaluates if the `pyUndo` plugin command has been loaded.
+
+        :rtype: bool
+        """
+
+        return mc.pluginInfo('pyundocommand.py', query=True, loaded=True)
+
+    def loadPlugin(self):
+        """
+        Loads the `pyUndo` plugin command.
+
+        :rtype: None
+        """
+
+        if not self.isPluginLoaded():
+
+            mc.loadPlugin(os.path.join(self.__plugins__, 'pyundocommand.py'), quiet=True)
+    # endregion
+
 
 def undo(*args, **kwargs):
     """
@@ -117,3 +138,27 @@ def undo(*args, **kwargs):
     else:
 
         raise TypeError('undo() expects at most 1 argument (%s given)!' % numArgs)
+
+
+def commit(doIt, undoIt):
+    """
+    Passes the supplied functions to the py-undo bridge.
+
+    :type doIt: Callable
+    :type undoIt: Callable
+    :rtype: None
+    """
+
+    pyundobridge = sys.modules.get('pyundobridge')
+
+    if pyundobridge is not None:
+
+        log.debug(f'Sending: {doIt}, {undoIt} to py-undo bridge!')
+        pyundobridge.__doit__ = doIt
+        pyundobridge.__undoit__ = undoIt
+
+        mc.pyUndo()
+
+    else:
+
+        log.debug('Cannot locate py-undo bridge!')
