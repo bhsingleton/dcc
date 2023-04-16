@@ -737,22 +737,11 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
             knotIndex = i + 1
             knotType = pymxs.runtime.getKnotType(spline, splineIndex, knotIndex)
 
-            knot = {'type': knotType, 'inVec': None, 'point': None, 'outVec': None}
-            knots[i] = knot
+            inVec = pymxs.runtime.getInVec(spline, splineIndex, knotIndex) * parentInverseMatrix
+            point = pymxs.runtime.getKnotPoint(spline, splineIndex, knotIndex) * parentInverseMatrix
+            outVec = pymxs.runtime.getOutVec(spline, splineIndex, knotIndex) * parentInverseMatrix
 
-            if knotType in (pymxs.runtime.Name('corner'), pymxs.runtime.Name('bezierCorner')):
-
-                knot['point'] = pymxs.runtime.getKnotPoint(spline, splineIndex, knotIndex) * parentInverseMatrix
-
-            elif knotType in (pymxs.runtime.Name('smooth'), pymxs.runtime.Name('bezier')):
-
-                knot['inVec'] = pymxs.runtime.getInVec(spline, splineIndex, knotIndex) * parentInverseMatrix
-                knot['point'] = pymxs.runtime.getKnotPoint(spline, splineIndex, knotIndex) * parentInverseMatrix
-                knot['outVec'] = pymxs.runtime.getOutVec(spline, splineIndex, knotIndex) * parentInverseMatrix
-
-            else:
-
-                continue
+            knots[i] = {'type': knotType, 'inVec': inVec, 'point': point, 'outVec': outVec}
 
         return knots
 
