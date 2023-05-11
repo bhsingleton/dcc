@@ -106,6 +106,14 @@ class FbxSequence(fbxbase.FbxBase):
         :rtype: None
         """
 
+        # Check if directory is relative to cwd
+        #
+        cwd = self.cwd(expandVars=True)
+
+        if self.scene.isPathRelativeTo(directory, cwd):
+
+            directory = self.scene.makePathRelativeTo(directory, cwd)
+
         self._directory = directory
 
     @property
@@ -301,10 +309,11 @@ class FbxSequence(fbxbase.FbxBase):
 
             return None
 
-    def cwd(self):
+    def cwd(self, expandVars=False):
         """
         Returns the current working directory from the parent asset.
 
+        :type expandVars: bool
         :rtype: str
         """
 
@@ -312,13 +321,19 @@ class FbxSequence(fbxbase.FbxBase):
         #
         asset = self.asset()
 
-        if asset is not None:
+        if asset is None:
 
-            return asset.directory
+            return ''
+
+        # Check if variables should be expanded
+        #
+        if expandVars:
+
+            return os.path.expandvars(asset.directory)
 
         else:
 
-            return ''
+            return asset.directory
 
     def exportPath(self):
         """
@@ -327,19 +342,19 @@ class FbxSequence(fbxbase.FbxBase):
         :rtype: str
         """
 
-        # Check if asset exists
+        # Check if CWD exists
         #
         fileName = '{name}.fbx'.format(name=self.name)
-        path = os.path.join(os.path.expandvars(self.directory), fileName)
-        cwd = self.cwd()
+        path = os.path.join(self.directory, fileName)
+        cwd = self.cwd(expandVars=True)
 
-        if not stringutils.isNullOrEmpty(cwd):
+        if not stringutils.isNullOrEmpty(cwd) and self.scene.isPathRelative(path):
 
-            return os.path.join(os.path.expandvars(cwd), path)
+            return os.path.normpath(os.path.join(cwd, path))
 
         else:
 
-            return path
+            return os.path.normpath(path)
 
     def exportSet(self):
         """
@@ -370,7 +385,7 @@ class FbxSequence(fbxbase.FbxBase):
 
     def legacyExport(self):
         """
-        Exports this sequences to the user defined path using the legacy serializer.
+        Exports this sequences using the builtin serializer.
 
         :rtype: bool
         """
@@ -379,7 +394,7 @@ class FbxSequence(fbxbase.FbxBase):
         #
         if not self.isValid():
 
-            log.error(f'Cannot locate export set from "{self.name}" sequence!')
+            log.error(f'Cannot find asset associated with "{self.name}" sequence!')
             return False
 
         # Select nodes and execute pre-scripts
@@ -414,7 +429,7 @@ class FbxSequence(fbxbase.FbxBase):
 
     def customExport(self):
         """
-        Exports this sequences to the user defined path using the custom serializer.
+        Exports this sequences using a custom serializer.
 
         :rtype: bool
         """
@@ -423,7 +438,7 @@ class FbxSequence(fbxbase.FbxBase):
         #
         if not self.isValid():
 
-            log.error(f'Cannot locate export set from "{self.name}" sequence!')
+            log.error(f'Cannot find asset associated with "{self.name}" sequence!')
             return False
 
         # Serialize this sequence
@@ -444,7 +459,7 @@ class FbxSequence(fbxbase.FbxBase):
         #
         if not self.isValid():
 
-            log.error(f'Cannot locate export set from "{self.name}" sequence!')
+            log.error(f'Cannot find asset associated with "{self.name}" sequence!')
             return False
 
         # Check if legacy serializer should be used
@@ -462,7 +477,7 @@ class FbxSequence(fbxbase.FbxBase):
     def refresh(self):
         """
         Updates the return type for the export set ID property.
-        This allows the QPSONItemModel to display a list of valid export sets.
+        This allows the `QPSONItemModel` to display a list of valid export sets.
 
         :rtype: None
         """

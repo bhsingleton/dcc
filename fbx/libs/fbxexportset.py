@@ -356,16 +356,16 @@ class FbxExportSet(fbxbase.FbxBase):
         # Check if asset exists
         #
         fileName = '{name}.fbx'.format(name=self.name)
-        path = os.path.join(os.path.expandvars(self.directory), fileName)
+        path = os.path.join(self.directory, fileName)
         cwd = self.cwd(expandVars=True)
 
-        if not self.scene.isNullOrEmpty(cwd):
+        if not self.scene.isNullOrEmpty(cwd) and self.scene.isPathRelative(path):
 
-            return os.path.join(cwd, path)
+            return os.path.normpath(os.path.join(cwd, path))
 
         else:
 
-            return path
+            return os.path.normpath(path)
 
     def select(self, animationOnly=False, namespace=''):
         """
