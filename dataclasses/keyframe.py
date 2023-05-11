@@ -22,3 +22,19 @@ class Keyframe(adc.ADC):
     outTangent: vector.Vector = field(default_factory=vector.Vector)
     outTangentType: Union[int, str] = 0
     # endregion
+
+    # region Dunderscores
+    def __neg__(self):
+        """
+        Private method that implements the inversion operator.
+
+        :rtype: Vector
+        """
+
+        keyframe = self.copy()
+        keyframe.value = -self.value
+        keyframe.inTangent.y = -self.inTangent.y
+        keyframe.outTangent.y = -self.outTangent.y
+
+        return keyframe
+    # endregion
