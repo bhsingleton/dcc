@@ -6,7 +6,7 @@ import subprocess
 
 from P4 import P4Exception
 from dcc import fnscene
-from dcc.perforce import createAdapter, cmds
+from dcc.perforce import createAdapter, cmds, clientutils
 
 import logging
 logging.basicConfig()
@@ -32,7 +32,95 @@ def isNullOrEmpty(value):
 
     else:
 
-        raise TypeError('isNullOrEmpty() expects a sequence (%s given)!' % type(value).__name__)
+        return False
+
+
+def acceptsCheckout(filePath):
+    """
+    Evaluates if the file can be checked out from P4.
+
+    :type filePath: str
+    :rtype: bool
+    """
+
+    # Check if path is in client view
+    #
+    client = clientutils.getCurrentClient()
+
+    if not client.hasAbsoluteFile(filePath):
+
+        return False
+
+    # Evaluate file specs
+    #
+    depotPath = client.mapToDepot(filePath)
+    specs = cmds.files(depotPath)
+
+    return len(specs) == 1
+
+
+def tryCheckout(filePath):
+    """
+    Attempts to checkout the supplied file from perforce.
+
+    :type filePath: str
+    :rtype: bool
+    """
+
+    accepted = acceptsCheckout(filePath)
+
+    if accepted:
+
+        cmds.edit(filePath)
+        return True
+
+    else:
+
+        return False
+
+
+def acceptsAdd(filePath):
+    """
+    Evaluates if the file can be added to P4.
+
+    :type filePath: str
+    :rtype: bool
+    """
+
+    # Check if path is in client view
+    #
+    client = clientutils.getCurrentClient()
+
+    if not client.hasAbsoluteFile(filePath):
+
+        return False
+
+    # Evaluate file specs
+    #
+    depotPath = client.mapToDepot(filePath)
+    specs = cmds.files(depotPath)
+
+    return len(specs) == 0
+
+
+def tryAdd(filePath):
+    """
+    Attempts to add the supplied file to perforce.
+
+    :type filePath: str
+    :rtype: bool
+    """
+
+    accepted = acceptsAdd(filePath)
+
+    if accepted:
+
+        cmds.add(filePath)
+        return True
+
+    else:
+
+        return False
 
 
 def checkoutScene():
@@ -44,12 +132,33 @@ def checkoutScene():
 
     # Check if scene exists
     #
-    fnScene = fnscene.FnScene()
-    filePath = fnScene.currentFilePath()
+    scene = fnscene.FnScene()
+    filePath = scene.currentFilePath()
 
     if os.path.exists(filePath):
 
-        return cmds.edit(filePath)
+        return tryCheckout(filePath)
+
+    else:
+
+        log.warning('Unable to checkout untitled scene file!')
+
+
+def addScene():
+    """
+    Adds the open scene file to perforce.
+
+    :rtype: None
+    """
+
+    # Check if scene exists
+    #
+    scene = fnscene.FnScene()
+    filePath = scene.currentFilePath()
+
+    if os.path.exists(filePath):
+
+        return tryAdd(filePath)
 
     else:
 
@@ -140,19 +249,48 @@ def makeSceneReadOnly():
         log.warning('Unable to make scene file writable!')
 
 
-def renameFile(oldPath, newPath, changelist='default'):
+def moveDirectory(fromDir, toDir, search='', replace='', changelist='default'):
     """
-    Renames the old path to the new path and adds it to the specified changelist.
+    Moves the files from the specified directory to the new location.
 
-    :type oldPath: str
-    :type newPath: str
+    :type fromDir: str
+    :type toDir: str
+    :type search: str
+    :type replace: str
     :type changelist: Union[str, int]
     :rtype: None
     """
 
-    shutil.copy(oldPath, newPath)
-    cmds.delete(oldPath, changelist=changelist)
-    cmds.add(newPath, changelist=changelist)
+    # Collect files in directory to move
+    #
+    filenames = [filename for filename in os.listdir(fromDir) if os.path.isfile(os.path.join(fromDir, filename))]
+
+    fromFiles = [os.path.join(fromDir, filename) for filename in filenames]
+    toFiles = [os.path.join(toDir, filename.replace(search, replace)) for filename in filenames]
+
+    # Iterate through files
+    #
+    for (fromFile, toFile) in zip(fromFiles, toFiles):
+
+        cmds.move(fromFile, toFile, changelist=changelist)
+
+
+def moveFile(fromFile, toDir, search='', replace='', changelist='default'):
+    """
+    Moves the supplied file to the new location.
+
+    :type fromFile: str
+    :type toDir: str
+    :type search: str
+    :type replace: str
+    :type changelist: Union[str, int]
+    :rtype: None
+    """
+    
+    filename = os.path.basename(fromFile)
+    toFile = os.path.join(toDir, filename.replace(search, replace))
+
+    cmds.move(fromFile, toFile, changelist=changelist)
 
 
 def saveChangelist(changelist, filePath, **kwargs):

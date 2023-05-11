@@ -75,81 +75,32 @@ def files(*args, **kwargs):
     To perform a client search use the following syntax: //{client}/.../*.fbx
     To limit a get request to a specific directory use: //{depot}/*
 
-    :rtype: list[dict]
+    :rtype: List[dict]
     """
 
     # Create repository
     #
     p4 = createAdapter(**kwargs)
+    specs = []
 
     try:
 
         p4.connect()
         specs = p4.run('files', '-e', *args)
-        p4.disconnect()
-
-        return specs
 
     except P4Exception:
 
         logErrors(p4.errors)
-        return []
+
+    finally:
+
+        p4.disconnect()
+        return specs
 
 
 def dirs(*args, **kwargs):
     """
     Lists directories from the depot tree based on the supplied paths.
-
-    :rtype: list[dict]
-    """
-
-    # Create repository
-    #
-    p4 = createAdapter(**kwargs)
-
-    try:
-
-        p4.connect()
-        specs = p4.run('dirs', '-C', *args)
-        p4.disconnect()
-
-        return specs
-
-    except P4Exception:
-
-        logErrors(p4.errors)
-        return []
-
-
-def where(*args, **kwargs):
-    """
-    Lists all path variations for the supplied list of paths.
-    Each indexed dictionary contains the following keys: 'clientFile', 'depotFile' and 'path'.
-
-    :rtype: list[dict[str:str]]
-    """
-
-    # Create repository
-    #
-    p4 = createAdapter(**kwargs)
-
-    try:
-
-        p4.connect()
-        fileSpecs = p4.run('where', *args)
-        p4.disconnect()
-
-        return fileSpecs
-
-    except P4Exception:
-
-        logErrors(p4.errors)
-        return []
-
-
-def fstat(*args, **kwargs):
-    """
-    Returns information for each file.
 
     :rtype: List[dict]
     """
@@ -157,19 +108,76 @@ def fstat(*args, **kwargs):
     # Create repository
     #
     p4 = createAdapter(**kwargs)
+    specs = []
 
     try:
 
         p4.connect()
-        fileSpecs = p4.run('fstat', *args)
-        p4.disconnect()
-
-        return fileSpecs
+        specs = p4.run('dirs', '-C', *args)
 
     except P4Exception:
 
         logErrors(p4.errors)
-        return []
+
+    finally:
+
+        p4.disconnect()
+        return specs
+
+
+def where(*args, **kwargs):
+    """
+    Lists all path variations for the supplied list of paths.
+    Each indexed dictionary contains the following keys: 'clientFile', 'depotFile' and 'path'.
+
+    :rtype: List[Dict[str, str]]
+    """
+
+    # Create repository
+    #
+    p4 = createAdapter(**kwargs)
+    specs = []
+
+    try:
+
+        p4.connect()
+        specs = p4.run('where', *args)
+
+    except P4Exception:
+
+        logErrors(p4.errors)
+
+    finally:
+
+        p4.disconnect()
+        return specs
+
+
+def fstat(*args, **kwargs):
+    """
+    Returns file stats for each supplied file.
+
+    :rtype: List[dict]
+    """
+
+    # Create repository
+    #
+    p4 = createAdapter(**kwargs)
+    specs = []
+
+    try:
+
+        p4.connect()
+        specs = p4.run('fstat', *args)
+
+    except P4Exception:
+
+        logErrors(p4.errors)
+
+    finally:
+
+        p4.disconnect()
+        return specs
 
 
 def sync(*args, **kwargs):
@@ -183,83 +191,121 @@ def sync(*args, **kwargs):
     # Create repository
     #
     p4 = createAdapter(**kwargs)
+    specs = []
 
     try:
 
-        # Sync on files
-        #
         p4.connect()
-        results = p4.run('sync', '-f', *args)
-        p4.disconnect()
-
-        # Display perforce feedback
-        #
-        logResults(results)
-        return results
+        specs = p4.run('sync', '-f', *args)
+        logResults(specs)
 
     except P4Exception:
 
         logErrors(p4.errors)
+
+    finally:
+
+        p4.disconnect()
+        return specs
 
 
 def add(*args, **kwargs):
     """
-    Marks a local file to add to the server.
+    Marks the supplied local files to be added to the depot.
     All file paths should be supplied as arguments!
 
+    :key changelist: int
     :rtype: dict
     """
 
     # Create repository
     #
     p4 = createAdapter(**kwargs)
+    changelist = kwargs.get('changelist', 'default')
+
+    specs = []
 
     try:
 
-        # Check out files
-        #
         p4.connect()
-        results = p4.run('add', '-c', kwargs.get('changelist', 'default'), *args)
-        p4.disconnect()
-
-        # Display perforce feedback
-        #
-        logResults(results)
-        return results
+        specs = p4.run('add', '-c', changelist, *args)
+        logResults(specs)
 
     except P4Exception:
 
         logErrors(p4.errors)
+
+    finally:
+
+        p4.disconnect()
+        return specs
 
 
 def edit(*args, **kwargs):
     """
-    Checks out a file for editing.
+    Checks out the supplied local files for editing.
     All file paths should be supplied as arguments!
 
+    :key changelist: int
     :rtype: dict
     """
 
     # Create repository
     #
     p4 = createAdapter(**kwargs)
+    changelist = kwargs.get('changelist', 'default')
+
+    specs = []
 
     try:
 
-        # Check out files
-        #
         p4.connect()
-        results = p4.run('edit', '-c', kwargs.get('changelist', 'default'), *args)
-        p4.disconnect()
-
-        # Display perforce feedback
-        #
-        logResults(results)
-        return results
+        specs = p4.run('edit', '-c', changelist, *args)
+        logResults(specs)
 
     except P4Exception:
 
         logErrors(p4.errors)
+
+    finally:
+
+        p4.disconnect()
+        return specs
+
+
+def move(fromFile, toFile, **kwargs):
+    """
+    Moves the local file to the new location.
+
+    :type fromFile: str
+    :type toFile: str
+    :key changelist: int
+    :rtype: bool
+    """
+
+    # Create repository
+    #
+    p4 = createAdapter(**kwargs)
+    changelist = kwargs.get('changelist', 'default')
+
+    success = False
+
+    try:
+
+        p4.connect()
+        specs = p4.run('move', '-c', changelist, fromFile, toFile)
+        logResults(specs)
+
+        success = True
+
+    except P4Exception:
+
+        logErrors(p4.errors)
+
+    finally:
+
+        p4.disconnect()
+        return success
 
 
 def delete(*args, **kwargs):
@@ -273,75 +319,73 @@ def delete(*args, **kwargs):
     # Create repository
     #
     p4 = createAdapter(**kwargs)
+    specs = []
 
     try:
 
-        # Check out files
-        #
         p4.connect()
-        results = p4.run('delete', '-c', kwargs.get('changelist', 'default'), *args)
-        p4.disconnect()
-
-        # Display perforce feedback
-        #
-        logResults(results)
-        return results
+        specs = p4.run('delete', '-c', kwargs.get('changelist', 'default'), *args)
+        logResults(specs)
 
     except P4Exception:
 
         logErrors(p4.errors)
+
+    finally:
+
+        p4.disconnect()
+        return specs
 
 
 def revert(*args, **kwargs):
     """
     Reverts any changes made to the supplied files.
 
-    :rtype: list[dict]
+    :rtype: List[dict]
     """
 
     # Create repository
     #
     p4 = createAdapter(**kwargs)
+    specs = []
 
     try:
 
         # Revert files
         #
         p4.connect()
-        results = p4.run('revert', '-a', *args)
-        p4.disconnect()
-
-        # Display perforce feedback
-        #
-        logResults(results)
-        return results
+        specs = p4.run('revert', '-a', *args)
+        logResults(specs)
 
     except P4Exception:
 
         logErrors(p4.errors)
+
+    finally:
+
+        p4.disconnect()
+        return specs
 
 
 def clients(*args, **kwargs):
     """
     Collects ALL clients specs associated with the supplied user.
 
-    :rtype: list[dict]
+    :rtype: List[dict]
     """
 
     # Create repository
     #
     p4 = createAdapter(**kwargs)
+    host = kwargs.get('host', None)
+
+    specs = []
 
     try:
 
-        # Connect to server
-        #
-        p4.connect()
-
         # Collect clients associated with user
         #
-        host = kwargs.get('host', None)
-        specs = None
+        p4.connect()
 
         if host is not None:
 
@@ -351,14 +395,14 @@ def clients(*args, **kwargs):
 
             specs = [x for x in p4.iterate_clients(['-u', p4.user])]
 
-        # Disconnect from server
-        #
-        p4.disconnect()
-        return specs
-
     except P4Exception:
 
         logErrors(p4.errors)
+
+    finally:
+
+        p4.disconnect()
+        return specs
 
 
 def client(*args, **kwargs):
@@ -371,42 +415,48 @@ def client(*args, **kwargs):
     # Create repository
     #
     p4 = createAdapter(**kwargs)
+    specs = []
 
     try:
 
         p4.connect()
         specs = p4.fetch_client(args[0])
-        p4.disconnect()
-
-        return specs
 
     except P4Exception:
 
         logErrors(p4.errors)
+
+    finally:
+
+        p4.disconnect()
+        return specs
 
 
 def depots(*args, **kwargs):
     """
     Collects ALL depot specs from the server.
 
-    :rtype: list[dict]
+    :rtype: List[dict]
     """
 
     # Create repository
     #
     p4 = createAdapter(**kwargs)
+    specs = []
 
     try:
 
         p4.connect()
-        specs = [x for x in p4.iterate_depots()]
-        p4.disconnect()
-
-        return specs
+        specs = list(p4.iterate_depots())
 
     except P4Exception:
 
         logErrors(p4.errors)
+
+    finally:
+
+        p4.disconnect()
+        return specs
 
 
 def depot(*args, **kwargs):
@@ -419,18 +469,21 @@ def depot(*args, **kwargs):
     # Create repository
     #
     p4 = createAdapter(**kwargs)
+    specs = []
 
     try:
 
         p4.connect()
         specs = p4.fetch_depot(args[0])
-        p4.disconnect()
-
-        return specs
 
     except P4Exception:
 
         logErrors(p4.errors)
+
+    finally:
+
+        p4.disconnect()
+        return specs
 
 
 def changes(*args, **kwargs):
@@ -441,26 +494,27 @@ def changes(*args, **kwargs):
 
     :key client: str
     :key status: str
-    :rtype: list[dict]
+    :rtype: List[dict]
     """
 
     # Create repository
     #
     p4 = createAdapter(**kwargs)
+    specs = []
 
     try:
 
-        # Sync on files
-        #
         p4.connect()
-        results = p4.run('changes', '-c', kwargs.get('client', os.environ['P4CLIENT']), '-s', kwargs.get('status', 'pending'))
-        p4.disconnect()
-
-        return results
+        specs = p4.run('changes', '-c', kwargs.get('client', os.environ['P4CLIENT']), '-s', kwargs.get('status', 'pending'))
 
     except P4Exception:
 
         logErrors(p4.errors)
+
+    finally:
+
+        p4.disconnect()
+        return specs
 
 
 def login(password, **kwargs):
@@ -478,18 +532,23 @@ def login(password, **kwargs):
     p4 = createAdapter(**kwargs)
     p4.password = password
 
+    success = False
+
     try:
 
         p4.connect()
-        results = p4.run_login()
-        p4.disconnect()
+        specs = p4.run_login()
 
-        return int(results[0]['TicketExpiration']) > 0
+        success = int(specs[0]['TicketExpiration']) > 0
 
     except P4Exception:
 
         logErrors(p4.errors)
-        return False
+
+    finally:
+
+        p4.disconnect()
+        return success
 
 
 def loginExpiration(*args, **kwargs):
@@ -505,16 +564,20 @@ def loginExpiration(*args, **kwargs):
     # Create repository
     #
     p4 = createAdapter(**kwargs)
+    expiration = 0
 
     try:
 
         p4.connect()
-        results = p4.run('login', '-s')
-        p4.disconnect()
+        specs = p4.run('login', '-s')
 
-        return int(results[0]['TicketExpiration'])
+        expiration = int(specs[0]['TicketExpiration'])
 
     except P4Exception:
 
         logErrors(p4.errors)
-        return 0
+
+    finally:
+
+        p4.disconnect()
+        return expiration
