@@ -215,7 +215,7 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
         """
 
         matrix = self.nativizeMatrix(matrix)
-        transformutils.applyTransformMatrix(self.object(), matrix)
+        transformutils.applyTransformMatrix(self.object(), matrix, **kwargs)
 
     def parentMatrix(self):
         """
