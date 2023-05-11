@@ -274,8 +274,8 @@ class FbxSerializer(object):
 
         while not node.isDone():
 
-            node.next()
             self.createFbxNode(node)
+            node.next()
 
     def ensureParent(self, copyFrom, copyTo):
         """
@@ -944,18 +944,9 @@ class FbxSerializer(object):
         skinWeights = skin.vertexWeights()
         influences = skin.influences()
 
-        influence = fnnode.FnNode()
         fbxClusters = {}
 
-        for (influenceId, obj) in influences.items():
-
-            # Check for none type
-            #
-            success = influence.trySetObject(obj)
-
-            if not success:
-
-                continue
+        for (influenceId, influence) in influences.items():
 
             # Get fbx limb from influence's hash code
             #
@@ -977,7 +968,7 @@ class FbxSerializer(object):
             #
             for (influenceId, weight) in vertexWeights.items():
 
-                influence.setObject(influences[influenceId])
+                influence = influences[influenceId]
                 handle = influence.handle()
 
                 fbxClusters[handle].AddControlPointIndex(vertexIndex, weight)
@@ -1090,10 +1081,10 @@ class FbxSerializer(object):
 
         while not joint.isDone():
 
-            joint.next()
-
             fbxNode = self.createFbxSkeleton(joint)
             fbxNodes.append(fbxNode)
+
+            joint.next()
 
         return fbxNodes
 
@@ -1114,10 +1105,10 @@ class FbxSerializer(object):
 
         while not mesh.isDone():
 
-            mesh.next()
-
             fbxNode = self.createFbxMesh(mesh, **settings)
             fbxNodes.append(fbxNode)
+
+            mesh.next()
 
         return fbxNodes
 
@@ -1147,7 +1138,10 @@ class FbxSerializer(object):
 
         # Save changes
         #
-        self.saveAs(exportSet.exportPath())
+        exportPath = exportSet.exportPath()
+        self.scene.ensureDirectory(exportPath)
+
+        self.saveAs(exportPath)
 
     def serializeSequence(self, sequence):
         """
@@ -1171,7 +1165,10 @@ class FbxSerializer(object):
 
         # Save changes
         #
-        self.saveAs(sequence.exportPath())
+        exportPath = sequence.exportPath()
+        self.scene.ensureDirectory(exportPath)
+
+        self.saveAs(exportPath)
 
     def saveAs(self, filePath):
         """

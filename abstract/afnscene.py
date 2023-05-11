@@ -453,8 +453,8 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         while not fnTexture.isDone():
 
-            fnTexture.next()
             fnTexture.makeRelative()
+            fnTexture.next()
 
     def makeTexturesAbsolute(self):
         """
@@ -463,13 +463,13 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
         :rtype: None
         """
 
-        fnTexture = fntexture.FnTexture()
-        fnTexture.setQueue(fnTexture.instances())
+        texture = fntexture.FnTexture()
+        texture.setQueue(texture.instances())
 
-        while not fnTexture.isDone():
+        while not texture.isDone():
 
-            fnTexture.next()
-            fnTexture.makeAbsolute()
+            texture.makeAbsolute()
+            texture.next()
 
     def syncMissingTextures(self):
         """
@@ -478,13 +478,13 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
         :rtype: None
         """
 
-        fnTexture = fntexture.FnTexture()
-        fnTexture.setQueue(fnTexture.instances())
+        texture = fntexture.FnTexture()
+        texture.setQueue(texture.instances())
 
-        while not fnTexture.isDone():
+        while not texture.isDone():
 
-            fnTexture.next()
-            fnTexture.getLatest()
+            texture.getLatest()
+            texture.next()
 
     def fixBrokenTextures(self):
         """
@@ -493,13 +493,13 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
         :rtype: None
         """
 
-        fnTexture = fntexture.FnTexture()
-        fnTexture.setQueue(fnTexture.instances())
+        texture = fntexture.FnTexture()
+        texture.setQueue(texture.instances())
 
-        while not fnTexture.isDone():
+        while not texture.isDone():
 
-            fnTexture.next()
-            fnTexture.fix()
+            texture.fix()
+            texture.next()
 
     @abstractmethod
     def suspendViewport(self):

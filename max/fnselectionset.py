@@ -205,8 +205,8 @@ class FnSelectionSet(afnselectionset.AFnSelectionSet):
 
         while not node.isDone():
 
-            node.next()
             pymxs.runtime.appendIfUnique(selectionSet, node.object())
+            node.next()
 
     def removeNodes(self, *nodes):
         """
@@ -223,7 +223,6 @@ class FnSelectionSet(afnselectionset.AFnSelectionSet):
 
         while not node.isDone():
 
-            node.next()
             index = pymxs.runtime.findItem(selectionSet, node.object())
 
             if index > 0:
@@ -232,4 +231,5 @@ class FnSelectionSet(afnselectionset.AFnSelectionSet):
 
             else:
 
+                node.next()
                 continue

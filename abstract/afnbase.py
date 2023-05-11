@@ -271,13 +271,26 @@ class AFnBase(with_metaclass(ABCMeta, object)):
         :rtype: None
         """
 
-        if isinstance(queue, (collections_abc.MutableSequence, collections_abc.Iterable)) and not isinstance(queue, string_types):
-
-            self._queue = deque(flatten(queue))
-
-        else:
+        # Check if queue is valid
+        #
+        if not self.acceptsQueue(queue):
 
             raise TypeError('setQueue() expects a sequence (%s given)!' % type(queue).__name__)
+
+        # Update internal queue and go to first item
+        #
+        self._queue = deque(flatten(queue))
+        self.next()
+
+    def acceptsQueue(self, queue):
+        """
+        Evaluates if the supplied object can be used as a queue.
+
+        :type queue: Any
+        :rtype: bool
+        """
+
+        return isinstance(queue, (collections_abc.MutableSequence, collections_abc.Iterable)) and not isinstance(queue, string_types)
 
     def isDone(self):
         """

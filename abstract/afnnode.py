@@ -325,19 +325,18 @@ class AFnNode(with_metaclass(ABCMeta, afnobject.AFnObject)):
         :rtype: iter
         """
 
-        fnNode = cls()
-        fnNode.setQueue(cls.iterInstances())
+        node = cls()
+        node.setQueue(cls.iterInstances())
 
-        while not fnNode.isDone():
+        while not node.isDone():
 
-            node = fnNode.next()
+            if fnmatch(node.name(), pattern):
 
-            if fnmatch(fnNode.name(), pattern):
-
-                yield node
+                yield node.object()
 
             else:
 
+                node.next()
                 continue
 
     @classmethod
@@ -349,19 +348,18 @@ class AFnNode(with_metaclass(ABCMeta, afnobject.AFnObject)):
         :rtype: iter
         """
 
-        fnNode = cls()
-        fnNode.setQueue(cls.iterInstances())
+        node = cls()
+        node.setQueue(cls.iterInstances())
 
         regex = re.compile(pattern)
 
-        while not fnNode.isDone():
+        while not node.isDone():
 
-            node = fnNode.next()
+            if regex.match(node.name()):
 
-            if regex.match(fnNode.name()):
-
-                yield node
+                yield node.object()
 
             else:
 
+                node.next()
                 continue
