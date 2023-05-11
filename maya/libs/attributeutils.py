@@ -3,8 +3,9 @@ import json
 
 from maya.api import OpenMaya as om
 from six import string_types
-from dcc.maya.libs import dagutils
-from dcc.maya.json import mattributeparser
+from . import dagutils
+from ..json import mattributeparser
+from ..decorators.undo import commit
 
 import logging
 logging.basicConfig()
@@ -16,29 +17,52 @@ SCHEMA_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'sc
 ATTRIBUTES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'attributes')
 
 
-def addAttribute(dependNode, **kwargs):
+def addAttribute(node, **kwargs):
     """
     Adds an attribute to the supplied node with the specified parameters.
     Do not use this method with compound attributes!
     Create the attribute then add the children before committing to the node!
 
-    :type dependNode: om.MObject
+    :type node: om.MObject
     :key longName: str
     :key shortName: str
     :key attributeType: str
+    :key modifier: Union[om.MDGModifier, None]
     :rtype: om.MObject
     """
 
-    fnDependNode = om.MFnDependencyNode(dependNode)
+    # Check if a modifier was supplied
+    #
+    modifier = kwargs.get('modifier', None)
 
-    attribute = createAttribute(**kwargs)
-    fnAttribute = om.MFnAttribute(attribute)
+    if modifier is None:
 
-    if not fnDependNode.hasAttribute(fnAttribute.name):
+        modifier = om.MDGModifier()
 
-        fnDependNode.addAttribute(attribute)
+    # Check if attribute already exists
+    #
+    node = dagutils.getMObject(node)
+    fnDependNode = om.MFnDependencyNode(node)
 
-    return attribute
+    attributeName = kwargs.get('longName', kwargs.get('shortName', ''))
+
+    if not fnDependNode.hasAttribute(attributeName):
+
+        # Add attribute to node
+        #
+        attribute = createAttribute(**kwargs)
+        modifier.addAttribute(node, attribute)
+
+        # Cache and execute modifier
+        #
+        commit(modifier.doIt, modifier.undoIt)
+        modifier.doIt()
+
+        return attribute
+
+    else:
+
+        return fnDependNode.attribute(attributeName)
 
 
 def createAttribute(**kwargs):
@@ -56,32 +80,35 @@ def createAttribute(**kwargs):
     return decoder.default(kwargs)
 
 
-def applyAttributeTemplate(dependNode, filePath):
+def applyAttributeTemplate(node, filePath):
     """
     Applies an attribute template to the supplied dependency node.
 
-    :type dependNode: Union[str, om.MObject]
+    :type node: Union[str, om.MObject]
     :type filePath: str
     :rtype: List[om.MObject]
     """
 
-    # Check value type
+    # Check if a modifier was supplied
     #
-    if isinstance(dependNode, string_types):
+    modifier = kwargs.get('modifier', None)
 
-        dependNode = dagutils.getMObject(dependNode)
+    if modifier is None:
 
-    # Load json data
+        modifier = om.MDGModifier()
+
+    # Deserialize attribute template
     #
+    node = dagutils.getMObject(node)
     attributes = []
 
     with open(filePath, 'r') as jsonFile:
 
-        attributes = json.load(jsonFile, cls=mattributeparser.MAttributeDecoder, node=dependNode)
+        attributes = json.load(jsonFile, cls=mattributeparser.MAttributeDecoder, node=node)
 
     # Iterate through attributes
     #
-    fnDependNode = om.MFnDependencyNode(dependNode)
+    fnDependNode = om.MFnDependencyNode(node)
     fnAttribute = om.MFnAttribute()
 
     for attribute in attributes:
@@ -90,11 +117,16 @@ def applyAttributeTemplate(dependNode, filePath):
 
         if not fnDependNode.hasAttribute(fnAttribute.name):
 
-            fnDependNode.addAttribute(attribute)
+            modifier.addAttribute(node, attribute)
 
         else:
 
             continue
+
+    # Cache and execute modifier
+    #
+    commit(modifier.doIt, modifier.undoIt)
+    modifier.doIt()
 
     return attributes
 
@@ -139,6 +171,60 @@ def applyAttributeExtensionTemplate(nodeClass, filePath):
             continue
 
     return attributes
+
+
+def findAttribute(*args):
+    """
+    Returns the attribute associated with the supplied arguments.
+
+    :type args: Union[str, Tuple[om.MObject, str], om.MPlug]
+    :rtype: om.MObject
+    """
+
+    # Evaluate number of arguments
+    #
+    numArgs = len(args)
+
+    if numArgs == 1:
+
+        # Evaluate argument
+        #
+        arg = args[0]
+
+        if isinstance(arg, om.MObject):
+
+            return arg
+
+        elif isinstance(arg, om.MPlug):
+
+            return arg.attribute()
+
+        elif isinstance(arg, string_types):
+
+            node, plug = dagutils.getMObject(arg)
+            return plug.attribute()
+
+        else:
+
+            raise TypeError('findAttribute() expects either a str of MPlug (%s given)!' % type(arg).__name__)
+
+    elif numArgs == 2:
+
+        # Lookup attribute from node
+        #
+        node, attribute = args
+
+        if isinstance(node, om.MObject) and isinstance(attribute, string_types):
+
+            return om.MFnDependencyNode(node).attribute(attribute)
+
+        else:
+
+            raise TypeError('findAttribute() expects an MObject and str!')
+
+    else:
+
+        raise TypeError('findAttribute() expects 1-2 arguments (%s given)!' % numArgs)
 
 
 def getAttributeTypeName(attribute):
