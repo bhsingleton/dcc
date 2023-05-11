@@ -39,13 +39,13 @@ class Colour(adc.ADC):
 
         # Check if sequence was passed to constructor
         #
-        arg = self.x
+        args = self.x
 
-        if hasattr(arg, '__getitem__') and hasattr(arg, '__len__'):
+        if hasattr(args, '__getitem__') and hasattr(args, '__len__'):
 
             # Un-package items into vector
             #
-            for (i, item) in enumerate(arg):
+            for (i, item) in enumerate(args):
 
                 self[i] = item
 
