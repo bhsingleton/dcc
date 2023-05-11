@@ -2,6 +2,7 @@ import os
 
 from maya import cmds as mc
 from maya import mel
+from ..decorators.undo import undo
 
 import logging
 logging.basicConfig()
@@ -278,6 +279,7 @@ def getTime():
     return int(mc.currentTime(query=True))
 
 
+@undo(state=False)
 def setTime(time):
     """
     Updates the current time.
@@ -299,6 +301,7 @@ def autoKey():
     return mc.autoKeyframe(query=True, state=True)
 
 
+@undo(state=False)
 def setAutoKey(state):
     """
     Updates the auto-key state.
@@ -317,7 +320,7 @@ def enableAutoKey():
     :rtype: None
     """
 
-    mc.autoKeyframe(state=True)
+    setAutoKey(True)
 
 
 def disableAutoKey():
@@ -327,7 +330,7 @@ def disableAutoKey():
     :rtype: None
     """
 
-    mc.autoKeyframe(state=False)
+    setAutoKey(False)
 
 
 def suspendViewport():
