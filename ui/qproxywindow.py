@@ -19,6 +19,7 @@ class QProxyWindow(QtWidgets.QMainWindow):
     __icon__ = QtGui.QIcon()
     __qt__ = fnqt.FnQt()
     __author__ = 'Ben Singleton'
+    __keys__ = (QtCore.Qt.Key_Backspace, QtCore.Qt.Key_Delete)
 
     def __new__(cls, *args, **kwargs):
         """
@@ -149,7 +150,13 @@ class QProxyWindow(QtWidgets.QMainWindow):
         :rtype: None
         """
 
-        pass  # FYI this does not work in 3ds Max...
+        if event.key() in self.__class__.__keys__:
+
+            event.accept()  # FYI this does not work in 3ds Max...
+
+        else:
+
+            super(QProxyWindow, self).keyPressEvent(event)
 
     def showEvent(self, event):
         """
