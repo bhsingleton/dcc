@@ -286,7 +286,8 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
         :rtype: None
         """
 
-        self.manager.saveAsset(self.asset)  # This will mark the scene as dirty!
+        self.manager.saveAsset(self.asset)
+        self.scene.save()
 
     @QtCore.Slot(bool)
     def on_saveAsAction_triggered(self, checked=False):

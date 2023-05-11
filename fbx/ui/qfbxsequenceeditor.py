@@ -1,3 +1,5 @@
+import os
+
 from Qt import QtWidgets, QtCore, QtGui
 from dcc import fnscene, fnreference, fnnotify
 from dcc.generators.consecutivepairs import consecutivePairs
@@ -111,6 +113,18 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
 
         self.sequencerTreeView.setItemDelegate(self.sequencerItemDelegate)
 
+    def defaultSequence(self):
+        """
+        Returns a new sequence using the current scene settings.
+
+        :rtype: fbxsequence.FbxSequence
+        """
+
+        name = os.path.splitext(self.scene.currentFilename())[0]
+        startFrame, endFrame = self.scene.getStartTime(), self.scene.getEndTime()
+
+        return fbxsequence.FbxSequence(name=name, startFrame=startFrame, endFrame=endFrame, useTimeline=False)
+
     def getSelectedRows(self):
         """
         Returns the selected rows from the tree view.
@@ -223,24 +237,32 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
     @QtCore.Slot(int)
     def on_sequencerComboBox_currentIndexChanged(self, index):
         """
-        Slot method for the sequencerComboBox's currentIndexChanged signal.
+        Slot method for the sequencerComboBox's `currentIndexChanged` signal.
 
         :type index: int
         :rtype: None
         """
 
+        # Update current sequencer
+        #
         numSequencers = len(self.sequencers)
 
         if 0 <= index < numSequencers:
 
             self._currentSequencer = self.sequencers[index]
 
+        else:
+
+            self._currentSequencer = None
+
+        # Invalidate sequences
+        #
         self.invalidateSequences()
 
     @QtCore.Slot(QtCore.QModelIndex)
     def on_sequencerTreeView_clicked(self, index):
         """
-        Slot method for the sequencerTreeView's clicked signal.
+        Slot method for the sequencerTreeView's `clicked` signal.
 
         :type index: QtCore.QModelIndex
         :rtype: None
@@ -251,7 +273,7 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
     @QtCore.Slot(bool)
     def on_newSequencerAction_triggered(self, checked=False):
         """
-        Slot method for the newSequencerAction's triggered signal.
+        Slot method for the newSequencerAction's `triggered` signal.
 
         :type checked: bool
         :rtype: None
@@ -271,13 +293,15 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
 
         # Prompt user to select a reference
         #
-        filePaths = [reference(obj).filePath() for obj in references]
+        currentPaths = [self.sequencerComboBox.itemText(i) for i in range(self.sequencerComboBox.count())]
+        referencePaths = [reference(obj).filePath() for obj in references]
+        filteredPaths = [path for path in referencePaths if path not in currentPaths]
 
         item, okay = QtWidgets.QInputDialog.getItem(
             self,
             'Create Sequencer',
             'Select a Referenced Asset:',
-            filePaths,
+            filteredPaths,
             editable=False
         )
 
@@ -285,10 +309,11 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
         #
         if okay:
 
-            index = filePaths.index(item)
+            index = filteredPaths.index(item)
             guid = reference(references[index]).guid()
+            sequence = self.defaultSequence()
 
-            sequencer = fbxsequencer.FbxSequencer(guid=guid, sequences=[fbxsequence.FbxSequence()])
+            sequencer = fbxsequencer.FbxSequencer(guid=guid, sequences=[sequence])
             self.sequencers.append(sequencer)
 
             self.invalidateSequencers()
@@ -298,32 +323,73 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
             log.info('Operation aborted...')
 
     @QtCore.Slot(bool)
+    def on_deleteSequencerPushButton_clicked(self, checked=False):
+        """
+        Slot method for the deleteSequencerAction's `triggered` signal.
+
+        :type checked: bool
+        :rtype: None
+        """
+
+        # Redundancy check
+        #
+        if len(self.sequencers) == 0:
+
+            return
+
+        # Confirm user wants to delete sequencer
+        #
+        response = QtWidgets.QMessageBox.warning(
+            self,
+            'Delete Sequencer',
+            'Are you sure you want to delete this sequencer and all of its sequences?',
+            QtWidgets.QMessageBox.Ok | QtWidgets.QMessageBox.Cancel
+        )
+
+        if response != QtWidgets.QMessageBox.Ok:
+
+            log.info('Operation aborted...')
+            return
+
+        # Remove selected sequencer
+        #
+        index = self.sequencerComboBox.currentIndex()
+        self.sequencerComboBox.removeItem(index)
+
+        del self.sequencers[index]
+
+        # Invalidate sequences
+        #
+        self.invalidateSequences()
+
+    @QtCore.Slot(bool)
     def on_saveSequencerAction_triggered(self, checked=False):
         """
-        Slot method for the saveSequencerAction's triggered signal.
+        Slot method for the saveSequencerAction's `triggered` signal.
 
         :type checked: bool
         :rtype: None
         """
 
         self.manager.saveSequencers(self.sequencers)
+        self.scene.save()
 
     @QtCore.Slot(bool)
     def on_addSequenceAction_triggered(self, checked=False):
         """
-        Slot method for the addSequenceAction's triggered signal.
+        Slot method for the addSequenceAction's `triggered` signal.
 
         :type checked: bool
         :rtype: None
         """
 
-        sequence = fbxsequence.FbxSequence()
+        sequence = self.defaultSequence()
         self.sequencerItemModel.appendRow(sequence)
 
     @QtCore.Slot(bool)
     def on_removeSequenceAction_triggered(self, checked=False):
         """
-        Slot method for the removeSequenceAction's triggered signal.
+        Slot method for the removeSequenceAction's `triggered` signal.
 
         :type checked: bool
         :rtype: None
@@ -339,7 +405,7 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
     @QtCore.Slot(bool)
     def on_updateStartTimeAction_triggered(self, checked=False):
         """
-        Slot method for the updateStartTimeAction's triggered signal.
+        Slot method for the updateStartTimeAction's `triggered` signal.
 
         :type checked: bool
         :rtype: None
@@ -372,7 +438,7 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
     @QtCore.Slot(bool)
     def on_updateEndTimeAction_triggered(self, checked=False):
         """
-        Slot method for the updateEndTimeAction's triggered signal.
+        Slot method for the updateEndTimeAction's `triggered` signal.
 
         :type checked: bool
         :rtype: None
@@ -405,7 +471,7 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
     @QtCore.Slot(bool)
     def on_updateTimeRangeAction_triggered(self, checked=False):
         """
-        Slot method for the updateTimeRangeAction's triggered signal.
+        Slot method for the updateTimeRangeAction's `triggered` signal.
 
         :type checked: bool
         :rtype: None
@@ -440,7 +506,7 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
     @QtCore.Slot(bool)
     def on_exportPushButton_clicked(self, checked=False):
         """
-        Slot method for the exportPushButton's clicked signal.
+        Slot method for the exportPushButton's `clicked` signal.
 
         :type checked: bool
         :rtype: None
@@ -453,7 +519,7 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
     @QtCore.Slot(bool)
     def on_exportAllPushButton_clicked(self, checked=False):
         """
-        Slot method for the exportAllPushButton's clicked signal.
+        Slot method for the exportAllPushButton's `clicked` signal.
 
         :type checked: bool
         :rtype: None
