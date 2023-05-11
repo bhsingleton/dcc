@@ -758,11 +758,18 @@ def freezeTranslation(node, **kwargs):
     :rtype: None
     """
 
-    # Check if position-list exists
+    # Decompose PRS controller
     #
     transformController = controllerutils.getPRSController(node)
     positionController = controllerutils.decomposePRSController(transformController)[0]
 
+    if controllerutils.isSpringController(positionController):
+
+        transformController = positionController  # Look at me...I'm the transform controller now...
+        positionController = pymxs.runtime.getPropertyController(transformController, 'Position')
+
+    # Check if position-list already exists
+    #
     matrix = getMatrix(node)
 
     if controllerutils.isListController(positionController):
@@ -773,7 +780,7 @@ def freezeTranslation(node, **kwargs):
 
         if not success:
 
-            log.warning('Unable to freeze $%s[#position].controller!' % node.name)
+            log.warning(f'Unable to freeze ${node.name}[#position].controller!')
             return
 
         # Check if constraints should be skipped
@@ -796,13 +803,13 @@ def freezeTranslation(node, **kwargs):
 
         if not isFrozen or not isZero:
 
-            log.info('Freezing $%s[#position].controller!' % node.name)
+            log.info(f'Freezing ${node.name}[#position].controller!')
             frozenController.value = matrix.translationPart
             zeroController.value = pymxs.runtime.Point3(0.0, 0.0, 0.0)
 
         else:
 
-            log.debug('Skipping "$%s.position" controller!' % node.name)
+            log.debug(f'Skipping "${node.name}.position" controller!')
 
     else:
 
@@ -816,7 +823,7 @@ def freezeTranslation(node, **kwargs):
         # Create new position-list
         # This will append the current controller to the new list!
         #
-        log.info('Freezing $%s[#position].controller!' % node.name)
+        log.info(f'Freezing ${node.name}[#position].controller!')
 
         positionController = pymxs.runtime.Position_List()
         pymxs.runtime.setPropertyController(transformController, 'Position', positionController)
@@ -847,15 +854,19 @@ def freezeRotation(node, **kwargs):
     :rtype: None
     """
 
-    # Check if position-list exists
+    # Decompose PRS controller
     #
     transformController = controllerutils.getPRSController(node)
     positionController, rotationController, scaleController = controllerutils.decomposePRSController(transformController)
 
-    hasPreRotation = controllerutils.hasConstraint(positionController, (pymxs.runtime.Attachment, pymxs.runtime.Surface, pymxs.runtime.Path_Constraint))
+    # Check if node has any pre-rotations
+    #
     matrix = getMatrix(node)
+    hasPreRotation = controllerutils.hasConstraint(positionController, (pymxs.runtime.Attachment, pymxs.runtime.Surface, pymxs.runtime.Path_Constraint))
     frozenRotation = pymxs.runtime.copy(rotationController.value) if hasPreRotation else pymxs.runtime.copy(matrix.rotationPart)
 
+    # Check if rotation-list already exists
+    #
     if controllerutils.isListController(rotationController):
 
         # Ensure sub-controllers have the correct names
@@ -864,7 +875,7 @@ def freezeRotation(node, **kwargs):
 
         if not success:
 
-            log.warning('Unable to freeze $%s[#rotation].controller!' % node.name)
+            log.warning(f'Unable to freeze ${node.name}[#rotation].controller!')
             return
 
         # Check if constraints should be skipped
@@ -887,20 +898,20 @@ def freezeRotation(node, **kwargs):
 
         if not isFrozen or not isZero:
 
-            log.info('Freezing $%s[#rotation].controller!' % node.name)
+            log.info(f'Freezing ${node.name}[#rotation].controller!')
             frozenController.value = frozenRotation
             zeroController.value = pymxs.runtime.Quat(1)
 
         else:
 
-            log.debug('Skipping $%s[#rotation].controller!' % node.name)
+            log.debug(f'Skipping ${node.name}[#rotation].controller!')
 
     else:
 
         # Create new rotation-list
         # This will append the current controller to the new list!
         #
-        log.info('Freezing $%s[#rotation].controller!' % node.name)
+        log.info(f'Freezing ${node.name}[#rotation].controller!')
 
         rotationController = pymxs.runtime.Rotation_List()
         pymxs.runtime.setPropertyController(transformController, 'Rotation', rotationController)
@@ -944,7 +955,7 @@ def freezeScale(node, **kwargs):
 
         if not success:
 
-            log.warning('Unable to freeze $%s[#scale].controller!' % node.name)
+            log.warning(f'Unable to freeze ${node.name}[#scale].controller!')
             return
 
         # Check if frozen scale requires updating
@@ -957,13 +968,13 @@ def freezeScale(node, **kwargs):
 
         if not isFrozen or not isZero:
 
-            log.info('Freezing $%s[#scale].controller!' % node.name)
+            log.info(f'Freezing ${node.name}[#scale].controller!')
             frozenController.value = matrix.scalePart
             zeroController.value = pymxs.runtime.Point3(1.0, 1.0, 1.0)
 
         else:
 
-            log.debug('Skipping $%s[#scale].controller!' % node.name)
+            log.debug(f'Skipping ${node.name}[#scale].controller!')
 
     else:
 
@@ -977,7 +988,7 @@ def freezeScale(node, **kwargs):
         # Create new scale-list
         # This will append the current controller to the new list!
         #
-        log.info('Freezing $%s[#scale].controller!' % node.name)
+        log.info(f'Freezing ${node.name}[#scale].controller!')
 
         scaleController = pymxs.runtime.Scale_List()
         pymxs.runtime.setPropertyController(transformController, 'Scale', scaleController)

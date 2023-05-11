@@ -15,6 +15,7 @@ XYZ_TYPES = dict(wrapperutils.iterClassesByPattern('*XYZ'))
 BEZIER_TYPES = dict(wrapperutils.iterClassesByPattern('Bezier_*'))
 LIST_TYPES = dict(wrapperutils.iterClassesByPattern('*_List'))
 CONSTRAINT_TYPES = dict(wrapperutils.iterClassesByPattern('*_Constraint'))
+SPRING_TYPES = dict(wrapperutils.iterClassesByPattern('*Spring*'))
 SCRIPT_TYPES = dict(wrapperutils.iterClassesByPattern('*_Script'))
 WIRE_TYPES = dict(wrapperutils.iterClassesByPattern('*_Wire'))
 DUMMY_TYPES = dict(wrapperutils.iterClassesByPattern('*_ListDummyEntry'))
@@ -85,6 +86,17 @@ def hasConstraint(obj, maxClass):
     """
 
     return any([wrapperutils.isKindOf(controller, maxClass) for controller in walkControllers(obj)])
+
+
+def isSpringController(obj):
+    """
+    Evaluates if the supplied object is a spring controller.
+
+    :type obj: pymxs.MXSWrapperBase
+    :rtype: bool
+    """
+
+    return pymxs.runtime.classOf(obj) in SPRING_TYPES.values()
 
 
 def isWire(obj):
