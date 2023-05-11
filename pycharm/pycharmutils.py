@@ -80,7 +80,7 @@ def setupDebugger():
 
     # Append helpers to system path
     #
-    debugEgg = os.path.join(pycharmDir, r'debug-eggs\pydevd-pycharm')
+    debugEgg = os.path.join(pycharmDir, 'plugins', 'python', 'helpers', 'pydev')
 
     if debugEgg not in sys.path:
 
