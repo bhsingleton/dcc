@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 import platform
 
@@ -12,6 +13,10 @@ import logging
 logging.basicConfig()
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
+
+
+__file__ = re.compile(r'(?:[a-zA-Z]:[\\\/])(?:[a-zA-Z0-9_]+[\\\/])*([a-zA-Z0-9_]+\.[a-zA-Z0-9]+)')
+__directory__ = re.compile(r'(?:[a-zA-Z]:[\\\/])(?:[a-zA-Z0-9]+[\\\/])*')
 
 
 def getDriveLetters():
@@ -56,6 +61,17 @@ def isDriveLetter(string):
     return fnmatch(string, '?:')
 
 
+def isFileLike(string):
+    """
+    Evaluates if the supplied string represents a file path.
+    No validation is done to test whether the file exists or not!
+
+    :rtype: None
+    """
+
+    return __file__.match(string) is not None
+
+
 def ensureDirectory(path):
     """
     Ensures that the supplied directory exists.
@@ -67,13 +83,15 @@ def ensureDirectory(path):
     # Check if this is a file
     # If so, then get the parent directory
     #
-    if os.path.isfile(path):
+    if isFileLike(path):
 
         path = os.path.dirname(path)
 
-    # Ensure directories exist
+    # Ensure trailing directories exist
     #
-    os.makedirs(path, exist_ok=True)
+    if not os.path.exists(path):
+
+        os.makedirs(path)
 
 
 def isPathRelative(path):
