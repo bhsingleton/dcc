@@ -45,7 +45,9 @@ class Animate(abstractdecorator.AbstractDecorator):
 
         # Enable auto-key
         #
-        sceneutils.enableAutoKey()
+        if not self.autoKey:
+
+            sceneutils.enableAutoKey()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """
@@ -59,7 +61,11 @@ class Animate(abstractdecorator.AbstractDecorator):
 
         # Reset auto-key state
         #
-        sceneutils.setAutoKey(self.autoKey)
+        autoKey = sceneutils.autoKey()
+
+        if autoKey != self.autoKey:
+
+            sceneutils.setAutoKey(self.autoKey)
     # endregion
 
     # region Properties
