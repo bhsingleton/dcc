@@ -5,6 +5,7 @@ from maya import cmds as mc
 from functools import partial
 from .. import plugins
 from ...decorators import abstractdecorator
+from ...python import stringutils
 
 import logging
 logging.basicConfig()
@@ -18,13 +19,15 @@ class Undo(abstractdecorator.AbstractDecorator):
     """
 
     # region Dunderscores
-    __slots__ = ('_name',)
+    __slots__ = ('_state', '_name',)
+    __chunk__ = None  # Prevents nested undo chunks from closing prematurely
     __plugins__ = os.path.dirname(os.path.abspath(plugins.__file__))
 
     def __init__(self, *args, **kwargs):
         """
         Private method called after a new instance has been created.
 
+        :type enabled: bool
         :type name: str
         :rtype: None
         """
@@ -35,7 +38,8 @@ class Undo(abstractdecorator.AbstractDecorator):
 
         # Declare private variables
         #
-        self._name = kwargs.get('name')
+        self._state = kwargs.get('state', True)
+        self._name = kwargs.get('name', None)
 
     def __enter__(self, *args, **kwargs):
         """
@@ -44,8 +48,30 @@ class Undo(abstractdecorator.AbstractDecorator):
         :rtype: None
         """
 
-        self.loadPlugin()
-        mc.undoInfo(openChunk=True, chunkName=self.name)
+        # Evaluate undo state
+        #
+        if self.state:
+
+            # Check if chunk is already open
+            #
+            if not stringutils.isNullOrEmpty(self.chunk):
+
+                return
+
+            # Ensure API undo is loaded
+            #
+            self.ensureLoaded()
+
+            # Open undo chunk
+            #
+            self.__class__.__chunk__ = self.name
+            mc.undoInfo(openChunk=True, chunkName=self.name)
+
+        else:
+
+            # Disable undo
+            #
+            mc.undoInfo(stateWithoutFlush=False)
 
     def __call__(self, *args, **kwargs):
         """
@@ -77,10 +103,49 @@ class Undo(abstractdecorator.AbstractDecorator):
         :rtype: None
         """
 
-        mc.undoInfo(closeChunk=True)
+        # Evaluate undo state
+        #
+        if self.state:
+
+            # Check if chunk can be closed
+            #
+            if self.name != self.chunk:
+
+                return
+
+            # Close undo chunk
+            #
+            self.__class__.__chunk__ = None
+            mc.undoInfo(closeChunk=True)
+
+        else:
+
+            # Re-enable undo
+            #
+            mc.undoInfo(stateWithoutFlush=True)
     # endregion
 
     # region Properties
+    @property
+    def chunk(self):
+        """
+        Getter method that returns the current undo chunk.
+
+        :rtype: Union[str, None]
+        """
+
+        return self.__class__.__chunk__
+
+    @property
+    def state(self):
+        """
+        Getter method that returns the undo state.
+
+        :rtype: bool
+        """
+
+        return self._state
+
     @property
     def name(self):
         """
@@ -93,7 +158,7 @@ class Undo(abstractdecorator.AbstractDecorator):
     # endregion
 
     # region Methods
-    def isPluginLoaded(self):
+    def isLoaded(self):
         """
         Evaluates if the `pyUndo` plugin command has been loaded.
 
@@ -102,14 +167,14 @@ class Undo(abstractdecorator.AbstractDecorator):
 
         return mc.pluginInfo('pyundocommand.py', query=True, loaded=True)
 
-    def loadPlugin(self):
+    def ensureLoaded(self):
         """
         Loads the `pyUndo` plugin command.
 
         :rtype: None
         """
 
-        if not self.isPluginLoaded():
+        if not self.isLoaded():
 
             mc.loadPlugin(os.path.join(self.__plugins__, 'pyundocommand.py'), quiet=True)
     # endregion
