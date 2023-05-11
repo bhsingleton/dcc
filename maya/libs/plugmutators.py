@@ -1,8 +1,9 @@
-from maya.api import OpenMaya as om
-from . import plugutils
-from ..decorators.locksmith import locksmith
-from ..decorators.autokey import autokey
+from maya.api import OpenMaya as om, OpenMayaAnim as oma
+from six.moves import collections_abc
+from . import sceneutils, plugutils, animutils
 from ..decorators.undo import commit
+from ..decorators.locksmith import locksmith
+from ...python import arrayutils
 
 import logging
 logging.basicConfig()
@@ -301,14 +302,16 @@ __get_value__ = {
 }
 
 
-def getValue(plug, convertUnits=True):
+def getValue(plug, convertUnits=True, bestLayer=False):
     """
     Gets the value from the supplied plug.
-    An optional `convertUnits` flag can be specified to convert values to UI units!
+    Enabling `convertUnits` will convert any internal units to UI values!
+    Whereas `bestLayer` affects whether the value from the active anim-layer is returned instead!
 
     :type plug: om.MPlug
     :type convertUnits: bool
-    :rtype: object
+    :type bestLayer: bool
+    :rtype: Any
     """
 
     # Check if this is a null plug
@@ -343,8 +346,15 @@ def getValue(plug, convertUnits=True):
 
     else:
 
+        # Check if active anim-layer should be evaluated
+        #
+        if bestLayer and plugutils.isAnimated(plug):
+
+            plug = animutils.findAnimatedPlug(plug)
+            return getValue(plug, convertUnits=convertUnits)
+
         # Get value from plug
-        # Check if units should also be converted
+        # Check if any units require converting
         #
         attributeType = plugutils.getApiType(plug)
         plugValue = __get_value__[attributeType](plug)
@@ -691,7 +701,7 @@ def setCompound(plug, values, modifier=None, **kwargs):
 
     # Check value type
     #
-    if isinstance(values, dict):
+    if isinstance(values, collections_abc.MutableMapping):
 
         # Iterate through values
         #
@@ -712,7 +722,7 @@ def setCompound(plug, values, modifier=None, **kwargs):
 
             setValue(childPlug, value, modifier=modifier, **kwargs)
 
-    elif hasattr(values, '__getitem__') and hasattr(values, '__len__'):
+    elif arrayutils.isArrayLike(values):  # Maya dataclasses aren't derived from the `Sequence` abstract base class!
 
         # Iterate through values
         #
@@ -833,7 +843,6 @@ __set_value__ = {
 
 
 @locksmith
-@autokey
 def setValue(plug, value, modifier=None, **kwargs):
     """
     Updates the value for the supplied plug.
@@ -884,7 +893,7 @@ def setValue(plug, value, modifier=None, **kwargs):
 
             pass
 
-        # Assign sequence to plug elements
+        # Assign values to plug elements
         #
         for (physicalIndex, item) in enumerate(value):
 
@@ -899,13 +908,25 @@ def setValue(plug, value, modifier=None, **kwargs):
 
     elif plug.isCompound:
 
+        # Assign values to children
+        #
         setCompound(plug, value, modifier=modifier, **kwargs)
 
     else:
 
-        attributeType = plugutils.getApiType(plug)
-        __set_value__[attributeType](plug, value, modifier=modifier, **kwargs)
-    
+        # Check if auto-key is enabled
+        #
+        autoKey = sceneutils.autoKey()
+
+        if autoKey and plugutils.isAnimatable(plug):
+
+            keyValue(plug, value)
+
+        else:
+
+            attributeType = plugutils.getApiType(plug)
+            __set_value__[attributeType](plug, value, modifier=modifier, **kwargs)
+
     # Cache and execute modifier
     #
     commit(modifier.doIt, modifier.undoIt)
@@ -975,4 +996,85 @@ def resetValue(plug, modifier=None, **kwargs):
         # Reset plug
         #
         setValue(plug, defaultValue, modifier=modifier, **kwargs)
+# endregion
+
+
+# region Keyers
+def keyValue(plug, value, time=None, convertUnits=True, change=None):
+    """
+    Keys the plug at the specified time.
+
+    :type plug: om.MPlug
+    :type value: Any
+    :type time: Union[int, float, None]
+    :type convertUnits: bool
+    :type change: oma.MAnimCurveChange
+    :rtype: None
+    """
+
+    # Redundancy check
+    #
+    if not plugutils.isAnimatable(plug):
+
+        return
+
+    # Check if value requires unit conversion
+    #
+    if convertUnits:
+
+        animCurveType = animutils.getAnimCurveType(plug.attribute())
+        value = animutils.uiToInternalUnit(value, animCurveType=animCurveType)
+
+    # Check if an anim-curve change was supplied
+    #
+    if change is None:
+
+        change = oma.MAnimCurveChange()
+
+    # Check if plug is in an anim-layer
+    # If so, adjust the value to compensate for the additive layer!
+    # TODO: Add support for override layers!
+    #
+    animatedPlug = animutils.findAnimatedPlug(plug)
+    animatedNode = animatedPlug.node()
+
+    isAnimBlend = animutils.isAnimBlend(animatedNode)
+
+    if isAnimBlend:
+
+        otherPlug = animutils.getOppositeBlendInput(animatedPlug)
+        otherValue = getValue(otherPlug, convertUnits=False)
+
+        blendMode = animutils.getBlendMode(animatedNode)
+
+        if blendMode == 0:  # Additive
+
+            value = animutils.expandUnits(value, asInternal=True) - animutils.expandUnits(otherValue, asInternal=True)
+
+        elif blendMode == 1:  # Multiply
+
+            value = animutils.expandUnits(value, asInternal=True) / animutils.expandUnits(otherValue, asInternal=True)
+
+        else:
+
+            raise NotImplementedError(f'keyValue() no support for "{value.name}" blend mode!')
+
+    # Find associated anim-curve from plug
+    #
+    animCurve = animutils.findAnimCurve(animatedPlug, create=True)
+    fnAnimCurve = oma.MFnAnimCurve(animCurve)
+
+    time = sceneutils.getTime() if time is None else time
+    index = fnAnimCurve.find(time)
+
+    if index is None:
+
+        index = fnAnimCurve.insertKey(om.MTime(time, unit=om.MTime.uiUnit()), change=change)
+
+    # Set value and cache change
+    #
+    log.debug(f'Updating {fnAnimCurve.name()} anim-curve: {value} @ {time}')
+    fnAnimCurve.setValue(index, value, change=change)
+
+    commit(change.redoIt, change.undoIt)
 # endregion

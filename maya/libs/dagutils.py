@@ -2,10 +2,11 @@ import fnmatch
 
 from maya import cmds as mc, OpenMaya as legacy
 from maya.api import OpenMaya as om, OpenMayaAnim as oma
-from dcc.python import stringutils
 from six import string_types, integer_types
 from collections import deque
 from itertools import chain
+from ..decorators.undo import commit
+from ...python import stringutils
 
 import logging
 logging.basicConfig()
@@ -907,7 +908,7 @@ def iterShapes(node, apiType=om.MFn.kShape):
 
     :type node: Union[om.MObject, om.MDagPath]
     :type apiType: int
-    :rtype: iter
+    :rtype: Iterator[om.MObject]
     """
 
     # Iterate through children
@@ -935,7 +936,7 @@ def iterIntermediateObjects(node, apiType=om.MFn.kShape):
 
     :type node: Union[om.MObject, om.MDagPath]
     :type apiType: int
-    :rtype: iter
+    :rtype: Iterator[om.MObject]
     """
 
     # Iterate through children
@@ -961,7 +962,7 @@ def iterFunctionSets():
     """
     Returns a generator that yields functions sets compatible with dependency nodes.
 
-    :rtype: iter
+    :rtype: Iterator[om.MFnBase]
     """
 
     # Iterate through dictionary
@@ -982,7 +983,7 @@ def iterNodes(apiType=om.MFn.kDependencyNode, typeName=None):
 
     :type apiType: int
     :type typeName: str
-    :rtype: iter
+    :rtype: Iterator[om.MObject]
     """
 
     # Check if a type name was supplied
@@ -1022,7 +1023,7 @@ def iterPluginNodes(typeName):
     The type name is defined through the "MFnPlugin::registerNode()" method as the first argument.
 
     :type typeName: str
-    :rtype: iter
+    :rtype: Iterator[om.MObject]
     """
 
     # Initialize dependency node iterator
@@ -1052,7 +1053,7 @@ def iterNodesByNamespace(*namespaces, recurse=False):
 
     :type namespaces: Union[str, List[str]]
     :type recurse: bool
-    :rtype: iter
+    :rtype: Iterator[om.MObject]
     """
 
     # Iterate through namespaces
@@ -1080,7 +1081,7 @@ def iterNodesByUuid(*uuids):
     Returns a generator that yields dependency nodes with the specified UUID.
 
     :type uuids: Union[str, List[str]]
-    :rtype: iter
+    :rtype: Iterator[om.MObject]
     """
 
     # Iterate through UUIDs
@@ -1103,13 +1104,14 @@ def iterNodesByUuid(*uuids):
             yield selection.getDependNode(i)
 
 
-def iterNodesByPattern(*patterns, apiType=om.MFn.kDependencyNode):
+def iterNodesByPattern(*patterns, apiType=om.MFn.kDependencyNode, exactType=False):
     """
     Returns a generator that yields any nodes whose name matches the supplied patterns.
 
     :type patterns: Union[str, List[str]]
     :type apiType: int
-    :rtype: iter
+    :type exactType: bool
+    :rtype: Iterator[om.MObject]
     """
 
     # Compose selection list from patterns
@@ -1132,11 +1134,15 @@ def iterNodesByPattern(*patterns, apiType=om.MFn.kDependencyNode):
 
     for i in range(selectionCount):
 
-        # Check if there are any pattern matches
+        # Check if node matches api type
         #
         node = selectionList.getDependNode(i)
 
-        if node.hasFn(apiType):
+        if exactType and node.apiType() == apiType:
+
+            yield node
+
+        elif node.hasFn(apiType):
 
             yield node
 
@@ -1159,7 +1165,7 @@ def iterDependencies(node, apiType, typeName='', direction=om.MItDependencyGraph
     :type direction: int
     :param traversal: The order of traversal.
     :type traversal: int
-    :rtype: iter
+    :rtype: Iterator[om.MObject]
     """
 
     # Initialize dependency graph iterator
@@ -1274,6 +1280,7 @@ def isDGType(typeName):
 def isDAGType(typeName):
     """
     Evaluates if the supplied type name is derived from a dag node.
+    This method also accepts `MFn` type IDs.
 
     :type typeName: Union[str, int]
     :rtype: bool
@@ -1281,7 +1288,7 @@ def isDAGType(typeName):
 
     if isinstance(typeName, string_types):
 
-        return om.MNodeClass(typeName).hasAttr('matrix')
+        return om.MNodeClass(typeName).hasAttribute('matrix')
 
     elif isinstance(typeName, integer_types):
 
@@ -1303,21 +1310,23 @@ def createNode(typeName, name='', parent=None, skipSelect=True):
     :rtype: om.MObject
     """
 
-    # Create new dependency node
+    # Create new node
     #
     node = om.MObject.kNullObj
+    modifier = None
 
     if isDAGType(typeName):
 
-        dagModifier = om.MDagModifier()
-        node = dagModifier.createNode(typeName)
-        dagModifier.doIt()
+        modifier = om.MDagModifier()
+        node = modifier.createNode(typeName)
 
     else:
 
-        dagModifier = om.MDGModifier()
-        node = dagModifier.createNode(typeName)
-        dagModifier.doIt()
+        modifier = om.MDGModifier()
+        node = modifier.createNode(typeName)
+
+    commit(modifier.doIt, modifier.undoIt)
+    modifier.doIt()
 
     # Check if a name was supplied
     #
@@ -1329,7 +1338,7 @@ def createNode(typeName, name='', parent=None, skipSelect=True):
     #
     if isinstance(parent, om.MObject) and node.hasFn(om.MFn.kDagNode):
 
-        parentNode(node, parent)
+        reparentNode(node, parent)
 
     # Check if node should be selected
     #
@@ -1382,49 +1391,78 @@ def createComponent(indices, apiType=om.MFn.kSingleIndexedComponent):
         raise TypeError('createComponent() expects a list (%s given)!' % type(indices).__name__)
 
 
-def renameNode(node, newName):
+def renameNode(node, newName, modifier=None):
     """
     Renames the supplied node to the new name.
 
     :type node: om.MObject
     :type newName: str
-    :rtype: None
+    :type modifier: Union[om.MDGModifier, None]
+    :rtype: str
     """
 
-    dagModifier = om.MDGModifier()
-    dagModifier.renameNode(node, newName)
-    dagModifier.doIt()
+    # Check if a dag modifier was supplied
+    #
+    if modifier is None:
+
+        modifier = om.MDGModifier()
+
+    # Cache and execute modifier
+    #
+    modifier.renameNode(node, newName)
+
+    commit(modifier.doIt, modifier.undoIt)
+    modifier.doIt()
+
+    return newName
 
 
-def parentNode(node, otherNode):
+def reparentNode(node, otherNode, modifier=None):
     """
     Parents the supplied node to the other node.
+
+    :type node: om.MObject
+    :type otherNode: om.MObject
+    :type modifier: Union[om.MDGModifier, None]
+    :rtype: om.MObject
+    """
+
+    # Check if a dag modifier was supplied
+    #
+    if modifier is None:
+
+        modifier = om.MDagModifier()
+
+    # Cache and execute modifier
+    #
+    modifier.reparentNode(node, otherNode)
+
+    commit(modifier.doIt, modifier.undoIt)
+    modifier.doIt()
+
+    return otherNode
+
+
+def deleteNode(node, modifier=None):
+    """
+    Deletes the supplied dependency node from the scene file.
+    In order to prevent any other nodes from being deleted this method breaks all connections before deleting the node.
 
     :type node: om.MObject
     :type otherNode: om.MObject
     :rtype: None
     """
 
-    dagModifier = om.MDagModifier()
-    dagModifier.reparentNode(node, otherNode)
-    dagModifier.doIt()
+    # Check if a dag modifier was supplied
+    #
+    if modifier is None:
 
-
-def deleteNode(node):
-    """
-    Deletes the supplied dependency node from the scene file.
-    In order to prevent any other nodes from being deleted this method breaks all connections before deleting the node.
-
-    :type node: om.MObject
-    :rtype: None
-    """
+        modifier = om.MDGModifier()
 
     # Break all connections to node
     #
     fnDependNode = om.MFnDependencyNode(node)
     plugs = fnDependNode.getConnections()
-
-    dagModifier = om.MDagModifier()
 
     for plug in plugs:
 
@@ -1435,7 +1473,7 @@ def deleteNode(node):
         if not source.isNull:
 
             log.info('Breaking connection: %s and %s' % (source.info, plug.info))
-            dagModifier.disconnect(source, plug)
+            modifier.disconnect(source, plug)
 
         # Check if this plug has any destination connections
         #
@@ -1444,13 +1482,14 @@ def deleteNode(node):
         for destination in destinations:
 
             log.info('Breaking connection: %s and %s' % (plug.info, destination.info))
-            dagModifier.disconnect(plug, destination)
-
-    dagModifier.doIt()
+            modifier.disconnect(plug, destination)
 
     # Finally, delete node and execute dag modifier
     #
     log.info('Deleting node: %s' % fnDependNode.name())
+    modifier.deleteNode(node)
 
-    dagModifier.deleteNode(node)
-    dagModifier.doIt()
+    # Cache and execute modifier
+    #
+    commit(modifier.doIt, modifier.undoIt)
+    modifier.doIt()

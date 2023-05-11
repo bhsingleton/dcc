@@ -1,10 +1,11 @@
 import re
 
 from maya import cmds as mc
-from maya.api import OpenMaya as om
+from maya.api import OpenMaya as om, OpenMayaAnim as oma
 from collections import deque
-from dcc.python import stringutils
-from dcc.maya.libs import attributeutils
+from . import attributeutils, dagutils
+from ..decorators.undo import commit
+from ...python import stringutils
 
 import logging
 logging.basicConfig()
@@ -49,8 +50,8 @@ def findPlug(node, path):
 
     # Break down string path into groups
     #
+    node = dagutils.getMObject(node)
     fnDependNode = om.MFnDependencyNode(node)
-    nodeName = fnDependNode.name()
 
     groups = __plug_parser__.findall(path)
     numGroups = len(groups)
@@ -61,7 +62,9 @@ def findPlug(node, path):
 
     # Find leaf attribute
     #
+    nodeName = fnDependNode.name()
     attributeName = groups[-1][0]
+
     attribute = fnDependNode.attribute(attributeName)
 
     if attribute.isNull():
@@ -116,6 +119,28 @@ def findPlug(node, path):
     return plug
 
 
+def findPlugIndex(plug):
+    """
+    Returns the index of the supplied plug.
+    Unlike the default method this function takes child plugs into consideration.
+
+    :type plug: om.MPlug
+    :rtype: Union[int, None]
+    """
+
+    if plug.isArray and plug.isElement:
+
+        return plug.logicalIndex()
+
+    elif plug.isChild:
+
+        return list(iterChildren(plug.parent())).index(plug)
+
+    else:
+
+        return None
+
+
 def isConstrained(plug):
     """
     Evaluates if the supplied plug is constrained.
@@ -126,15 +151,13 @@ def isConstrained(plug):
 
     # Check if plug has a connection
     #
-    source = plug.source()
-
-    if source.isNull:
+    if not plug.isDestination:
 
         return False
 
-    # Evaluate node type
+    # Evaluate connected node
     #
-    node = source.node()
+    node = plug.source().node()
     return node.hasFn(om.MFn.kConstraint)
 
 
@@ -148,19 +171,58 @@ def isAnimated(plug):
 
     # Check if plug has a connection
     #
-    source = plug.source()
-
-    if source.isNull:
+    if not (plug.isKeyable or plug.isDestination):
 
         return False
 
-    # Evaluate node type
+    # Evaluate connected node
     #
-    node = source.node()
-    return node.hasFn(om.MFn.kAnimCurve)
+    node = plug.source().node()
+    fnNode = om.MFnDependencyNode(node)
+    classification = fnNode.classification(fnNode.typeName)
+
+    return classification == 'animation' and not isConstrained(plug)  # Constraints are classed as `animation`
 
 
-def connectPlugs(source, destination, force=False):
+def isAnimatable(plug):
+    """
+    Evaluates if the supplied plug is animatable.
+
+    :type plug: om.MPlug
+    :rtype: bool
+    """
+
+    # Check if plug is keyable
+    #
+    if not plug.isKeyable:
+
+        return False
+
+    # Evaluate connections
+    # If connected, make sure source node accepts keyframe data!
+    #
+    if plug.isDestination:
+
+        return isAnimated(plug)
+
+    else:
+
+        return True
+
+
+def isNumeric(plug):
+    """
+    Evaluates if the supplied plug is numerical.
+
+    :type plug: om.MPlug
+    :rtype: bool
+    """
+
+    attribute = plug.attribute()
+    return any(map(attribute.hasFn, (om.MFn.kNumericAttribute, om.MFn.kUnitAttribute)))
+
+
+def connectPlugs(source, destination, force=False, modifier=None):
     """
     Method used to connect two plugs.
     By default, this method will not break pre-existing connections unless specified.
@@ -168,6 +230,7 @@ def connectPlugs(source, destination, force=False):
     :type source: Union[str, om.MPlug]
     :type destination: Union[str, om.MPlug]
     :type force: bool
+    :type modifier: Union[om.MDGModifier, None]
     :rtype: None
     """
 
@@ -185,9 +248,9 @@ def connectPlugs(source, destination, force=False):
 
     # Check if other plug has a connection
     #
-    connectedPlug = destination.source()
+    otherPlug = destination.source()
 
-    if not connectedPlug.isNull:
+    if not otherPlug.isNull:
 
         # Check if connection should be broken
         #
@@ -199,23 +262,31 @@ def connectPlugs(source, destination, force=False):
 
             raise RuntimeError('connectPlugs() "%s" plug has an incoming connection!' % destination.info)
 
-    # Execute dag modifier
+    # Check if a dag modifier was supplied
     #
-    dagModifier = om.MDagModifier()
-    dagModifier.connect(source, destination)
-    dagModifier.doIt()
+    if modifier is None:
+
+        modifier = om.MDGModifier()
+
+    # Cache and execute dag modifier
+    #
+    modifier.connect(source, destination)
+
+    commit(modifier.doIt, modifier.undoIt)
+    modifier.doIt()
 
 
-def disconnectPlugs(source, destination):
+def disconnectPlugs(source, destination, modifier=None):
     """
     Static method used to disconnect two plugs using a dag modifier.
 
     :type source: Union[str, om.MPlug]
     :type destination: Union[str, om.MPlug]
+    :type modifier: Union[om.MDGModifier, None]
     :rtype: None
     """
 
-    # Check plug types
+    # Evaluate plug types
     #
     if not isinstance(source, om.MPlug) or not isinstance(destination, om.MPlug):
 
@@ -227,30 +298,30 @@ def disconnectPlugs(source, destination):
 
         raise TypeError('disconnectPlugs() expects 2 valid plugs!')
 
-    # Verify plugs are connected
+    # Check if disconnection is legal
     #
-    connectedPlug = destination.source()
+    otherPlug = destination.source()
 
-    if connectedPlug.isNull:
-
-        log.debug('%s plug is not connected to %s!' % (source.info, destination.info))
-        return
-
-    # Check if plugs are identical
-    #
-    if connectedPlug != source:
+    if otherPlug != source or otherPlug.isNull:
 
         log.debug('%s is not connected to %s!' % (source.info, destination.info))
         return
 
-    # Execute dag modifier
+    # Check if a dag modifier was supplied
     #
-    dagModifier = om.MDagModifier()
-    dagModifier.disconnect(source, destination)
-    dagModifier.doIt()
+    if modifier is None:
+
+        modifier = om.MDGModifier()
+
+    # Cache and execute modifier
+    #
+    modifier.disconnect(source, destination)
+
+    commit(modifier.doIt, modifier.undoIt)
+    modifier.doIt()
 
 
-def breakConnections(plug, source=True, destination=True, recursive=False):
+def breakConnections(plug, source=True, destination=True, recursive=False, modifier=None):
     """
     Break the connections to the supplied plug.
     Optional keyword arguments can be supplied to control the side the disconnect takes place.
@@ -260,8 +331,15 @@ def breakConnections(plug, source=True, destination=True, recursive=False):
     :type source: bool
     :type destination: bool
     :type recursive:bool
+    :type modifier: Union[om.MDGModifier, None]
     :rtype: None
     """
+
+    # Check if a dag modifier was supplied
+    #
+    if modifier is None:
+
+        modifier = om.MDGModifier()
 
     # Check if the source plug should be broken
     #
@@ -269,24 +347,46 @@ def breakConnections(plug, source=True, destination=True, recursive=False):
 
     if source and not otherPlug.isNull:
 
-        disconnectPlugs(otherPlug, plug)
+        modifier.disconnect(otherPlug, plug)
 
     # Check if the destination plugs should be broken
     #
-    if destination:
+    otherPlugs = plug.destinations()
 
-        for otherPlug in plug.destinations():
+    if destination and len(otherPlugs) > 0:
 
-            disconnectPlugs(plug, otherPlug)
+        for otherPlug in otherPlugs:
 
-    # Check if children should be broken
-    # Whatever you do don't enable recursive for children!!!
+            modifier.disconnect(plug, otherPlug)
+
+    # Check if children should be broken as well
     #
     if recursive:
 
         for childPlug in walk(plug):
 
-            breakConnections(childPlug, source=source, destination=destination)
+            # Check if the source plug should be broken
+            #
+            otherPlug = childPlug.source()
+
+            if source and not otherPlug.isNull:
+
+                modifier.disconnect(otherPlug, childPlug)
+
+            # Check if the destination plugs should be broken
+            #
+            otherPlugs = childPlug.destinations()
+
+            if destination and len(otherPlugs) > 0:
+
+                for otherPlug in otherPlugs:
+
+                    modifier.disconnect(childPlug, otherPlug)
+
+    # Cache and execute modifier
+    #
+    commit(modifier.doIt, modifier.undoIt)
+    modifier.doIt()
 
 
 def iterTopLevelPlugs(node, **kwargs):
@@ -299,7 +399,7 @@ def iterTopLevelPlugs(node, **kwargs):
     :key keyable: bool
     :key affectsWorldSpace: bool
     :key skipUserAttributes: bool
-    :rtype: iter
+    :rtype: Iterator[om.MPlug]
     """
 
     # Iterate through attributes
@@ -363,7 +463,7 @@ def iterChannelBoxPlugs(node, **kwargs):
     :key nonDefault: bool
     :key affectsWorldSpace: bool
     :key skipUserAttributes: bool
-    :rtype: iter
+    :rtype: Iterator[om.MPlug]
     """
 
     # Iterate through top-level plugs
@@ -376,7 +476,7 @@ def iterChannelBoxPlugs(node, **kwargs):
 
             yield from iterChildren(plug, keyable=True, channelBox=True)
 
-        elif plug.isKeyable or plug.isChannelBox:
+        elif (plug.isKeyable or plug.isChannelBox) and isNumeric(plug):
 
             yield plug
 
@@ -393,7 +493,7 @@ def iterElements(plug, **kwargs):
     :type plug: om.MPlug
     :key writable: bool
     :key nonDefault: bool
-    :rtype: iter
+    :rtype: Iterator[om.MPlug]
     """
 
     # Check if this is an array plug
@@ -439,7 +539,7 @@ def iterChildren(plug, **kwargs):
     :key nonDefault: bool
     :key keyable: bool
     :key channelBox: bool
-    :rtype: iter
+    :rtype: Iterator[om.MPlug]
     """
 
     # Check if this is a compound plug
@@ -496,7 +596,7 @@ def walk(plug, writable=False, channelBox=False, keyable=False):
     :type writable: bool
     :type channelBox: bool
     :type keyable: bool
-    :rtype: iter
+    :rtype: Iterator[om.MPlug]
     """
 
     # Iterate through plug elements and children
@@ -599,13 +699,13 @@ def getConnectedNodes(plug, includeNullObjects=False):
     return nodes
 
 
-def findConnectedMessage(dependNode, attribute):
+def findConnectedMessage(dependNode, attribute=om.MObject.kNullObj):
     """
     Locates the connected destination plug for the given dependency node.
 
     :type dependNode: om.MObject
     :type attribute: om.MObject
-    :rtype: om.MPlug
+    :rtype: Union[om.MPlug, None]
     """
 
     # Get message plug from dependency node
@@ -614,20 +714,29 @@ def findConnectedMessage(dependNode, attribute):
     plug = fnDepdendNode.findPlug('message', True)
 
     destinations = plug.destinations()
+    destinationCount = len(destinations)
 
-    for destination in destinations:
+    if destinationCount == 0:
 
-        # Check if attributes match
-        #
-        if destination.attribute() == attribute:
+        return None
 
-            return destination
+    elif destinationCount == 1:
 
-        else:
+        return destinations[0]
 
-            continue
+    else:
 
-    return None
+        for destination in destinations:
+
+            # Check if attributes match
+            #
+            if destination.attribute() == attribute:
+
+                return destination
+
+            else:
+
+                continue
 
 
 def getNextAvailableElement(plug):

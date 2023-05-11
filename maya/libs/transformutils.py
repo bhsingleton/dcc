@@ -57,17 +57,15 @@ def getTranslation(node, space=om.MSpace.kTransform):
 
     else:
 
-        # Get translate values from plugs
-        #
-        fnTransform = om.MFnTransform(dagPath)
+        xPlug = plugutils.findPlug(dagPath, 'translateX')
+        yPlug = plugutils.findPlug(dagPath, 'translateY')
+        zPlug = plugutils.findPlug(dagPath, 'translateZ')
 
-        translation = om.MVector(
-            fnTransform.findPlug('translateX', False).asFloat(),
-            fnTransform.findPlug('translateY', False).asFloat(),
-            fnTransform.findPlug('translateZ', False).asFloat()
+        return om.MVector(
+            plugmutators.getValue(xPlug),
+            plugmutators.getValue(yPlug),
+            plugmutators.getValue(zPlug),
         )
-
-        return translation
 
 
 def setTranslation(node, translation, **kwargs):
@@ -100,37 +98,34 @@ def setTranslation(node, translation, **kwargs):
 
         translation *= dagPath.exclusiveMatrixInverse()
 
-    # Initialize transform function set
-    #
-    fnTransform = om.MFnTransform(dagPath)
-    skipTranslate = kwargs.get('skipTranslate', False)
-
     # Check if translateX can be set
     #
+    skipTranslate = kwargs.get('skipTranslate', False)
     skipTranslateX = kwargs.get('skipTranslateX', skipTranslate)
-    translateXPlug = fnTransform.findPlug('translateX', True)
 
-    if not skipTranslateX and not translateXPlug.isLocked:
+    xPlug = plugutils.findPlug(dagPath, 'translateX')
 
-        plugmutators.setValue(translateXPlug, translation.x)
+    if not skipTranslateX and not xPlug.isLocked:
+
+        plugmutators.setValue(xPlug, translation.x)
 
     # Check if translateY can be set
     #
     skipTranslateY = kwargs.get('skipTranslateY', skipTranslate)
-    translateYPlug = fnTransform.findPlug('translateY', True)
+    yPlug = plugutils.findPlug(dagPath, 'translateY')
 
-    if not skipTranslateY and not translateYPlug.isLocked:
+    if not skipTranslateY and not yPlug.isLocked:
 
-        plugmutators.setValue(translateYPlug, translation.y)
+        plugmutators.setValue(yPlug, translation.y)
 
     # Check if translateZ can be set
     #
     skipTranslateZ = kwargs.get('skipTranslateZ', skipTranslate)
-    translateZPlug = fnTransform.findPlug('translateZ', True)
+    zPlug = plugutils.findPlug(dagPath, 'translateZ')
 
-    if not skipTranslateZ and not translateZPlug.isLocked:
+    if not skipTranslateZ and not zPlug.isLocked:
 
-        plugmutators.setValue(translateZPlug, translation.z)
+        plugmutators.setValue(zPlug, translation.z)
 
 
 def resetTranslation(node):
@@ -166,8 +161,11 @@ def translateTo(node, position, **kwargs):
     #
     currentPosition = getMatrix(dagPath, asTransformationMatrix=True).translation(om.MSpace.kTransform)
     difference = position - currentPosition
+
     translation = getTranslation(dagPath) + difference
 
+    # Update translation
+    #
     setTranslation(dagPath, translation, **kwargs)
 
 
@@ -197,7 +195,7 @@ def getRotationOrder(node):
 
 def getEulerRotation(node):
     """
-    Updates the euler angles on the supplied node.
+    Returns the euler angles on the supplied node.
 
     :type node: Union[str, om.MObject, om.MDagPath]
     :rtype: om.MEulerRotation
@@ -211,16 +209,18 @@ def getEulerRotation(node):
 
         raise TypeError('getEulerRotation() expects a valid dag path!')
 
-    # Get euler values from plugs
+    # Get euler angles from node
     #
-    fnTransform = om.MFnTransform(dagPath)
-    rotateOrder = getRotationOrder(dagPath)
+    xPlug = plugutils.findPlug(dagPath, 'rotateX')
+    yPlug = plugutils.findPlug(dagPath, 'rotateY')
+    zPlug = plugutils.findPlug(dagPath, 'rotateZ')
+    orderPlug = plugutils.findPlug(dagPath, 'rotateOrder')
 
     return om.MEulerRotation(
-        fnTransform.findPlug('rotateX', False).asMAngle().asRadians(),
-        fnTransform.findPlug('rotateY', False).asMAngle().asRadians(),
-        fnTransform.findPlug('rotateZ', False).asMAngle().asRadians(),
-        order=rotateOrder
+        plugmutators.getValue(xPlug, convertUnits=False).asRadians(),
+        plugmutators.getValue(yPlug, convertUnits=False).asRadians(),
+        plugmutators.getValue(zPlug, convertUnits=False).asRadians(),
+        order=plugmutators.getValue(orderPlug)
     )
 
 
@@ -245,41 +245,42 @@ def setEulerRotation(node, eulerRotation, **kwargs):
 
         raise TypeError('setEulerRotation() expects a valid dag path!')
 
-    # Initialize transform function set
-    # Update rotate order
-    #
-    fnTransform = om.MFnTransform(dagPath)
-
-    rotateOrderPlug = fnTransform.findPlug('rotateOrder', True)
-    rotateOrderPlug.setInt(eulerRotation.order)
-
     # Check if rotateX can be set
     #
     skipRotate = kwargs.get('skipRotate', False)
     skipRotateX = kwargs.get('skipRotateX', skipRotate)
-    rotateXPlug = fnTransform.findPlug('rotateX', True)
 
-    if not skipRotateX and not rotateXPlug.isLocked:
+    xPlug = plugutils.findPlug(dagPath, 'rotateX')
 
-        plugmutators.setValue(rotateXPlug, om.MAngle(eulerRotation.x, om.MAngle.kRadians))
+    if not skipRotateX and not xPlug.isLocked:
+
+        plugmutators.setValue(xPlug, om.MAngle(eulerRotation.x, om.MAngle.kRadians))
 
     # Check if rotateY can be set
     #
     skipRotateY = kwargs.get('skipRotateY', skipRotate)
-    rotateYPlug = fnTransform.findPlug('rotateY', True)
+    yPlug = plugutils.findPlug(dagPath, 'rotateY')
 
-    if not skipRotateY and not rotateYPlug.isLocked:
+    if not skipRotateY and not yPlug.isLocked:
 
-        plugmutators.setValue(rotateYPlug, om.MAngle(eulerRotation.y, om.MAngle.kRadians))
+        plugmutators.setValue(yPlug, om.MAngle(eulerRotation.y, om.MAngle.kRadians))
 
     # Check if rotateZ can be set
     #
     skipRotateZ = kwargs.get('skipRotateZ', skipRotate)
-    rotateZPlug = fnTransform.findPlug('rotateZ', True)
+    zPlug = plugutils.findPlug(dagPath, 'rotateZ')
 
-    if not skipRotateZ and not rotateZPlug.isLocked:
+    if not skipRotateZ and not zPlug.isLocked:
 
-        plugmutators.setValue(rotateZPlug, om.MAngle(eulerRotation.z, om.MAngle.kRadians))
+        plugmutators.setValue(zPlug, om.MAngle(eulerRotation.z, om.MAngle.kRadians))
+
+    # Check if rotate order can be set
+    #
+    orderPlug = plugutils.findPlug(dagPath, 'rotateOrder')
+
+    if not any([skipRotateX, skipRotateY, skipRotateZ]) and not orderPlug.isLocked:
+
+        plugmutators.setValue(orderPlug, eulerRotation.order)
 
 
 def resetEulerRotation(node):
@@ -317,12 +318,14 @@ def rotateTo(node, eulerRotation, **kwargs):
     currentMatrix = getMatrix(node)
     difference = rotationMatrix * currentMatrix.inverse()
 
-    currentEulerRotation = getEulerRotation(node)
-    newRotationMatrix = difference * currentEulerRotation.asMatrix()
+    currentRotationMatrix = getEulerRotation(node).asMatrix()
+    newRotationMatrix = difference * currentRotationMatrix
 
     newEulerRotation = om.MEulerRotation([0.0, 0.0, 0.0], order=getRotationOrder(node))
     newEulerRotation.setValue(newRotationMatrix)
 
+    # Update euler angles
+    #
     setEulerRotation(node, newEulerRotation, **kwargs)
 
 
@@ -343,21 +346,23 @@ def getJointOrient(joint):
 
         raise TypeError('getJointOrient() expects a valid dag path!')
 
-    # Get euler values from plugs
+    # Check if dag path contains a joint
     #
-    fnTransform = om.MFnTransform(dagPath)
-
-    if dagPath.hasFn(om.MFn.kJoint):
-
-        return om.MEulerRotation(
-            fnTransform.findPlug('jointOrientX', False).asMAngle().asRadians(),
-            fnTransform.findPlug('jointOrientY', False).asMAngle().asRadians(),
-            fnTransform.findPlug('jointOrientZ', False).asMAngle().asRadians()
-        )
-
-    else:
+    if not dagPath.hasFn(om.MFn.kJoint):
 
         return om.MEulerRotation()
+
+    # Get orientation from joint
+    #
+    xPlug = plugutils.findPlug(dagPath, 'jointOrientX')
+    yPlug = plugutils.findPlug(dagPath, 'jointOrientY')
+    zPlug = plugutils.findPlug(dagPath, 'jointOrientZ')
+
+    return om.MEulerRotation(
+        plugmutators.getValue(xPlug, convertUnits=False).asRadians(),
+        plugmutators.getValue(yPlug, convertUnits=False).asRadians(),
+        plugmutators.getValue(zPlug, convertUnits=False).asRadians()
+    )
 
 
 def setJointOrient(joint, orientation, **kwargs):
@@ -388,41 +393,34 @@ def setJointOrient(joint, orientation, **kwargs):
 
         raise TypeError('setJointOrient() expects a valid joint!')
 
-    # Initialize transform function set
-    # Update rotate order
-    #
-    fnTransform = om.MFnTransform(dagPath)
-
-    rotateOrderPlug = fnTransform.findPlug('rotateOrder', True)
-    orientation.reorderIt(rotateOrderPlug.asInt())
-
     # Check if rotateX can be set
     #
     skipJointOrient = kwargs.get('skipJointOrient', False)
     skipJointOrientX = kwargs.get('skipJointOrientX', skipJointOrient)
-    jointOrientXPlug = fnTransform.findPlug('jointOrientX', True)
 
-    if not skipJointOrientX and not jointOrientXPlug.isLocked:
+    xPlug = plugutils.findPlug(dagPath, 'jointOrientX')
 
-        plugmutators.setValue(jointOrientXPlug, om.MAngle(orientation.x, om.MAngle.kRadians))
+    if not skipJointOrientX and not xPlug.isLocked:
+
+        plugmutators.setValue(xPlug, om.MAngle(orientation.x, om.MAngle.kRadians))
 
     # Check if rotateY can be set
     #
     skipJointOrientY = kwargs.get('skipJointOrientY', skipJointOrient)
-    jointOrientYPlug = fnTransform.findPlug('jointOrientY', True)
+    zPlug = plugutils.findPlug(dagPath, 'jointOrientY')
 
-    if not skipJointOrientY and not jointOrientYPlug.isLocked:
+    if not skipJointOrientY and not zPlug.isLocked:
 
-        plugmutators.setValue(jointOrientYPlug, om.MAngle(orientation.y, om.MAngle.kRadians))
+        plugmutators.setValue(zPlug, om.MAngle(orientation.y, om.MAngle.kRadians))
 
     # Check if rotateZ can be set
     #
     skipJointOrientZ = kwargs.get('skipJointOrientZ', skipJointOrient)
-    jointOrientZPlug = fnTransform.findPlug('jointOrientZ', True)
+    zPlug = plugutils.findPlug(dagPath, 'jointOrientZ')
 
-    if not skipJointOrientZ and not jointOrientZPlug.isLocked:
+    if not skipJointOrientZ and not zPlug.isLocked:
 
-        plugmutators.setValue(jointOrientZPlug, om.MAngle(orientation.z, om.MAngle.kRadians))
+        plugmutators.setValue(zPlug, om.MAngle(orientation.z, om.MAngle.kRadians))
 
 
 def resetJointOrient(joint):
@@ -441,7 +439,7 @@ def getScale(node):
     Returns the scale values from the supplied node.
 
     :type node: Union[str, om.MObject, om.MDagPath]
-    :rtype: list[float, float, float]
+    :rtype: List[float, float, float]
     """
 
     # Inspect dag path
@@ -452,14 +450,16 @@ def getScale(node):
 
         raise TypeError('getScale() expects a valid dag path!')
 
-    # Get scale values from plugs
+    # Get scale values from node
     #
-    fnTransform = om.MFnTransform(dagPath)
+    xPlug = plugutils.findPlug(dagPath, 'scaleX')
+    yPlug = plugutils.findPlug(dagPath, 'scaleY')
+    zPlug = plugutils.findPlug(dagPath, 'scaleZ')
 
     return [
-        fnTransform.findPlug('scaleX', False).asFloat(),
-        fnTransform.findPlug('scaleY', False).asFloat(),
-        fnTransform.findPlug('scaleZ', False).asFloat()
+        plugmutators.getValue(xPlug),
+        plugmutators.getValue(yPlug),
+        plugmutators.getValue(zPlug),
     ]
 
 
@@ -484,37 +484,34 @@ def setScale(node, scale, **kwargs):
 
         raise TypeError('setScale() expects a valid dag path!')
 
-    # Initialize transform function set
+    # Check if `scaleX` can be set
     #
-    fnTransform = om.MFnTransform(dagPath)
     skipScale = kwargs.get('skipScale', False)
-
-    # Check if scaleX can be set
-    #
     skipScaleX = kwargs.get('skipScaleX', skipScale)
-    scaleXPlug = fnTransform.findPlug('scaleX', True)
 
-    if not skipScaleX and not scaleXPlug.isLocked:
+    xPlug = plugutils.findPlug(dagPath, 'scaleX')
 
-        plugmutators.setValue(scaleXPlug, scale[0])
+    if not skipScaleX and not xPlug.isLocked:
 
-    # Check if scaleY can be set
+        plugmutators.setValue(xPlug, scale[0])
+
+    # Check if `scaleY` can be set
     #
     skipScaleY = kwargs.get('skipScaleY', skipScale)
-    scaleYPlug = fnTransform.findPlug('scaleY', True)
+    yPlug = plugutils.findPlug(dagPath, 'scaleY')
 
-    if not skipScaleY and not scaleYPlug.isLocked:
+    if not skipScaleY and not yPlug.isLocked:
 
-        plugmutators.setValue(scaleYPlug, scale[1])
+        plugmutators.setValue(yPlug, scale[1])
 
-    # Check if scaleZ can be set
+    # Check if `scaleZ` can be set
     #
     skipScaleZ = kwargs.get('skipScaleZ', skipScale)
-    scaleZPlug = fnTransform.findPlug('scaleZ', True)
+    zPlug = plugutils.findPlug(dagPath, 'scaleZ')
 
-    if not skipScaleZ and not scaleZPlug.isLocked:
+    if not skipScaleZ and not zPlug.isLocked:
 
-        plugmutators.setValue(scaleZPlug, scale[2])
+        plugmutators.setValue(zPlug, scale[2])
 
 
 def resetScale(node):
@@ -534,7 +531,7 @@ def scaleTo(node, scale, **kwargs):
     Unlike `setScale`, this method adds the scalar difference to the current transform matrix.
 
     :type node: Union[str, om.MObject, om.MDagPath]
-    :type scale: Union[List[float, float, float], om.MVector]
+    :type scale: Union[Tuple[float, float, float], om.MVector]
     :rtype: None
     """
 
@@ -550,8 +547,11 @@ def scaleTo(node, scale, **kwargs):
     #
     currentScale = getMatrix(dagPath, asTransformationMatrix=True).scale(om.MSpace.kTransform)
     difference = om.MVector(scale) - om.MVector(currentScale)
+
     newScale = om.MVector(getScale(dagPath)) + difference
 
+    # Update scale
+    #
     setScale(node, newScale, **kwargs)
 
 
@@ -607,7 +607,6 @@ def getBoundingBox(node):
     return om.MFnDagNode(dagPath).boundingBox
 
 
-@undo(name='Apply Transform Matrix')
 def applyTransformMatrix(node, matrix, **kwargs):
     """
     Applies the transform matrix to the supplied node.
@@ -795,6 +794,7 @@ def freezeTransform(node, includeTranslate=True, includeRotate=True, includeScal
         freezeScale(node)
 
 
+@undo(name='Un-Freeze Transform')
 def unfreezeTransform(node):
     """
     Pushes the transform's parent offset matrix into the local matrix.
