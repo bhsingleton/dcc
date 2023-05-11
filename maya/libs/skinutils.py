@@ -1,9 +1,8 @@
-import maya.cmds as mc
-import maya.api.OpenMaya as om
-
+from maya import cmds as mc
+from maya.api import OpenMaya as om
 from dcc.python import stringutils
-from dcc.maya.libs import dagutils, plugutils
-from dcc.maya.decorators import undo
+from dcc.maya.libs import dagutils, plugutils, plugmutators
+from dcc.maya.decorators.undo import undo, commit
 
 import logging
 logging.basicConfig()
@@ -209,7 +208,7 @@ def getInfluence(skinCluster, influenceId):
         return None
 
 
-@undo.undo(name='Add Influence')
+@undo(name='Add Influence')
 def addInfluence(skinCluster, influence, index=None):
     """
     Adds the supplied influence object to the specified skin cluster.
@@ -271,7 +270,7 @@ def addInfluence(skinCluster, influence, index=None):
     mc.setAttr('%s.bindPreMatrix[%s]' % (fnDependNode.name(), index), matrixList, type='matrix')
 
 
-@undo.undo(name='Remove Influence')
+@undo(name='Remove Influence')
 def removeInfluence(skinCluster, influenceId):
     """
     Removes the specified influence.
@@ -330,7 +329,7 @@ def selectInfluence(skinCluster, influenceId):
     plugutils.connectPlugs(source, destination, force=True)
 
 
-def setWeights(skinCluster, vertexIndex, weights, plug=None):
+def setWeights(skinCluster, vertexIndex, weights, plug=None, modifier=None):
     """
     Updates the weights for the specified vertex.
     The plug keyword is used for optimization purposes when updating a list of vertices.
@@ -339,6 +338,7 @@ def setWeights(skinCluster, vertexIndex, weights, plug=None):
     :type vertexIndex: int
     :type weights: Dict[int, float]
     :type plug: om.MPlug
+    :type modifier: Union[om.MDGModifier, None]
     :rtype: None
     """
 
@@ -349,6 +349,12 @@ def setWeights(skinCluster, vertexIndex, weights, plug=None):
     if plug is None:
 
         plug = plugutils.findPlug(skinCluster, 'weightList[%s].weights' % vertexIndex)
+
+    # Check if a dag modifier was supplied
+    #
+    if modifier is None:
+
+        modifier = om.MDGModifier()
 
     # Remove unused influences
     #
@@ -385,16 +391,22 @@ def setWeights(skinCluster, vertexIndex, weights, plug=None):
         else:
 
             element = plug.elementByLogicalIndex(influenceId)  # type: om.MPlug
-            element.setFloat(weight)
+            plugmutators.setFloat(element, weight, modifier=modifier)
+
+    # Cache and execute modifier
+    #
+    commit(modifier.doIt, modifier.undoIt)
+    modifier.doIt()
 
 
-@undo.undo(name='Set Skin Weights')
-def setWeightList(skinCluster, weightList):
+@undo(name='Set Skin Weights')
+def setWeightList(skinCluster, weightList, modifier=None):
     """
     Updates the weights for all the specified vertices.
 
     :type skinCluster: om.MObject
     :type weightList: Dict[int, Dict[int, float]]
+    :type modifier: Union[om.MDGModifier, None]
     :rtype: None
     """
 
@@ -414,26 +426,32 @@ def setWeightList(skinCluster, weightList):
         element = weightListPlug.elementByLogicalIndex(vertexIndex)
         weightsPlug = element.child(0)  # type: om.MPlug
 
-        setWeights(skinCluster, vertexIndex, weights, plug=weightsPlug)
+        setWeights(skinCluster, vertexIndex, weights, plug=weightsPlug, modifier=modifier)
 
     # Re-enable normalize weights
     #
     normalizePlug.setBool(True)
 
 
-@undo.undo(name='Reset Pre-Bind Matrices')
-def resetPreBindMatrices(skinCluster):
+@undo(name='Reset Pre-Bind Matrices')
+def resetPreBindMatrices(skinCluster, modifier=None):
     """
     Resets the pre-bind matrices on the associated joints.
 
+    :type skinCluster: om.MObject
+    :type modifier: Union[om.MDGModifier, None]
     :rtype: None
     """
 
+    # Check if a modifier was supplied
+    #
+    if modifier is None:
+
+        modifier = om.MDGModifier()
+
     # Iterate through matrix elements
     #
-    fnDependNode = om.MFnDependencyNode(skinCluster)
-
-    plug = fnDependNode.findPlug('bindPreMatrix', True)
+    plug = plugutils.findPlug(skinCluster, 'bindPreMatrix')
     numElements = plug.evaluateNumElements()
 
     for i in range(numElements):
@@ -442,8 +460,6 @@ def resetPreBindMatrices(skinCluster):
         #
         element = plug.elementByPhysicalIndex(i)
         index = element.logicalIndex()
-
-        attributeName = element.name()
 
         # Check if influence still exists
         #
@@ -456,13 +472,18 @@ def resetPreBindMatrices(skinCluster):
         # Get world inverse matrix from influence
         #
         dagPath = om.MDagPath.getAPathTo(influence)
-        fnDagNode = om.MFnDagNode(dagPath)
+        worldInverseMatrixPlug = plugutils.findPlug(influence, 'worldInverseMatrix[%s]' % dagPath.instanceNumber())
+        worldInverseMatrix = plugmutators.getMatrix(worldInverseMatrixPlug)
 
-        matrixList = mc.getAttr('%s.worldInverseMatrix[%s]' % (fnDagNode.fullPathName(), dagPath.instanceNumber()))
-        mc.setAttr(attributeName, matrixList, type='matrix')
+        plugmutators.setMatrix(element, worldInverseMatrix, modifier=modifier)
+
+    # Cache and execute modifier
+    #
+    commit(modifier.doIt, modifier.undoIt)
+    modifier.doIt()
 
 
-@undo.undo(name='Reset Intermediate Object')
+@undo(name='Reset Intermediate Object')
 def resetIntermediateObject(skinCluster):
     """
     Resets the control points on the associated intermediate object.
