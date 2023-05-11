@@ -1,7 +1,6 @@
 import math
 
 from dataclasses import dataclass, fields, replace
-from collections.abc import Sequence
 from . import adc, transformationmatrix
 from ..decorators.classproperty import classproperty
 
@@ -41,7 +40,7 @@ class Vector(adc.ADC):
         #
         args = self.x
 
-        if isinstance(args, Sequence):
+        if hasattr(args, '__getitem__') and hasattr(args, '__len__'):
 
             # Un-package items into vector
             #
