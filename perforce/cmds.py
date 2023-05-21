@@ -14,14 +14,22 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-def logResults(results):
+def logResults(results, **kwargs):
     """
     Outputs the supplied results object to the logger.
 
     :type results: Union[list, dict]
     :rtype: None
     """
-
+    
+    # Check if quite was enabled
+    #
+    quiet = kwargs.get('quiet', False)
+    
+    if quiet:
+        
+        return
+    
     # Check value type
     #
     if isinstance(results, (list, tuple)):
@@ -41,13 +49,21 @@ def logResults(results):
         pass
 
 
-def logErrors(errors):
+def logErrors(errors, **kwargs):
     """
     Outputs the supplied errors object to the logger.
 
     :type errors: Union[list, dict]
     :rtype: None
     """
+
+    # Check if quite was enabled
+    #
+    quiet = kwargs.get('quiet', False)
+
+    if quiet:
+        
+        return
 
     # Check value type
     #
@@ -90,7 +106,7 @@ def files(*args, **kwargs):
 
     except P4Exception:
 
-        logErrors(p4.errors)
+        logErrors(p4.errors, **kwargs)
 
     finally:
 
@@ -117,7 +133,7 @@ def dirs(*args, **kwargs):
 
     except P4Exception:
 
-        logErrors(p4.errors)
+        logErrors(p4.errors, **kwargs)
 
     finally:
 
@@ -145,7 +161,7 @@ def where(*args, **kwargs):
 
     except P4Exception:
 
-        logErrors(p4.errors)
+        logErrors(p4.errors, **kwargs)
 
     finally:
 
@@ -172,7 +188,7 @@ def fstat(*args, **kwargs):
 
     except P4Exception:
 
-        logErrors(p4.errors)
+        logErrors(p4.errors, **kwargs)
 
     finally:
 
@@ -182,26 +198,36 @@ def fstat(*args, **kwargs):
 
 def sync(*args, **kwargs):
     """
-    Syncs the supplied depot files from perforce.
-    This method excepts depot files so be sure to convert local paths using where.
+    Syncs the supplied files from perforce.
 
-    :rtype: dict
+    :key flush: bool
+    :rtype: List[dict]
     """
 
     # Create repository
     #
     p4 = createAdapter(**kwargs)
+    flush = kwargs.get('flush', False)
+
     specs = []
 
     try:
 
         p4.connect()
-        specs = p4.run('sync', '-f', *args)
-        logResults(specs)
+
+        if flush:
+
+            specs = p4.run('sync', '-k', *args)
+
+        else:
+
+            specs = p4.run('sync', '-f', *args)
+
+        logResults(specs, **kwargs)
 
     except P4Exception:
 
-        logErrors(p4.errors)
+        logErrors(p4.errors, **kwargs)
 
     finally:
 
@@ -211,7 +237,7 @@ def sync(*args, **kwargs):
 
 def add(*args, **kwargs):
     """
-    Marks the supplied local files to be added to the depot.
+    Marks the supplied files to be added to the depot.
     All file paths should be supplied as arguments!
 
     :key changelist: int
@@ -229,11 +255,11 @@ def add(*args, **kwargs):
 
         p4.connect()
         specs = p4.run('add', '-c', changelist, *args)
-        logResults(specs)
+        logResults(specs, **kwargs)
 
     except P4Exception:
 
-        logErrors(p4.errors)
+        logErrors(p4.errors, **kwargs)
 
     finally:
 
@@ -243,7 +269,7 @@ def add(*args, **kwargs):
 
 def edit(*args, **kwargs):
     """
-    Checks out the supplied local files for editing.
+    Checks out the supplied files for editing.
     All file paths should be supplied as arguments!
 
     :key changelist: int
@@ -261,11 +287,11 @@ def edit(*args, **kwargs):
 
         p4.connect()
         specs = p4.run('edit', '-c', changelist, *args)
-        logResults(specs)
+        logResults(specs, **kwargs)
 
     except P4Exception:
 
-        logErrors(p4.errors)
+        logErrors(p4.errors, **kwargs)
 
     finally:
 
@@ -294,13 +320,13 @@ def move(fromFile, toFile, **kwargs):
 
         p4.connect()
         specs = p4.run('move', '-c', changelist, fromFile, toFile)
-        logResults(specs)
+        logResults(specs, **kwargs)
 
         success = True
 
     except P4Exception:
 
-        logErrors(p4.errors)
+        logErrors(p4.errors, **kwargs)
 
     finally:
 
@@ -325,11 +351,11 @@ def delete(*args, **kwargs):
 
         p4.connect()
         specs = p4.run('delete', '-c', kwargs.get('changelist', 'default'), *args)
-        logResults(specs)
+        logResults(specs, **kwargs)
 
     except P4Exception:
 
-        logErrors(p4.errors)
+        logErrors(p4.errors, **kwargs)
 
     finally:
 
@@ -355,11 +381,11 @@ def revert(*args, **kwargs):
         #
         p4.connect()
         specs = p4.run('revert', '-a', *args)
-        logResults(specs)
+        logResults(specs, **kwargs)
 
     except P4Exception:
 
-        logErrors(p4.errors)
+        logErrors(p4.errors, **kwargs)
 
     finally:
 
@@ -397,7 +423,7 @@ def clients(*args, **kwargs):
 
     except P4Exception:
 
-        logErrors(p4.errors)
+        logErrors(p4.errors, **kwargs)
 
     finally:
 
@@ -424,7 +450,7 @@ def client(*args, **kwargs):
 
     except P4Exception:
 
-        logErrors(p4.errors)
+        logErrors(p4.errors, **kwargs)
 
     finally:
 
@@ -451,7 +477,7 @@ def depots(*args, **kwargs):
 
     except P4Exception:
 
-        logErrors(p4.errors)
+        logErrors(p4.errors, **kwargs)
 
     finally:
 
@@ -478,7 +504,7 @@ def depot(*args, **kwargs):
 
     except P4Exception:
 
-        logErrors(p4.errors)
+        logErrors(p4.errors, **kwargs)
 
     finally:
 
@@ -509,7 +535,7 @@ def changes(*args, **kwargs):
 
     except P4Exception:
 
-        logErrors(p4.errors)
+        logErrors(p4.errors, **kwargs)
 
     finally:
 
@@ -543,7 +569,7 @@ def login(password, **kwargs):
 
     except P4Exception:
 
-        logErrors(p4.errors)
+        logErrors(p4.errors, **kwargs)
 
     finally:
 
@@ -575,7 +601,7 @@ def loginExpiration(*args, **kwargs):
 
     except P4Exception:
 
-        logErrors(p4.errors)
+        logErrors(p4.errors, **kwargs)
 
     finally:
 

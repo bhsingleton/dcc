@@ -1,12 +1,12 @@
 import os
 import stat
 import json
-import shutil
 import subprocess
 
 from P4 import P4Exception
-from dcc import fnscene
-from dcc.perforce import createAdapter, cmds, clientutils
+from . import createAdapter, cmds, clientutils
+from .decorators.relogin import relogin
+from .. import fnscene
 
 import logging
 logging.basicConfig()
@@ -54,9 +54,44 @@ def acceptsCheckout(filePath):
     # Evaluate file specs
     #
     depotPath = client.mapToDepot(filePath)
-    specs = cmds.files(depotPath)
+    specs = cmds.files(depotPath, quiet=True)
 
     return len(specs) == 1
+
+
+def tryFlush(filePath):
+    """
+    Attempts to sync to the latest revision without overwriting any local changes.
+
+    :type filePath: str
+    :rtype: bool
+    """
+
+    # Check if file can be checked out
+    #
+    accepted = acceptsCheckout(filePath)
+
+    if not accepted:
+
+        return False
+
+    # Check if file requires syncing
+    #
+    stats = cmds.fstat(filePath)[0]
+
+    haveRev = stats.get('haveRev', 0)
+    headRev = stats['headRev']
+
+    if haveRev != headRev:
+
+        log.debug(f'File is out-of-date: {filePath}')
+        cmds.sync(filePath, flush=True)
+
+    else:
+
+        log.debug(f'File is already up-to-date: {filePath}')
+
+    return True
 
 
 def tryCheckout(filePath):
@@ -67,11 +102,15 @@ def tryCheckout(filePath):
     :rtype: bool
     """
 
+    # Check if file can be checked out
+    #
     accepted = acceptsCheckout(filePath)
 
     if accepted:
 
+        tryFlush(filePath)
         cmds.edit(filePath)
+
         return True
 
     else:
@@ -98,7 +137,7 @@ def acceptsAdd(filePath):
     # Evaluate file specs
     #
     depotPath = client.mapToDepot(filePath)
-    specs = cmds.files(depotPath)
+    specs = cmds.files(depotPath, quiet=True)
 
     return len(specs) == 0
 
@@ -111,6 +150,8 @@ def tryAdd(filePath):
     :rtype: bool
     """
 
+    # Check if file can be added
+    #
     accepted = acceptsAdd(filePath)
 
     if accepted:
@@ -123,6 +164,28 @@ def tryAdd(filePath):
         return False
 
 
+def smartCheckout(filePath):
+    """
+    Automatically detects whether the supplied file needs to be added or checked out.
+
+    :type filePath: str
+    :rtype: bool
+    """
+
+    if acceptsAdd(filePath):
+
+        return tryAdd(filePath)
+
+    elif acceptsCheckout(filePath):
+
+        return tryCheckout(filePath)
+
+    else:
+
+        return False
+
+
+@relogin
 def checkoutScene():
     """
     Checks out the open scene file from perforce.
@@ -144,6 +207,7 @@ def checkoutScene():
         log.warning('Unable to checkout untitled scene file!')
 
 
+@relogin
 def addScene():
     """
     Adds the open scene file to perforce.
@@ -165,6 +229,7 @@ def addScene():
         log.warning('Unable to checkout untitled scene file!')
 
 
+@relogin
 def revertScene():
     """
     Reverts the open scene from perforce.
