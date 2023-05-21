@@ -1288,7 +1288,7 @@ def isDAGType(typeName):
 
     if isinstance(typeName, string_types):
 
-        return om.MNodeClass(typeName).hasAttribute('matrix')
+        return om.MNodeClass(typeName).hasAttribute('visibility')
 
     elif isinstance(typeName, integer_types):
 
@@ -1305,7 +1305,7 @@ def createNode(typeName, name='', parent=None, skipSelect=True):
 
     :type typeName: Union[str, int]
     :type name: str
-    :type parent: om.MObject
+    :type parent: Union[str, om.MObject, om.MDagPath, None]
     :type skipSelect: bool
     :rtype: om.MObject
     """
@@ -1313,12 +1313,14 @@ def createNode(typeName, name='', parent=None, skipSelect=True):
     # Create new node
     #
     node = om.MObject.kNullObj
+    parent = om.MObject.kNullObj if parent is None else getMObject(parent)
+
     modifier = None
 
     if isDAGType(typeName):
 
         modifier = om.MDagModifier()
-        node = modifier.createNode(typeName)
+        node = modifier.createNode(typeName, parent=parent)
 
     else:
 
@@ -1333,12 +1335,6 @@ def createNode(typeName, name='', parent=None, skipSelect=True):
     if not stringutils.isNullOrEmpty(name):
 
         renameNode(node, name)
-
-    # Check if a parent was supplied
-    #
-    if isinstance(parent, om.MObject) and node.hasFn(om.MFn.kDagNode):
-
-        reparentNode(node, parent)
 
     # Check if node should be selected
     #
