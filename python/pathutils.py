@@ -1,6 +1,7 @@
 import os
 import re
 import sys
+import stat
 import platform
 
 from string import ascii_uppercase
@@ -92,6 +93,36 @@ def ensureDirectory(path):
     if not os.path.exists(path):
 
         os.makedirs(path)
+
+
+def isReadOnly(path):
+    """
+    Evaluates if the specified path is read-only.
+
+    :type path: str
+    :rtype: bool
+    """
+
+    if os.path.isfile(path):
+
+        return not os.access(path, os.R_OK | os.W_OK)
+
+    else:
+
+        return False
+
+
+def ensureWritable(path):
+    """
+    Ensures the specified path is writable.
+
+    :type path: str
+    :rtype: None
+    """
+
+    if os.path.isfile(path) and isReadOnly(path):
+
+        os.chmod(path, stat.S_IWRITE)
 
 
 def isPathRelative(path):
