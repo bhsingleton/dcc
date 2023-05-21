@@ -334,10 +334,7 @@ class AFnNode(with_metaclass(ABCMeta, afnobject.AFnObject)):
 
                 yield node.object()
 
-            else:
-
-                node.next()
-                continue
+            node.next()
 
     @classmethod
     def iterInstancesByRegex(cls, pattern):
@@ -359,7 +356,4 @@ class AFnNode(with_metaclass(ABCMeta, afnobject.AFnObject)):
 
                 yield node.object()
 
-            else:
-
-                node.next()
-                continue
+            node.next()

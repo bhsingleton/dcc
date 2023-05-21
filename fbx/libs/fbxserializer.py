@@ -1127,7 +1127,7 @@ class FbxSerializer(object):
         Serializes the nodes from the supplied export set.
 
         :type exportSet: dcc.fbx.libs.fbxexportset.FbxExportSet
-        :rtype: None
+        :rtype: str
         """
 
         # Serialize export set components
@@ -1140,15 +1140,16 @@ class FbxSerializer(object):
         #
         exportPath = exportSet.exportPath()
         self.scene.ensureDirectory(exportPath)
+        self.scene.ensureWritable(exportPath)
 
-        self.saveAs(exportPath)
+        return self.saveAs(exportPath)
 
     def serializeSequence(self, sequence):
         """
         Serializes the nodes from the supplied sequence.
 
         :type sequence: dcc.fbx.libs.fbxsequence.FbxSequence
-        :rtype: None
+        :rtype: str
         """
 
         # Serialize skeleton from associated export set
@@ -1167,17 +1168,26 @@ class FbxSerializer(object):
         #
         exportPath = sequence.exportPath()
         self.scene.ensureDirectory(exportPath)
+        self.scene.ensureWritable(exportPath)
 
-        self.saveAs(exportPath)
+        return self.saveAs(exportPath)
 
     def saveAs(self, filePath):
         """
         Commits the fbx scene to the specified file path.
 
         :type filePath: str
-        :rtype: bool
+        :rtype: str
         """
 
         log.info(f'Saving FBX file to: {filePath}')
-        return FbxCommon.SaveScene(self.fbxManager, self.fbxScene, filePath)
+        success = FbxCommon.SaveScene(self.fbxManager, self.fbxScene, filePath)
+
+        if success:
+
+            return filePath
+
+        else:
+
+            return ''
     # endregion

@@ -214,6 +214,8 @@ class AFnBase(with_metaclass(ABCMeta, object)):
         except (RuntimeError, TypeError) as exception:
 
             log.debug(exception)
+            self.resetObject()
+
             return False
 
     def resetObject(self):
@@ -263,6 +265,16 @@ class AFnBase(with_metaclass(ABCMeta, object)):
 
         return self._queue
 
+    def acceptsQueue(self, queue):
+        """
+        Evaluates if the supplied object can be used as a queue.
+
+        :type queue: Any
+        :rtype: bool
+        """
+
+        return isinstance(queue, (collections_abc.MutableSequence, collections_abc.Iterable)) and not isinstance(queue, string_types)
+
     def setQueue(self, queue):
         """
         Updates the object queue for this function set.
@@ -282,16 +294,6 @@ class AFnBase(with_metaclass(ABCMeta, object)):
         self._queue = deque(flatten(queue))
         self.next()
 
-    def acceptsQueue(self, queue):
-        """
-        Evaluates if the supplied object can be used as a queue.
-
-        :type queue: Any
-        :rtype: bool
-        """
-
-        return isinstance(queue, (collections_abc.MutableSequence, collections_abc.Iterable)) and not isinstance(queue, string_types)
-
     def isDone(self):
         """
         Evaluates if the queue is empty.
@@ -299,7 +301,7 @@ class AFnBase(with_metaclass(ABCMeta, object)):
         :rtype: bool
         """
 
-        return len(self._queue) == 0
+        return len(self._queue) == 0 and not self.isValid()
 
     def next(self):
         """
@@ -314,16 +316,28 @@ class AFnBase(with_metaclass(ABCMeta, object)):
 
             return
 
-        # Pop next object in queue
+        # Check if queue still has items
         #
-        obj = self._queue.popleft()
-        success = self.trySetObject(obj)
+        queueCount = len(self._queue)
 
-        if success:
+        if queueCount > 0:
 
-            return obj
+            # Pop item from start of queue
+            #
+            obj = self._queue.popleft()
+            success = self.trySetObject(obj)
+
+            if success:
+
+                return obj
+
+            else:
+
+                return self.next()  # Go to next item
 
         else:
 
-            return self.next()
+            # Remove last item from function set
+            #
+            self.resetObject()
     # endregion

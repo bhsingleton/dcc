@@ -143,10 +143,25 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         pass
 
+    def currentName(self):
+        """
+        Returns the name of the open scene file without extension.
+
+        :rtype: str
+        """
+
+        if not self.isNewScene():
+
+            return os.path.splitext(self.currentFilename())[0]
+
+        else:
+
+            return ''
+
     @abstractmethod
     def currentFilename(self):
         """
-        Returns the name of the open scene file.
+        Returns the name of the open scene file with extension.
 
         :rtype: str
         """
@@ -324,6 +339,17 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
 
         pathutils.ensureDirectory(path)
+
+    @classmethod
+    def ensureWritable(cls, path):
+        """
+        Ensures that the supplied file is writable.
+
+        :type path: str
+        :rtype: None
+        """
+
+        pathutils.ensureWritable(path)
 
     @classmethod
     def isPathRelative(cls, path):

@@ -229,7 +229,4 @@ class FnSelectionSet(afnselectionset.AFnSelectionSet):
 
                 pymxs.runtime.deleteItem(selectionSet, index)
 
-            else:
-
-                node.next()
-                continue
+            node.next()
