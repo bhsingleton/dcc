@@ -5,6 +5,8 @@ from . import fbxbase, fbxskeleton, fbxmesh, fbxcamera, fbxscript, fbxserializer
 from ..interop import fbxfile
 from ... import fnscene, fnfbx
 from ...ui import qdirectoryedit
+from ...perforce import p4utils
+from ...python import stringutils
 
 import logging
 logging.basicConfig()
@@ -452,7 +454,7 @@ class FbxExportSet(fbxbase.FbxBase):
         Exports this set to the user defined path using the legacy serializer.
 
         :type namespace: str
-        :rtype: bool
+        :rtype: str
         """
 
         # Select nodes and execute pre-scripts
@@ -475,21 +477,23 @@ class FbxExportSet(fbxbase.FbxBase):
 
         exportPath = self.exportPath()
         self.scene.ensureDirectory(exportPath)
+        self.scene.ensureWritable(exportPath)
 
         success = self.fbx.exportSelection(exportPath)
 
         if not success:
 
-            return success
+            log.warning(f'Unable to export FBX: {exportPath}')
+            return ''
 
         # Execute post-scripts
         #
         self.editExportFile(exportPath)
         self.postExport()
 
-        return success
+        return exportPath
 
-    def customExport(self, *sequences, namespace=''):
+    def customExport(self, namespace=''):
         """
         Exports this set to the user defined path using the custom serializer.
 
@@ -500,23 +504,34 @@ class FbxExportSet(fbxbase.FbxBase):
         serializer = fbxserializer.FbxSerializer(namespace=namespace)
         return serializer.serializeExportSet(self)
 
-    def export(self, namespace=''):
+    def export(self, namespace='', checkout=False):
         """
         Exports this set to the user defined path.
 
         :type namespace: str
-        :rtype: None
+        :type checkout: bool
+        :rtype: str
         """
 
         # Check if legacy serializer should be used
         #
+        exportPath = False
+
         if self.asset.useLegacySerializer:
 
-            return self.legacyExport(namespace=namespace)
+            exportPath = self.legacyExport(namespace=namespace)
 
         else:
 
-            return self.customExport(namespace=namespace)
+            exportPath = self.customExport(namespace=namespace)
+
+        # Check if file requires checking-out
+        #
+        if checkout and not stringutils.isNullOrEmpty(exportPath):
+
+            p4utils.smartCheckout(exportPath)
+
+        return exportPath
 
     def postExport(self):
         """

@@ -291,12 +291,21 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
             QtWidgets.QMessageBox.information(self, 'Create Sequencer', 'Scene contains no references!')
             return
 
-        # Prompt user to select a reference
+        # Collect potential sequencers
         #
         currentPaths = [self.sequencerComboBox.itemText(i) for i in range(self.sequencerComboBox.count())]
         referencePaths = [reference(obj).filePath() for obj in references]
-        filteredPaths = [path for path in referencePaths if path not in currentPaths]
 
+        filteredPaths = [path for path in referencePaths if path not in currentPaths]
+        numFilteredPaths = len(filteredPaths)
+
+        if numFilteredPaths == 0:
+
+            QtWidgets.QMessageBox.information(self, 'Create Sequencer', 'Scene contains no more references!')
+            return
+
+        # Prompt user for referenced asset
+        #
         item, okay = QtWidgets.QInputDialog.getItem(
             self,
             'Create Sequencer',
@@ -305,8 +314,6 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
             editable=False
         )
 
-        # Evaluate user input
-        #
         if okay:
 
             index = filteredPaths.index(item)
@@ -354,13 +361,11 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
         # Remove selected sequencer
         #
         index = self.sequencerComboBox.currentIndex()
-        self.sequencerComboBox.removeItem(index)
-
         del self.sequencers[index]
 
         # Invalidate sequences
         #
-        self.invalidateSequences()
+        self.invalidateSequencers()
 
     @QtCore.Slot(bool)
     def on_saveSequencerAction_triggered(self, checked=False):
@@ -512,9 +517,20 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
         :rtype: None
         """
 
+        # Check if sequencer exists
+        #
+        if self.currentSequencer is None:
+
+            QtWidgets.QMessageBox.warning(self, 'Export Sequence', 'No sequencer available to export from!')
+            return
+
+        # Export selected sequences
+        #
+        checkout = self.checkoutCheckBox.isChecked()
+
         for row in self.getSelectedRows():
 
-            self.currentSequencer.sequences[row].export()
+            self.currentSequencer.sequences[row].export(checkout=checkout)
 
     @QtCore.Slot(bool)
     def on_exportAllPushButton_clicked(self, checked=False):
@@ -525,7 +541,18 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
         :rtype: None
         """
 
+        # Check if sequencer exists
+        #
+        if self.currentSequencer is None:
+
+            QtWidgets.QMessageBox.warning(self, 'Export Sequences', 'No sequencer available to export from!')
+            return
+
+        # Export all sequences
+        #
+        checkout = self.checkoutCheckBox.isChecked()
+
         for sequence in self.currentSequencer.sequences:
 
-            sequence.export()
+            sequence.export(checkout=checkout)
     # endregion

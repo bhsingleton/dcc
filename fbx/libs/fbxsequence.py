@@ -5,6 +5,7 @@ from . import fbxbase, fbxscript, fbxserializer
 from ... import fnfbx, fnscene
 from ...python import stringutils
 from ...ui import qdirectoryedit, qtimespinbox
+from ...perforce import p4utils
 
 import logging
 logging.basicConfig()
@@ -387,7 +388,7 @@ class FbxSequence(fbxbase.FbxBase):
         """
         Exports this sequences using the builtin serializer.
 
-        :rtype: bool
+        :rtype: str
         """
 
         # Check if sequence is valid
@@ -418,20 +419,28 @@ class FbxSequence(fbxbase.FbxBase):
         )
 
         exportPath = self.exportPath()
+        self.scene.ensureDirectory(exportPath)
+        self.scene.ensureWritable(exportPath)
+
         success = self.fbx.exportSelection(exportPath)
+
+        if not success:
+
+            log.warning(f'Unable to export FBX: {exportPath}')
+            return ''
 
         # Execute post-scripts
         #
         exportSet.editExportFile(exportPath)
         exportSet.postExport()
 
-        return success
+        return exportPath
 
     def customExport(self):
         """
         Exports this sequences using a custom serializer.
 
-        :rtype: bool
+        :rtype: str
         """
 
         # Check if sequence is valid
@@ -448,11 +457,12 @@ class FbxSequence(fbxbase.FbxBase):
 
         return serializer.serializeSequence(self)
 
-    def export(self):
+    def export(self, checkout=False):
         """
         Exports this sequences to the user defined path.
 
-        :rtype: bool
+        :type checkout: bool
+        :rtype: str
         """
 
         # Check if sequence is valid
@@ -468,11 +478,19 @@ class FbxSequence(fbxbase.FbxBase):
 
         if asset.useLegacySerializer:
 
-            return self.legacyExport()
+            exportPath = self.legacyExport()
 
         else:
 
-            return self.customExport()
+            exportPath = self.customExport()
+
+        # Check if file requires adding
+        #
+        if checkout and not stringutils.isNullOrEmpty(exportPath):
+
+            p4utils.smartCheckout(exportPath)
+
+        return exportPath
 
     def refresh(self):
         """
@@ -486,15 +504,19 @@ class FbxSequence(fbxbase.FbxBase):
         #
         asset = self.asset()
 
-        if asset is None:
+        if asset is not None:
 
-            return
+            # Update return type
+            #
+            names = [exportSet.name for exportSet in asset.exportSets]
+            options = {name: index for (index, name) in enumerate(names)}
+            enum = Enum('ExportSetIds', options, type=IntEnum)
 
-        # Update return type
-        #
-        names = [exportSet.name for exportSet in asset.exportSets]
-        options = {name: index for (index, name) in enumerate(names)}
-        enum = Enum('ExportSetIds', options, type=IntEnum)
+            self.__class__.exportSetId.fget.__annotations__['return'] = enum
 
-        self.__class__.exportSetId.fget.__annotations__['return'] = enum
+        else:
+
+            # Reset return type
+            #
+            self.__class__.exportSetId.fget.__annotations__['return'] = int
     # endregion

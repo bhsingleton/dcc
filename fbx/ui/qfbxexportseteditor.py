@@ -408,8 +408,9 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
         :rtype: None
         """
 
-        self.manager.saveAsset(self.asset)  # This will mark the scene as dirty!
-
+        self.manager.saveAsset(self.asset)
+        self.scene.save()
+        
     @QtCore.Slot(str)
     def on_assetDirectoryLineEdit_textChanged(self, text):
         """
@@ -820,9 +821,17 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
         :rtype: None
         """
 
-        if self.currentExportSet is not None:
+        # Check if export set exists
+        #
+        if self.currentExportSet is None:
 
-            self.currentExportSet.export()
+            QtWidgets.QMessageBox.warning(self, 'Export Set', 'No set available to export!')
+            return
+
+        # Export current set
+        #
+        checkout = self.checkoutCheckBox.isChecked()
+        self.currentExportSet.export(checkout=checkout)
 
     @QtCore.Slot(bool)
     def on_exportAllPushButton_clicked(self, checked=False):
@@ -833,9 +842,20 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
         :rtype: None
         """
 
+        # Check if export set exists
+        #
+        if self.asset is None:
+
+            QtWidgets.QMessageBox.warning(self, 'Export Sets', 'No asset available to export from!')
+            return
+
+        # Export all sets
+        #
+        checkout = self.checkoutCheckBox.isChecked()
+
         for exportSet in self.asset.exportSets:
 
-            exportSet.export()
+            exportSet.export(checkout=checkout)
 
     @QtCore.Slot(bool)
     def on_usingFbxExportSetEditorAction_triggered(self, checked=False):

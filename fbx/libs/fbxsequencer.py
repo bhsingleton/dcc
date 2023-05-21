@@ -37,7 +37,12 @@ class FbxSequencer(fbxbase.FbxBase):
         #
         self._sequences.addCallback('itemAdded', self.sequenceAdded)
         self._sequences.addCallback('itemRemoved', self.sequenceRemoved)
-        self._sequences.extend(kwargs.get('sequences', []))
+
+        sequences = kwargs.get('sequences', None)
+
+        if not stringutils.isNullOrEmpty(sequences):
+
+            self._sequences.extend(sequences)
 
         # Call parent method
         #
@@ -127,6 +132,31 @@ class FbxSequencer(fbxbase.FbxBase):
 
         self._sequences.clear()
         self._sequences.extend(sequences)
+    # endregion
+
+    # region Callbacks
+    def sequenceAdded(self, index, sequence):
+        """
+        Adds a reference of this asset to the supplied export set.
+
+        :type index: int
+        :type sequence: fbxsequence.FbxSequence
+        :rtype: None
+        """
+
+        sequence._sequencer = self.weakReference()
+        sequence.refresh()
+
+    def sequenceRemoved(self, sequence):
+        """
+        Removes the reference of this asset from the supplied export set.
+
+        :type sequence: fbxsequence.FbxSequence
+        :rtype: None
+        """
+
+        sequence._sequencer = self.nullWeakReference
+        sequence.refresh()
     # endregion
 
     # region Methods
@@ -229,28 +259,4 @@ class FbxSequencer(fbxbase.FbxBase):
             sequence.refresh()
 
         return True
-    # endregion
-
-    # region Callbacks
-    def sequenceAdded(self, index, sequence):
-        """
-        Adds a reference of this asset to the supplied export set.
-
-        :type index: int
-        :type sequence: fbxsequence.FbxSequence
-        :rtype: None
-        """
-
-        sequence._sequencer = self.weakReference()
-        sequence.refresh()
-
-    def sequenceRemoved(self, sequence):
-        """
-        Removes the reference of this asset from the supplied export set.
-
-        :type sequence: fbxsequence.FbxSequence
-        :rtype: None
-        """
-
-        sequence._asset = self.nullWeakReference
     # endregion
