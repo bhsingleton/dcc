@@ -1,1 +1,28 @@
-<?xml version="1.0" encoding="UTF-8"?><svg id="a" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><defs><style>.b{fill:#bdbdbd;}.c{fill:#3a3a3a;}.d{fill:none;}</style></defs><g><polygon class="b" points="26 20 26 26 6 26 6 20 8 20 8 24 24 24 24 20 26 20"/><path class="c" d="M26,20v6H6v-6h2v4H24v-4h2m2-2h-6v4H10v-4H4v10H28v-10h0Z"/></g><g><polygon class="b" points="12 14 16 8 20 14 12 14"/><path class="c" d="M16,8l4,6H12l4-6m0-3.606l-1.664,2.496-4,6-2.073,3.109h15.474l-2.073-3.109-4-6-1.664-2.496h0Z"/></g><rect class="d" width="32" height="32"/></svg>
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="export_file" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #bdbdbd;
+      }
+
+      .cls-2 {
+        fill: #3a3a3a;
+      }
+
+      .cls-3 {
+        fill: none;
+      }
+    </style>
+  </defs>
+  <g>
+    <polygon class="cls-1" points="28 18 28 28 4 28 4 18 8 18 8 24 24 24 24 18 28 18"/>
+    <path class="cls-2" d="m28,18v10H4v-10h4v6h16v-6h4m2-2h-8v6h-12v-6H2v14h28v-14h0Z"/>
+  </g>
+  <g>
+    <polygon class="cls-1" points="10 12 16 4 22 12 18 12 18 18 14 18 14 12 10 12"/>
+    <path class="cls-2" d="m16,4l6,8h-4v6h-4v-6h-4l6-8m0-3.333l-1.6,2.133-6,8-2.4,3.2h6v6h8v-6h6l-2.4-3.2-6-8-1.6-2.133h0Z"/>
+  </g>
+  <rect class="cls-3" width="32" height="32"/>
+  <rect class="cls-3" width="32" height="32"/>
+</svg>
