@@ -302,7 +302,7 @@ class QFilePath(object):
         :rtype: bool
         """
 
-        return self.stat.st_mode & stat.S_IWRITE
+        return not bool(self.stat.st_mode & stat.S_IWRITE)
 
     def icon(self):
         """
