@@ -21,6 +21,15 @@ class FnQt(afnqt.AFnQt):
 
     __slots__ = ()
 
+    def isLegacy(self):
+        """
+        Evaluates if this version of 3dsMax is using the legacy Qt interface.
+
+        :rtype: bool
+        """
+
+        return qtmax.__name__ != 'qtmax'
+
     def getMainWindow(self):
         """
         Returns the main window.
@@ -39,7 +48,9 @@ class FnQt(afnqt.AFnQt):
         :rtype: None
         """
 
-        qtmax.DisableMaxAcceleratorsOnFocus(window, True)
+        if hasattr(qtmax, 'DisableMaxAcceleratorsOnFocus'):  # This method doesn't exist until 2023!
+
+            qtmax.DisableMaxAcceleratorsOnFocus(window, True)
 
     def partial(self, command):
         """
