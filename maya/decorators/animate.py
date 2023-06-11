@@ -15,7 +15,7 @@ class Animate(abstractdecorator.AbstractDecorator):
     """
 
     # region Dunderscores
-    __slots__ = ('_autoKey',)
+    __slots__ = ('_state', '_previousState')
 
     def __init__(self, *args, **kwargs):
         """
@@ -30,7 +30,8 @@ class Animate(abstractdecorator.AbstractDecorator):
 
         # Declare private variables
         #
-        self._autoKey = None
+        self._state = kwargs.get('state', True)
+        self._previousState = None
 
     def __enter__(self, *args, **kwargs):
         """
@@ -39,15 +40,13 @@ class Animate(abstractdecorator.AbstractDecorator):
         :rtype: None
         """
 
-        # Cache auto-key state
+        # Edit auto-key state
         #
-        self._autoKey = sceneutils.autoKey()
+        self._previousState = sceneutils.autoKey()
 
-        # Enable auto-key
-        #
-        if not self.autoKey:
+        if self.state != self.previousState:
 
-            sceneutils.enableAutoKey()
+            sceneutils.setAutoKey(self.state)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """
@@ -61,23 +60,31 @@ class Animate(abstractdecorator.AbstractDecorator):
 
         # Reset auto-key state
         #
-        autoKey = sceneutils.autoKey()
+        if self.state != self.previousState:
 
-        if autoKey != self.autoKey:
-
-            sceneutils.setAutoKey(self.autoKey)
+            sceneutils.setAutoKey(self.previousState)
     # endregion
 
     # region Properties
     @property
-    def autoKey(self):
+    def state(self):
         """
-        Getter method that returns the auto-key state.
+        Getter method that returns the requested auto-key state.
 
         :rtype: bool
         """
 
-        return self._autoKey
+        return self._state
+
+    @property
+    def previousState(self):
+        """
+        Getter method that returns the previous auto-key state.
+
+        :rtype: bool
+        """
+
+        return self._previousState
     # endregion
 
 
