@@ -1,10 +1,12 @@
 import os
 
 from collections import namedtuple
-from . import fbxasset, fbxsequencer
-from ... import fnscene
+from . import fbxasset, fbxsequence, fbxsequencer
+from ... import fnscene, fnreference
 from ...abstract import singleton
 from ...json import jsonutils
+from ...python import stringutils
+from ...perforce import p4utils
 
 import logging
 logging.basicConfig()
@@ -218,6 +220,31 @@ class FbxIO(singleton.Singleton):
 
         return jsonutils.load(filePath)
 
+    def exportAsset(self, directory='', checkout=False):
+        """
+        Exports sets from the asset in the current scene file.
+
+        :type directory: str
+        :type checkout: bool
+        :rtype: None
+        """
+
+        # Iterate through export sets
+        #
+        asset = self.loadAsset()
+
+        for exportSet in asset.exportSets:
+
+            # Check if directory has been overriden
+            #
+            if not stringutils.isNullOrEmpty(directory):
+
+                exportSet.directory = directory
+
+            # Export set
+            #
+            exportSet.export(checkout=checkout)
+
     def getCachedSequencers(self, filePath):
         """
         Returns a cached asset using the supplied file's ID.
@@ -306,4 +333,98 @@ class FbxIO(singleton.Singleton):
         """
 
         jsonutils.dump(filePath, sequencers)
+
+    def exportReferencedAssets(self, directory='', checkout=False):
+        """
+        Tries to export animation from the referenced assets in the current scene file.
+
+        :type directory: str
+        :type checkout: bool
+        :rtype: None
+        """
+
+        # Check if scene contains any references
+        #
+        references = list(fnreference.FnReference.iterSceneReferences())
+        numReferences = len(references)
+
+        if numReferences == 0:
+
+            log.warning('Scene contains no referenced assets!')
+            return
+
+        # Collect references from scene
+        #
+        reference = fnreference.FnReference()
+        reference.setQueue(references)
+
+        while not reference.isDone():
+
+            # Create sequence from time-range
+            #
+            name = self.scene.currentName()
+            startFrame, endFrame = self.scene.getStartTime(), self.scene.getEndTime()
+
+            sequence = fbxsequence.FbxSequence(name=name, startFrame=startFrame, endFrame=endFrame)
+
+            if not stringutils.isNullOrEmpty(directory):
+
+                sequence.directory = directory
+
+            else:
+
+                sequence.directory = self.scene.currentDirectory()
+
+            # Create sequencer from reference's GUID
+            #
+            guid = reference.guid()
+            sequencer = fbxsequencer.FbxSequencer(guid=guid, sequences=[sequence])
+
+            if not sequencer.isValid():
+
+                log.warning(f'Cannot locate valid asset from reference: {guid}')
+                reference.next()
+
+                continue
+
+            # Export sequence and go to next reference
+            #
+            sequence.export(checkout=checkout)
+            reference.next()
+
+    def exportSequencers(self, directory='', checkout=False):
+        """
+        Exports animation from the sequencers in the current scene file.
+
+        :type directory: str
+        :type checkout: bool
+        :rtype: None
+        """
+
+        # Check if file contains any sequencers
+        #
+        sequencers = self.loadSequencers()
+        numSequencers = len(sequencers)
+
+        if numSequencers == 0:
+
+            self.exportReferencedAssets(directory=directory, checkout=checkout)
+
+        # Iterate through sequencers
+        #
+        for sequencer in sequencers:
+
+            # Iterate through sequences
+            #
+            for sequence in sequencer.sequences:
+
+                # Check if directory has been overriden
+                #
+                if not stringutils.isNullOrEmpty(directory):
+
+                    sequence.directory = directory
+
+                # Export sequence
+                #
+                sequence.export(checkout=checkout)
     # endregion

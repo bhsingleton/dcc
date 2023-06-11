@@ -6,6 +6,7 @@ from dcc.generators.consecutivepairs import consecutivePairs
 from dcc.ui import quicwindow
 from dcc.ui.models import qpsonitemmodel, qpsonstyleditemdelegate
 from dcc.fbx.libs import fbxio, fbxsequencer, fbxsequence
+from dcc.python import stringutils
 
 import logging
 logging.basicConfig()
@@ -99,6 +100,16 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
         # Call parent method
         #
         super(QFbxSequenceEditor, self).postLoad()
+
+        # Edit sequencer/batch rollouts
+        #
+        self.sequencerRollout.setText('Sequencers')
+        self.sequencerRollout.setExpanded(True)
+
+        self.batchRollout.setText('Batch')
+        self.batchRollout.setExpanded(False)
+
+        self.centralWidget.layout().setAlignment(QtCore.Qt.AlignTop)
 
         # Initialize sequencer tree view model
         #
@@ -555,4 +566,127 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
         for sequence in self.currentSequencer.sequences:
 
             sequence.export(checkout=checkout)
+
+    @QtCore.Slot(bool)
+    def on_addFilesPushButton_clicked(self, checked=False):
+        """
+        Slot method for the addFilesPushButton's `clicked` signal.
+
+        :type checked: bool
+        :rtype: None
+        """
+
+        # Prompt user for scene files
+        #
+        filePaths, selectedFilter = QtWidgets.QFileDialog.getOpenFileNames(
+            self,
+            'Select files to batch',
+            self.scene.currentDirectory(),
+            f"Scene files ({' '.join([f'*.{extension.name}' for extension in self.scene.extensions()])})"
+        )
+
+        if not stringutils.isNullOrEmpty(filePaths):
+
+            # Add new scene files to list
+            #
+            currentPaths = [self.fileListWidget.item(i).text() for i in range(self.fileListWidget.count())]
+            filteredPaths = [path for path in filePaths if path not in currentPaths]
+
+            for path in filteredPaths:
+
+                self.fileListWidget.addItem(path)
+
+        else:
+
+            log.info('Operation aborted...')
+
+    @QtCore.Slot(bool)
+    def on_removeFilesPushButton_clicked(self, checked=False):
+        """
+        Slot method for the removeFilesPushButton's `clicked` signal.
+
+        :type checked: bool
+        :rtype: None
+        """
+
+        # Iterate through selected items
+        #
+        selectedItems = self.fileListWidget.selectedItems()
+
+        for selectedItem in reversed(selectedItems):
+
+            row = self.fileListWidget.row(selectedItem)
+            self.fileListWidget.takeItem(row)
+
+    @QtCore.Slot(bool)
+    def on_batchPathPushButton_clicked(self, checked=False):
+        """
+        Slot method for the batchPathPushButton's `clicked` signal.
+
+        :type checked: bool
+        :rtype: None
+        """
+
+        # Prompt user for export directory
+        #
+        directory = QtWidgets.QFileDialog.getExistingDirectory(
+            self,
+            'Select directory to export to',
+            self.scene.currentDirectory(),
+            QtWidgets.QFileDialog.ShowDirsOnly | QtWidgets.QFileDialog.DontResolveSymlinks
+        )
+
+        if not stringutils.isNullOrEmpty(directory):
+
+            self.batchPathLineEdit.setText(directory)
+
+        else:
+
+            log.info('Operation aborted...')
+
+    @QtCore.Slot(bool)
+    def on_batchPushButton_clicked(self, checked=False):
+        """
+        Slot method for the batchPushButton's `clicked` signal.
+
+        :type checked: bool
+        :rtype: None
+        """
+
+        # Check if queue is valid
+        #
+        fileCount = self.fileListWidget.count()
+
+        if fileCount == 0:
+
+            QtWidgets.QMessageBox.warning(self, 'Batch Export', 'No files in queue to batch!')
+            return
+
+        # Iterate through files
+        #
+        checkout = self.checkoutCheckBox.isChecked()
+        directory = self.batchPathLineEdit.text()
+
+        increment = (1.0 / float(fileCount)) * 100.0
+
+        for i in range(fileCount):
+
+            # Try to open scene file
+            #
+            filePath = self.fileListWidget.item(i).text()
+            progress = increment * float(i + 1)
+
+            success = self.scene.open(filePath)
+
+            if not success:
+
+                log.warning(f'Unable to open scene file: {filePath}')
+                self.batchProgressBar.setValue(progress)
+
+                continue
+
+            # Export sequences
+            #
+            self.manager.exportSequencers(directory=directory, checkout=checkout)
+            self.batchProgressBar.setValue(progress)
     # endregion
