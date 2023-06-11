@@ -1,11 +1,11 @@
 import os
 import sys
+import traceback
 
 from maya import cmds as mc
 from functools import partial
-from .. import plugins
-from ...decorators import abstractdecorator
 from ...python import stringutils
+from ...decorators import abstractdecorator
 
 import logging
 logging.basicConfig()
@@ -21,7 +21,7 @@ class Undo(abstractdecorator.AbstractDecorator):
     # region Dunderscores
     __slots__ = ('_state', '_name',)
     __chunk__ = None  # Prevents nested undo chunks from closing prematurely
-    __plugins__ = os.path.dirname(os.path.abspath(plugins.__file__))
+    __plugin__ = 'pyundocommand.py'
 
     def __init__(self, *args, **kwargs):
         """
@@ -91,6 +91,7 @@ class Undo(abstractdecorator.AbstractDecorator):
         except RuntimeError as exception:
 
             log.error(exception)
+            print(traceback.format_exc())
             return None
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -158,25 +159,54 @@ class Undo(abstractdecorator.AbstractDecorator):
     # endregion
 
     # region Methods
-    def isLoaded(self):
+    def exists(self):
         """
-        Evaluates if the `pyUndo` plugin command has been loaded.
+        Evaluates if the `pyUndo` command plugin exists.
 
         :rtype: bool
         """
 
-        return mc.pluginInfo('pyundocommand.py', query=True, loaded=True)
+        paths = os.environ.get('MAYA_PLUG_IN_PATH', '').split(';')
+        filePaths = [os.path.join(os.path.abspath(path), self.__plugin__) for path in paths if not stringutils.isNullOrEmpty(path)]
+        filteredPaths = list(filter(os.path.exists, filePaths))
+
+        return len(filteredPaths) == 1
+
+    def isLoaded(self):
+        """
+        Evaluates if the `pyUndo` command plugin has been loaded.
+
+        :rtype: bool
+        """
+
+        return mc.pluginInfo(self.__plugin__, query=True, loaded=True)
 
     def ensureLoaded(self):
         """
-        Loads the `pyUndo` plugin command.
+        Loads the `pyUndo` command plugin.
 
         :rtype: None
         """
 
-        if not self.isLoaded():
+        # Check if plug-in is already loaded
+        #
+        isLoaded = self.isLoaded()
 
-            mc.loadPlugin(os.path.join(self.__plugins__, 'pyundocommand.py'), quiet=True)
+        if isLoaded:
+
+            return
+
+        # Check if plug-in exists
+        #
+        exists = self.exists()
+
+        if exists:
+
+            mc.loadPlugin(self.__plugin__, quiet=True)
+
+        else:
+
+            log.debug(f'Unable to locate "{self.__plugin__}" plugin!')
     # endregion
 
 
