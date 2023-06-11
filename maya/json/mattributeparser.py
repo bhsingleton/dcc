@@ -93,6 +93,7 @@ class MAttributeDecoder(json.JSONDecoder):
 
         # Call parent method
         #
+        kwargs['object_hook'] = self.default
         super(MAttributeDecoder, self).__init__(*args, **kwargs)
     # endregion
 
