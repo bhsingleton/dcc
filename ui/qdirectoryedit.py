@@ -38,11 +38,12 @@ class QDirectoryEdit(QtWidgets.QLineEdit):
         #
         self.getExistingDirectoryAction = QtWidgets.QAction(QtGui.QIcon(':/qt-project.org/styles/commonstyle/images/diropen-16.png'), '', parent=self)
         self.getExistingDirectoryAction.setObjectName('getExistingDirectoryAction')
-        self.getExistingDirectoryAction.setToolTip('Get existing dialog.')
+        self.getExistingDirectoryAction.setToolTip('Browse to an existing directory.')
         self.getExistingDirectoryAction.triggered.connect(self.on_getExistingDirectoryAction_triggered)
 
         self.parentDirectoryAction = QtWidgets.QAction(QtGui.QIcon(':/qt-project.org/styles/commonstyle/images/up-16.png'), '', parent=self)
         self.parentDirectoryAction.setObjectName('parentDirectoryAction')
+        self.parentDirectoryAction.setToolTip('Goes up a directory.')
         self.parentDirectoryAction.triggered.connect(self.on_parentDirectoryAction_triggered)
 
         self.addAction(self.getExistingDirectoryAction, QtWidgets.QLineEdit.TrailingPosition)
