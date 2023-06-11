@@ -1,6 +1,6 @@
-from six import string_types
 from six.moves import collections_abc
 from collections import deque
+from ..python import arrayutils
 
 
 def flatten(*items):
@@ -16,11 +16,11 @@ def flatten(*items):
 
         item = queue.popleft()
 
-        if isinstance(item, collections_abc.Sequence) and not isinstance(item, string_types):
+        if arrayutils.isArrayLike(item):
 
             queue.extendleft(reversed(item))
 
-        elif isinstance(item, collections_abc.Iterator):
+        elif arrayutils.isIterable(item):
 
             queue.extendleft(reversed(list(item)))
 
