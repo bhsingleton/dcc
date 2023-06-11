@@ -631,16 +631,36 @@ def applyTransformMatrix(node, matrix, **kwargs):
     # Decompose transform matrix
     #
     partialPathName = dagPath.partialPathName()
+
+    log.debug(f'{partialPathName}.matrix = {matrix}')
     translation, eulerRotation, scale = decomposeTransformMatrix(matrix, rotateOrder=getRotationOrder(dagPath))
 
-    log.debug('%s.translate = [%s, %s, %s]' % (partialPathName, translation.x, translation.y, translation.z))
-    translateTo(node, translation, **kwargs)
+    # Check if translation should be skipped
+    #
+    skipTranslate = kwargs.get('skipTranslate', False)
 
-    log.debug('%s.rotate = [%s, %s, %s]' % (partialPathName, eulerRotation.x, eulerRotation.y, eulerRotation.z))
-    rotateTo(node, eulerRotation, **kwargs)
+    if not skipTranslate:
 
-    log.debug('%s.scale = [%s, %s, %s]' % (partialPathName, scale[0], scale[1], scale[2]))
-    scaleTo(node, scale, **kwargs)
+        log.debug(f'{partialPathName}.translate = [{translation.x}, {translation.y}, {translation.z}]')
+        translateTo(node, translation, **kwargs)
+
+    # Check if rotation should be skipped
+    #
+    skipRotate = kwargs.get('skipRotate', False)
+
+    if not skipRotate:
+
+        log.debug(f'{partialPathName}.rotate = [{eulerRotation.x}, {eulerRotation.y}, {eulerRotation.z}]')
+        rotateTo(node, eulerRotation, **kwargs)
+
+    # Check if scale should be skipped
+    #
+    skipScale = kwargs.get('skipScale', False)
+
+    if not skipScale:
+
+        log.debug(f'{partialPathName}.scale = [{scale[0]}, {scale[1]}, {scale[2]}]')
+        scaleTo(node, scale, **kwargs)
 
     # Freeze transform
     #
@@ -1524,7 +1544,7 @@ def createScaleMatrix(value):
 
     # Check value type
     #
-    if isinstance(value, (list, tuple)):
+    if isinstance(value, (list, tuple, om.MVector)):
 
         # Check number of items
         #
@@ -1725,6 +1745,25 @@ def lerpMatrix(matrix, otherMatrix, weight=0.5):
     scaleMatrix = createScaleMatrix(lerpScale)
 
     return scaleMatrix * rotateMatrix * positionMatrix
+
+
+def reorientMatrix(forwardAxis, upAxis, matrix, forwardAxisSign=1, upAxisSign=1):
+    """
+    Reorients the supplied matrix to the specified forward and up axes.
+
+    :type forwardAxis: int
+    :type upAxis: int
+    :type matrix: om.MMatrix
+    :type forwardAxisSign: int
+    :type: upAxisSign: int
+    :rtype: om.MMatrix
+    """
+
+    forwardVector = om.MVector.kXaxisVector * forwardAxisSign
+    upVector = om.MVector.kYaxisVector * upAxisSign
+    rotationMatrix = createAimMatrix(forwardAxis, forwardVector, upAxis, upVector)
+
+    return rotationMatrix * matrix
 
 
 def mirrorVector(vector, normal=om.MVector.kXaxisVector):
