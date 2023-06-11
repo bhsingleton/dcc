@@ -121,7 +121,7 @@ class PSONDecoder(json.JSONDecoder):
 
         # Find associated class
         #
-        className = obj.pop('__name__', '')
+        className = obj.pop('__class__', obj.pop('__name__', ''))  # This is here for legacy purposes!
         moduleName = obj.pop('__module__', '')
 
         cls = self.findClass(className, moduleName)

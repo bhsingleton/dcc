@@ -102,7 +102,7 @@ class PSONObject(with_metaclass(ABCMeta, collections_abc.MutableMapping)):
         # Iterate through properties
         # Be sure to only collect the writable properties
         #
-        state = {'__name__': self.className, '__module__': self.moduleName}
+        state = {'__class__': self.className, '__module__': self.moduleName}
 
         for (name, func) in self.iterProperties():
 
