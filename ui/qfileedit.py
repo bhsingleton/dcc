@@ -39,6 +39,7 @@ class QFileEdit(QtWidgets.QLineEdit):
         #
         self.getExistingFileAction = QtWidgets.QAction(QtGui.QIcon(':/qt-project.org/styles/commonstyle/images/diropen-16.png'), '', parent=self)
         self.getExistingFileAction.setObjectName('getExistingFileAction')
+        self.getExistingFileAction.setToolTip('Browse for an existing file.')
         self.getExistingFileAction.triggered.connect(self.on_getExistingFileAction_triggered)
 
         self.addAction(self.getExistingFileAction, QtWidgets.QLineEdit.TrailingPosition)
