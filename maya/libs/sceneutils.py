@@ -20,6 +20,16 @@ def isNewScene():
     return len(mc.file(query=True, sceneName=True)) == 0
 
 
+def newScene():
+    """
+    Creates a new scene file.
+
+    :rtype: None
+    """
+
+    mc.file(newFile=True, force=True)
+
+
 def isSaveRequired():
     """
     Evaluates whether the open scene file has changes that need to be saved.
@@ -28,6 +38,52 @@ def isSaveRequired():
     """
 
     return mc.file(query=True, modified=True)
+
+
+def saveScene():
+    """
+    Saves any changes made to the open scene file.
+
+    :rtype: None
+    """
+
+    # Check if this is an open scene file
+    #
+    if isNewScene():
+
+        return
+
+    # Get current file type
+    # Otherwise, Maya will assume binary for all files!
+    #
+    extension = currentExtension()
+    fileType = 'mayaAscii' if extension.lower() == 'ma' else 'mayaBinary'
+
+    # Save changes to scene file
+    #
+    mc.file(save=True, prompt=False, type=fileType)
+
+
+def renameScene(filePath):
+    """
+    Changes the file path on the open scene file.
+
+    :rtype: None
+    """
+
+    mc.file(rename=filePath)
+
+
+def saveSceneAs(filePath):
+    """
+    Saves the open scene file in a difference location.
+
+    :type filePath: str
+    :rtype: None
+    """
+
+    renameScene(filePath)
+    saveScene()
 
 
 def isBatchMode():
@@ -56,23 +112,46 @@ def currentFilePath():
         return ''
 
 
-def currentFilename(includeExtension=True):
+def currentFilename(includeName=True, includeExtension=True):
     """
     Returns the name of the open scene file.
 
+    :type includeName: bool
     :type includeExtension: bool
     :rtype: str
     """
 
+    # Check which part should be returned
+    #
     directory, fileName = os.path.split(currentFilePath())
+    name, extension = os.path.splitext(fileName)
 
-    if includeExtension:
+    if includeName and includeExtension:
 
         return fileName
 
+    elif includeName:
+
+        return name
+
+    elif includeExtension:
+
+        return extension.lstrip('.')
+
     else:
 
-        return os.path.splitext(fileName)[0]
+        return ''
+
+
+def currentExtension():
+    """
+    Returns the extension of the open scene file.
+
+    :rtype: str
+    """
+
+    directory, fileName = os.path.split(currentFilePath())
+    return os.path.splitext(fileName)[1].lstrip('.')
 
 
 def currentDirectory():
@@ -83,6 +162,24 @@ def currentDirectory():
     """
 
     return os.path.split(currentFilePath())[0]
+
+
+def openScene(filePath):
+    """
+    Opens the supplied scene file.
+
+    :rtype: bool
+    """
+
+    try:
+
+        mc.file(filePath, open=True, prompt=False, force=True)
+        return True
+
+    except RuntimeError as exception:
+
+        log.error(exception)
+        return False
 
 
 def currentProjectDirectory():
