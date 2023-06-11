@@ -713,7 +713,8 @@ class FbxSerializer(object):
         handle = joint.handle()
         fbxNode = self.getFbxNodeByHandle(handle)
 
-        values = [translation, eulerAngles, scale]
+        names = ('translate', 'rotate', 'scale')
+        values = (translation, eulerAngles, scale)
 
         for (i, fbxProperty) in enumerate([fbxNode.LclTranslation, fbxNode.LclRotation, fbxNode.LclScaling]):
 
@@ -721,7 +722,8 @@ class FbxSerializer(object):
             #
             for (j, axis) in enumerate(['X', 'Y', 'Z']):
 
-                animCurve = fbxProperty.GetCurve(animLayer, axis, True)  # TODO: Rename anim curve for debugging purposes!
+                animCurve = fbxProperty.GetCurve(animLayer, axis, True)
+                animCurve.SetName(f'{fbxNode.GetName()}_anim_{names[i]}{axis}')
 
                 animCurve.KeyModifyBegin()
                 keyIndex, lastIndex = animCurve.KeyAdd(time)
