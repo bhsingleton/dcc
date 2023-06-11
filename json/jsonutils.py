@@ -79,9 +79,11 @@ def loads(string, default=None, **kwargs):
 
     # Try and load json string
     #
+    cls = kwargs.pop('cls', psonparser.PSONDecoder)
+
     try:
 
-        return json.loads(string, cls=psonparser.PSONDecoder, **kwargs)
+        return json.loads(string, cls=cls, **kwargs)
 
     except json.JSONDecodeError as exception:
 
@@ -98,9 +100,11 @@ def dump(filePath, obj, **kwargs):
     :rtype: None
     """
 
+    cls = kwargs.pop('cls', psonparser.PSONEncoder)
+
     with open(filePath, mode='w') as jsonFile:
 
-        json.dump(obj, jsonFile, cls=psonparser.PSONEncoder, **kwargs)
+        json.dump(obj, jsonFile, cls=cls, **kwargs)
 
 
 def dumps(obj, **kwargs):
@@ -113,7 +117,8 @@ def dumps(obj, **kwargs):
 
     # Serialize python object
     #
-    string = json.dumps(obj, cls=psonparser.PSONEncoder, **kwargs)
+    cls = kwargs.pop('cls', psonparser.PSONEncoder)
+    string = json.dumps(obj, cls=cls, **kwargs)
 
     # Check if string should be compressed
     #
