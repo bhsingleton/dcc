@@ -80,7 +80,7 @@ def createAttribute(**kwargs):
     return decoder.default(kwargs)
 
 
-def applyAttributeTemplate(node, filePath):
+def applyAttributeTemplate(node, filePath, **kwargs):
     """
     Applies an attribute template to the supplied dependency node.
 
