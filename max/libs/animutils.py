@@ -1,6 +1,6 @@
 import pymxs
 
-from . import controllerutils, transformutils, modifierutils, attributeutils
+from . import controllerutils, transformutils, modifierutils, attributeutils, wrapperutils
 
 import logging
 logging.basicConfig()
@@ -49,17 +49,18 @@ def ensureKeyed(node):
 
     # Get transform controller
     #
-    prs = controllerutils.getPRSController(node)
+    transformController = pymxs.runtime.getTMController(node)
 
-    if not pymxs.runtime.isKindOf(prs, pymxs.runtime.PRS):
+    if not wrapperutils.isKindOf(transformController, (pymxs.runtime.PRS, pymxs.runtime.LookAt)):
 
+        log.info(f'Skipping non PRS controller on {node.name} node!')
         return
 
     # Evaluate PRS sub-controllers
     #
-    subControllers = controllerutils.decomposePRSController(prs)
+    insertAt = pymxs.runtime.animationRange.start
 
-    for subController in subControllers:
+    for subController in controllerutils.iterControllers(transformController):
 
         # Check if this is a list controller
         #
@@ -74,7 +75,7 @@ def ensureKeyed(node):
         if numKeys == 0 and isNonDefault(subController):
 
             log.info('Keying "%s" object!' % pymxs.runtime.exprForMaxObject(subController))
-            pymxs.runtime.addNewKey(subController, pymxs.runtime.animationRange.start)
+            pymxs.runtime.addNewKey(subController, insertAt)
 
     # Evaluate empty modifier
     #
@@ -91,7 +92,7 @@ def ensureKeyed(node):
             if isNonDefault(subController):
 
                 log.info('Keying "%s" object!' % pymxs.runtime.exprForMaxObject(subController))
-                pymxs.runtime.addNewKey(subController, pymxs.runtime.animationRange.start)
+                pymxs.runtime.addNewKey(subController, insertAt)
 
             else:
 
