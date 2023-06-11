@@ -181,7 +181,7 @@ def isAnimated(plug):
     fnNode = om.MFnDependencyNode(node)
     classification = fnNode.classification(fnNode.typeName)
 
-    return classification == 'animation' and not isConstrained(plug)  # Constraints are classed as `animation`
+    return classification == 'animation' and not isConstrained(plug)  # Constraints are classified under `animation`
 
 
 def isAnimatable(plug):
@@ -194,7 +194,7 @@ def isAnimatable(plug):
 
     # Check if plug is keyable
     #
-    if not plug.isKeyable:
+    if not (plug.isKeyable or plug.isDestination):
 
         return False
 
