@@ -134,7 +134,7 @@ class QPSONPath(collections_abc.Sequence):
         :rtype: object
         """
 
-        if self.model is not None:
+        if self.isValid():
 
             return self.model.invisibleRootItem
 
@@ -182,7 +182,7 @@ class QPSONPath(collections_abc.Sequence):
 
             else:
 
-                return '[{index}]'.format(index=lastIndex)
+                return '{name}[{index}]'.format(name=self.model.invisibleRootProperty, index=lastIndex)
 
         elif isinstance(lastIndex, string_types):
 

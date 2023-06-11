@@ -147,61 +147,6 @@ class QPSONItemModel(QtCore.QAbstractItemModel):
         self.endResetModel()
 
     @property
-    def dataProperties(self):
-        """
-        Getter method that returns the data properties.
-
-        :rtype: List[str]
-        """
-
-        return self._dataProperties
-
-    @dataProperties.setter
-    def dataProperties(self, dataProperties):
-        """
-        Setter method that updates the data properties.
-
-        :type dataProperties: List[str]
-        :rtype: None
-        """
-
-        # Signal reset in progress
-        #
-        self.beginResetModel()
-
-        # Update data properties
-        #
-        self._dataProperties = dataProperties
-        self._headerLabels = [stringutils.pascalize(x, separator=' ') for x in self._dataProperties]
-
-        # Signal reset complete
-        #
-        self.endResetModel()
-
-    @property
-    def hierarchicalDataProperty(self):
-        """
-        Getter method that returns the hierarchical data properties.
-
-        :rtype: List[str]
-        """
-
-        return self._hierarchicalDataProperty
-
-    @hierarchicalDataProperty.setter
-    def hierarchicalDataProperty(self, hierarchicalDataProperty):
-        """
-        Setter method that updates the hierarchical data property.
-
-        :type hierarchicalDataProperty: str
-        :rtype: None
-        """
-
-        self.beginResetModel()
-        self._hierarchicalDataProperty = hierarchicalDataProperty
-        self.endResetModel()
-
-    @property
     def headerLabels(self):
         """
         Getter method that returns the header labels.
