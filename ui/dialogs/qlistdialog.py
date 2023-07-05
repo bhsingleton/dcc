@@ -39,6 +39,16 @@ class QListDialog(quicdialog.QUicDialog):
 
         # Declare public variables
         #
+        self.listWidget = None
+
+        self.buttonsWidget = None
+        self.addPushButton = None
+        self.removePushButton = None
+        self.upPushButton = None
+        self.downPushButton = None
+        self.okayPushButton = None
+        self.cancelPushButton = None
+
         self.editMenu = None
         self.copyItemsAction = None
         self.pasteItemsAction = None

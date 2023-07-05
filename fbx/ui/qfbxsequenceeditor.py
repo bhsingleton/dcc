@@ -29,7 +29,11 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
         :rtype: None
         """
 
-        # Define class variables
+        # Call parent method
+        #
+        super(QFbxSequenceEditor, self).__init__(*args, **kwargs)
+
+        # Define private variables
         #
         self._manager = fbxio.FbxIO()
         self._sequencers = []
@@ -39,12 +43,49 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
 
         # Declare public variables
         #
+        self.mainToolbar = None
+        self.newSequencerAction = None
+        self.saveSequencerAction = None
+        self.importSequencesAction = None
+        self.exportSequencesAction = None
+        self.addSequenceAction = None
+        self.removeSequenceAction = None
+        self.updateStartTimeAction = None
+        self.updateEndTimeAction = None
+        self.updateTimeRangeAction = None
+
+        self.sequencerRollout = None
+        self.sequencerInteropWidget = None
+        self.deleteSequencerPushButton = None
+        self.sequencerComboBox = None
+        self.sequencerTreeView = None
         self.sequencerItemModel = None
         self.sequencerItemDelegate = None
+        self.exportWidget = None
+        self.exportDividerWidget = None
+        self.exportLabel = None
+        self.exportLine = None
+        self.exportPathWidget = None
+        self.exportPathLineEdit = None
+        self.checkoutCheckBox = None
+        self.exportInteropWidget = None
+        self.exportPushButton = None
+        self.exportAllPushButton = None
 
-        # Call parent method
-        #
-        super(QFbxSequenceEditor, self).__init__(*args, **kwargs)
+        self.batchRollout = None
+        self.fileDividerWidget = None
+        self.fileDividerLabel = None
+        self.fileDividerLine = None
+        self.fileInteropWidget = None
+        self.addFilesPushButton = None
+        self.removeFilesPushButton = None
+        self.fileListWidget = None
+        self.batchPathWidget = None
+        self.batchPathLabel = None
+        self.batchPathLineEdit = None
+        self.batchPathPushButton = None
+        self.batchProgressBar = None
+        self.batchPushButton = None
     # endregion
 
     # region Properties
@@ -109,7 +150,7 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
         self.batchRollout.setText('Batch')
         self.batchRollout.setExpanded(False)
 
-        self.centralWidget.layout().setAlignment(QtCore.Qt.AlignTop)
+        self.centralWidget().layout().setAlignment(QtCore.Qt.AlignTop)
 
         # Initialize sequencer tree view model
         #
@@ -417,6 +458,63 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
 
             numRows = (end - start) + 1
             self.sequencerItemModel.removeRows(start, numRows)
+
+    @QtCore.Slot(bool)
+    def on_importSequencesAction_triggered(self, checked=False):
+        """
+        Slot method for the importSequencesAction's `triggered` signal.
+
+        :type checked: bool
+        :rtype: None
+        """
+
+        # Prompt user for import path
+        #
+        importPath, selectedFilter = QtWidgets.QFileDialog.getOpenFileName(
+            parent=self,
+            caption='Import from',
+            dir=self.scene.currentDirectory(),
+            filter='JSON files (*.json)'
+        )
+
+        # Check if path is valid
+        #
+        if not stringutils.isNullOrEmpty(importPath):
+
+            self.currentSequencer.sequences = jsonutils.load(importPath)
+            self.invalidateSequences()
+
+        else:
+
+            log.info('Operation aborted...')
+
+    @QtCore.Slot(bool)
+    def on_exportSequencesAction_triggered(self, checked=False):
+        """
+        Slot method for the exportSequencesAction's `triggered` signal.
+
+        :type checked: bool
+        :rtype: None
+        """
+
+        # Prompt user for export path
+        #
+        exportPath, selectedFilter = QtWidgets.QFileDialog.getSaveFileName(
+            parent=self,
+            caption='Export to',
+            dir=self.scene.currentDirectory(),
+            filter='JSON files (*.json)'
+        )
+
+        # Check if path is valid
+        #
+        if not stringutils.isNullOrEmpty(exportPath):
+
+            jsonutils.dump(exportPath, self.currentSequencer.sequences, indent=4)
+
+        else:
+
+            log.info('Operation aborted...')
 
     @QtCore.Slot(bool)
     def on_updateStartTimeAction_triggered(self, checked=False):

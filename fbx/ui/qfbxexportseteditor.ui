@@ -19,7 +19,7 @@
   <property name="windowTitle">
    <string>|| Fbx Export Set Editor</string>
   </property>
-  <widget class="QWidget" name="centralwidget">
+  <widget class="QWidget" name="mainWidget">
    <layout class="QVBoxLayout" name="verticalLayout">
     <item>
      <widget class="QGroupBox" name="assetGroupBox">
@@ -470,7 +470,7 @@
      </widget>
     </item>
     <item>
-     <widget class="QGroupBox" name="exportSetsGroupBox">
+     <widget class="QGroupBox" name="exportSetGroupBox">
       <property name="sizePolicy">
        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
         <horstretch>0</horstretch>
@@ -856,7 +856,7 @@
         </widget>
        </item>
        <item>
-        <widget class="QWidget" name="exportButtonsWidget" native="true">
+        <widget class="QWidget" name="exportInteropWidget" native="true">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
            <horstretch>0</horstretch>

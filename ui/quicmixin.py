@@ -42,13 +42,13 @@ class QUicMixin(object, metaclass=qmetaclass.QMetaclass):
         #
         obj = super(QUicMixin, self).__getattribute__(item)
 
-        if isinstance(obj, QtWidgets.QWidget):
+        if isinstance(obj, QtCore.QObject):
 
             # Check if cpp pointer is still valid
             #
             if not QtCompat.isValid(obj):
 
-                obj = self.findChild(QtWidgets.QWidget, item)
+                obj = self.findChild(QtCore.QObject, item)
                 setattr(self, item, obj)
 
                 return obj

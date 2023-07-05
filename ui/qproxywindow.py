@@ -64,7 +64,6 @@ class QProxyWindow(QtWidgets.QMainWindow):
 
         # Initialize user interface
         #
-        self.__settings__ = QtCore.QSettings(self.__author__, self.className)
         self.__build__(*args, **kwargs)
         self.__instances__[self.className] = self
 
@@ -99,6 +98,16 @@ class QProxyWindow(QtWidgets.QMainWindow):
         return cls.__name__
 
     @classproperty
+    def author(cls):
+        """
+        Getter method that returns the author of this class.
+
+        :rtype: str
+        """
+
+        return cls.__author__
+
+    @classproperty
     def qt(cls):
         """
         Getter method that returns the QT interface.
@@ -128,16 +137,6 @@ class QProxyWindow(QtWidgets.QMainWindow):
         """
 
         cls.__icon__ = customIcon
-
-    @property
-    def settings(self):
-        """
-        Getter method that returns the settings for this window.
-
-        :rtype: QtCore.QSettings
-        """
-
-        return self.__settings__
     # endregion
 
     # region Events
@@ -173,10 +172,7 @@ class QProxyWindow(QtWidgets.QMainWindow):
         # Perform startup routines
         #
         self.qt.nativizeWindow(self)
-
-        if self.hasSettings():
-
-            self.loadSettings()
+        self.loadSettings(QtCore.QSettings(self.author, self.className))
 
     def closeEvent(self, event):
         """
@@ -192,55 +188,45 @@ class QProxyWindow(QtWidgets.QMainWindow):
 
         # Perform closing routines
         #
-        self.saveSettings()
+        self.saveSettings(QtCore.QSettings(self.author, self.className))
         self.hideTearOffMenus()
         self.removeInstance(self)
     # endregion
 
     # region Methods
-    def hasSettings(self):
-        """
-        Evaluates if this window has any settings.
-
-        :rtype: bool
-        """
-
-        return len(self.settings.allKeys()) > 0
-
-    def loadSettings(self):
+    def loadSettings(self, settings):
         """
         Loads the user settings.
-        The base implementation handles size and location.
 
+        :type settings: QtCore.QSettings
         :rtype: None
         """
 
-        log.info('Loading settings from: %s' % self.settings.fileName())
-        self.resize(self.settings.value('editor/size'))
-        self.move(self.settings.value('editor/pos'))
+        # Resize window
+        #
+        size = settings.value('editor/size')
 
-    def saveSettings(self):
+        if size is not None:
+
+            self.resize(size)
+
+        # Move window
+        #
+        pos = settings.value('editor/pos')
+
+        if pos is not None:
+
+            self.move(pos)
+
+    def saveSettings(self, settings):
         """
         Saves the user settings.
-        The base implementation handles size and location.
 
         :rtype: None
         """
 
-        log.info('Saving settings to: %s' % self.settings.fileName())
-        self.settings.setValue('editor/size', self.size())
-        self.settings.setValue('editor/pos', self.pos())
-
-    @classmethod
-    def overrideWindowIcon(cls, icon):
-        """
-        Registers a custom icon for all derived classes.
-
-        :type icon: str
-        :rtype: None
-        """
-
-        cls.customIcon = QtGui.QIcon(icon)
+        settings.setValue('editor/size', self.size())
+        settings.setValue('editor/pos', self.pos())
 
     def hideTearOffMenus(self):
         """

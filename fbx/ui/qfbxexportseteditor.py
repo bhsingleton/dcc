@@ -32,6 +32,10 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
         :rtype: None
         """
 
+        # Call parent method
+        #
+        super(QFbxExportSetEditor, self).__init__(*args, **kwargs)
+
         # Declare private variables
         #
         self._manager = fbxio.FbxIO()
@@ -42,15 +46,58 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
 
         # Declare public variables
         #
+        self.fileMenu = None
+        self.saveAction = None
+        self.saveAsAction = None
+        self.importAction = None
+        self.exportAction = None
+
+        self.settingsMenu = None
+        self.uselegacySerializerAction = None
+        self.generateLogsActions = None
+
+        self.helpMenu = None
+        self.usingFbxExportSetEditorAction = None
+
+        self.assetGroupBox = None
+        self.assetNameWidget = None
+        self.assetNameLabel = None
+        self.assetNameLineEdit = None
+        self.savePushButton = None
+        self.assetDirectoryWidget = None
+        self.assetDirectoryLabel = None
+        self.assetDirectoryLineEdit = None
+        self.assetDirectoryPushButton = None
+        self.fileTypeWidget = None
+        self.fileTypeLabel = None
+        self.fileTypeComboBox = None
+        self.fileVersionWidget = None
+        self.fileVersionLabel = None
+        self.fileVersionComboBox = None
+
+        self.exportSetGroupBox = None
+        self.exportSetComboBox = None
+        self.exportSetInteropWidget = None
+        self.newExportSetPushButton = None
+        self.duplicateExportSetPushButton = None
+        self.renameExportSetPushButton = None
+        self.reorderExportSetPushButton = None
+        self.deleteExportSetPushButton = None
+        self.exportSetTreeView = None
         self.exportSetItemModel = None
         self.exportSetItemDelegate = None
+
+        self.exportGroupBox = None
+        self.exportPathWidget = None
+        self.exportPathLineEdit = None
+        self.checkoutCheckBox = None
+        self.exportInteropWidget = None
+        self.exportPushButton = None
+        self.exportAllPushButton = None
+
         self.customContextMenu = None
         self.clearItemsAction = None
         self.copySelectionAction = None
-
-        # Call parent method
-        #
-        super(QFbxExportSetEditor, self).__init__(*args, **kwargs)
     # endregion
 
     # region Properties
@@ -105,7 +152,7 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
 
         # Call parent method
         #
-        super(QFbxExportSetEditor, self).postLoad()
+        super(QFbxExportSetEditor, self).postLoad(*args, **kwargs)
 
         # Initialize tree view model
         #
@@ -333,7 +380,7 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
         #
         importPath, selectedFilter = QtWidgets.QFileDialog.getOpenFileName(
             parent=self,
-            caption='Import From',
+            caption='Import from',
             dir=self.scene.currentDirectory(),
             filter='JSON files (*.json)'
         )
@@ -362,7 +409,7 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
         #
         exportPath, selectedFilter = QtWidgets.QFileDialog.getSaveFileName(
             parent=self,
-            caption='Export To',
+            caption='Export to',
             dir=self.scene.currentDirectory(),
             filter='JSON files (*.json)'
         )
