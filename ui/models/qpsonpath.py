@@ -2,10 +2,10 @@ import inspect
 import weakref
 
 from Qt import QtGui
-from collections import deque
 from six import string_types, integer_types
 from six.moves import collections_abc
-from dcc.python import stringutils, annotationutils, funcutils
+from ...python import stringutils, annotationutils, funcutils
+from ...generators.flatten import flatten
 
 import logging
 logging.basicConfig()
@@ -134,7 +134,7 @@ class QPSONPath(collections_abc.Sequence):
         :rtype: object
         """
 
-        if self.isValid():
+        if self.model is not None:
 
             return self.model.invisibleRootItem
 
@@ -144,6 +144,28 @@ class QPSONPath(collections_abc.Sequence):
     # endregion
 
     # region Methods
+    @classmethod
+    def flatten(cls, *items):
+        """
+        Returns a generator that yields flattened path segments.
+
+        :rtype: Iterator[Union[int, str]]
+        """
+
+        # Iterate through items
+        #
+        for item in flatten(*items):
+
+            # Evaluate item type and size
+            #
+            if isinstance(item, (*integer_types, *string_types)) and not stringutils.isNullOrEmpty(item):
+
+                yield item
+
+            else:
+
+                continue
+
     def isValid(self):
         """
         Evaluates if this path is valid.
@@ -182,7 +204,7 @@ class QPSONPath(collections_abc.Sequence):
 
             else:
 
-                return '{name}[{index}]'.format(name=self.model.invisibleRootProperty, index=lastIndex)
+                return '[{index}]'.format(index=lastIndex)
 
         elif isinstance(lastIndex, string_types):
 
@@ -515,36 +537,6 @@ class QPSONPath(collections_abc.Sequence):
 
             return issubclass(origin, self.__builtin_types__)
 
-    @classmethod
-    def flatten(cls, *items):
-        """
-        Returns a generator that yields flattened path segments.
-
-        :rtype: iter
-        """
-
-        queue = deque(items)
-
-        while len(queue) > 0:
-
-            item = queue.popleft()
-
-            if isinstance(item, collections_abc.Sequence) and not isinstance(item, string_types):
-
-                queue.extendleft(reversed(item))
-
-            elif isinstance(item, integer_types):
-
-                yield item
-
-            elif isinstance(item, string_types) and not stringutils.isNullOrEmpty(item):
-
-                yield item
-
-            else:
-
-                continue
-
     def trace(self, *path):
         """
         Returns a generator that yields the elements from the given path.
@@ -558,7 +550,7 @@ class QPSONPath(collections_abc.Sequence):
         current = self.root
         yield current
 
-        segments = tuple(self.flatten(*self._path, *path))
+        segments = tuple(self.flatten(self._path, path))
 
         for segment in segments:
 
