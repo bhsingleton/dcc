@@ -341,7 +341,7 @@ def iterAttributes(dependNode):
     Returns a generator that yields attributes.
 
     :type dependNode: om.MObject
-    :rtype: iter
+    :rtype: Iterator[om.MObject]
     """
 
     fnDependNode = om.MFnDependencyNode(dependNode)
@@ -350,6 +350,34 @@ def iterAttributes(dependNode):
     for i in range(numAttributes):
 
         yield fnDependNode.attribute(i)
+
+
+def iterTopLevelAttributes(dependNode):
+    """
+    Returns a generator that yields top-level attributes.
+
+    :type dependNode: om.MObject
+    :rtype: Iterator[om.MObject]
+    """
+
+    # Iterate through attributes
+    #
+    fnAttribute = om.MFnAttribute()
+
+    for attribute in iterAttributes(dependNode):
+
+        # Check if attribute has a parent
+        #
+        fnAttribute.setObject(attribute)
+        isTopLevel = fnAttribute.parent.isNull()
+
+        if isTopLevel:
+
+            yield attribute
+
+        else:
+
+            continue
 
 
 def iterAttributeNames(dependNode, shortNames=False):
