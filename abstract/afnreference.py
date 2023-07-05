@@ -83,6 +83,16 @@ class AFnReference(with_metaclass(ABCMeta, afnobject.AFnObject)):
         return os.path.exists(self.filePath())
 
     @abstractmethod
+    def associatedNamespace(self):
+        """
+        Returns the namespace associated with the referenced nodes.
+
+        :rtype: str
+        """
+
+        pass
+
+    @abstractmethod
     def fileProperties(self):
         """
         Returns the file properties from the source file.

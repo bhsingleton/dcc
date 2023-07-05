@@ -96,6 +96,15 @@ class FnReference(afnreference.AFnReference):
 
         pass
 
+    def associatedNamespace(self):
+        """
+        Returns the namespace associated with the referenced nodes.
+
+        :rtype: str
+        """
+
+        return ''
+
     def parent(self):
         """
         Returns the parent of this node.

@@ -19,15 +19,6 @@ class FnReference(fnnode.FnNode, afnreference.AFnReference):
 
     __slots__ = ()
 
-    def namespace(self):
-        """
-        Returns the namespace for this node.
-
-        :rtype: str
-        """
-
-        return om.MFnReference(self.object()).associatedNamespace(False)
-
     def setNamespace(self, namespace):
         """
         Updates the namespace for this node.
@@ -38,6 +29,15 @@ class FnReference(fnnode.FnNode, afnreference.AFnReference):
 
         pass
 
+    def associatedNamespace(self):
+        """
+        Returns the namespace associated with the referenced nodes.
+
+        :rtype: str
+        """
+
+        return om.MFnReference(self.object()).associatedNamespace(False)
+
     def filePath(self):
         """
         Returns the source file path for this reference.
@@ -45,7 +45,7 @@ class FnReference(fnnode.FnNode, afnreference.AFnReference):
         :rtype: str
         """
 
-        return om.MFnReference(self.object()).fileName(True, False, False)  # includePath variable is inversed???
+        return om.MFnReference(self.object()).fileName(True, False, False)  # `includePath` flag is inversed???
 
     def fileProperties(self):
         """
@@ -54,7 +54,9 @@ class FnReference(fnnode.FnNode, afnreference.AFnReference):
         :rtype: dict
         """
 
-        properties = mc.fileInfo(query=True, referenceNode=self.name())
+        referenceNode = f'{self.namespace()}:{self.name()}'
+
+        properties = mc.fileInfo(query=True, referenceNode=referenceNode)
         numProperties = len(properties)
 
         return {properties[i]: properties[i + 1].encode('ascii').decode('unicode-escape') for i in range(0, numProperties, 2)}
