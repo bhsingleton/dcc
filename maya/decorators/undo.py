@@ -39,7 +39,7 @@ class Undo(abstractdecorator.AbstractDecorator):
         # Declare private variables
         #
         self._state = kwargs.get('state', True)
-        self._name = kwargs.get('name', None)
+        self._name = kwargs.get('name', '').replace(' ', '_')
 
     def __enter__(self, *args, **kwargs):
         """
