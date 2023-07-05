@@ -212,9 +212,9 @@ class MAttributeDecoder(json.JSONDecoder):
         fnAttribute.disconnectBehavior = obj.get('disconnectBehavior', 2)
 
         # Check if array was enabled
-        # If array is not enabled when setting indexMatters a runtime error will be raised!
+        # If array is not enabled when setting `indexMatters` a runtime error will be raised!
         #
-        if fnAttribute.array:
+        if fnAttribute.array and not fnAttribute.readable:
 
             fnAttribute.indexMatters = obj.get('indexMatters', True)
 
