@@ -738,7 +738,7 @@ def synchronizeTangents(plug):
     fnAnimCurve.setTangentsLocked(lastIndex, True)
 
 
-def cacheKeys(plug):
+def copyKeys(plug):
     """
     Returns a keyframe cache from the supplied plug.
 
@@ -800,7 +800,7 @@ def synchronizeCompoundInputs(plug):
         childPlug = plug.child(i)
         childName = childPlug.partialName(useLongNames=True)
 
-        caches[childName] = cacheKeys(childPlug)
+        caches[childName] = copyKeys(childPlug)
 
     # Check if there are any inputs
     #
