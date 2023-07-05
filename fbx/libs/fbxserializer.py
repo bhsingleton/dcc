@@ -1124,11 +1124,12 @@ class FbxSerializer(object):
 
         return []  # TODO: Implement camera serialization!
 
-    def serializeExportSet(self, exportSet):
+    def serializeExportSet(self, exportSet, asAscii=False):
         """
         Serializes the nodes from the supplied export set.
 
         :type exportSet: dcc.fbx.libs.fbxexportset.FbxExportSet
+        :type asAscii: bool
         :rtype: str
         """
 
@@ -1144,13 +1145,14 @@ class FbxSerializer(object):
         self.scene.ensureDirectory(exportPath)
         self.scene.ensureWritable(exportPath)
 
-        return self.saveAs(exportPath)
+        return self.saveAs(exportPath, asAscii=asAscii)
 
-    def serializeSequence(self, sequence):
+    def serializeSequence(self, sequence, asAscii=False):
         """
         Serializes the nodes from the supplied sequence.
 
         :type sequence: dcc.fbx.libs.fbxsequence.FbxSequence
+        :type asAscii: bool
         :rtype: str
         """
 
@@ -1172,18 +1174,19 @@ class FbxSerializer(object):
         self.scene.ensureDirectory(exportPath)
         self.scene.ensureWritable(exportPath)
 
-        return self.saveAs(exportPath)
+        return self.saveAs(exportPath, asAscii=asAscii)
 
-    def saveAs(self, filePath):
+    def saveAs(self, filePath, asAscii=False):
         """
         Commits the fbx scene to the specified file path.
 
         :type filePath: str
+        :type asAscii: bool
         :rtype: str
         """
 
         log.info(f'Saving FBX file to: {filePath}')
-        success = FbxCommon.SaveScene(self.fbxManager, self.fbxScene, filePath)
+        success = FbxCommon.SaveScene(self.fbxManager, self.fbxScene, filePath, pFileFormat=int(asAscii))
 
         if success:
 

@@ -454,8 +454,9 @@ class FbxSequence(fbxbase.FbxBase):
         #
         namespace = self.sequencer.namespace()
         serializer = fbxserializer.FbxSerializer(namespace=namespace)
+        asAscii = bool(self.asset().fileType)
 
-        return serializer.serializeSequence(self)
+        return serializer.serializeSequence(self, asAscii=asAscii)
 
     def export(self, checkout=False):
         """
