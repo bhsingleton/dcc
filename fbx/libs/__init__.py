@@ -2,12 +2,18 @@ from enum import IntEnum
 
 
 class FbxFileType(IntEnum):
+    """
+    Enum class of all the available FBX file types.
+    """
 
     Binary = 0
     ASCII = 1
 
 
 class FbxFileVersion(IntEnum):
+    """
+    Enum class of all the available FBX file versions.
+    """
 
     FBX200900 = 0
     FBX201000 = 1
@@ -20,16 +26,12 @@ class FbxFileVersion(IntEnum):
     FBX202000 = 8
 
 
-class FbxMeshComponent(IntEnum):
+class FbxExportStatus(IntEnum):
+    """
+    Enum class of all the possible export states.
+    """
 
-    Vertex = 0
-    Edge = 1
-    Polygon = 3
-
-
-class FbxExportSetType(IntEnum):
-
-    Skeleton = 0
-    StaticMesh = 1
-    SkeletalMesh = 2
-    Camera = 3
+    Pending = 0
+    Pre = 1
+    Post = 2
+    Complete = 2

@@ -1,4 +1,4 @@
-from . import fbxobjectset, FbxMeshComponent
+from . import fbxobjectset
 
 import logging
 logging.basicConfig()

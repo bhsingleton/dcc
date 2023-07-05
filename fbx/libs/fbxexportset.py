@@ -1,7 +1,6 @@
 import os
 
-from enum import IntEnum
-from . import fbxbase, fbxskeleton, fbxmesh, fbxcamera, fbxscript, fbxserializer
+from . import fbxbase, fbxskeleton, fbxmesh, fbxcamera, fbxscript, fbxserializer, FbxExportStatus
 from ..interop import fbxfile
 from ... import fnscene, fnfbx
 from ...ui import qdirectoryedit
@@ -12,17 +11,6 @@ import logging
 logging.basicConfig()
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
-
-
-class FbxExportStatus(IntEnum):
-    """
-    Enum class of all the possible export states.
-    """
-
-    Pending = 0
-    Pre = 1
-    Post = 2
-    Complete = 2
 
 
 class FbxExportSet(fbxbase.FbxBase):
@@ -502,7 +490,9 @@ class FbxExportSet(fbxbase.FbxBase):
         """
 
         serializer = fbxserializer.FbxSerializer(namespace=namespace)
-        return serializer.serializeExportSet(self)
+        asAscii = bool(self.asset.fileType)
+
+        return serializer.serializeExportSet(self, asAscii=asAscii)
 
     def export(self, namespace='', checkout=False):
         """
@@ -515,7 +505,7 @@ class FbxExportSet(fbxbase.FbxBase):
 
         # Check if legacy serializer should be used
         #
-        exportPath = False
+        exportPath = None
 
         if self.asset.useLegacySerializer:
 
