@@ -72,7 +72,30 @@ def getMatrixArray(plug, **kwargs):
     :rtype: om.MMatrixArray
     """
 
-    return om.MFnMatrixArrayData(plug.asMObject()).array()
+    try:
+
+        return om.MFnMatrixArrayData(plug.asMObject()).array()
+
+    except RuntimeError:
+
+        return om.MMatrixArray()
+
+
+def getIntArray(plug, **kwargs):
+    """
+    Gets the float array from the supplied plug.
+
+    :type plug: om.MPlug
+    :rtype: om.MIntArray
+    """
+
+    try:
+
+        return om.MFnIntArrayData(plug.asMObject()).array()
+
+    except RuntimeError:
+
+        return om.MIntArray()
 
 
 def getDoubleArray(plug, **kwargs):
@@ -83,7 +106,13 @@ def getDoubleArray(plug, **kwargs):
     :rtype: om.MDoubleArray
     """
 
-    return om.MFnDoubleArrayData(plug.asMObject()).array()
+    try:
+
+        return om.MFnDoubleArrayData(plug.asMObject()).array()
+
+    except RuntimeError:
+
+        return om.MDoubleArray()
 
 
 def getMObject(plug, **kwargs):
@@ -116,7 +145,13 @@ def getStringArray(plug, **kwargs):
     :rtype: om.MStringArray
     """
 
-    return om.MFnStringArrayData(plug.asMObject()).array()
+    try:
+
+        return om.MFnStringArrayData(plug.asMObject()).array()
+
+    except RuntimeError:
+
+        return om.MStringArray()
 
 
 def getMAngle(plug, **kwargs):
@@ -154,7 +189,7 @@ def getMTime(plug, **kwargs):
 
 def getMessage(plug, **kwargs):
     """
-    Gets the connected message plug node.
+    Gets the connected node from the supplied plug.
 
     :type plug: om.MPlug
     :rtype: om.MObject
@@ -169,6 +204,28 @@ def getMessage(plug, **kwargs):
     else:
 
         return om.MObject.kNullObj
+
+
+def getGeneric(plug, **kwargs):
+    """
+    Gets the generic value from the supplied plug.
+
+    :type plug: om.MPlug
+    :rtype: None
+    """
+
+    return None  # TODO: Implement support for generic types!
+
+
+def getAny(plug, **kwargs):
+    """
+    Gets the value from the supplied plug.
+
+    :type plug: om.MPlug
+    :rtype: None
+    """
+
+    return None  # TODO: Implement support for any types!
 
 
 def getCompound(plug, **kwargs):
@@ -209,10 +266,12 @@ __get_typed_value__ = {
     om.MFnData.kLattice: getMObject,
     om.MFnData.kComponentList: getMObject,
     om.MFnData.kMesh: getMObject,
+    om.MFnData.kString: getString,
+    om.MFnData.kIntArray: getIntArray,
     om.MFnData.kFloatArray: getDoubleArray,
     om.MFnData.kDoubleArray: getDoubleArray,
-    om.MFnData.kString: getString,
-    om.MFnData.kStringArray: getStringArray
+    om.MFnData.kStringArray: getStringArray,
+    om.MFnData.kAny: getAny
 }
 
 
@@ -298,7 +357,8 @@ __get_value__ = {
     om.MFn.kMessageAttribute: getMessage,
     om.MFn.kCompoundAttribute: getCompound,
     om.MFn.kDoubleAngleAttribute: getMAngle,
-    om.MFn.kDoubleLinearAttribute: getMDistance
+    om.MFn.kDoubleLinearAttribute: getMDistance,
+    om.MFn.kGenericAttribute: getGeneric
 }
 
 
@@ -338,7 +398,7 @@ def getValue(plug, convertUnits=True, bestLayer=False):
 
         return plugValues
 
-    elif isCompoundNumeric(plug):
+    elif plugutils.isCompoundNumeric(plug):
 
         # Return list of values from parent plug
         #
@@ -366,37 +426,6 @@ def getValue(plug, convertUnits=True, bestLayer=False):
         else:
 
             return plugValue
-
-
-def isCompoundNumeric(plug):
-    """
-    Evaluates if the supplied plug represents a compound numeric value.
-
-    :type plug: om.MPlug
-    :rtype: bool
-    """
-
-    # Check if the plug has children
-    #
-    if plug.isCompound:
-
-        return all([isNumeric(child) for child in plugutils.iterChildren(plug)])
-
-    else:
-
-        return False
-
-
-def isNumeric(plug):
-    """
-    Evaluates if the supplied plug is numeric.
-
-    :type plug: om.MPlug
-    :rtype: bool
-    """
-
-    attribute = plug.attribute()
-    return attribute.hasFn(om.MFn.kNumericAttribute) or attribute.hasFn(om.MFn.kUnitAttribute)
 # endregion
 
 
@@ -500,6 +529,46 @@ def setMatrixArray(plug, value, modifier=None, **kwargs):
     # Assign data object to plug
     #
     modifier.newPlugValue(plug, matrixArrayData)
+
+
+def setIntArray(plug, value, modifier=None, **kwargs):
+    """
+    Updates the double array for the supplied plug.
+
+    :type plug: om.MPlug
+    :type value: Union[List[int], om.MIntArray]
+    :type modifier: om.MDGModifier
+    :rtype: None
+    """
+
+    # Check value type
+    #
+    intArrayData = None
+
+    if isinstance(value, (list, tuple)):
+
+        # Create new string array data
+        #
+        fnIntArrayData = om.MFnDoubleArrayData()
+        intArrayData = fnIntArrayData.create()
+
+        fnIntArrayData.set(value)
+
+    elif isinstance(value, (om.MFloatArray, om.MDoubleArray)):
+
+        intArrayData = om.MFnDoubleArrayData(value).object()
+
+    elif isinstance(value, om.MObject):
+
+        intArrayData = value
+
+    else:
+
+        raise TypeError('setIntArray() expects a sequence of integers (%s given)!' % type(value).__name__)
+
+    # Assign MObject to plug
+    #
+    modifier.newPlugValue(plug, intArrayData)
 
 
 def setDoubleArray(plug, value, modifier=None, **kwargs):
@@ -763,10 +832,11 @@ __set_typed_value__ = {
     om.MFnData.kLattice: setMObject,
     om.MFnData.kComponentList: setMObject,
     om.MFnData.kMesh: setMObject,
+    om.MFnData.kString: setString,
+    om.MFnData.kIntArray: setIntArray,
     om.MFnData.kFloatArray: setDoubleArray,
     om.MFnData.kDoubleArray: setDoubleArray,
-    om.MFnData.kString: setString,
-    om.MFnData.kStringArray: setStringArray,
+    om.MFnData.kStringArray: setStringArray
 }
 
 

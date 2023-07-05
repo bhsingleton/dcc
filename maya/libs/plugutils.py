@@ -51,7 +51,6 @@ def findPlug(node, path):
     # Break down string path into groups
     #
     node = dagutils.getMObject(node)
-    fnDependNode = om.MFnDependencyNode(node)
 
     groups = __plug_parser__.findall(path)
     numGroups = len(groups)
@@ -60,8 +59,9 @@ def findPlug(node, path):
 
         raise TypeError('findPlug() unable to split path: "%s"!' % path)
 
-    # Find leaf attribute
+    # Evaluate if attribute exists
     #
+    fnDependNode = om.MFnDependencyNode(node)
     nodeName = fnDependNode.name()
     attributeName = groups[-1][0]
 
@@ -69,24 +69,21 @@ def findPlug(node, path):
 
     if attribute.isNull():
 
-        raise TypeError('findPlug() cannot find "%s.%s" attribute!' % (nodeName, attributeName))
+        raise TypeError(f'findPlug() cannot find "{nodeName}.{attributeName}" attribute!')
 
-    # Trace attribute path
-    # Collect all indices in plug path
+    # Trace plug path
     #
     attributes = list(attributeutils.trace(attribute))
-    indices = {attribute: int(index) for (attribute, index) in groups if len(index) > 0}
+    indices = {attribute: int(index) for (attribute, index) in groups if not stringutils.isNullOrEmpty(index)}
 
-    # Navigate through hierarchy
-    #
     fnAttribute = om.MFnAttribute()
     plug = None
 
-    for (index, attribute) in enumerate(attributes):
+    for (i, attribute) in enumerate(attributes):
 
         # Get next child plug
         #
-        if index == 0:
+        if i == 0:
 
             plug = om.MPlug(node, attribute)
 
@@ -98,19 +95,11 @@ def findPlug(node, path):
         # Make sure to check both the short and long names!
         #
         fnAttribute.setObject(attribute)
-        longName = fnAttribute.name
-        shortName = fnAttribute.shortName
+        index = indices.get(fnAttribute.name, indices.get(fnAttribute.shortName, None))
 
-        longIndex = indices.get(longName, None)
-        shortIndex = indices.get(shortName, None)
+        if index is not None:
 
-        if shortIndex is not None:
-
-            plug = plug.elementByLogicalIndex(shortIndex)
-
-        elif longIndex is not None:
-
-            plug = plug.elementByLogicalIndex(longIndex)
+            plug = plug.elementByLogicalIndex(index)
 
         else:
 
@@ -119,18 +108,27 @@ def findPlug(node, path):
     return plug
 
 
-def findPlugIndex(plug):
+def findPlugIndex(plug, logical=True):
     """
     Returns the index of the supplied plug.
     Unlike the default method this function takes child plugs into consideration.
 
     :type plug: om.MPlug
+    :type logical: bool
     :rtype: Union[int, None]
     """
 
+    # Redundancy check
+    #
+    if plug.isNull:
+
+        return
+
+    # Evaluate plug type
+    #
     if plug.isArray and plug.isElement:
 
-        return plug.logicalIndex()
+        return plug.logicalIndex() if logical else list(iterElements(plug.parent())).index(plug)
 
     elif plug.isChild:
 
@@ -138,7 +136,7 @@ def findPlugIndex(plug):
 
     else:
 
-        return None
+        return list(attributeutils.iterTopLevelAttributes(plug.node())).index(plug.attribute())
 
 
 def isConstrained(plug):
@@ -218,8 +216,43 @@ def isNumeric(plug):
     :rtype: bool
     """
 
+    return any(map(plug.attribute().hasFn, (om.MFn.kNumericAttribute, om.MFn.kUnitAttribute, om.MFn.kEnumAttribute)))
+
+
+def isCompoundNumeric(plug):
+    """
+    Evaluates if the supplied plug represents a compound numeric value.
+
+    :type plug: om.MPlug
+    :rtype: bool
+    """
+
+    if plug.isCompound:
+
+        return all([isNumeric(child) for child in iterChildren(plug)])
+
+    else:
+
+        return False
+
+
+def isString(plug):
+    """
+    Evaluates if the supplied plug is a string.
+
+    :type plug: om.MPlug
+    :rtype: bool
+    """
+
     attribute = plug.attribute()
-    return any(map(attribute.hasFn, (om.MFn.kNumericAttribute, om.MFn.kUnitAttribute)))
+
+    if attribute.hasFn(om.MFn.kTypedAttribute):
+
+        return om.MFnTypedAttribute(attribute).attrType() == om.MFnData.kString
+
+    else:
+
+        return False
 
 
 def connectPlugs(source, destination, force=False, modifier=None):
@@ -404,24 +437,20 @@ def iterTopLevelPlugs(node, **kwargs):
 
     # Iterate through attributes
     #
+    fnAttribute = om.MFnAttribute()
+
     readable = kwargs.get('readable', False)
     writable = kwargs.get('writable', False)
     keyable = kwargs.get('keyable', False)
     affectsWorldSpace = kwargs.get('affectsWorldSpace', False)
     skipUserAttributes = kwargs.get('skipUserAttributes', False)
 
-    for attribute in attributeutils.iterAttributes(node):
-
-        # Check if attribute is top-level
-        #
-        fnAttribute = om.MFnAttribute(attribute)
-
-        if not fnAttribute.parent.isNull():
-
-            continue
+    for attribute in attributeutils.iterTopLevelAttributes(node):
 
         # Check if attribute is readable
         #
+        fnAttribute.setObject(attribute)
+
         if readable and not fnAttribute.readable:
 
             continue
@@ -738,6 +767,8 @@ def findConnectedMessage(dependNode, attribute=om.MObject.kNullObj):
 
                 continue
 
+        return None
+
 
 def getNextAvailableElement(plug):
     """
@@ -824,6 +855,46 @@ def getNextAvailableConnection(plug, child=om.MObject.kNullObj):
     return indices[-1] + 1 if numIndices > 0 else 0
 
 
+def moveConnectedElements(plug, index):
+    """
+    Moves all the connected elements at the specified index down the array.
+
+    :type plug: om.MPlug
+    :type index: int
+    :rtype: None
+    """
+
+    # Evaluate existing elements
+    #
+    logicalIndices = [logicalIndex for logicalIndex in plug.getExistingArrayAttributeIndices() if logicalIndex >= index]
+    numLogicalIndices = len(logicalIndices)
+
+    if numLogicalIndices == 0:
+
+        return
+
+    # Iterate through logical indices
+    #
+    for logicalIndex in reversed(logicalIndices):
+
+        # Check if element is connected
+        #
+        element = plug.elementByLogicalIndex(logicalIndex)
+
+        if not element.isDestination:
+
+            continue
+
+        # Reconnect to next element
+        #
+        nextLogicalIndex = logicalIndex + 1
+        nextElement = plug.elementByLogicalIndex(nextLogicalIndex)
+        source = element.source()
+
+        disconnectPlugs(source, element)
+        connectPlugs(source, nextElement)
+
+
 def hasAlias(plug):
     """
     Evaluates if the supplied node has an alias.
@@ -839,7 +910,7 @@ def getAlias(plug):
     """
     Returns the alias for the supplied plug.
 
-    :type plugs: om.MPlug
+    :type plug: om.MPlug
     :rtype: str
     """
 
