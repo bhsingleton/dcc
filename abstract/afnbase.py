@@ -5,8 +5,8 @@ from six import with_metaclass, string_types
 from six.moves import collections_abc
 from collections import deque
 from dcc.abstract import ArrayIndexType
-from dcc.decorators.classproperty import classproperty
 from dcc.generators.flatten import flatten
+from dcc.decorators.classproperty import classproperty
 
 import logging
 logging.basicConfig()
@@ -53,7 +53,7 @@ class AFnBase(with_metaclass(ABCMeta, object)):
             #
             arg = args[0]
 
-            if isinstance(arg, collections_abc.Iterable) and not isinstance(arg, string_types):
+            if self.acceptsQueue(arg):
 
                 self.setQueue(arg)
 
@@ -273,7 +273,7 @@ class AFnBase(with_metaclass(ABCMeta, object)):
         :rtype: bool
         """
 
-        return isinstance(queue, (collections_abc.MutableSequence, collections_abc.Iterable)) and not isinstance(queue, string_types)
+        return isinstance(queue, (collections_abc.Sequence, collections_abc.Iterator)) and not isinstance(queue, string_types)
 
     def setQueue(self, queue):
         """
