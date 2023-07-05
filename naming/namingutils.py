@@ -270,7 +270,7 @@ def applyPadding(number, padding):
         raise TypeError('applyPadding() expects either an int or float (%s given)!' % type(number).__name__)
 
 
-def evalSide(side):
+def expandSide(side):
     """
     Returns the name associated with the supplied side enumerator.
 
@@ -328,7 +328,7 @@ def removeDuplicateUnderscores(name):
     return re.sub('_+', '_', name)
 
 
-def concatenateName(comp=None, id=None, desc=None, type=None, side=None, index=None):
+def formatName(comp=None, id=None, desc=None, type=None, side=None, index=None):
     """
     Concatenates a name based on the current configuration file.
 
@@ -352,7 +352,7 @@ def concatenateName(comp=None, id=None, desc=None, type=None, side=None, index=N
     comp = applyCasing(comp)
     desc = applyCasing(desc)
     abbreviation = getAbbreviation(type)
-    side = evalSide(side)
+    side = expandSide(side)
     id = applyPadding(id, idPadding)
     index = applyPadding(index, indexPadding)
 
