@@ -56,7 +56,7 @@ class QAbstractFileItemModel(QtCore.QAbstractItemModel):
 
         # Declare private variables
         #
-        self._cwd = ''
+        self._cwd = None
         self._paths = []
         self._headerLabels = [FileHeaderLabels.Name]
 
@@ -419,13 +419,7 @@ class QAbstractFileItemModel(QtCore.QAbstractItemModel):
 
         # Check if cwd exists
         #
-        if self._cwd is None:
-
-            return
-
-        # Check if paths require updating
-        #
-        if len(self._cwd.children) != len(self._paths):
+        if self._cwd is not None:
 
             self.setPaths(self._cwd.children)
     # endregion
