@@ -179,7 +179,7 @@ class FbxSequencer(fbxbase.FbxBase):
 
         if self.isValid():
 
-            return self.reference.namespace()
+            return self.reference.associatedNamespace()
 
         else:
 
