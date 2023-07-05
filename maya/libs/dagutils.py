@@ -189,7 +189,7 @@ def getMObjectByName(name):
     if numStrings == 1:
 
         # Try and add node name to selection list
-        # If it fails then a RuntimeError will be raised
+        # If it fails then a `RuntimeError` will be raised
         #
         try:
 
