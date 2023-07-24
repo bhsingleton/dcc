@@ -1016,6 +1016,29 @@ def iterNodes(apiType=om.MFn.kDependencyNode, typeName=None):
             iterDependNodes.next()
 
 
+def iterVisibleNodes():
+    """
+    Returns a generator that yields transforms with visible shapes.
+
+    :rtype: Iterator[om.MObject]
+    """
+
+    # Iterate through shapes
+    #
+    for node in iterNodes(apiType=om.MFn.kShape):
+
+        dagPath = getMDagPath(node)
+        isVisible = dagPath.isVisible()
+
+        if isVisible:
+
+            yield dagPath.pop().node()
+
+        else:
+
+            continue
+
+
 def iterPluginNodes(typeName):
     """
     Returns a generator that yields plugin derived nodes based on the supplied type name.
