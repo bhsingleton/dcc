@@ -51,7 +51,7 @@ class FnSkin(fnnode.FnNode, afnskin.AFnSkin):
         :rtype: FnSkin
         """
 
-        return cls(mc.deformer(mesh.name(), type='skinCluster')[0])
+        return cls(mc.deformer(dagutils.getMDagPath(mesh).fullPathName(), type='skinCluster')[0])
 
     def setObject(self, obj):
         """
@@ -272,21 +272,21 @@ class FnSkin(fnnode.FnNode, afnskin.AFnSkin):
         fnMesh.setObject(shape)
         fullPathName = fnMesh.fullPathName()
 
-        mc.setAttr('%s.displayImmediate' % fullPathName, 0)
-        mc.setAttr('%s.displayVertices' % fullPathName, 0)
-        mc.setAttr('%s.displayEdges' % fullPathName, 0)
-        mc.setAttr('%s.displayBorders' % fullPathName, 0)
-        mc.setAttr('%s.displayCenter' % fullPathName, 0)
-        mc.setAttr('%s.displayTriangles' % fullPathName, 0)
-        mc.setAttr('%s.displayUVs' % fullPathName, 0)
-        mc.setAttr('%s.displayNonPlanar' % fullPathName, 0)
-        mc.setAttr('%s.displayInvisibleFaces' % fullPathName, 0)
-        mc.setAttr('%s.displayColors' % fullPathName, 1)
-        mc.setAttr('%s.vertexColorSource' % fullPathName, 1)
-        mc.setAttr('%s.materialBlend' % fullPathName, 0)
-        mc.setAttr('%s.displayNormal' % fullPathName, 0)
-        mc.setAttr('%s.displayTangent' % fullPathName, 0)
-        mc.setAttr('%s.currentColorSet' % fullPathName, '', type='string')
+        mc.setAttr(f'{fullPathName}.displayImmediate', 0)
+        mc.setAttr(f'{fullPathName}.displayVertices', 0)
+        mc.setAttr(f'{fullPathName}.displayEdges', 0)
+        mc.setAttr(f'{fullPathName}.displayBorders', 0)
+        mc.setAttr(f'{fullPathName}.displayCenter', 0)
+        mc.setAttr(f'{fullPathName}.displayTriangles', 0)
+        mc.setAttr(f'{fullPathName}.displayUVs', 0)
+        mc.setAttr(f'{fullPathName}.displayNonPlanar', 0)
+        mc.setAttr(f'{fullPathName}.displayInvisibleFaces', 0)
+        mc.setAttr(f'{fullPathName}.displayColors', 1)
+        mc.setAttr(f'{fullPathName}.vertexColorSource', 1)
+        mc.setAttr(f'{fullPathName}.materialBlend', 0)
+        mc.setAttr(f'{fullPathName}.displayNormal', 0)
+        mc.setAttr(f'{fullPathName}.displayTangent', 0)
+        mc.setAttr(f'{fullPathName}.currentColorSet', '', type='string')
 
     def hideColors(self):
         """
@@ -308,7 +308,7 @@ class FnSkin(fnnode.FnNode, afnskin.AFnSkin):
 
         if not shape.hasFn(om.MFn.kMesh):
 
-            log.debug('hideColors() expects a mesh (%s given)!' % shape.apiTypeStr)
+            log.debug('hideColors() expects a mesh ({shape.apiTypeStr} given)!')
             return
 
         # Reset shape attributes
@@ -316,8 +316,8 @@ class FnSkin(fnnode.FnNode, afnskin.AFnSkin):
         fnMesh = om.MFnMesh(shape)
         fullPathName = fnMesh.fullPathName()
 
-        mc.setAttr('%s.displayColors' % fullPathName, 0)
-        mc.setAttr('%s.vertexColorSource' % fullPathName, 1)
+        mc.setAttr(f'{fullPathName}.displayColors', 0)
+        mc.setAttr(f'{fullPathName}.vertexColorSource', 1)
 
         # Delete color set
         #
@@ -356,13 +356,14 @@ class FnSkin(fnnode.FnNode, afnskin.AFnSkin):
         # Check if colour set is active
         #
         fnMesh = om.MFnMesh(intermediateObject)
+        absoluteName = f'{self.namespace()}:{self.name()}'
 
         if fnMesh.currentColorSetName() == self.__color_set_name__:
 
-            mc.dgdirty('%s.paintTrans' % self.name())
+            mc.dgdirty(f'{absoluteName}.paintTrans')
 
             mc.transferPaintWeights(
-                '%s.paintWeights' % self.name(),
+                f'{absoluteName}.paintWeights',
                 fnMesh.fullPathName(),
                 colorRamp=self.__color_ramp__
             )
@@ -414,7 +415,7 @@ class FnSkin(fnnode.FnNode, afnskin.AFnSkin):
 
         for influence in influences:
 
-            skinutils.addInfluence(self.object(), influence)
+            skinutils.addInfluence(self.object(), dagutils.getMObject(influence))
 
     def removeInfluence(self, *influenceIds):
         """
