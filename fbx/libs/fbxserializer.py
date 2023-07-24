@@ -361,7 +361,7 @@ class FbxSerializer(object):
 
         # Assign vertices to polygons
         #
-        faceVertexIndices = list(copyFrom.iterFaceVertexIndices())
+        faceVertexIndices = tuple(copyFrom.iterFaceVertexIndices())
         numFaceVertices = sum(map(len, faceVertexIndices))
 
         for (polygonIndex, faceVertexIndices) in enumerate(faceVertexIndices):
@@ -385,6 +385,8 @@ class FbxSerializer(object):
 
         # Assign material elements
         #
+        faceMaterialIndices = list(copyFrom.iterFaceMaterialIndices())
+
         materialElement = copyTo.GetElementMaterial()
         materialElement.SetMappingMode(fbx.FbxLayerElement.eByPolygon)
         materialElement.SetReferenceMode(fbx.FbxLayerElement.eIndexToDirect)
@@ -392,7 +394,7 @@ class FbxSerializer(object):
         indexArray = materialElement.GetIndexArray()
         indexArray.SetCount(copyFrom.numFaces())
 
-        for (insertAt, materialIndex) in enumerate(copyFrom.iterFaceMaterialIndices()):
+        for (insertAt, materialIndex) in enumerate(faceMaterialIndices):
 
             indexArray.SetAt(insertAt, materialIndex)
 
@@ -410,13 +412,15 @@ class FbxSerializer(object):
 
             # Assign normals
             #
+            faceVertexNormals = copyFrom.iterFaceVertexNormals()
+
             directArray = normalElement.GetDirectArray()
             directArray.SetCount(numFaceVertices)
 
             indexArray = normalElement.GetIndexArray()
             indexArray.SetCount(numFaceVertices)
 
-            for (index, normal) in enumerate(chain(*copyFrom.iterFaceVertexNormals())):
+            for (index, normal) in enumerate(chain(*faceVertexNormals)):
 
                 directArray.SetAt(index, fbx.FbxVector4(normal[0], normal[1], normal[2], 1.0))
                 indexArray.SetAt(index, index)
@@ -508,17 +512,17 @@ class FbxSerializer(object):
 
                 for (index, color) in enumerate(colors):
 
-                    directArray.SetAt(index, fbx.FbxColor(*color))
+                    directArray.SetAt(index, fbx.FbxColor(color[0], color[1], color[2], color[3]))
 
                 # Assign face-vertex color indices
                 #
-                faceVertexColorIndices = copyFrom.getFaceVertexColorIndices()
+                faceVertexColorIndices = tuple(chain(*copyFrom.getFaceVertexColorIndices()))
                 numFaceVertexColorIndices = len(faceVertexColorIndices)
 
                 indexArray = colorElement.GetIndexArray()
                 indexArray.SetCount(numFaceVertexColorIndices)
 
-                for index, colorIndex in enumerate(chain(*faceVertexColorIndices)):
+                for index, colorIndex in enumerate(faceVertexColorIndices):
 
                     indexArray.SetAt(index, colorIndex)
 
