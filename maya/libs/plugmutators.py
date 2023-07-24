@@ -984,6 +984,15 @@ def setValue(plug, value, modifier=None, **kwargs):
 
     else:
 
+        # Check if plug is changeable
+        #
+        state = plug.isFreeToChange()
+
+        if state != om.MPlug.kFreeToChange:
+
+            log.debug(f'Plug is not free-to-change: {plug.info}')
+            return
+
         # Check if auto-key is enabled
         #
         autoKey = sceneutils.autoKey()
