@@ -119,8 +119,9 @@ class FnMenubar(afnmenubar.AFnMenubar):
             label = xmlElement.get('text', default='')
             objectName = stringutils.slugify(label)
             command = xmlElement.get('command', default='')
+            sourceType = xmlElement.get('sourceType', default='python')
 
-            return mc.menuItem(objectName, label=label, command=command, parent=parent)
+            return mc.menuItem(objectName, label=label, command=command, sourceType=sourceType, parent=parent)
 
         elif xmlElement.tag == 'Separator':
 
