@@ -169,10 +169,14 @@ class QProxyWindow(QtWidgets.QMainWindow):
         #
         super(QProxyWindow, self).showEvent(event)
 
-        # Perform startup routines
+        # Nativize window with DCC application
         #
         self.qt.nativizeWindow(self)
-        self.loadSettings(QtCore.QSettings(self.author, self.className))
+
+        # Load user settings
+        #
+        settings = self.getSettings()
+        self.loadSettings(settings)
 
     def closeEvent(self, event):
         """
@@ -186,14 +190,28 @@ class QProxyWindow(QtWidgets.QMainWindow):
         #
         super(QProxyWindow, self).closeEvent(event)
 
-        # Perform closing routines
+        # Save user settings
         #
-        self.saveSettings(QtCore.QSettings(self.author, self.className))
+        settings = self.getSettings()
+        self.saveSettings(settings)
+
+        # Cleanup Qt resources
+        #
         self.hideTearOffMenus()
         self.removeInstance(self)
     # endregion
 
     # region Methods
+    @classmethod
+    def getSettings(cls):
+        """
+        Returns the user settings for this class.
+
+        :rtype: QtCore.QSettings
+        """
+
+        return QtCore.QSettings(cls.author, cls.className)
+
     def loadSettings(self, settings):
         """
         Loads the user settings.
