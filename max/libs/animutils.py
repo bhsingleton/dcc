@@ -1,6 +1,7 @@
 import pymxs
 
 from . import controllerutils, transformutils, modifierutils, attributeutils, wrapperutils
+from ...generators.inclusiverange import inclusiveRange
 
 import logging
 logging.basicConfig()
@@ -124,12 +125,13 @@ def cacheTransforms(node, startFrame=None, endFrame=None):
     # Iterate through time range
     #
     cache = {}
+    log.info(f'Caching animation range: {startFrame} > {endFrame}')
 
-    for i in range(startFrame, endFrame + 1, 1):
+    for frame in inclusiveRange(startFrame, endFrame, 1):
 
-        with pymxs.attime(i):
+        with pymxs.attime(frame):
 
-            cache[i] = pymxs.runtime.copy(node.transform)
+            cache[frame] = pymxs.runtime.copy(node.transform)
 
     return cache
 
@@ -143,13 +145,28 @@ def assumeCache(node, cache):
     :rtype: None
     """
 
+    # Decompose PRS controller
+    #
+    transformController = controllerutils.getPRSController(node)
+    pymxs.runtime.deleteKeys(transformController, pymxs.runtime.Name('allKeys'))
+
+    positionController, rotationController, scaleController = controllerutils.decomposePRSController(transformController)
+    activePositionController = controllerutils.getActiveController(positionController)
+    activeRotationController = controllerutils.getActiveController(rotationController)
+
     with pymxs.animate(True):
 
-        for (time, transform) in cache.items():
+        # Iterate through frame cache
+        #
+        for (frame, worldMatrix) in cache.items():
 
-            with pymxs.attime(time):
+            pymxs.runtime.addNewKey(activePositionController, frame)
+            pymxs.runtime.addNewKey(activeRotationController, frame)
+            pymxs.runtime.addNewKey(scaleController, frame)
 
-                node.transform = transform
+            with pymxs.attime(frame):
+
+                node.transform = worldMatrix
 
 
 def bakeConstraints(node, startFrame=None, endFrame=None):
@@ -179,7 +196,7 @@ def bakeConstraints(node, startFrame=None, endFrame=None):
 
     # Cache and decompose PRS controller
     #
-    log.info('Baking $%s.transform' % node.name)
+    log.info(f'Baking ${node.name}.transform')
     transformCache = cacheTransforms(node, startFrame=startFrame, endFrame=endFrame)
 
     transformController = controllerutils.findControllerByClass(transformController, pymxs.runtime.PRS)
@@ -192,11 +209,13 @@ def bakeConstraints(node, startFrame=None, endFrame=None):
         # Evaluate active controller
         #
         subControllers = [subController for (subController, name, weight) in controllerutils.iterListController(positionController)]
-        indices = [(i + 1) for (i, subController) in enumerate(subControllers) if controllerutils.isConstraint(subController)]
+        indices = [i for (i, subController) in enumerate(subControllers, start=1) if controllerutils.isConstraint(subController)]
+
+        positionController.active = 2
 
         for index in reversed(indices):
 
-            log.info('Deleting $%s.position.controller[%s] sub-controller.' % (node.name, index))
+            log.info(f'Deleting ${node.name}.position.controller[{index}] sub-controller.')
             positionController.delete(index)
 
     elif controllerutils.isConstraint(positionController):
@@ -218,12 +237,14 @@ def bakeConstraints(node, startFrame=None, endFrame=None):
 
         # Evaluate active controller
         #
-        subControllers = [subController for (subController, name, weight) in controllerutils.iterListController(positionController)]
-        indices = [i + 1 for (i, subController) in enumerate(subControllers) if controllerutils.isConstraint(subController)]
+        subControllers = [subController for (subController, name, weight) in controllerutils.iterListController(rotationController)]
+        indices = [i for (i, subController) in enumerate(subControllers, start=1) if controllerutils.isConstraint(subController)]
+
+        rotationController.active = 2
 
         for index in reversed(indices):
 
-            log.info('Deleting $%s.rotation.controller[%s] sub-controller.' % (node.name, index))
+            log.info(f'Deleting ${node.name}.rotation.controller[{index}] sub-controller.')
             rotationController.delete(index)
 
     elif controllerutils.isConstraint(rotationController):
