@@ -139,13 +139,18 @@ def hasInfluence(skinCluster, influence):
     :rtype: bool
     """
 
-    # Get instance number of influence
+    # Check if influence is valid
     #
-    dagPath = om.MDagPath.getAPathTo(influence)  # type: om.MDagPath
+    dagPath = dagutils.getMDagPath(influence)
+
+    if not dagPath.isValid():
+
+        return False
+
+    # Inspect world-matrix plug for connection
+    #
     instanceNumber = dagPath.instanceNumber()
 
-    # Inspect world matrix plug connections
-    #
     plug = plugutils.findPlug(influence, 'worldMatrix[%s]' % instanceNumber)
     otherPlugs = plug.destinations()
 
@@ -230,7 +235,7 @@ def addInfluence(skinCluster, influence, index=None):
     fnDependNode = om.MFnDependencyNode(skinCluster)
     fnDagNode = om.MFnDagNode(influence)
 
-    plug = fnDagNode.findPlug('matrix', False)
+    plug = fnDependNode.findPlug('matrix', False)
 
     if index is None:
 
