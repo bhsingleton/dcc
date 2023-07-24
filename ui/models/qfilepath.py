@@ -359,7 +359,13 @@ class QFilePath(object):
         :rtype: bool
         """
 
-        return os.stat(self._path).st_mtime == self.stat.st_mtime
+        if os.path.exists(self._path):
+
+            return os.stat(self._path).st_mtime == self.stat.st_mtime
+
+        else:
+
+            return True  # Safe to say we can no longer test for changes!
 
     def update(self):
         """
