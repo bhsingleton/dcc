@@ -10,6 +10,7 @@ from typing import List, Tuple
 from scipy.spatial import cKDTree
 from dcc.abstract import afnbase
 from dcc.dataclasses.vector import Vector
+from dcc.dataclasses.colour import Colour
 
 import logging
 logging.basicConfig()
@@ -498,6 +499,50 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
 
         return list(self.iterTangentsAndBinormals(*indices, cls=cls, channel=channel))
+
+    @abstractmethod
+    def iterColors(self, cls=Colour, channel=0):
+        """
+        Returns a generator that yields index-color pairs for the specified vertex color channel.
+
+        :type cls: Callable
+        :type channel: int
+        :rtype: Iterator[colour.Colour]
+        """
+
+        pass
+
+    def getColors(self, cls=Colour, channel=0):
+        """
+        Returns a list of index-color pairs for the specified vertex color channel.
+
+        :type cls: Callable
+        :type channel: int
+        :rtype: Iterator[colour.Colour]
+        """
+
+        return list(self.iterColors(cls=cls, channel=channel))
+
+    @abstractmethod
+    def iterFaceVertexColorIndices(self, *indices, channel=0):
+        """
+        Returns a generator that yields face-vertex color indices for the specified faces.
+
+        :type channel: int
+        :rtype: Iterator[List[int]]
+        """
+
+        pass
+
+    def getFaceVertexColorIndices(self, *indices, channel=0):
+        """
+        Returns a generator that yields face-vertex color indices for the specified faces.
+
+        :type channel: int
+        :rtype: Iterator[List[int]]
+        """
+
+        return list(self.iterFaceVertexColorIndices(*indices, channel=channel))
 
     @abstractmethod
     def iterConnectedVertices(self, *indices, **kwargs):

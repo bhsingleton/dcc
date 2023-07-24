@@ -4,6 +4,7 @@ from dcc import fnnode
 from dcc.abstract import afnmesh
 from dcc.max.libs import wrapperutils, meshutils, arrayutils
 from dcc.dataclasses.vector import Vector
+from dcc.dataclasses.colour import Colour
 
 import logging
 logging.basicConfig()
@@ -367,6 +368,27 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
         :type channel: int
         :rtype: Iterator[List[Tuple[float, float, float]], List[Tuple[float, float, float]]]
+        """
+
+        return iter([])
+
+    def iterColors(self, cls=Colour, channel=0):
+        """
+        Returns a generator that yields index-color pairs for the specified vertex color channel.
+
+        :type cls: Callable
+        :type channel: int
+        :rtype: Iterator[colour.Colour]
+        """
+
+        return iter([])
+
+    def iterFaceVertexColorIndices(self, *indices, channel=0):
+        """
+        Returns a generator that yields face-vertex color indices for the specified faces.
+
+        :type channel: int
+        :rtype: Iterator[List[int]]
         """
 
         return iter([])

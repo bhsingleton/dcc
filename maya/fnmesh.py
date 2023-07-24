@@ -695,10 +695,21 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
         :rtype: Iterator[List[int]]
         """
 
+        # Evaluate arguments
+        #
+        numIndices = len(indices)
+
+        if numIndices == 0:
+
+            indices = range(self.numFaces())
+
+        # Iterate through vertices
+        #
         fnMesh = om.MFnMesh(self.object())
         colorSet = self.getColorSetName(channel)
+        faceVertexIndices = self.getFaceVertexIndices(*indices)
 
-        for (faceIndex, vertexIndices) in self.iterFaceVertexIndices(*indices):
+        for (faceIndex, vertexIndices) in zip(indices, faceVertexIndices):
 
             colorIndices = [fnMesh.getColorIndex(faceIndex, physicalIndex, colorSet=colorSet) for (physicalIndex, logicalIndex) in enumerate(vertexIndices)]
             yield colorIndices
