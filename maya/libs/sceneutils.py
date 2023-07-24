@@ -2,6 +2,7 @@ import os
 
 from maya import cmds as mc
 from maya import mel
+from . import dagutils
 from ..decorators.undo import undo
 
 import logging
@@ -602,6 +603,19 @@ def resetWindowPositions():
         mc.window(windowName, edit=True, topLeftCorner=[0, 0])
 
 
+def getCurrentCamera():
+    """
+    Returns the current camera with focus.
+
+    :rtype: str
+    """
+
+    currentPanel = mc.getPanel(withFocus=True)
+    camera = mc.modelPanel(currentPanel, query=True, camera=True)
+
+    return camera
+
+
 def resetStartupCameras():
     """
     Fixes the startup cameras when they're thrown out of wack.
@@ -612,3 +626,19 @@ def resetStartupCameras():
     mc.viewSet('top', home=True)
     mc.viewSet('front', home=True)
     mc.viewSet('side', home=True)
+
+
+def frameVisible(all=False):
+    """
+    Frames the camera around the current scene contents.
+
+    :type all: bool
+    :rtype: None
+    """
+
+    cameras = mc.ls(type='camera') if all else [getCurrentCamera()]
+    nodes = [dagutils.getMDagPath(node).fullPathName() for node in dagutils.iterVisibleNodes()]
+
+    for camera in cameras:
+
+        mc.viewFit(camera, *nodes)
