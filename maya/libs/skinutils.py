@@ -24,6 +24,64 @@ def numControlPoints(skinCluster):
     return om.MFnDependencyNode(skinCluster).findPlug('weightList', False).numElements()
 
 
+def lockTransform(node):
+    """
+    Locks the transforms attributes on the supplied node.
+
+    :type node: Union[str, om.MObject, om.MDagPath]
+    :rtype: None
+    """
+
+    # Check if a shape was supplied
+    #
+    node = dagutils.getMObject(node)
+
+    if node.hasFn(om.MFn.kShape):
+
+        node = dagutils.getParent(node)
+
+    # Lock transform attributes
+    #
+    for attribute in ('translate', 'rotate', 'scale'):
+
+        plug = plugutils.findPlug(node, attribute)
+
+        for childPlug in plugutils.iterChildren(plug):
+
+            childPlug.isLocked = True
+
+    # Disable inherits transform
+    #
+    plug = plugutils.findPlug(node, 'inheritsTransform')
+    plugmutators.setValue(plug, False)
+
+
+def clearIntermediateObjects(node):
+    """
+    Removes any intermediate objects from the supplied node.
+
+    :type node: Union[str, om.MObject, om.MDagPath]
+    :rtype: None
+    """
+
+    # Check if a shape was supplied
+    #
+    node = dagutils.getMObject(node)
+
+    if node.hasFn(om.MFn.kShape):
+
+        node = dagutils.getParent(node)
+
+    # Iterate through intermediate objects
+    #
+    intermediateObjects = list(dagutils.iterIntermediateObjects(node))
+
+    for intermediateObject in intermediateObjects:
+
+        log.info(f'Removing intermediate object: {dagutils.getNodeName(intermediateObject)}')
+        dagutils.deleteNode(intermediateObject)
+
+
 def iterInfluences(skinCluster):
     """
     Returns a generator that yields all the influence objects from the supplied skin cluster.
@@ -151,7 +209,7 @@ def hasInfluence(skinCluster, influence):
     #
     instanceNumber = dagPath.instanceNumber()
 
-    plug = plugutils.findPlug(influence, 'worldMatrix[%s]' % instanceNumber)
+    plug = plugutils.findPlug(dagPath.node(), f'worldMatrix[{instanceNumber}]')
     otherPlugs = plug.destinations()
 
     return any([otherPlug.node() == skinCluster for otherPlug in otherPlugs])
@@ -166,14 +224,19 @@ def getInfluenceId(skinCluster, influence):
     :rtype: int
     """
 
-    # Get instance number of influence
+    # Check if influence is valid
     #
-    dagPath = om.MDagPath.getAPathTo(influence)  # type: om.MDagPath
-    instanceNumber = dagPath.instanceNumber()
+    dagPath = dagutils.getMDagPath(influence)
+
+    if not dagPath.isValid():
+
+        return None
 
     # Inspect world matrix plug connections
     #
-    plug = plugutils.findPlug(influence, 'worldMatrix[%s]' % instanceNumber)
+    instanceNumber = dagPath.instanceNumber()
+    plug = plugutils.findPlug(dagPath.node(), f'worldMatrix[{instanceNumber}]')
+
     otherPlugs = plug.destinations()
 
     for otherPlug in otherPlugs:
@@ -200,7 +263,7 @@ def getInfluence(skinCluster, influenceId):
     :rtype: om.MObject
     """
 
-    plug = plugutils.findPlug(skinCluster, 'matrix[%s]' % influenceId)
+    plug = plugutils.findPlug(skinCluster, f'matrix[{influenceId}]')
     otherPlug = plug.source()  # type: om.MPlug
 
     if not otherPlug.isNull:
@@ -209,7 +272,7 @@ def getInfluence(skinCluster, influenceId):
 
     else:
 
-        log.warning('Unable to locate influence at ID: %s' % influenceId)
+        log.warning(f'Unable to locate influence at ID: {influenceId}')
         return None
 
 
@@ -232,10 +295,10 @@ def addInfluence(skinCluster, influence, index=None):
 
     # Get first available index
     #
-    fnDependNode = om.MFnDependencyNode(skinCluster)
-    fnDagNode = om.MFnDagNode(influence)
+    fnSkinCluster = om.MFnDependencyNode(skinCluster)
+    skinClusterName = fnSkinCluster.absoluteName()
 
-    plug = fnDependNode.findPlug('matrix', False)
+    plug = fnSkinCluster.findPlug('matrix', False)
 
     if index is None:
 
@@ -243,20 +306,23 @@ def addInfluence(skinCluster, influence, index=None):
 
     # Connect joint to skin cluster
     #
-    fullPathName = fnDagNode.fullPathName()
+    dagPath = dagutils.getMDagPath(influence)
+    fnInfluence = om.MFnDagNode(dagPath)
+    influenceName = fnInfluence.fullPathName()
+    instanceNumber = dagPath.instanceNumber()
 
-    mc.connectAttr('%s.worldMatrix[0]' % fullPathName, '%s.matrix[%s]' % (fnDependNode.name(), index))
-    mc.connectAttr('%s.objectColorRGB' % fullPathName, '%s.influenceColor[%s]' % (fnDependNode.name(), index))
+    mc.connectAttr(f'{influenceName}.worldMatrix[{instanceNumber}]', f'{skinClusterName}.matrix[{index}]')
+    mc.connectAttr(f'{influenceName}.objectColorRGB', f'{skinClusterName}.influenceColor[{index}]')
 
     # Check if ".lockInfluenceWeights" attribute exists
     #
-    if not mc.attributeQuery('lockInfluenceWeights', exists=True, node=fullPathName):
+    if not mc.attributeQuery('lockInfluenceWeights', exists=True, node=influenceName):
 
         # Add attribute to joint
         # NOTE: These settings were pulled from an ascii file
         #
         mc.addAttr(
-            fullPathName,
+            influenceName,
             cachedInternally=True,
             shortName='liw',
             longName='lockInfluenceWeights',
@@ -267,12 +333,12 @@ def addInfluence(skinCluster, influence, index=None):
 
     # Connect custom attribute
     #
-    mc.connectAttr('%s.lockInfluenceWeights' % fullPathName, '%s.lockWeights[%s]' % (fnDependNode.name(), index))
+    mc.connectAttr(f'{influenceName}.lockInfluenceWeights', f'{skinClusterName}.lockWeights[{index}]')
 
     # Set pre-bind matrix
     #
-    matrixList = mc.getAttr('%s.worldInverseMatrix[0]' % fullPathName)
-    mc.setAttr('%s.bindPreMatrix[%s]' % (fnDependNode.name(), index), matrixList, type='matrix')
+    matrixList = mc.getAttr(f'{influenceName}.worldInverseMatrix[{instanceNumber}]')
+    mc.setAttr(f'{skinClusterName}.bindPreMatrix[{index}]', matrixList, type='matrix')
 
 
 @undo(name='Remove Influence')
@@ -295,15 +361,17 @@ def removeInfluence(skinCluster, influenceId):
 
     # Disconnect joint from skin cluster
     #
-    fnDependNode = om.MFnDependencyNode(skinCluster)
-    fnDagNode = om.MFnDagNode(influence)
+    fnSkinCluster = om.MFnDependencyNode(skinCluster)
+    skinClusterName = fnSkinCluster.absoluteName()
 
-    fullPathName = fnDagNode.fullPathName()
+    fnInfluence = om.MFnDagNode(influence)
+    influenceName = fnInfluence.fullPathName()
+    instanceNumber = fnInfluence.dagPath().instanceNumber()
 
-    mc.disconnectAttr('%s.worldMatrix[0]' % fullPathName, '%s.matrix[%s]' % (fnDependNode.name(), influenceId))
-    mc.disconnectAttr('%s.objectColorRGB' % fullPathName, '%s.influenceColor[%s]' % (fnDependNode.name(), influenceId))
-    mc.disconnectAttr('%s.lockInfluenceWeights' % fullPathName, '%s.lockWeights[%s]' % (fnDependNode.name(), influenceId))
-    mc.deleteAttr('%s.lockInfluenceWeights' % fullPathName)
+    mc.disconnectAttr(f'{influenceName}.worldMatrix[{instanceNumber}]', f'{skinClusterName}.matrix[{influenceId}]')
+    mc.disconnectAttr(f'{influenceName}.objectColorRGB', f'{skinClusterName}.influenceColor[{influenceId}]')
+    mc.disconnectAttr(f'{influenceName}.lockInfluenceWeights', f'{skinClusterName}.lockWeights[{influenceId}]')
+    mc.deleteAttr(f'{influenceName}.lockInfluenceWeights')
 
     return True
 
