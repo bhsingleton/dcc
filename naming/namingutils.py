@@ -297,7 +297,7 @@ def expandSide(side):
 
     else:
 
-        sideName = enumName
+        return ''
 
     # Check if side should be titleized
     #
