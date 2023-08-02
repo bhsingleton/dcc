@@ -217,6 +217,7 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
         """
 
         self.sequencerItemModel.invisibleRootItem = self.currentSequencer
+        self.sequencerTreeView.expandToDepth(1)
 
     def invalidateExportPath(self):
         """
@@ -335,7 +336,7 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
         #
         reference = fnreference.FnReference()
 
-        references = list(reference.iterSceneReferences())
+        references = list(reference.iterSceneReferences(topLevelOnly=False))
         numReferences = len(references)
 
         if numReferences == 0:
@@ -376,6 +377,9 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
             self.sequencers.append(sequencer)
 
             self.invalidateSequencers()
+
+            lastIndex = len(self.sequencers) - 1
+            self.sequencerComboBox.setCurrentIndex(lastIndex)
 
         else:
 
