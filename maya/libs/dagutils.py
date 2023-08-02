@@ -1025,14 +1025,15 @@ def iterVisibleNodes():
 
     # Iterate through shapes
     #
-    for node in iterNodes(apiType=om.MFn.kShape):
+    for node in iterNodes(apiType=om.MFn.kTransform):
 
-        dagPath = getMDagPath(node)
-        isVisible = dagPath.isVisible()
+        # Evaluate shape visibility
+        #
+        isVisible = [getMDagPath(shape).isVisible() for shape in iterShapes(node)]
 
-        if isVisible:
+        if all(isVisible) and len(isVisible) > 0:
 
-            yield dagPath.pop().node()
+            yield node
 
         else:
 
