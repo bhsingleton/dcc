@@ -362,17 +362,15 @@ class FnSkin(fnnode.FnNode, afnskin.AFnSkin):
         # Check if colour set is active
         #
         fnMesh = om.MFnMesh(intermediateObject)
-        absoluteName = f'{self.namespace()}:{self.name()}'
+        meshName = fnMesh.fullPathName()
+        currentColorSet = fnMesh.currentColorSetName()
 
-        if fnMesh.currentColorSetName() == self.__color_set_name__:
+        skinClusterName = f'{self.namespace()}:{self.name()}'
 
-            mc.dgdirty(f'{absoluteName}.paintTrans')
+        if currentColorSet == self.__color_set_name__:
 
-            mc.transferPaintWeights(
-                f'{absoluteName}.paintWeights',
-                fnMesh.fullPathName(),
-                colorRamp=self.__color_ramp__
-            )
+            mc.dgdirty(f'{skinClusterName}.paintTrans')
+            mc.transferPaintWeights(f'{skinClusterName}.paintWeights', meshName, colorRamp=self.__color_ramp__)
 
     def iterInfluences(self):
         """
