@@ -268,6 +268,16 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
         return self.object().bone_limit
 
+    def setMaxInfluences(self, count):
+        """
+        Updates the max number of influences for this skin.
+
+        :type count: int
+        :rtype: None
+        """
+
+        self.object().bone_limit = count
+
     def selectInfluence(self, influenceId):
         """
         Changes the color display to the specified influence id.

@@ -3,7 +3,7 @@ import maya.api.OpenMaya as om
 
 from dcc.abstract import afnskin
 from dcc.maya import fnnode, fnmesh
-from dcc.maya.libs import dagutils, skinutils
+from dcc.maya.libs import dagutils, plugutils, plugmutators, skinutils
 from dcc.maya.decorators import undo
 
 import logging
@@ -47,11 +47,17 @@ class FnSkin(fnnode.FnNode, afnskin.AFnSkin):
         """
         Creates a skin and assigns it to the supplied shape.
 
-        :type mesh: fnmesh.FnMesh
+        :type mesh: Any
         :rtype: FnSkin
         """
 
-        return cls(mc.deformer(dagutils.getMDagPath(mesh).fullPathName(), type='skinCluster')[0])
+        skinutils.clearIntermediateObjects(mesh)
+        skinutils.lockTransform(mesh)
+
+        meshName = dagutils.getMDagPath(mesh).fullPathName()
+        skinName = mc.deformer(meshName, type='skinCluster')[0]
+
+        return cls(skinName)
 
     def setObject(self, obj):
         """
@@ -384,7 +390,8 @@ class FnSkin(fnnode.FnNode, afnskin.AFnSkin):
         :rtype: int
         """
 
-        return om.MFnDependencyNode(self.object()).findPlug('matrix', False).numConnectedElements()
+        matrixPlug = plugutils.findPlug(self.object(), 'matrix')
+        return matrixPlug.numConnectedElements()
 
     def maxInfluences(self):
         """
@@ -393,7 +400,22 @@ class FnSkin(fnnode.FnNode, afnskin.AFnSkin):
         :rtype: int
         """
 
-        return om.MFnDependencyNode(self.object()).findPlug('maxInfluences', False).asInt()
+        maxInfluencesPlug = plugutils.findPlug(self.object(), 'maxInfluences')
+        return plugmutators.getValue(maxInfluencesPlug)
+
+    def setMaxInfluences(self, count):
+        """
+        Updates the max number of influences for this skin.
+
+        :type count: int
+        :rtype: None
+        """
+
+        maintainMaxInfluencesPlug = plugutils.findPlug(self.object(), 'maintainMaxInfluences')
+        plugmutators.setValue(maintainMaxInfluencesPlug, True)
+
+        maxInfluencesPlug = plugutils.findPlug(self.object(), 'maxInfluences')
+        plugmutators.setValue(maxInfluencesPlug, count)
 
     def selectInfluence(self, influenceId):
         """
@@ -415,7 +437,7 @@ class FnSkin(fnnode.FnNode, afnskin.AFnSkin):
 
         for influence in influences:
 
-            skinutils.addInfluence(self.object(), dagutils.getMObject(influence))
+            skinutils.addInfluence(self.object(), influence)
 
     def removeInfluence(self, *influenceIds):
         """

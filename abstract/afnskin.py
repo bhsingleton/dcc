@@ -479,7 +479,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         :rtype: Dict[int, str]
         """
 
-        return {influenceId: influence.name() for (influenceId, influence) in self.influences().items()}
+        return {influenceId: influence.absoluteName() for (influenceId, influence) in self.influences().items()}
 
     @abstractmethod
     def numInfluences(self):
@@ -519,6 +519,17 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         Returns the max number of influences for this skin.
 
         :rtype: int
+        """
+
+        pass
+
+    @abstractmethod
+    def setMaxInfluences(self, count):
+        """
+        Updates the max number of influences for this skin.
+
+        :type count: int
+        :rtype: None
         """
 
         pass
@@ -597,8 +608,8 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
 
             # Try and find a match for the influence name
             #
-            influenceName = influences[influenceId].name()
-            remappedId = otherInfluences.index(influenceName)
+            influence = influences[influenceId]
+            remappedId = otherInfluences.index(influence.object())
 
             if remappedId is not None:
 
@@ -606,7 +617,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
 
             else:
 
-                raise KeyError('Unable to find a matching ID for %s influence!' % influenceName)
+                raise KeyError('Unable to find a matching ID for %s influence!' % influence.name())
 
         # Return influence map
         #
@@ -883,7 +894,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         # Get amount to redistribute
         #
         current = weights.get(target, 0.0)
-        amount = current + ((current * percent) * falloff)
+        amount = current + sum([(weights.get(influenceId, 0.0) * percent) * falloff for influenceId in source])
 
         # Set vertex weight
         #
@@ -962,7 +973,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         #
         if maintainMaxInfluences:
 
-            weights = self.pruneWeights(weights)
+            weights = self.capWeights(weights)
 
         # Check if weights have already been normalized
         #
@@ -1000,9 +1011,29 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
 
         return weights
 
-    def pruneWeights(self, weights):
+    def pruneWeights(self, weights, tolerance=1e-3):
         """
-        Prunes the supplied vertex weights to meet the maximum number of weighted influences.
+        Caps the supplied vertex weights to meet the maximum number of weighted influences.
+
+        :type weights: Dict[int, float]
+        :type tolerance: float
+        :rtype: Dict[int, float]
+        """
+
+        # Check value type
+        #
+        if not isinstance(weights, dict):
+
+            raise TypeError('pruneWeights() expects a dict (%s given)!' % type(weights).__name__)
+
+        # Prune weights
+        #
+        prunedWeights = {influenceId: influenceWeight for (influenceId, influenceWeight) in weights.items() if influenceWeight >= tolerance}
+        return self.normalizeWeights(prunedWeights)
+
+    def capWeights(self, weights):
+        """
+        Caps the supplied vertex weights to meet the maximum number of weighted influences.
 
         :type weights: Dict[int, float]
         :rtype: Dict[int, float]
@@ -1012,7 +1043,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         #
         if not isinstance(weights, dict):
 
-            raise TypeError('pruneWeights() expects a dict (%s given)!' % type(weights).__name__)
+            raise TypeError('capWeights() expects a dict (%s given)!' % type(weights).__name__)
 
         # Check if any influences have dropped below limit
         #
@@ -1426,8 +1457,8 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
 
         # Mirror the supplied vertex indices
         #
-        fnMesh = fnmesh.FnMesh(self.intermediateObject())
-        mirrorIndices = fnMesh.mirrorVertices(vertexIndices, axis=axis, tolerance=tolerance)
+        mesh = fnmesh.FnMesh(self.intermediateObject())
+        mirrorIndices = mesh.mirrorVertices(vertexIndices, axis=axis, tolerance=tolerance)
 
         # Mirror the found vertex pairs
         #
@@ -1462,11 +1493,13 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         #
         if not isinstance(weights, dict):
 
-            raise TypeError('mirrorWeights() expects a dict (%s given)!' % type(weights).__name__)
+            raise TypeError(f'mirrorWeights() expects a dict ({type(weights).__name__} given)!')
 
         # Iterate through influences
         #
         influences = self.influences()
+        otherInfluence = fnnode.FnNode()
+
         mirrorWeights = {}
 
         for influenceId in weights.keys():
@@ -1474,20 +1507,29 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
             # Concatenate mirror name
             # Be sure to check for redundancy
             #
-            influenceName = influences[influenceId].name()
+            influenceName = influences[influenceId].absoluteName()
             mirrorName = namingutils.mirrorName(influenceName)
 
             if influenceName == mirrorName:
 
-                log.debug('No mirrored influence name found for %s.' % influenceName)
-
+                log.debug(f'No mirrored influence name found for {influenceName}.')
                 mirrorWeights[influenceId] = weights[influenceId]
+
+                continue
+
+            # Check if mirrored influence name exists
+            #
+            success = otherInfluence.trySetObject(mirrorName)
+
+            if not success:
+
+                log.debug(f'No mirrored influence name found for {influenceName}.')
                 continue
 
             # Check if mirror name is in list
             #
-            log.debug('Checking if %s exists in influence list...' % mirrorName)
-            mirrorId = influences.index(mirrorName)
+            log.debug(f'Checking if {mirrorName} exists in influence list...')
+            mirrorId = influences.index(otherInfluence.object())
 
             if mirrorId is not None:
 
@@ -1495,7 +1537,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
                 #
                 if isCenterSeam:
 
-                    log.debug('Splitting %s vertex weights with %s influence.' % (mirrorName, influenceName))
+                    log.debug(f'Splitting {mirrorName} vertex weights with {influenceName} influence.')
 
                     weight = (weights.get(influenceId, 0.0) + weights.get(mirrorId, 0.0)) / 2.0
                     mirrorWeights[influenceId] = weight
@@ -1503,27 +1545,27 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
 
                 else:
 
-                    log.debug('Trading %s vertex weights for %s influence.' % (mirrorName, influenceName))
+                    log.debug(f'Trading {mirrorName} vertex weights for {influenceName} influence.')
                     mirrorWeights[mirrorId] = weights[influenceId]
 
             else:
 
-                log.warning('Unable to find a matching mirrored influence for %s.' % influenceName)
+                log.warning(f'Unable to find a matching mirrored influence for {influenceName}.')
                 mirrorWeights[influenceId] = weights[influenceId]
 
         # Return mirrored vertex weights
         #
         return mirrorWeights
 
-    def blendVertices(self, vertexIndices):
+    def relaxVertices(self, vertexIndices):
         """
-        Blends the selected vertices.
+        Relaxes the supplied vertices.
 
         :type vertexIndices: List[int]
         :rtype: None
         """
 
-        # Check number of vertices
+        # Evaluate supplied vertices
         #
         numVertices = len(vertexIndices)
 
@@ -1533,22 +1575,66 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
 
         # Iterate through vertices
         #
-        fnMesh = fnmesh.FnMesh(self.shape())
+        mesh = fnmesh.FnMesh(self.shape())
         updates = {}
 
         for vertexIndex in vertexIndices:
 
             # Get connected vertices
             #
-            connectedVertices = list(fnMesh.iterConnectedVertices(vertexIndex))
-            log.debug('Averaging vertex weights from %s.' % connectedVertices)
+            connectedVertices = list(mesh.iterConnectedVertices(vertexIndex))
+            connectedVertices.append(vertexIndex)
+
+            log.debug(f'Relaxing vertex weights from: {connectedVertices}')
+
+            # Average vertex weights
+            #
+            influenceIds = list(self.vertexWeights(vertexIndex)[vertexIndex].keys())
+            vertices = {connectedIndex: {influenceId: influenceWeight for (influenceId, influenceWeight) in connectedWeights.items() if influenceId in influenceIds} for (connectedIndex, connectedWeights) in self.iterVertexWeights(*connectedVertices)}
+
+            vertexWeights = self.averageWeights(*list(vertices.values()))
+            log.debug(f'Relaxed vertex weights: {vertexWeights}')
+
+            updates[vertexIndex] = vertexWeights
+
+        # Apply averaged result to skin cluster
+        #
+        return self.applyVertexWeights(updates)
+
+    def blendVertices(self, vertexIndices):
+        """
+        Blends the supplied vertices.
+
+        :type vertexIndices: List[int]
+        :rtype: None
+        """
+
+        # Evaluate supplied vertices
+        #
+        numVertices = len(vertexIndices)
+
+        if numVertices == 0:
+
+            return
+
+        # Iterate through vertices
+        #
+        mesh = fnmesh.FnMesh(self.shape())
+        updates = {}
+
+        for vertexIndex in vertexIndices:
+
+            # Get connected vertices
+            #
+            connectedVertices = list(mesh.iterConnectedVertices(vertexIndex))
+            log.debug(f'Blending vertex weights from: {connectedVertices}')
 
             # Average vertex weights
             #
             vertices = self.vertexWeights(*connectedVertices)
 
             vertexWeights = self.averageWeights(*list(vertices.values()))
-            log.debug('%s averaged from connected vertices.' % vertexWeights)
+            log.debug(f'Blended vertex weights: {vertexWeights}')
 
             updates[vertexIndex] = vertexWeights
 
@@ -1558,7 +1644,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
 
     def blendBetweenVertices(self, vertexIndices, blendByDistance=False):
         """
-        Blends between the supplied vertices using the shortest path.
+        Blends between the supplied vertex pairs using the shortest path.
 
         :type vertexIndices: List[int]
         :type blendByDistance: bool
@@ -1647,6 +1733,21 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
 
         # Apply weights
         #
+        self.applyVertexWeights(updates)
+
+    def pruneVertices(self, vertexIndices, tolerance=1e-3):
+        """
+        Prunes any influences below the specified tolerance.
+
+        :type vertexIndices: List[int]
+        :type tolerance: float
+        :rtype: None
+        """
+
+        vertices = self.vertexWeights(*vertexIndices)
+        prunedVertices = {vertexIndex: self.pruneWeights(vertexWeights, tolerance=tolerance) for (vertexIndex, vertexWeights) in vertices.items()}
+
+        updates = {vertexIndex: prunedVertices[vertexIndex] for vertexIndex in vertexIndices if len(vertices[vertexIndex]) != len(prunedVertices[vertexIndex])}
         self.applyVertexWeights(updates)
 
     @abstractmethod
