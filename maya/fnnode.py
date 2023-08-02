@@ -18,6 +18,8 @@ class FnNode(afnnode.AFnNode):
 
     __slots__ = ()
     __handles__ = {}
+    __sep_char__ = '|'
+    __alt_sep_char__ = '|'
 
     def object(self):
         """
@@ -347,7 +349,7 @@ class FnNode(afnnode.AFnNode):
         :rtype: bool
         """
 
-        return self.isTransform and not self.object().hasFn(om.MFn.kConstraint)
+        return self.isTransform() and not any(map(self.object().hasFn, (om.MFn.kConstraint, om.MFn.kPluginConstraintNode)))
 
     def isMesh(self):
         """
