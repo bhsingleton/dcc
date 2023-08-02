@@ -314,6 +314,19 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
 
         pass
 
+    @staticmethod
+    def clamp(value, minValue=0.0, maxValue=1.0):
+        """
+        Clamps the supplied value to the specified range.
+
+        :type value: Union[int, float]
+        :type minValue: Union[int, float]
+        :type maxValue: Union[int, float]
+        :rtype: Union[int, float]
+        """
+
+        return linearalgebra.clamp(value, minValue, maxValue)
+
     @abstractmethod
     def iterVertices(self):
         """
@@ -752,7 +765,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         #
         if not isinstance(weights, dict):
 
-            raise TypeError('setWeights() expects a dict (%s given)!' % type(weights).__name__)
+            raise TypeError(f'setWeights() expects a dict ({type(weights).__name__} given)!')
 
         # Check source and target influences
         #
@@ -764,16 +777,16 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         #
         if not isinstance(amount, float):
 
-            raise TypeError('setWeights() expects a valid amount (%s given)!' % type(amount).__name__)
+            raise TypeError(f'setWeights() expects a valid amount ({type(amount).__name__} given)!')
 
         # Copy weights to manipulate
         #
         newWeights = deepcopy(weights)
 
-        softAmount = amount * falloff
+        softAmount = self.clamp(amount) * self.clamp(falloff)
         total = sum([weights.get(x, 0.0) for x in source])
 
-        log.debug('%s weights available to redistribute.' % total)
+        log.debug(f'Weights available to redistribute: {total}')
 
         # Check if influence exists on vertex
         #
@@ -873,7 +886,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
 
         else:
 
-            raise TypeError('Unable to set vertex weights using supplied arguments!')
+            raise TypeError('setWeights() Unable to manipulate vertex weights from supplied arguments!')
 
         # Return updated vertex weights
         #
@@ -898,7 +911,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
 
         # Set vertex weight
         #
-        log.debug('Changing influence ID: %s, from %s to %s.' % (target, current, amount))
+        log.debug(f'Changing influence ID: {target}, from {current} to {amount}')
         return self.setWeights(weights, target, source, amount)
 
     def incrementWeights(self, weights, target, source, increment, falloff=1.0):
@@ -920,7 +933,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
 
         # Set vertex weight
         #
-        log.debug('Changing influence ID: %s, from %s to %s.' % (target, current, amount))
+        log.debug(f'Changing influence ID: {target}, from {current} to {amount}')
         return self.setWeights(weights, target, source, amount)
 
     def removeZeroWeights(self, weights):

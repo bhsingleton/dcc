@@ -19,3 +19,26 @@ def isClose(a, b, rel_tol=1e-03, abs_tol=1e-03):
     """
 
     return abs(a - b) <= max(rel_tol * max(abs(a), abs(b)), abs_tol)
+
+
+def clamp(value, minValue, maxValue):
+    """
+    Clamps the supplied value to the specified range.
+
+    :type value: Union[int, float]
+    :type minValue: Union[int, float]
+    :type maxValue: Union[int, float]
+    :rtype: Union[int, float]
+    """
+
+    if value < minValue:
+
+        return minValue
+
+    elif value > maxValue:
+
+        return maxValue
+
+    else:
+
+        return value
