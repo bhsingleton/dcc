@@ -2,6 +2,7 @@ from abc import ABCMeta, abstractmethod
 from six import with_metaclass
 from collections import deque
 from dcc.abstract import afnbase
+from dcc.decorators.classproperty import classproperty
 
 import logging
 logging.basicConfig()
@@ -14,8 +15,35 @@ class AFnObject(with_metaclass(ABCMeta, afnbase.AFnBase)):
     Overload of AFnBase that outlines parent/child interfaces.
     """
 
+    # region Dunderscores
     __slots__ = ()
+    __sep_char__ = '/'
+    __alt_sep_char__ = '\\'
+    # endregion
 
+    # region Properties
+    @classproperty
+    def sepChar(cls):
+        """
+        Getter method that returns the path separator for the associated dcc.
+
+        :rtype: str
+        """
+
+        return cls.__sep_char__
+
+    @classproperty
+    def altSepChar(cls):
+        """
+        Getter method that returns the alternate path separator for the associated dcc.
+
+        :rtype: str
+        """
+
+        return cls.__alt_sep_char__
+    # endregion
+
+    # region Methods
     @abstractmethod
     def name(self):
         """
@@ -76,29 +104,27 @@ class AFnObject(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
             return name
 
-    def path(self, delimiter='/'):
+    def path(self):
         """
         Returns a path to this object.
 
-        :type delimiter: str
         :rtype: str
         """
 
-        return delimiter.join([self.__class__(x).absoluteName() for x in self.trace()])
+        return self.sepChar.join([self.__class__(x).absoluteName() for x in self.trace()])
 
-    def findCommonPath(self, *objects, delimiter='/'):
+    def findCommonPath(self, *objects):
         """
         Returns the common path from the supplied objects.
 
         :type objects: Union[AFnNode, List[AFnNode]]
-        :type delimiter: str
         :rtype: str
         """
 
         # Iterate through path segments
         #
-        paths = [obj.path(delimiter=delimiter) for obj in objects]
-        substrings = [path.split(delimiter) for path in paths]
+        paths = [obj.path() for obj in objects]
+        substrings = [path.split(self.sepChar) for path in paths]
 
         depths = [len(substring) for substring in substrings]
         minDepth = min(depths)
@@ -119,7 +145,7 @@ class AFnObject(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
                 break
 
-        return delimiter.join(commonPath)
+        return self.sepChar.join(commonPath)
 
     @abstractmethod
     def parent(self):
@@ -259,3 +285,4 @@ class AFnObject(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
 
         return list(self.iterDescendants())
+    # endregion
