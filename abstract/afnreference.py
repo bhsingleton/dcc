@@ -134,10 +134,11 @@ class AFnReference(with_metaclass(ABCMeta, afnobject.AFnObject)):
 
     @classmethod
     @abstractmethod
-    def iterSceneReferences(cls):
+    def iterSceneReferences(cls, topLevelOnly=True):
         """
         Returns a generator that yields top-level scene references.
 
+        :type topLevelOnly: bool
         :rtype: iter
         """
 

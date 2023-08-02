@@ -18,7 +18,7 @@ class FnReference(afnreference.AFnReference):
     """
 
     __slots__ = ()
-    __arrayindextype__ = ArrayIndexType.OneBased
+    __array_index_type__ = ArrayIndexType.OneBased
 
     def object(self):
         """
@@ -232,10 +232,11 @@ class FnReference(afnreference.AFnReference):
             raise TypeError('setObject() expects a str or int (%s given)!' % type(value).__name__)
 
     @classmethod
-    def iterSceneReferences(cls):
+    def iterSceneReferences(cls, topLevelOnly=True):
         """
         Returns a generator that yields top-level scene references.
 
+        :type topLevelOnly: bool
         :rtype: iter
         """
 
@@ -245,13 +246,13 @@ class FnReference(afnreference.AFnReference):
 
             record = pymxs.runtime.objXRefMgr.getRecord(i)
 
-            if not record.nested:
+            if topLevelOnly and record.nested:
 
-                yield record
+                continue
 
             else:
 
-                continue
+                yield record
 
     @classmethod
     def getReferenceByHandle(cls, handle):

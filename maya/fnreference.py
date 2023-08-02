@@ -80,10 +80,11 @@ class FnReference(fnnode.FnNode, afnreference.AFnReference):
         return iter(om.MFnReference(self.object()).nodes())
 
     @classmethod
-    def iterSceneReferences(cls):
+    def iterSceneReferences(cls, topLevelOnly=True):
         """
         Returns a generator that yields top-level scene references.
 
+        :type topLevelOnly: bool
         :rtype: iter
         """
 
@@ -99,14 +100,15 @@ class FnReference(fnnode.FnNode, afnreference.AFnReference):
 
                 fnReference.setObject(dependNode)
                 parent = fnReference.parentReference()
+                isNested = not parent.isNull()
 
-                if parent.isNull():
+                if topLevelOnly and isNested:
 
-                    yield dependNode
+                    continue
 
                 else:
 
-                    continue
+                    yield dependNode
 
             except RuntimeError:
 
