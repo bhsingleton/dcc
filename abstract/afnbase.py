@@ -21,7 +21,7 @@ class AFnBase(with_metaclass(ABCMeta, object)):
 
     # region Dunderscores
     __slots__ = ('_object', '_queue')
-    __arrayindextype__ = ArrayIndexType.ZeroBased
+    __array_index_type__ = ArrayIndexType.ZeroBased
 
     def __init__(self, *args, **kwargs):
         """
@@ -173,7 +173,7 @@ class AFnBase(with_metaclass(ABCMeta, object)):
         :rtype: int
         """
 
-        return cls.__arrayindextype__
+        return cls.__array_index_type__
     # endregion
 
     # region Methods

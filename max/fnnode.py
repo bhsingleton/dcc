@@ -16,7 +16,7 @@ class FnNode(afnnode.AFnNode):
     """
 
     __slots__ = ()
-    __arrayindextype__ = ArrayIndexType.OneBased
+    __array_index_type__ = ArrayIndexType.OneBased
 
     def object(self):
         """
