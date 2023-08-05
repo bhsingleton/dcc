@@ -1,5 +1,3 @@
-import numpy
-
 from abc import ABCMeta, abstractmethod
 from six import with_metaclass
 from enum import IntEnum
@@ -9,6 +7,7 @@ from dataclasses import dataclass, field
 from typing import List, Tuple
 from scipy.spatial import cKDTree
 from dcc.abstract import afnbase
+from dcc.math import linearalgebra
 from dcc.dataclasses.vector import Vector
 from dcc.dataclasses.colour import Colour
 
@@ -817,35 +816,6 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         return [vertexMap[x] for x in indices]
 
-    def closestVerticesInRange(self, points, radius, dataset=None):
-        """
-        Returns the vertices that are closest to the specified point radius.
-        An optional list of vertices can be used to limit the range of points considered.
-
-        :type points: List[Vector]
-        :type radius: float
-        :type dataset: List[int]
-        :rtype: List[List[int]]
-        """
-
-        # Check if vertices were supplied
-        #
-        if dataset is None:
-
-            dataset = list(self.range(self.numVertices()))
-
-        # Get vertex points
-        #
-        vertexPoints = self.getVertices(*dataset, worldSpace=True)
-        vertexMap = dict(enumerate(dataset))
-
-        # Query point tree
-        #
-        tree = cKDTree(vertexPoints)
-        indices = tree.query_ball_point(points, radius)
-
-        return [tuple(map(vertexMap.get, x)) for x in indices]
-
     def getBarycentricCoordinates(self, point, triangle):
         """
         Returns the barycentric co-ordinates for the point on the supplied triangle.
@@ -866,11 +836,11 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         # Get dot products
         #
-        a = numpy.dot(v0, v0)
-        b = numpy.dot(v0, v1)
-        c = numpy.dot(v1, v1)
-        d = numpy.dot(v0, v2)
-        e = numpy.dot(v1, v2)
+        a = v0 * v0
+        b = v0 * v1
+        c = v1 * v1
+        d = v0 * v2
+        e = v1 * v2
 
         # Evaluate every triangle configuration
         #
@@ -886,22 +856,22 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
                     if d < 0.0:
 
-                        s = numpy.clip(-d / a, 0.0, 1.0)
+                        s = linearalgebra.clamp(-d / a, 0.0, 1.0)
                         t = 0.0
 
                     else:
 
                         s = 0.0
-                        t = numpy.clip(-e / c, 0.0, 1.0)
+                        t = linearalgebra.clamp(-e / c, 0.0, 1.0)
 
                 else:  # Region 3
 
                     s = 0.0
-                    t = numpy.clip(-e / c, 0.0, 1.0)
+                    t = linearalgebra.clamp(-e / c, 0.0, 1.0)
 
             elif t < 0:  # Region 5
 
-                s = numpy.clip(-d / a, 0.0, 1.0)
+                s = linearalgebra.clamp(-d / a, 0.0, 1.0)
                 t = 0.0
 
             else:  # Region 0
@@ -921,12 +891,12 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
                     numerator = tmp1 - tmp0
                     denominator = a - 2.0 * b + c
-                    s = numpy.clip(numerator / denominator, 0.0, 1.0)
+                    s = linearalgebra.clamp(numerator / denominator, 0.0, 1.0)
                     t = 1.0 - s
 
                 else:  # Minimum on edge: s = 0.0
 
-                    t = numpy.clip(-e / c, 0.0, 1.0)
+                    t = linearalgebra.clamp(-e / c, 0.0, 1.0)
                     s = 0.0
 
             elif t < 0.0:  # Region 6
@@ -935,19 +905,19 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
                     numerator = c + e - b - d
                     denominator = a - 2 * b + c
-                    s = numpy.clip(numerator / denominator, 0.0, 1.0)
+                    s = linearalgebra.clamp(numerator / denominator, 0.0, 1.0)
                     t = 1.0 - s
 
                 else:
 
-                    s = numpy.clip(-e / c, 0.0, 1.0)
+                    s = linearalgebra.clamp(-e / c, 0.0, 1.0)
                     t = 0.0
 
             else:  # Region 1
 
                 numerator = c + e - b - d
                 denominator = a - 2 * b + c
-                s = numpy.clip(numerator / denominator, 0.0, 1.0)
+                s = linearalgebra.clamp(numerator / denominator, 0.0, 1.0)
                 t = 1.0 - s
 
         return float(1.0 - s - t), float(s), float(t)
