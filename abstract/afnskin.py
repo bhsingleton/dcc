@@ -1200,12 +1200,13 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         influenceIds = set(chain(*[arg.keys() for arg in args]))
         return dict.fromkeys(influenceIds, 0.0)
 
-    def inverseDistanceWeights(self, vertexWeights, distances):
+    def inverseDistanceWeights(self, vertexWeights, distances, power=2.0):
         """
         Averages supplied vertex weights based on the inverse distance.
 
         :type vertexWeights: Dict[int,Dict[int, float]]
         :type distances: list[float]
+        :type power: float
         :rtype: Dict[int, float]
         """
 
@@ -1217,15 +1218,6 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         if numVertices != numDistances:
 
             raise TypeError('inverseDistanceVertexWeights() expects identical length lists!')
-
-        # Check for zero distance
-        #
-        index = distances.index(0.0) if 0.0 in distances else None
-
-        if index is not None:
-
-            log.debug('Zero distance found in %s' % distances)
-            return vertexWeights[index]
 
         # Merge dictionary keys using null values
         #
@@ -1245,10 +1237,11 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
             numerator = 0.0
             denominator = 0.0
 
-            for weight, distance in zip(weights, distances):
+            for (weight, distance) in zip(weights, distances):
 
-                numerator += weight / pow(distance, 2.0)
-                denominator += 1.0 / pow(distance, 2.0)
+                clampedDistance = distance if distance > 0.0 else 1e-3
+                numerator += weight / pow(clampedDistance, power)
+                denominator += 1.0 / pow(clampedDistance, power)
 
             # Assign average to updates
             #
@@ -1256,8 +1249,8 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
 
         # Return normalized weights
         #
-        log.debug('Inverse Distance: %s' % inverseWeights)
-        return inverseWeights
+        log.debug(f'Inverse Distance: {inverseWeights}')
+        return self.normalizeWeights(inverseWeights)
 
     def barycentricWeights(self, vertexIndices, baryCoords):
         """
@@ -1302,7 +1295,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
 
         # Return normalized weights
         #
-        log.debug('Barycentric Average: %s' % baryWeights)
+        log.debug(f'Barycentric Average: {baryWeights}')
         return self.normalizeWeights(baryWeights)
 
     def bilinearWeights(self, vertexIndices, biCoords):
