@@ -4,7 +4,8 @@ from enum import IntEnum
 from . import dagutils, attributeutils, plugutils
 from ..decorators.undo import commit
 from ...python import stringutils
-from ...dataclasses import vector, keyframe
+from ...dataclasses.vector import Vector
+from ...dataclasses.keyframe import Keyframe
 
 import logging
 logging.basicConfig()
@@ -427,12 +428,12 @@ def getInputRange(animCurve):
         return None, None
 
 
-def insertKeys(animCurve, keys, insertAt, animationRange=None, replace=False, change=None):
+def insertKeys(animCurve, keyframes, insertAt, animationRange=None, replace=False, change=None):
     """
     Inserts the supplied keys into the specified anim-curve.
 
     :type animCurve: om.MObject
-    :type keys: List[keyframe.Keyframe]
+    :type keyframes: List[keyframe.Keyframe]
     :type insertAt: Union[int, float]
     :type animationRange: Union[Tuple[int, int], None]
     :type replace: bool
@@ -443,9 +444,9 @@ def insertKeys(animCurve, keys, insertAt, animationRange=None, replace=False, ch
     # Redundancy check
     #
     isNull = animCurve.isNull()
-    numKeys = len(keys)
+    numKeyframes = len(keyframes)
 
-    if isNull or numKeys == 0:
+    if isNull or numKeyframes == 0:
 
         return
 
@@ -459,7 +460,7 @@ def insertKeys(animCurve, keys, insertAt, animationRange=None, replace=False, ch
 
     else:
 
-        startTime, endTime = keys[0].time, keys[-1].time
+        startTime, endTime = keyframes[0].time, keyframes[-1].time
 
     # Check if an anim-curve change was supplied
     #
@@ -491,43 +492,50 @@ def insertKeys(animCurve, keys, insertAt, animationRange=None, replace=False, ch
     #
     fnAnimCurve = oma.MFnAnimCurve(animCurve)
 
-    for key in keys:
+    for keyframe in keyframes:
 
         # Insert key at time
         #
-        time = om.MTime(key.time + timeOffset, unit=om.MTime.uiUnit())
+        time = om.MTime(keyframe.time + timeOffset, unit=om.MTime.uiUnit())
 
         i = fnAnimCurve.addKey(
             time,
-            key.value,
-            tangentInType=key.inTangentType,
-            tangentOutType=key.outTangentType,
+            keyframe.value,
+            tangentInType=keyframe.inTangentType,
+            tangentOutType=keyframe.outTangentType,
             change=change
         )
 
-        # Modify tangents
+        # Check if tangent types are custom
         #
-        fnAnimCurve.setWeightsLocked(i, False, change=change)
-        fnAnimCurve.setTangentsLocked(i, False, change=change)
+        if oma.MFnAnimCurve.kTangentFixed in (keyframe.inTangentType, keyframe.outTangentType):
 
-        fnAnimCurve.setTangent(i, key.inTangent.x, key.inTangent.y, True, convertUnits=False, change=change)
-        fnAnimCurve.setTangent(i, key.outTangent.x, key.outTangent.y, False, convertUnits=False, change=change)
+            # Unlock keyframe
+            #
+            fnAnimCurve.setWeightsLocked(i, False, change=change)
+            fnAnimCurve.setTangentsLocked(i, False, change=change)
 
-        # Re-lock tangents
-        #
-        fnAnimCurve.setTangentsLocked(i, True, change=change)
+            # Edit tangent values
+            #
+            fnAnimCurve.setTangent(i, keyframe.inTangent.x, keyframe.inTangent.y, True, convertUnits=False, change=change)
+            fnAnimCurve.setTangent(i, keyframe.outTangent.x, keyframe.outTangent.y, False, convertUnits=False, change=change)
+
+            # Reassign lock states
+            #
+            fnAnimCurve.setWeightsLocked(i, keyframe.weighted, change=change)
+            fnAnimCurve.setTangentsLocked(i, keyframe.locked, change=change)
 
     # Cache changes
     #
     commit(change.redoIt, change.undoIt)
 
 
-def replaceKeys(animCurve, keys, insertAt=None, animationRange=None, change=None):
+def replaceKeys(animCurve, keyframes, insertAt=None, animationRange=None, change=None):
     """
     Replaces the keys on the supplied anim-curve.
 
     :type animCurve: om.MObject
-    :type keys: List[keyframe.Keyframe]
+    :type keyframes: List[keyframe.Keyframe]
     :type insertAt: Union[int, float, None]
     :type animationRange: Union[Tuple[int, int], None]
     :type change: Union[oma.MAnimCurveChange, None]
@@ -537,9 +545,9 @@ def replaceKeys(animCurve, keys, insertAt=None, animationRange=None, change=None
     # Redundancy check
     #
     isNull = animCurve.isNull()
-    numKeys = len(keys)
+    numKeyframes = len(keyframes)
 
-    if isNull or numKeys == 0:
+    if isNull or numKeyframes == 0:
 
         return
 
@@ -553,7 +561,7 @@ def replaceKeys(animCurve, keys, insertAt=None, animationRange=None, change=None
 
     else:
 
-        startTime, endTime = keys[0].time, keys[-1].time
+        startTime, endTime = keyframes[0].time, keyframes[-1].time
 
     # Check if an anim-curve change was supplied
     #
@@ -568,31 +576,38 @@ def replaceKeys(animCurve, keys, insertAt=None, animationRange=None, change=None
 
     clearKeys(animCurve, animationRange=(startTime + timeOffset, endTime + timeOffset), change=change)
 
-    for key in keys:
+    for keyframe in keyframes:
 
         # Insert key at time
         #
-        time = om.MTime(key.time + timeOffset, unit=om.MTime.uiUnit())
+        time = om.MTime(keyframe.time + timeOffset, unit=om.MTime.uiUnit())
 
         i = fnAnimCurve.addKey(
             time,
-            key.value,
-            tangentInType=key.inTangentType,
-            tangentOutType=key.outTangentType,
+            keyframe.value,
+            tangentInType=keyframe.inTangentType,
+            tangentOutType=keyframe.outTangentType,
             change=change
         )
 
-        # Modify tangents
+        # Check if tangent types are custom
         #
-        fnAnimCurve.setWeightsLocked(i, False, change=change)
-        fnAnimCurve.setTangentsLocked(i, False, change=change)
+        if oma.MFnAnimCurve.kTangentFixed in (keyframe.inTangentType, keyframe.outTangentType):
 
-        fnAnimCurve.setTangent(i, key.inTangent.x, key.inTangent.y, True, convertUnits=False, change=change)
-        fnAnimCurve.setTangent(i, key.outTangent.x, key.outTangent.y, False, convertUnits=False, change=change)
+            # Unlock keyframe
+            #
+            fnAnimCurve.setWeightsLocked(i, False, change=change)
+            fnAnimCurve.setTangentsLocked(i, False, change=change)
 
-        # Re-lock tangents
-        #
-        fnAnimCurve.setTangentsLocked(i, True, change=change)
+            # Edit tangent values
+            #
+            fnAnimCurve.setTangent(i, keyframe.inTangent.x, keyframe.inTangent.y, True, convertUnits=False, change=change)
+            fnAnimCurve.setTangent(i, keyframe.outTangent.x, keyframe.outTangent.y, False, convertUnits=False, change=change)
+
+            # Reassign lock states
+            #
+            fnAnimCurve.setWeightsLocked(i, keyframe.weighted, change=change)
+            fnAnimCurve.setTangentsLocked(i, keyframe.locked, change=change)
 
 
 def moveKeys(animCurve, startTime, endTime, moveTo, change=None):
@@ -719,23 +734,37 @@ def synchronizeTangents(plug):
 
         return
 
-    # Unlock tangents
+    # Synchronize tangent types
     #
-    fnAnimCurve.setTangentsLocked(0, False)
-    fnAnimCurve.setTangentsLocked(lastIndex, False)
+    inTangentType = fnAnimCurve.inTangentType(0)
+    outTangentType = fnAnimCurve.outTangentType(0)
 
-    # Synchronize tangents
+    fnAnimCurve.setInTangentType(lastIndex, inTangentType)
+    fnAnimCurve.setInTangentType(lastIndex, outTangentType)
+
+    # Check if tangent types are custom
     #
-    outTangentX, outTangentY = fnAnimCurve.getTangentXY(0, False)
-    inTangentX, inTangentY = fnAnimCurve.getTangentXY(lastIndex, True)
+    if oma.MFnAnimCurve.kTangentFixed in (inTangentType, outTangentType):
 
-    fnAnimCurve.setTangent(0, inTangentX, inTangentY, True, convertUnits=False)
-    fnAnimCurve.setTangent(lastIndex, outTangentX, outTangentY, False, convertUnits=False)
+        # Unlock tangents
+        #
+        isLocked = fnAnimCurve.tangentsLocked(0)
 
-    # Lock tangents
-    #
-    fnAnimCurve.setTangentsLocked(0, True)
-    fnAnimCurve.setTangentsLocked(lastIndex, True)
+        fnAnimCurve.setTangentsLocked(0, False)
+        fnAnimCurve.setTangentsLocked(lastIndex, False)
+
+        # Synchronize tangents
+        #
+        outTangentX, outTangentY = fnAnimCurve.getTangentXY(0, False)
+        inTangentX, inTangentY = fnAnimCurve.getTangentXY(lastIndex, True)
+
+        fnAnimCurve.setTangent(0, inTangentX, inTangentY, True, convertUnits=False)
+        fnAnimCurve.setTangent(lastIndex, outTangentX, outTangentY, False, convertUnits=False)
+
+        # Reassign lock states
+        #
+        fnAnimCurve.setTangentsLocked(0, isLocked)
+        fnAnimCurve.setTangentsLocked(lastIndex, isLocked)
 
 
 def copyKeys(plug):
@@ -759,13 +788,15 @@ def copyKeys(plug):
 
     for i in range(fnAnimCurve.numKeys):
 
-        keys[i] = keyframe.Keyframe(
+        keys[i] = Keyframe(
             time=fnAnimCurve.input(i).value,
             value=fnAnimCurve.value(i),
-            inTangent=vector.Vector(*fnAnimCurve.getTangentXY(i, True)),
+            inTangent=Vector(*fnAnimCurve.getTangentXY(i, True)),
             inTangentType=fnAnimCurve.inTangentType(i),
-            outTangent=vector.Vector(*fnAnimCurve.getTangentXY(i, False)),
-            outTangentType=fnAnimCurve.outTangentType(i)
+            outTangent=Vector(*fnAnimCurve.getTangentXY(i, False)),
+            outTangentType=fnAnimCurve.outTangentType(i),
+            weighted=fnAnimCurve.weightsLocked(i),
+            locked=fnAnimCurve.tangentsLocked(i)
         )
 
     return keys
