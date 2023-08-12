@@ -1143,17 +1143,28 @@ def keyValue(plug, value, time=None, convertUnits=True, change=None):
     animCurve = animutils.findAnimCurve(animatedPlug, create=True)
     fnAnimCurve = oma.MFnAnimCurve(animCurve)
 
+    # Check if time input already exists
+    #
     time = sceneutils.getTime() if time is None else time
     index = fnAnimCurve.find(time)
 
     if index is None:
 
-        index = fnAnimCurve.insertKey(om.MTime(time, unit=om.MTime.uiUnit()), change=change)
+        log.debug(f'Updating {fnAnimCurve.name()} anim-curve: {value} @ {time}')
+        fnAnimCurve.addKey(
+            om.MTime(time, unit=om.MTime.uiUnit()),
+            value,
+            tangentInType=fnAnimCurve.kTangentAuto,
+            tangentOutType=fnAnimCurve.kTangentAuto,
+            change=change
+        )
 
-    # Set value and cache change
+    else:
+
+        log.debug(f'Updating {fnAnimCurve.name()} anim-curve: {value} @ {time}')
+        fnAnimCurve.setValue(index, value, change=change)
+
+    # Cache anim-curve changes
     #
-    log.debug(f'Updating {fnAnimCurve.name()} anim-curve: {value} @ {time}')
-    fnAnimCurve.setValue(index, value, change=change)
-
     commit(change.redoIt, change.undoIt)
 # endregion
