@@ -299,23 +299,24 @@ class FbxFile(object):
         :rtype: None
         """
 
-        # Iterate through transform components
+        # Iterate through transform properties
         #
         animStack = self.fbxScene.GetCurrentAnimationStack()  # type: fbx.FbxAnimStack
-        animLayer = animStack.GetMember(0)  # TODO: Add support for all layers
 
         for component in (node.LclTranslation, node.LclRotation, node.LclScaling):
 
-            # Iterate through component axes
+            # Get anim-curve node
             #
-            for axis in ('X', 'Y', 'Z'):
+            animCurveNode = component.GetCurveNode(animStack, False)
 
-                # Clear anim curve keys
-                #
-                animCurve = component.GetCurve(animLayer, axis, True)  # type: fbx.FbxAnimCurve
-                animCurve.KeyModifyBegin()
-                animCurve.KeyClear()
-                animCurve.KeyModifyEnd()
+            if animCurveNode is None:
+
+                continue
+
+            # Reset anim-curve channels
+            #
+            animCurveNode.ResetChannels()
+            animCurveNode.Destroy(True)
 
     def removeDisplayLayers(self):
         """
