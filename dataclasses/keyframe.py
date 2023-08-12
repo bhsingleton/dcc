@@ -21,6 +21,8 @@ class Keyframe(adc.ADC):
     inTangentType: Union[int, str] = 0
     outTangent: vector.Vector = field(default_factory=vector.Vector)
     outTangentType: Union[int, str] = 0
+    weighted: bool = False
+    locked: bool = True
     # endregion
 
     # region Dunderscores
