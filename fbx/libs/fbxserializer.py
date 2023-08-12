@@ -311,6 +311,50 @@ class FbxSerializer(object):
 
             rootNode.AddChild(copyTo)
 
+    def moveToOrigin(self):
+        """
+        Moves all the root objects to origin.
+
+        :rtype: None
+        """
+
+        # Iterate through root nodes
+        #
+        rootNode = self.fbxScene.GetRootNode()
+        childCount = rootNode.GetChildCount()
+
+        animStack = self.fbxScene.GetCurrentAnimationStack()  # type: fbx.FbxAnimStack
+
+        for i in range(childCount):
+
+            # Clear transform keys
+            #
+            childNode = rootNode.GetChild(i)
+
+            for component in (childNode.LclTranslation, childNode.LclRotation, childNode.LclScaling):
+
+                # Get anim-curve node
+                #
+                animCurveNode = component.GetCurveNode(animStack, False)
+
+                if animCurveNode is None:
+
+                    continue
+
+                # Reset anim-curve channels
+                #
+                animCurveNode.ResetChannels()
+                animCurveNode.Destroy(True)
+
+            # Reset transform properties
+            #
+            childNode.LclTranslation.Set(fbx.FbxDouble3(0.0, 0.0, 0.0))
+            childNode.RotationPivot.Set(fbx.FbxDouble3(0.0, 0.0, 0.0))
+            childNode.PreRotation.Set(fbx.FbxDouble3(0.0, 0.0, 0.0))
+            childNode.LclRotation.Set(fbx.FbxDouble3(0.0, 0.0, 0.0))
+            childNode.PostRotation.Set(fbx.FbxDouble3(0.0, 0.0, 0.0))
+            childNode.LclScaling.Set(fbx.FbxDouble3(1.0, 1.0, 1.0))
+
     def copyTransform(self, copyFrom, copyTo):
         """
         Copies the local transform values from the supplied scene node to the specified fbx node.
@@ -1171,6 +1215,12 @@ class FbxSerializer(object):
 
         self.updateTimeRange(startFrame, endFrame)
         self.bakeAnimation(*fbxNodes, startFrame=startFrame, endFrame=endFrame)
+
+        # Check if skeleton should be moved to origin
+        #
+        if sequence.moveToOrigin:
+
+            self.moveToOrigin()
 
         # Save changes
         #

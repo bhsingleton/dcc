@@ -28,6 +28,7 @@ class FbxSequence(fbxbase.FbxBase):
         '_endFrame',
         '_step',
         '_useTimeline',
+        '_moveToOrigin',
         '_exportSetId',
         '_customScripts'
     )
@@ -49,6 +50,7 @@ class FbxSequence(fbxbase.FbxBase):
         self._endFrame = kwargs.get('endFrame', 1)
         self._step = kwargs.get('step', 1)
         self._useTimeline = kwargs.get('useTimeline', True)
+        self._moveToOrigin = kwargs.get('moveToOrigin', False)
         self._exportSetId = kwargs.get('exportSetId', 0)
         self._customScripts = []
 
@@ -183,7 +185,7 @@ class FbxSequence(fbxbase.FbxBase):
     @property
     def useTimeline(self):
         """
-        Getter method that returns the timeline flag for this sequence.
+        Getter method that returns the `useTimeline` flag from this sequence.
 
         :rtype: bool
         """
@@ -193,13 +195,34 @@ class FbxSequence(fbxbase.FbxBase):
     @useTimeline.setter
     def useTimeline(self, useTimeline):
         """
-        Setter method that updates the timeline flag for this sequence.
+        Setter method that updates the `useTimeline` flag from this sequence.
 
         :type useTimeline: bool
         :rtype: None
         """
 
         self._useTimeline = useTimeline
+
+    @property
+    def moveToOrigin(self):
+        """
+        Getter method that returns the `moveToOrigin` flag from this sequence.
+
+        :rtype: bool
+        """
+
+        return self._moveToOrigin
+
+    @moveToOrigin.setter
+    def moveToOrigin(self, moveToOrigin):
+        """
+        Setter method that updates the `moveToOrigin` flag from this sequence.
+
+        :type moveToOrigin: bool
+        :rtype: None
+        """
+
+        self._moveToOrigin = moveToOrigin
 
     @property
     def exportSetId(self):
