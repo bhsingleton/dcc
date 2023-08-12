@@ -497,6 +497,21 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
             texture.makeAbsolute()
             texture.next()
 
+    def makeTexturesVariable(self):
+        """
+        Converts all the texture paths to variable.
+
+        :rtype: None
+        """
+
+        texture = fntexture.FnTexture()
+        texture.setQueue(texture.instances())
+
+        while not texture.isDone():
+
+            texture.makeVariable()
+            texture.next()
+
     def syncMissingTextures(self):
         """
         Syncs any missing textures using perforce.
