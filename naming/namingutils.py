@@ -328,13 +328,13 @@ def removeDuplicateUnderscores(name):
     return re.sub('_+', '_', name)
 
 
-def formatName(comp=None, id=None, desc=None, type=None, side=None, index=None):
+def formatName(name=None, id=None, subname=None, type=None, index=None, side=None):
     """
     Concatenates a name based on the current configuration file.
 
-    :type comp: str
+    :type name: str
     :type id: Union[int, str]
-    :type desc: str
+    :type subname: str
     :type index: str
     :type type: str
     :type side: IntEnum
@@ -349,16 +349,16 @@ def formatName(comp=None, id=None, desc=None, type=None, side=None, index=None):
     idPadding = __config__.getint('pattern', 'id_padding')
     indexPadding = __config__.getint('pattern', 'index_padding')
 
-    comp = applyCasing(comp)
-    desc = applyCasing(desc)
+    name = applyCasing(name)
+    subname = applyCasing(subname)
     abbreviation = getAbbreviation(type)
     side = expandSide(side)
     id = applyPadding(id, idPadding)
     index = applyPadding(index, indexPadding)
 
     name = pattern.format(
-        comp=comp,
-        desc=desc,
+        name=name,
+        subname=subname,
         type=abbreviation,
         side=side,
         id=id,
