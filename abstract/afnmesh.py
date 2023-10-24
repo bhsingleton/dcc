@@ -712,7 +712,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         #
         if not isinstance(vertexIndices, (list, tuple, set)):
 
-            raise TypeError('mirrorVertices() expects a list (%s given)!' % type(vertexIndices).__name__)
+            raise TypeError(f'mirrorVertices() expects a list ({type(vertexIndices).__name__} given)!')
 
         # Define inverse map
         # This will be used to inverse out input data
@@ -726,13 +726,13 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         # TODO: Might be worth trying to optimize this with only opposite points?
         #
         tree = cKDTree(self.getVertices())
-        distances, indices = tree.query(mirrorPoints, distance_upper_bound=tolerance)
+        distances, closestIndices = tree.query(mirrorPoints, distance_upper_bound=tolerance)
 
         # Generate mirror map
         # Be sure to compensate for 1-based arrays!
         #
         numVertices = self.numVertices()
-        return {vertexIndex: int(index + self.arrayIndexType) for (vertexIndex, index) in zip(vertexIndices, indices) if index != numVertices}
+        return {vertexIndex: int(closestIndex + self.arrayIndexType) for (vertexIndex, closestIndex) in zip(vertexIndices, closestIndices) if closestIndex != numVertices}
 
     def nearestNeighbours(self, *indices):
         """
