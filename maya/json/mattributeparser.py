@@ -2,7 +2,7 @@ import json
 
 from maya.api import OpenMaya as om
 from six import string_types
-from enum import Enum, IntEnum
+from ...python import stringutils
 
 import logging
 logging.basicConfig()
@@ -71,10 +71,22 @@ class MAttributeDecoder(json.JSONDecoder):
         'floatMatrix': om.MFnMatrixAttribute.kFloat
     }
 
-    __types__ = {
+    __other_types__ = {
         'enum': 'deserializeEnumAttribute',
         'message': 'deserializeMessageAttribute',
         'compound': 'deserializeCompoundAttribute'
+    }
+
+    __default_numeric_types__ = {
+        om.MFnNumericData.kBoolean: bool,
+        om.MFnNumericData.kInt: int,
+        om.MFnNumericData.kFloat: float
+    }
+
+    __default_unit_types__ = {
+        om.MFnUnitAttribute.kDistance: om.MDistance,
+        om.MFnUnitAttribute.kAngle: om.MAngle,
+        om.MFnUnitAttribute.kTime: om.MTime
     }
 
     def __init__(self, *args, **kwargs):
@@ -175,7 +187,7 @@ class MAttributeDecoder(json.JSONDecoder):
 
         else:
 
-            name = self.__types__.get(attributeType, '')
+            name = self.__other_types__.get(attributeType, '')
             func = getattr(self, name, None)
 
             if callable(func):
@@ -210,6 +222,14 @@ class MAttributeDecoder(json.JSONDecoder):
         fnAttribute.usedAsColor = obj.get('usedAsColor', False)
         fnAttribute.usedAsFilename = obj.get('usedAsFilename', False)
         fnAttribute.disconnectBehavior = obj.get('disconnectBehavior', 2)
+
+        # Check if a nice-name override was supplied
+        #
+        niceName = obj.get('niceName', None)
+
+        if not stringutils.isNullOrEmpty(niceName):
+
+            fnAttribute.setNiceNameOverride(niceName)
 
         # Check if array was enabled
         # If array is not enabled when setting `indexMatters` a runtime error will be raised!
@@ -334,7 +354,16 @@ class MAttributeDecoder(json.JSONDecoder):
 
         if isinstance(default, (int, float)):
 
+            cls = self.__default_unit_types__[fnAttribute.unitType()]
+            fnAttribute.default = cls(default, unit=cls.uiUnit())
+
+        elif isinstance(default, (om.MDistance, om.MAngle, om.MTime)):
+
             fnAttribute.default = default
+
+        else:
+
+            pass
 
         # Set min value
         #
