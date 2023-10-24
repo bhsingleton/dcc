@@ -25,7 +25,7 @@ class BezierPoint(adc.ADC):
         Private method that implements the multiplication operator.
 
         :type other: Union[int, float, Vector]
-        :rtype: Union[float, Vector]
+        :rtype: BezierPoint
         """
 
         self.point * other
@@ -36,7 +36,7 @@ class BezierPoint(adc.ADC):
         Private method that implements the in-place multiplication operator.
 
         :type other: Union[int, float, Vector]
-        :rtype: Vector
+        :rtype: BezierPoint
         """
 
         self.point *= other
