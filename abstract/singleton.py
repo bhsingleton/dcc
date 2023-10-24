@@ -1,7 +1,6 @@
 import weakref
 
 from abc import ABCMeta, abstractmethod
-from six import with_metaclass
 from dcc.decorators.classproperty import classproperty
 
 import logging
@@ -10,48 +9,87 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-class Singleton(with_metaclass(ABCMeta, object)):
+class SingletonMeta(ABCMeta):
     """
-    Base class used for singleton objects.
+    Overload of `ABCMeta` that implements singleton patterns.
     """
 
     # region Dunderscores
-    __slots__ = ('__weakref__',)
     __instances__ = {}
 
-    def __new__(cls, *args, **kwargs):
+    def __call__(cls, *args, **kwargs):
         """
-        Private method called before a new instance is created.
+        Private method that's called whenever this class is evoked.
 
-        :rtype: Singleton
+        :rtype: SingletonMeta
         """
 
-        instance = cls.__instances__.get(cls.className, None)
+        return cls.getInstance(*args, **kwargs)
+    # endregion
 
-        if instance is None:
+    # region Methods
+    def creator(cls, *args, **kwargs):
+        """
+        Returns a new instance of this class.
 
-            return super(Singleton, cls).__new__(cls)
+        :rtype: SingletonMeta
+        """
+
+        instance = super(SingletonMeta, cls).__call__(*args, **kwargs)
+        cls.__instances__[cls.__name__] = instance
+
+        return instance
+
+    def hasInstance(cls):
+        """
+        Evaluates if an instance of this class already exists.
+
+        :rtype: bool
+        """
+
+        return cls.__instances__.get(cls.__name__, None) is not None
+
+    def getInstance(cls, *args, **kwargs):
+        """
+        Returns an instance of this class.
+
+        :key asWeakReference: bool
+        :rtype: Union[SingletonMeta, weakref.ref]
+        """
+
+        # Check if instance exists
+        #
+        instance = None
+
+        if cls.hasInstance():
+
+            instance = cls.__instances__[cls.__name__]
+
+        else:
+
+            instance = cls.creator()
+
+        # Check if weak reference should be returned
+        #
+        asWeakReference = kwargs.get('asWeakReference', False)
+
+        if asWeakReference:
+
+            return instance.weakReference()
 
         else:
 
             return instance
+    # endregion
 
-    def __init__(self, *args, **kwargs):
-        """
-        Private method called after a new instance has been created.
 
-        :rtype: None
-        """
+class Singleton(object, metaclass=SingletonMeta):
+    """
+    Abstract base class used for singleton objects.
+    """
 
-        # Call parent method
-        #
-        super(Singleton, self).__init__()
-
-        # Check if instance has already been initialized
-        #
-        if not self.hasInstance():
-
-            self.__instances__[self.className] = self
+    # region Dunderscores
+    __slots__ = ('__weakref__',)
     # endregion
 
     # region Properties
@@ -64,70 +102,19 @@ class Singleton(with_metaclass(ABCMeta, object)):
         """
 
         return cls.__name__
+
+    @classproperty
+    def nullWeakReference(cls):
+        """
+        Returns a null weak reference that is still callable.
+
+        :rtype: lambda
+        """
+
+        return lambda: None
     # endregion
 
     # region Methods
-    def isInitialized(self):
-        """
-        Evaluates if this instance has been initialized.
-
-        :rtype: bool
-        """
-
-        return all([hasattr(self, attr) for attr in self.__class__.__slots__])
-
-    @classmethod
-    def creator(cls):
-        """
-        Returns a new instance of this class.
-        Overload this method to change the way instances are created.
-
-        :rtype: Singleton
-        """
-
-        return cls()
-
-    @classmethod
-    def hasInstance(cls):
-        """
-        Evaluates if an instance of this class already exists.
-
-        :rtype: bool
-        """
-
-        return cls.className in cls.__instances__
-
-    @classmethod
-    def getInstance(cls, asWeakReference=False):
-        """
-        Returns an instance of this class.
-
-        :type asWeakReference: bool
-        :rtype: Union[Singleton, weakref.ref]
-        """
-
-        # Check if instance exists
-        #
-        instance = None
-
-        if cls.hasInstance():
-
-            instance = cls.__instances__.get(cls.className)
-
-        else:
-
-            instance = cls.creator()
-
-        # Check if weak reference should be returned
-        #
-        if asWeakReference:
-
-            return instance.weakReference()
-
-        else:
-
-            return instance
-
     def weakReference(self):
         """
         Returns a weak reference to this instance.

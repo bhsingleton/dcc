@@ -3,7 +3,6 @@ import inspect
 from abc import abstractmethod
 from . import singleton
 from ..python import importutils
-from ..decorators.classproperty import classproperty
 
 import logging
 logging.basicConfig()
@@ -13,9 +12,10 @@ log.setLevel(logging.INFO)
 
 class ProxyFactory(singleton.Singleton):
     """
-    Overload of Singleton used to outline the behavior for factory interfaces.
+    Overload of `Singleton` that outlines the behavior for factory interfaces.
     """
 
+    # region Dunderscores
     __slots__ = ('__classes__',)
 
     def __init__(self, *args, **kwargs):
@@ -25,15 +25,13 @@ class ProxyFactory(singleton.Singleton):
         :rtype: None
         """
 
-        # Check if instance has already been initialized
-        #
-        if not self.hasInstance():
-
-            self.__classes__ = dict(self.iterPackages(*self.packages()))
-
         # Call parent method
         #
         super(ProxyFactory, self).__init__(*args, **kwargs)
+
+        # Declare private variables
+        #
+        self.__classes__ = dict(self.iterPackages(*self.packages()))
 
     def __iter__(self):
         """
@@ -62,17 +60,9 @@ class ProxyFactory(singleton.Singleton):
         """
 
         pass
+    # endregion
 
-    @classproperty
-    def nullWeakReference(cls):
-        """
-        Returns a null weak reference that is still callable.
-
-        :rtype: lambda
-        """
-
-        return lambda: None
-
+    # region Methods
     @abstractmethod
     def packages(self):
         """
@@ -195,3 +185,4 @@ class ProxyFactory(singleton.Singleton):
             for (key, cls) in self.iterModules(*modules, **kwargs):
 
                 yield key, cls
+    # endregion
