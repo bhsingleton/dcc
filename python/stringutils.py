@@ -81,6 +81,17 @@ def eval(text):
         return text
 
 
+def splitCasing(text):
+    """
+    Splits the supplied text at any case changes.
+
+    :type text: str
+    :rtype: str
+    """
+
+    return __title__.findall(text)
+
+
 def titleize(text):
     """
     Returns a string where each split segment is titleized.
@@ -103,7 +114,7 @@ def camelize(text, separator=''):
     :rtype: str
     """
 
-    return separator.join([string.title() if i > 0 else string.lower() for (i, string) in enumerate(__title__.findall(text))])
+    return separator.join([string.title() if i > 0 else string.lower() for (i, string) in enumerate(splitCasing(text))])
 
 
 def pascalize(text, separator=''):
@@ -116,7 +127,7 @@ def pascalize(text, separator=''):
     :rtype: str
     """
 
-    return separator.join([string.title() for string in __title__.findall(text)])
+    return separator.join([string.title() for string in splitCasing(text)])
 
 
 def slugify(text, whitespace='_', illegal=''):
