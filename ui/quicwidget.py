@@ -1,5 +1,9 @@
-from Qt import QtWidgets
-from . import quicmixin
+import os
+import sys
+
+from Qt import QtCore, QtWidgets, QtGui, QtCompat
+from . import resources
+from .abstract import qabcmeta
 
 import logging
 logging.basicConfig()
@@ -7,9 +11,126 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-class QUicWidget(quicmixin.QUicMixin, QtWidgets.QWidget):
+class QUicWidget(QtWidgets.QWidget, metaclass=qabcmeta.QABCMeta):
     """
-    Overload of `QUicMixin` and `QWidget` that dynamically creates widgets at runtime.
+    Overload of `QWidget` that loads custom widgets via .ui file.
     """
 
-    pass
+    # region Dunderscore
+    def __post_init__(self, *args, **kwargs):
+        """
+        Private method called after an instance has initialized.
+
+        :rtype: None
+        """
+
+        # Execute load operations
+        #
+        self.preLoad(*args, **kwargs)
+        self.__load__(*args, **kwargs)
+        self.postLoad(*args, **kwargs)
+
+    def __getattribute__(self, item):
+        """
+        Private method returns an internal attribute with the associated name.
+        Sadly all pointers are lost from QUicLoader, so we have to relocate them on demand.
+
+        :type item: str
+        :rtype: Any
+        """
+
+        # Call parent method
+        #
+        obj = super(QUicWidget, self).__getattribute__(item)
+
+        if isinstance(obj, QtCore.QObject):
+
+            # Check if C++ pointer is still valid
+            #
+            if not QtCompat.isValid(obj):
+
+                obj = self.findChild(QtCore.QObject, item)
+                setattr(self, item, obj)
+
+                return obj
+
+            else:
+
+                return obj
+
+        else:
+
+            return obj
+
+    def __load__(self, *args, **kwargs):
+        """
+        Private method used to load the user interface from the associated .ui file.
+
+        :rtype: QtWidgets.QWidget
+        """
+
+        # Concatenate ui path
+        #
+        filename = self.filename()
+        workingDirectory = kwargs.get('workingDirectory', self.workingDirectory())
+
+        filePath = os.path.join(workingDirectory, filename)
+
+        # Load ui from file
+        #
+        if os.path.exists(filePath):
+
+            log.info(f'Loading UI file: {filePath}')
+            return QtCompat.loadUi(uifile=filePath, baseinstance=self)
+
+        else:
+
+            log.debug(f'Cannot locate UI file: {filePath}')
+            return self
+    # endregion
+
+    # region Methods
+    @classmethod
+    def filename(cls):
+        """
+        Returns the ui configuration filename for this class.
+        This defaults to the name of this python file.
+
+        :rtype: str
+        """
+
+        filePath = os.path.abspath(sys.modules[cls.__module__].__file__)
+        directory, filename = os.path.split(filePath)
+        name, ext = os.path.splitext(filename)
+
+        return '{name}.ui'.format(name=name)
+
+    @classmethod
+    def workingDirectory(cls):
+        """
+        Returns the working directory for this class.
+        This defaults to the directory this python file resides in.
+
+        :rtype: str
+        """
+
+        return os.path.dirname(os.path.abspath(sys.modules[cls.__module__].__file__))
+
+    def preLoad(self, *args, **kwargs):
+        """
+        Called before the user interface has been loaded.
+
+        :rtype: None
+        """
+
+        pass
+
+    def postLoad(self, *args, **kwargs):
+        """
+        Called after the user interface has been loaded.
+
+        :rtype: None
+        """
+
+        pass
+    # endregion
