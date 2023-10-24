@@ -13,9 +13,9 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-class FbxSequence(fbxbase.FbxBase):
+class FbxExportRange(fbxbase.FbxBase):
     """
-    Overload of FbxBase that outlines fbx sequence data.
+    Overload of `FbxBase` that implements FBX export-range data.
     """
 
     # region Dunderscores
@@ -40,6 +40,10 @@ class FbxSequence(fbxbase.FbxBase):
         :rtype: None
         """
 
+        # Call parent method
+        #
+        super(FbxExportRange, self).__init__(*args, **kwargs)
+
         # Declare private variables
         #
         self._scene = fnscene.FnScene()
@@ -53,10 +57,6 @@ class FbxSequence(fbxbase.FbxBase):
         self._moveToOrigin = kwargs.get('moveToOrigin', False)
         self._exportSetId = kwargs.get('exportSetId', 0)
         self._customScripts = []
-
-        # Call parent method
-        #
-        super(FbxSequence, self).__init__(*args, **kwargs)
     # endregion
 
     # region Properties
@@ -93,7 +93,7 @@ class FbxSequence(fbxbase.FbxBase):
     @property
     def directory(self):
         """
-        Getter method that returns the directory for this sequence.
+        Getter method that returns the export directory.
 
         :rtype: str
         """
@@ -103,7 +103,7 @@ class FbxSequence(fbxbase.FbxBase):
     @directory.setter
     def directory(self, directory):
         """
-        Setter method that updates the directory for this sequence.
+        Setter method that updates the export directory.
 
         :type directory: str
         :rtype: None
@@ -113,7 +113,7 @@ class FbxSequence(fbxbase.FbxBase):
         #
         cwd = self.cwd(expandVars=True)
 
-        if self.scene.isPathRelativeTo(directory, cwd):
+        if self.scene.isPathAbsolute(directory) and self.scene.isPathRelativeTo(directory, cwd):
 
             directory = self.scene.makePathRelativeTo(directory, cwd)
 
@@ -122,7 +122,7 @@ class FbxSequence(fbxbase.FbxBase):
     @property
     def startFrame(self):
         """
-        Getter method that returns the start frame for this sequence.
+        Getter method that returns the start frame.
 
         :rtype: int
         """
@@ -132,7 +132,7 @@ class FbxSequence(fbxbase.FbxBase):
     @startFrame.setter
     def startFrame(self, startFrame):
         """
-        Setter method that updates the start frame for this sequence.
+        Setter method that updates the start frame.
 
         :type startFrame: int
         :rtype: None
@@ -143,7 +143,7 @@ class FbxSequence(fbxbase.FbxBase):
     @property
     def endFrame(self):
         """
-        Getter method that returns the end frame for this sequence.
+        Getter method that returns the end frame.
 
         :rtype: int
         """
@@ -153,7 +153,7 @@ class FbxSequence(fbxbase.FbxBase):
     @endFrame.setter
     def endFrame(self, endFrame):
         """
-        Setter method that updates the end frame for this sequence.
+        Setter method that updates the end frame.
 
         :type endFrame: int
         :rtype: None
@@ -164,9 +164,9 @@ class FbxSequence(fbxbase.FbxBase):
     @property
     def step(self):
         """
-        Getter method that returns the frame step for this sequence.
+        Getter method that returns the frame step.
 
-        :rtype: int
+        :rtype: float
         """
 
         return self._step
@@ -174,18 +174,29 @@ class FbxSequence(fbxbase.FbxBase):
     @step.setter
     def step(self, step):
         """
-        Setter method that updates the frame step for this sequence.
+        Setter method that updates the frame step.
 
-        :type step: int
+        :type step: float
         :rtype: None
         """
 
-        self._step = step
+        if isinstance(step, int):
+
+            self._step = step
+
+        elif isinstance(step, float):
+
+            quotient, remainder = divmod(step, 1)
+            self._step = int(quotient) if (remainder == 0.0) else step
+
+        else:
+
+            raise TypeError(f'step.setter() expects a number ({type(step).__name__} given)!')
 
     @property
     def useTimeline(self):
         """
-        Getter method that returns the `useTimeline` flag from this sequence.
+        Getter method that returns the `useTimeline` flag.
 
         :rtype: bool
         """
@@ -195,7 +206,7 @@ class FbxSequence(fbxbase.FbxBase):
     @useTimeline.setter
     def useTimeline(self, useTimeline):
         """
-        Setter method that updates the `useTimeline` flag from this sequence.
+        Setter method that updates the `useTimeline` flag.
 
         :type useTimeline: bool
         :rtype: None
@@ -206,7 +217,7 @@ class FbxSequence(fbxbase.FbxBase):
     @property
     def moveToOrigin(self):
         """
-        Getter method that returns the `moveToOrigin` flag from this sequence.
+        Getter method that returns the `moveToOrigin` flag.
 
         :rtype: bool
         """
@@ -216,7 +227,7 @@ class FbxSequence(fbxbase.FbxBase):
     @moveToOrigin.setter
     def moveToOrigin(self, moveToOrigin):
         """
-        Setter method that updates the `moveToOrigin` flag from this sequence.
+        Setter method that updates the `moveToOrigin` flag.
 
         :type moveToOrigin: bool
         :rtype: None
@@ -227,7 +238,7 @@ class FbxSequence(fbxbase.FbxBase):
     @property
     def exportSetId(self):
         """
-        Getter method that returns the export set ID for this sequence.
+        Getter method that returns the export set ID.
 
         :rtype: int
         """
@@ -237,7 +248,7 @@ class FbxSequence(fbxbase.FbxBase):
     @exportSetId.setter
     def exportSetId(self, exportSetId):
         """
-        Setter method that updates the export set ID for this sequence.
+        Setter method that updates the export set ID.
 
         :type exportSetId: int
         :rtype: None
@@ -248,7 +259,7 @@ class FbxSequence(fbxbase.FbxBase):
     @property
     def customScripts(self):
         """
-        Getter method that returns the custom scripts for this export set.
+        Getter method that returns the custom scripts.
 
         :rtype: List[fbxscript.FbxScript]
         """
@@ -258,7 +269,7 @@ class FbxSequence(fbxbase.FbxBase):
     @customScripts.setter
     def customScripts(self, customScripts):
         """
-        Setter method that updates the custom scripts for this export set.
+        Setter method that updates the custom scripts.
 
         :type customScripts: List[fbxscript.FbxScript]
         :rtype: None
@@ -292,11 +303,11 @@ class FbxSequence(fbxbase.FbxBase):
 
         else:
 
-            return super(FbxSequence, cls).createEditor(name, parent=parent)
+            return super(FbxExportRange, cls).createEditor(name, parent=parent)
 
     def isValid(self):
         """
-        Evaluates if this sequence is valid.
+        Evaluates if this export range is valid.
 
         :rtype: bool
         """
@@ -305,7 +316,7 @@ class FbxSequence(fbxbase.FbxBase):
 
     def timeRange(self):
         """
-        Returns the time range for this sequence.
+        Returns the time range.
 
         :rtype: Tuple[int, int]
         """
@@ -320,7 +331,7 @@ class FbxSequence(fbxbase.FbxBase):
 
     def asset(self):
         """
-        Returns the asset associated with this sequence.
+        Returns the asset associated with this export range.
 
         :rtype: fbxasset.FbxAsset
         """
@@ -382,7 +393,7 @@ class FbxSequence(fbxbase.FbxBase):
 
     def exportSet(self):
         """
-        Returns the export set associated with this sequence.
+        Returns the export set associated with this export range.
 
         :rtype: fbxexportset.FbxExportSet
         """
@@ -407,18 +418,18 @@ class FbxSequence(fbxbase.FbxBase):
 
             return None
 
-    def legacyExport(self):
+    def builtinExport(self):
         """
-        Exports this sequences using the builtin serializer.
+        Exports this range using the builtin serializer.
 
         :rtype: str
         """
 
-        # Check if sequence is valid
+        # Check if export range is valid
         #
         if not self.isValid():
 
-            log.error(f'Cannot find asset associated with "{self.name}" sequence!')
+            log.error(f'Cannot find asset associated with "{self.name}" range!')
             return False
 
         # Select nodes and execute pre-scripts
@@ -461,48 +472,48 @@ class FbxSequence(fbxbase.FbxBase):
 
     def customExport(self):
         """
-        Exports this sequences using a custom serializer.
+        Exports this range using a custom serializer.
 
         :rtype: str
         """
 
-        # Check if sequence is valid
+        # Check if export range is valid
         #
         if not self.isValid():
 
-            log.error(f'Cannot find asset associated with "{self.name}" sequence!')
+            log.error(f'Cannot find asset associated with "{self.name}" range!')
             return False
 
-        # Serialize this sequence
+        # Serialize this export range
         #
         namespace = self.sequencer.namespace()
         serializer = fbxserializer.FbxSerializer(namespace=namespace)
         asAscii = bool(self.asset().fileType)
 
-        return serializer.serializeSequence(self, asAscii=asAscii)
+        return serializer.serializeExportRange(self, asAscii=asAscii)
 
     def export(self, checkout=False):
         """
-        Exports this sequences to the user defined path.
+        Exports this range to the user defined path.
 
         :type checkout: bool
         :rtype: str
         """
 
-        # Check if sequence is valid
+        # Check if export range is valid
         #
         if not self.isValid():
 
-            log.error(f'Cannot find asset associated with "{self.name}" sequence!')
+            log.error(f'Cannot find asset associated with "{self.name}" range!')
             return False
 
         # Check if legacy serializer should be used
         #
         asset = self.asset()
 
-        if asset.useLegacySerializer:
+        if asset.useBuiltinSerializer:
 
-            exportPath = self.legacyExport()
+            exportPath = self.builtinExport()
 
         else:
 

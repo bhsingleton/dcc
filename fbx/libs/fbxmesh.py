@@ -28,6 +28,10 @@ class FbxMesh(fbxobjectset.FbxObjectSet):
         :rtype: None
         """
 
+        # Call parent method
+        #
+        super(FbxMesh, self).__init__(*args, **kwargs)
+
         # Declare private variables
         #
         self._includeNormals = kwargs.get('includeNormals', True)
@@ -36,10 +40,6 @@ class FbxMesh(fbxobjectset.FbxObjectSet):
         self._includeColorSets = kwargs.get('includeColorSets', False)
         self._includeSkins = kwargs.get('includeSkins', False)
         self._includeBlendshapes = kwargs.get('includeBlendshapes', False)
-
-        # Call parent method
-        #
-        super(FbxMesh, self).__init__(*args, **kwargs)
     # endregion
 
     # region Properties

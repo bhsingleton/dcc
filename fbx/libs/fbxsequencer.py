@@ -1,4 +1,4 @@
-from . import fbxbase, fbxio, fbxasset, fbxsequence
+from . import fbxbase, fbxio, fbxasset, fbxexportrange
 from ... import fnreference
 from ...collections import notifylist
 from ...python import stringutils
@@ -11,19 +11,25 @@ log.setLevel(logging.INFO)
 
 class FbxSequencer(fbxbase.FbxBase):
     """
-    Overload of FbxBase that interfaces with fbx sequence data.
-    Sequencers rely on a reference GUIDs in order to associate the sequencer with an asset.
+    Overload of `FbxBase` that interfaces with FBX export-range data.
+    Sequencers rely on reference GUIDs in order to associate the sequencer with an asset.
     """
 
     # region Dunderscores
-    __slots__ = ('_manager', '_reference', '_guid', '_asset', '_sequences')
+    __slots__ = ('_manager', '_guid', '_reference', '_asset', '_exportRanges')
 
     def __init__(self, *args, **kwargs):
         """
         Private method called after a new instance has been created.
 
+        :key guid: str
+        :key exportRanges: List[fbxexportranges.FbxExportRanges]
         :rtype: None
         """
+
+        # Call parent method
+        #
+        super(FbxSequencer, self).__init__(*args, **kwargs)
 
         # Declare private variables
         #
@@ -31,22 +37,31 @@ class FbxSequencer(fbxbase.FbxBase):
         self._guid = kwargs.get('guid', '')
         self._reference = fnreference.FnReference()
         self._asset = kwargs.get('asset', self.nullWeakReference)
-        self._sequences = notifylist.NotifyList()
+        self._exportRanges = notifylist.NotifyList()
 
         # Setup notifies
         #
-        self._sequences.addCallback('itemAdded', self.sequenceAdded)
-        self._sequences.addCallback('itemRemoved', self.sequenceRemoved)
+        self._exportRanges.addCallback('itemAdded', self.exportRangeAdded)
+        self._exportRanges.addCallback('itemRemoved', self.exportRangeRemoved)
 
-        sequences = kwargs.get('sequences', None)
+        # Check if any export-ranges were supplied
+        #
+        exportRanges = kwargs.get('exportRanges', None)
 
-        if not stringutils.isNullOrEmpty(sequences):
+        if not stringutils.isNullOrEmpty(exportRanges):
 
-            self._sequences.extend(sequences)
+            self._exportRanges.extend(exportRanges)
+
+    def __post_init__(self, *args, **kwargs):
+        """
+        Private method called after this instance has been initialized.
+
+        :rtype: None
+        """
 
         # Call parent method
         #
-        super(FbxSequencer, self).__init__(*args, **kwargs)
+        super(FbxSequencer, self).__post_init__(*args, **kwargs)
 
         # Invalidate sequencer
         #
@@ -95,10 +110,6 @@ class FbxSequencer(fbxbase.FbxBase):
         :rtype: fnreference.FnReference
         """
 
-        if not self._reference.isValid() and not stringutils.isNullOrEmpty(self.guid):
-
-            self.invalidateReference()  # This ensures the reference interface is always up-to-date!
-
         return self._reference
 
     @property
@@ -112,51 +123,51 @@ class FbxSequencer(fbxbase.FbxBase):
         return self._asset()
 
     @property
-    def sequences(self):
+    def exportRanges(self):
         """
-        Getter method that returns the fbx sequences for this asset.
+        Getter method that returns the FBX export-ranges for this asset.
 
-        :rtype: List[fbxsequence.FbxSequence]
+        :rtype: List[fbxexportrange.FbxExportRange]
         """
 
-        return self._sequences
+        return self._exportRanges
 
-    @sequences.setter
-    def sequences(self, sequences):
+    @exportRanges.setter
+    def exportRanges(self, exportRanges):
         """
-        Setter method that returns the fbx sequences for this asset.
+        Setter method that returns the FBX export-ranges for this asset.
 
-        :type sequences: List[fbxsequence.FbxSequence]
+        :type exportRanges: List[fbxexportrange.FbxExportRange]
         :rtype: None
         """
 
-        self._sequences.clear()
-        self._sequences.extend(sequences)
+        self._exportRanges.clear()
+        self._exportRanges.extend(exportRanges)
     # endregion
 
     # region Callbacks
-    def sequenceAdded(self, index, sequence):
+    def exportRangeAdded(self, index, exportRange):
         """
         Adds a reference of this asset to the supplied export set.
 
         :type index: int
-        :type sequence: fbxsequence.FbxSequence
+        :type exportRange: fbxexportrange.FbxExportRange
         :rtype: None
         """
 
-        sequence._sequencer = self.weakReference()
-        sequence.refresh()
+        exportRange._sequencer = self.weakReference()
+        exportRange.refresh()
 
-    def sequenceRemoved(self, sequence):
+    def exportRangeRemoved(self, exportRange):
         """
         Removes the reference of this asset from the supplied export set.
 
-        :type sequence: fbxsequence.FbxSequence
+        :type exportRange: fbxexportrange.FbxExportRange
         :rtype: None
         """
 
-        sequence._sequencer = self.nullWeakReference
-        sequence.refresh()
+        exportRange._sequencer = self.nullWeakReference
+        exportRange.refresh()
     # endregion
 
     # region Methods
@@ -194,7 +205,7 @@ class FbxSequencer(fbxbase.FbxBase):
 
         self.invalidateReference()
         self.invalidateAsset()
-        self.invalidateSequences()
+        self.invalidateExportRanges()
 
     def invalidateReference(self):
         """
@@ -209,7 +220,7 @@ class FbxSequencer(fbxbase.FbxBase):
 
         if reference is None:
 
-            log.warning('Cannot locate reference from: %s' % self.guid)
+            log.warning(f'Cannot locate reference from: {self.guid}')
             return False
 
         # Update function set object
@@ -244,19 +255,19 @@ class FbxSequencer(fbxbase.FbxBase):
             self._asset = self.nullWeakReference
             return False
 
-    def invalidateSequences(self):
+    def invalidateExportRanges(self):
         """
-        Invalidates the sequences against the current asset.
+        Invalidates the internal export-ranges.
         This will ensure the 'exportSetId' property's return type is up-to-date!
 
         :rtype: bool
         """
 
-        # Refresh sequences
+        # Refresh export-ranges
         #
-        for sequence in self.sequences:
+        for exportRange in self.exportRanges:
 
-            sequence.refresh()
+            exportRange.refresh()
 
         return True
     # endregion

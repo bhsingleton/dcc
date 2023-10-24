@@ -953,93 +953,22 @@
     <property name="title">
      <string>&amp;File</string>
     </property>
-    <addaction name="saveAction"/>
     <addaction name="separator"/>
-    <addaction name="importAction"/>
-    <addaction name="exportAction"/>
    </widget>
    <widget class="QMenu" name="helpMenu">
     <property name="title">
      <string>&amp;Help</string>
     </property>
-    <addaction name="usingFbxExportSetEditorAction"/>
    </widget>
    <widget class="QMenu" name="settingsMenu">
     <property name="title">
      <string>&amp;Settings</string>
     </property>
-    <addaction name="useLegacySerializerAction"/>
-    <addaction name="generateLogsAction"/>
    </widget>
    <addaction name="fileMenu"/>
    <addaction name="settingsMenu"/>
    <addaction name="helpMenu"/>
   </widget>
-  <action name="usingFbxExportSetEditorAction">
-   <property name="text">
-    <string>&amp;Using Fbx Export Set Editor</string>
-   </property>
-   <property name="shortcut">
-    <string>Ctrl+H</string>
-   </property>
-  </action>
-  <action name="saveAction">
-   <property name="icon">
-    <iconset resource="../../ui/resources.qrc">
-     <normaloff>:/dcc/icons/save_file.svg</normaloff>:/dcc/icons/save_file.svg</iconset>
-   </property>
-   <property name="text">
-    <string>&amp;Save</string>
-   </property>
-   <property name="shortcut">
-    <string>Ctrl+S</string>
-   </property>
-  </action>
-  <action name="exportAction">
-   <property name="icon">
-    <iconset resource="../../ui/resources.qrc">
-     <normaloff>:/dcc/icons/export_file.svg</normaloff>:/dcc/icons/export_file.svg</iconset>
-   </property>
-   <property name="text">
-    <string>&amp;Export</string>
-   </property>
-   <property name="shortcut">
-    <string>Ctrl+E</string>
-   </property>
-  </action>
-  <action name="importAction">
-   <property name="icon">
-    <iconset resource="../../ui/resources.qrc">
-     <normaloff>:/dcc/icons/import_file.svg</normaloff>:/dcc/icons/import_file.svg</iconset>
-   </property>
-   <property name="text">
-    <string>Import</string>
-   </property>
-   <property name="shortcut">
-    <string>Ctrl+I</string>
-   </property>
-  </action>
-  <action name="generateLogsAction">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>&amp;Generate Logs</string>
-   </property>
-  </action>
-  <action name="actionUse_Legacy_Serializer">
-   <property name="text">
-    <string>Use Legacy Serializer</string>
-   </property>
-  </action>
-  <action name="useLegacySerializerAction">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>Use Legacy Serializer</string>
-   </property>
-  </action>
  </widget>
  <resources>
   <include location="../../ui/resources.qrc"/>

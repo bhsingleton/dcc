@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>QFbxSequencerEditor</class>
- <widget class="QMainWindow" name="QFbxSequencerEditor">
+ <class>QFbxExportRangeEditor</class>
+ <widget class="QMainWindow" name="QFbxExportRangeEditor">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -17,7 +17,7 @@
    </size>
   </property>
   <property name="windowTitle">
-   <string>|| Fbx Sequence Editor</string>
+   <string>|| Fbx Export Range Editor</string>
   </property>
   <property name="documentMode">
    <bool>false</bool>
@@ -67,6 +67,28 @@
            <number>0</number>
           </property>
           <item>
+           <widget class="QComboBox" name="sequencerComboBox">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>24</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>16777215</width>
+              <height>24</height>
+             </size>
+            </property>
+           </widget>
+          </item>
+          <item>
            <widget class="QPushButton" name="deleteSequencerPushButton">
             <property name="sizePolicy">
              <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -95,28 +117,6 @@
             <property name="icon">
              <iconset resource="../../ui/resources.qrc">
               <normaloff>:/dcc/icons/delete.svg</normaloff>:/dcc/icons/delete.svg</iconset>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QComboBox" name="sequencerComboBox">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="minimumSize">
-             <size>
-              <width>0</width>
-              <height>24</height>
-             </size>
-            </property>
-            <property name="maximumSize">
-             <size>
-              <width>16777215</width>
-              <height>24</height>
-             </size>
             </property>
            </widget>
           </item>
@@ -678,42 +678,41 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="separator"/>
    <addaction name="newSequencerAction"/>
    <addaction name="saveSequencerAction"/>
-   <addaction name="importSequencesAction"/>
-   <addaction name="exportSequencesAction"/>
+   <addaction name="importRangesAction"/>
+   <addaction name="exportRangesAction"/>
    <addaction name="separator"/>
-   <addaction name="addSequenceAction"/>
-   <addaction name="removeSequenceAction"/>
+   <addaction name="addExportRangeAction"/>
+   <addaction name="removeExportRangeAction"/>
    <addaction name="separator"/>
    <addaction name="updateStartTimeAction"/>
    <addaction name="updateEndTimeAction"/>
    <addaction name="updateTimeRangeAction"/>
    <addaction name="separator"/>
   </widget>
-  <action name="addSequenceAction">
+  <action name="addExportRangeAction">
    <property name="icon">
     <iconset resource="../../ui/resources.qrc">
      <normaloff>:/dcc/icons/add.svg</normaloff>:/dcc/icons/add.svg</iconset>
    </property>
    <property name="text">
-    <string>Add Sequence</string>
+    <string>Add Export Range</string>
    </property>
    <property name="toolTip">
-    <string>Adds a new sequence to the active sequencer.</string>
+    <string>Adds an export range to the selected sequencer.</string>
    </property>
   </action>
-  <action name="removeSequenceAction">
+  <action name="removeExportRangeAction">
    <property name="icon">
     <iconset resource="../../ui/resources.qrc">
      <normaloff>:/dcc/icons/remove.svg</normaloff>:/dcc/icons/remove.svg</iconset>
    </property>
    <property name="text">
-    <string>Remove Sequence</string>
+    <string>Remove Export Range</string>
    </property>
    <property name="toolTip">
-    <string>Remove the selected sequences.</string>
+    <string>Remove the selected export ranges.</string>
    </property>
   </action>
   <action name="updateStartTimeAction">
@@ -764,28 +763,28 @@
     <string>Saves any changes made to the active sequencer.</string>
    </property>
   </action>
-  <action name="importSequencesAction">
+  <action name="importRangesAction">
    <property name="icon">
     <iconset resource="../../ui/resources.qrc">
      <normaloff>:/dcc/icons/import_file.svg</normaloff>:/dcc/icons/import_file.svg</iconset>
    </property>
    <property name="text">
-    <string>Import Sequences</string>
+    <string>Import Ranges</string>
    </property>
    <property name="toolTip">
-    <string>Import sequences into the active sequencer.</string>
+    <string>Import ranges into the selected sequencer.</string>
    </property>
   </action>
-  <action name="exportSequencesAction">
+  <action name="exportRangesAction">
    <property name="icon">
     <iconset resource="../../ui/resources.qrc">
      <normaloff>:/dcc/icons/export_file.svg</normaloff>:/dcc/icons/export_file.svg</iconset>
    </property>
    <property name="text">
-    <string>Export Sequences</string>
+    <string>Export Ranges</string>
    </property>
    <property name="toolTip">
-    <string>Export sequences from the active sequencer.</string>
+    <string>Export ranges from the selected sequencer.</string>
    </property>
   </action>
   <action name="newSequencerAction">

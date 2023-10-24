@@ -27,13 +27,13 @@ class FbxBase(with_metaclass(ABCMeta, psonobject.PSONObject)):
         :rtype: None
         """
 
-        # Declare private variables
-        #
-        self._name = kwargs.get('name', '')
-
         # Call parent method
         #
         super(FbxBase, self).__init__(*args, **kwargs)
+
+        # Declare private variables
+        #
+        self._name = kwargs.get('name', '')
     # endregion
 
     # region Properties

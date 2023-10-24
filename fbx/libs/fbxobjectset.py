@@ -43,6 +43,10 @@ class FbxObjectSet(fbxbase.FbxBase):
         :rtype: None
         """
 
+        # Call parent method
+        #
+        super(FbxObjectSet, self).__init__(*args, **kwargs)
+
         # Declare private variables
         #
         self._scene = fnscene.FnScene()
@@ -52,10 +56,6 @@ class FbxObjectSet(fbxbase.FbxBase):
         self._excludeType = kwargs.get('excludeType', FbxObjectSetType.Nodes)
         self._excludeObjects = kwargs.get('excludeObjects', [])
         self._excludeChildren = kwargs.get('excludeChildren', False)
-
-        # Call parent method
-        #
-        super(FbxObjectSet, self).__init__(*args, **kwargs)
     # endregion
 
     # region Properties
@@ -268,14 +268,42 @@ class FbxObjectSet(fbxbase.FbxBase):
 
         return [obj for obj in includeObjects if obj not in excludeObjects]
 
-    def select(self, namespace=''):
+    def getHierarchy(self, namespace=''):
+        """
+        Returns a list of objects from this set including their parents.
+
+        :type namespace: str
+        :rtype: List[Any]
+        """
+
+        nodes = self.getObjects(namespace=namespace)
+        hierarchy = {}
+
+        node = fnnode.FnNode(iter(nodes))
+        parentNode = fnnode.FnNode()
+
+        while not node.isDone():
+
+            parentNode.setQueue(node.trace())
+
+            while not parentNode.isDone():
+
+                hierarchy[parentNode.handle()] = parentNode.object()
+                parentNode.next()
+
+            node.next()
+
+        return list(hierarchy.values())
+
+    def select(self, hierarchy=False, namespace=''):
         """
         Selects the associated nodes from the scene file.
 
+        :type hierarchy: bool
         :type namespace: str
         :rtype: None
         """
 
-        objects = self.getObjects(namespace=namespace)
+        objects = self.getHierarchy(namespace=namespace) if hierarchy else self.getObjects(namespace=namespace)
         self.scene.setActiveSelection(objects, replace=False)
     # endregion

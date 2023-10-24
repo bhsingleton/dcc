@@ -19,7 +19,7 @@ class FbxAsset(fbxbase.FbxBase):
         '_fileType',
         '_fileVersion',
         '_exportSets',
-        '_useLegacySerializer'
+        '_useBuiltinSerializer'
     )
 
     def __init__(self, *args, **kwargs):
@@ -29,6 +29,10 @@ class FbxAsset(fbxbase.FbxBase):
         :rtype: None
         """
 
+        # Call parent method
+        #
+        super(FbxAsset, self).__init__(*args, **kwargs)
+
         # Declare private variables
         #
         self._directory = kwargs.get('directory', '')
@@ -36,16 +40,12 @@ class FbxAsset(fbxbase.FbxBase):
         self._fileType = kwargs.get('fileType', FbxFileType.Binary)
         self._fileVersion = kwargs.get('fileVersion', FbxFileVersion.FBX202000)
         self._exportSets = notifylist.NotifyList()
-        self._useLegacySerializer = kwargs.get('useLegacySerializer', False)
+        self._useBuiltinSerializer = kwargs.get('useBuiltinSerializer', False)
 
         # Setup notifies
         #
         self._exportSets.addCallback('itemAdded', self.exportSetAdded)
         self._exportSets.addCallback('itemRemoved', self.exportSetRemoved)
-
-        # Call parent method
-        #
-        super(FbxAsset, self).__init__(*args, **kwargs)
     # endregion
 
     # region Properties
@@ -156,25 +156,25 @@ class FbxAsset(fbxbase.FbxBase):
         self._exportSets.extend(exportSets)
 
     @property
-    def useLegacySerializer(self):
+    def useBuiltinSerializer(self):
         """
-        Getter method that returns the `useLegacySerializer` flag.
+        Getter method that returns the `useBuiltinSerializer` flag.
 
         :rtype: bool
         """
 
-        return self._useLegacySerializer
+        return self._useBuiltinSerializer
 
-    @useLegacySerializer.setter
-    def useLegacySerializer(self, useLegacySerializer):
+    @useBuiltinSerializer.setter
+    def useBuiltinSerializer(self, useBuiltinSerializer):
         """
-        Setter method that updates the `useLegacySerializer` flag.
+        Setter method that updates the `useBuiltinSerializer` flag.
 
-        :type useLegacySerializer: bool
+        :type useBuiltinSerializer: bool
         :rtype: None
         """
 
-        self._useLegacySerializer = useLegacySerializer
+        self._useBuiltinSerializer = useBuiltinSerializer
     # endregion
 
     # region Callbacks

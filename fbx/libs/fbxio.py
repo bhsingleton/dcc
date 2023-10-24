@@ -1,7 +1,7 @@
 import os
 
 from collections import namedtuple
-from . import fbxasset, fbxsequence, fbxsequencer
+from . import fbxasset, fbxexportset, fbxsequencer, fbxexportrange
 from ... import fnscene, fnreference
 from ...abstract import singleton
 from ...json import jsonutils
@@ -39,17 +39,15 @@ class FbxIO(singleton.Singleton):
         :rtype: None
         """
 
-        # Check if instance has already been initialized
-        #
-        if not self.hasInstance():
-
-            self._scene = fnscene.FnScene()
-            self._assets = {}
-            self._sequencers = {}
-
         # Call parent method
         #
         super(FbxIO, self).__init__(*args, **kwargs)
+
+        # Declare private variables
+        #
+        self._scene = fnscene.FnScene()
+        self._assets = {}
+        self._sequencers = {}
     # endregion
 
     # region Properties
@@ -360,25 +358,25 @@ class FbxIO(singleton.Singleton):
 
         while not reference.isDone():
 
-            # Create sequence from time-range
+            # Create export range from scene's animation-range
             #
             name = self.scene.currentName()
             startFrame, endFrame = self.scene.getStartTime(), self.scene.getEndTime()
 
-            sequence = fbxsequence.FbxSequence(name=name, startFrame=startFrame, endFrame=endFrame)
+            exportRange = fbxexportrange.FbxExportRange(name=name, startFrame=startFrame, endFrame=endFrame)
 
             if not stringutils.isNullOrEmpty(directory):
 
-                sequence.directory = directory
+                exportRange.directory = directory
 
             else:
 
-                sequence.directory = self.scene.currentDirectory()
+                exportRange.directory = self.scene.currentDirectory()
 
             # Create sequencer from reference's GUID
             #
             guid = reference.guid()
-            sequencer = fbxsequencer.FbxSequencer(guid=guid, sequences=[sequence])
+            sequencer = fbxsequencer.FbxSequencer(guid=guid, exportRanges=[exportRange])
 
             if not sequencer.isValid():
 
@@ -387,9 +385,9 @@ class FbxIO(singleton.Singleton):
 
                 continue
 
-            # Export sequence and go to next reference
+            # Export range and go to next reference
             #
-            sequence.export(checkout=checkout)
+            exportRange.export(checkout=checkout)
             reference.next()
 
     def exportSequencers(self, directory='', checkout=False):
@@ -414,17 +412,17 @@ class FbxIO(singleton.Singleton):
         #
         for sequencer in sequencers:
 
-            # Iterate through sequences
+            # Iterate through export-ranges
             #
-            for sequence in sequencer.sequences:
+            for exportRange in sequencer.exportRanges:
 
                 # Check if directory has been overriden
                 #
                 if not stringutils.isNullOrEmpty(directory):
 
-                    sequence.directory = directory
+                    exportRange.directory = directory
 
-                # Export sequence
+                # Export range
                 #
-                sequence.export(checkout=checkout)
+                exportRange.export(checkout=checkout)
     # endregion

@@ -15,7 +15,7 @@ log.setLevel(logging.INFO)
 
 class FbxExportSet(fbxbase.FbxBase):
     """
-    Overload of `FbxBase` that interfaces fbx export set data.
+    Overload of `FbxBase` that implements FBX export-set data.
     """
 
     # region Dunderscores
@@ -44,6 +44,10 @@ class FbxExportSet(fbxbase.FbxBase):
         :rtype: None
         """
 
+        # Call parent method
+        #
+        super(FbxExportSet, self).__init__(*args, **kwargs)
+
         # Declare private variables
         #
         self._scene = fnscene.FnScene()
@@ -58,10 +62,6 @@ class FbxExportSet(fbxbase.FbxBase):
         self._skeleton = kwargs.get('skeleton', fbxskeleton.FbxSkeleton())
         self._mesh = kwargs.get('mesh', fbxmesh.FbxMesh())
         self._customScripts = []
-
-        # Call parent method
-        #
-        super(FbxExportSet, self).__init__(*args, **kwargs)
     # endregion
 
     # region Properties
@@ -118,7 +118,7 @@ class FbxExportSet(fbxbase.FbxBase):
         #
         cwd = self.cwd(expandVars=True)
 
-        if self.scene.isPathRelativeTo(directory, cwd):
+        if self.scene.isPathAbsolute(directory) and self.scene.isPathRelativeTo(directory, cwd):
 
             directory = self.scene.makePathRelativeTo(directory, cwd)
 
@@ -369,7 +369,7 @@ class FbxExportSet(fbxbase.FbxBase):
         # Select skeleton
         #
         self.scene.clearActiveSelection()
-        self.skeleton.select(namespace=namespace)
+        self.skeleton.select(hierarchy=True, namespace=namespace)
 
         # Check if meshes should be selected
         #
@@ -437,9 +437,9 @@ class FbxExportSet(fbxbase.FbxBase):
 
             customScript.preExport()
 
-    def legacyExport(self, namespace=''):
+    def builtinExport(self, namespace=''):
         """
-        Exports this set to the user defined path using the legacy serializer.
+        Exports this set to the user defined path using the builtin serializer.
 
         :type namespace: str
         :rtype: str
@@ -507,9 +507,9 @@ class FbxExportSet(fbxbase.FbxBase):
         #
         exportPath = None
 
-        if self.asset.useLegacySerializer:
+        if self.asset.useBuiltinSerializer:
 
-            exportPath = self.legacyExport(namespace=namespace)
+            exportPath = self.builtinExport(namespace=namespace)
 
         else:
 

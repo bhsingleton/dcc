@@ -32,7 +32,7 @@
 				"script": { "type": "string" }
 			}
 		},
-		"FbxSequence": 
+		"FbxExportRange": 
 		{
 			"type": "object",
 			"allOf":
@@ -46,6 +46,7 @@
 				"endFrame": { "type": "number" },
 				"step": { "type": "number" },
 				"useTimeline": { "type": "boolean" },
+				"moveToOrigin": { "type": "boolean" },
 				"exportSetId": { "type": "number" },
 				"customScripts":
 				{
@@ -68,13 +69,13 @@
 			"properties": 
 			{
 				"guid": { "type": "string" },
-				"sequences":
+				"exportRanges":
 				{ 
 					"type": "array",
 					"items": 
 					{ 
 						"type": "object",
-						"$ref": "#/definitions/FbxSequence"
+						"$ref": "#/definitions/FbxExportRange"
 					}
 				}
 			}

@@ -5,8 +5,9 @@ from dcc import fnscene, fnreference, fnnotify
 from dcc.generators.consecutivepairs import consecutivePairs
 from dcc.ui import quicwindow
 from dcc.ui.models import qpsonitemmodel, qpsonstyleditemdelegate
-from dcc.fbx.libs import fbxio, fbxsequencer, fbxsequence
+from dcc.fbx.libs import fbxio, fbxsequencer, fbxexportrange
 from dcc.python import stringutils
+from dcc.json import jsonutils
 
 import logging
 logging.basicConfig()
@@ -14,9 +15,9 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-class QFbxSequenceEditor(quicwindow.QUicWindow):
+class QFbxExportRangeEditor(quicwindow.QUicWindow):
     """
-    Overload of QUicWindow used to edit fbx sequence data.
+    Overload of `QUicWindow` used to edit FBX export-range data.
     """
 
     # region Dunderscores
@@ -31,7 +32,7 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
 
         # Call parent method
         #
-        super(QFbxSequenceEditor, self).__init__(*args, **kwargs)
+        super(QFbxExportRangeEditor, self).__init__(*args, **kwargs)
 
         # Define private variables
         #
@@ -46,10 +47,10 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
         self.mainToolbar = None
         self.newSequencerAction = None
         self.saveSequencerAction = None
-        self.importSequencesAction = None
-        self.exportSequencesAction = None
-        self.addSequenceAction = None
-        self.removeSequenceAction = None
+        self.importRangesAction = None
+        self.exportRangesAction = None
+        self.addExportRangeAction = None
+        self.removeExportRangeAction = None
         self.updateStartTimeAction = None
         self.updateEndTimeAction = None
         self.updateTimeRangeAction = None
@@ -140,7 +141,7 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
 
         # Call parent method
         #
-        super(QFbxSequenceEditor, self).postLoad()
+        super(QFbxExportRangeEditor, self).postLoad()
 
         # Edit sequencer/batch rollouts
         #
@@ -156,7 +157,7 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
         #
         self.sequencerItemModel = qpsonitemmodel.QPSONItemModel(parent=self.sequencerTreeView)
         self.sequencerItemModel.setObjectName('sequencerItemModel')
-        self.sequencerItemModel.invisibleRootProperty = 'sequences'
+        self.sequencerItemModel.invisibleRootProperty = 'exportRanges'
 
         self.sequencerTreeView.setModel(self.sequencerItemModel)
 
@@ -165,17 +166,17 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
 
         self.sequencerTreeView.setItemDelegate(self.sequencerItemDelegate)
 
-    def defaultSequence(self):
+    def defaultExportRange(self):
         """
-        Returns a new sequence using the current scene settings.
+        Returns a new export-range using the current scene settings.
 
-        :rtype: fbxsequence.FbxSequence
+        :rtype: fbxexportrange.FbxExportRange
         """
 
         name = os.path.splitext(self.scene.currentFilename())[0]
         startFrame, endFrame = self.scene.getStartTime(), self.scene.getEndTime()
 
-        return fbxsequence.FbxSequence(name=name, startFrame=startFrame, endFrame=endFrame, useTimeline=False)
+        return fbxexportrange.FbxExportRange(name=name, startFrame=startFrame, endFrame=endFrame, useTimeline=False)
 
     def getSelectedRows(self):
         """
@@ -188,7 +189,7 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
 
     def invalidateSequencers(self):
         """
-        Invalidates the sequences displayed inside the combo box.
+        Invalidates the sequencers displayed inside the combo box.
 
         :rtype: None
         """
@@ -209,9 +210,9 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
 
             self.sequencerComboBox.setCurrentIndex(index)
 
-    def invalidateSequences(self):
+    def invalidateExportRanges(self):
         """
-        Invalidates the sequences displayed inside the tree view.
+        Invalidates the export-ranges displayed inside the tree view.
 
         :rtype: None
         """
@@ -232,7 +233,7 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
         if numSelectedRows:
 
             selectedRow = selectedRows[0]
-            exportPath = self.currentSequencer.sequences[selectedRow].exportPath()
+            exportPath = self.currentSequencer.exportRanges[selectedRow].exportPath()
 
             self.exportPathLineEdit.setText(exportPath)
     # endregion
@@ -262,7 +263,7 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
 
         # Call parent method
         #
-        super(QFbxSequenceEditor, self).showEvent(event)
+        super(QFbxExportRangeEditor, self).showEvent(event)
 
         # Add post file-open notify
         #
@@ -279,7 +280,7 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
 
         # Call parent method
         #
-        super(QFbxSequenceEditor, self).closeEvent(event)
+        super(QFbxExportRangeEditor, self).closeEvent(event)
 
         # Clear notifies
         #
@@ -310,7 +311,7 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
 
         # Invalidate sequences
         #
-        self.invalidateSequences()
+        self.invalidateExportRanges()
 
     @QtCore.Slot(QtCore.QModelIndex)
     def on_sequencerTreeView_clicked(self, index):
@@ -371,9 +372,9 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
 
             index = filteredPaths.index(item)
             guid = reference(references[index]).guid()
-            sequence = self.defaultSequence()
+            exportRange = self.defaultExportRange()
 
-            sequencer = fbxsequencer.FbxSequencer(guid=guid, sequences=[sequence])
+            sequencer = fbxsequencer.FbxSequencer(guid=guid, exportRanges=[exportRange])
             self.sequencers.append(sequencer)
 
             self.invalidateSequencers()
@@ -405,7 +406,7 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
         response = QtWidgets.QMessageBox.warning(
             self,
             'Delete Sequencer',
-            'Are you sure you want to delete this sequencer and all of its sequences?',
+            'Are you sure you want to delete this sequencer and all of its export ranges?',
             QtWidgets.QMessageBox.Ok | QtWidgets.QMessageBox.Cancel
         )
 
@@ -419,7 +420,7 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
         index = self.sequencerComboBox.currentIndex()
         del self.sequencers[index]
 
-        # Invalidate sequences
+        # Invalidate export-ranges
         #
         self.invalidateSequencers()
 
@@ -436,21 +437,21 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
         self.scene.save()
 
     @QtCore.Slot(bool)
-    def on_addSequenceAction_triggered(self, checked=False):
+    def on_addExportRangeAction_triggered(self, checked=False):
         """
-        Slot method for the addSequenceAction's `triggered` signal.
+        Slot method for the addExportRangeAction's `triggered` signal.
 
         :type checked: bool
         :rtype: None
         """
 
-        sequence = self.defaultSequence()
-        self.sequencerItemModel.appendRow(sequence)
+        exportRange = self.defaultExportRange()
+        self.sequencerItemModel.appendRow(exportRange)
 
     @QtCore.Slot(bool)
-    def on_removeSequenceAction_triggered(self, checked=False):
+    def on_removeExportRangeAction_triggered(self, checked=False):
         """
-        Slot method for the removeSequenceAction's `triggered` signal.
+        Slot method for the removeExportRangeAction's `triggered` signal.
 
         :type checked: bool
         :rtype: None
@@ -464,9 +465,9 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
             self.sequencerItemModel.removeRows(start, numRows)
 
     @QtCore.Slot(bool)
-    def on_importSequencesAction_triggered(self, checked=False):
+    def on_importRangesAction_triggered(self, checked=False):
         """
-        Slot method for the importSequencesAction's `triggered` signal.
+        Slot method for the importRangesAction's `triggered` signal.
 
         :type checked: bool
         :rtype: None
@@ -485,17 +486,17 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
         #
         if not stringutils.isNullOrEmpty(importPath):
 
-            self.currentSequencer.sequences = jsonutils.load(importPath)
-            self.invalidateSequences()
+            self.currentSequencer.exportRanges = jsonutils.load(importPath)
+            self.invalidateExportRanges()
 
         else:
 
             log.info('Operation aborted...')
 
     @QtCore.Slot(bool)
-    def on_exportSequencesAction_triggered(self, checked=False):
+    def on_exportRangesAction_triggered(self, checked=False):
         """
-        Slot method for the exportSequencesAction's `triggered` signal.
+        Slot method for the exportRangesAction's `triggered` signal.
 
         :type checked: bool
         :rtype: None
@@ -514,7 +515,7 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
         #
         if not stringutils.isNullOrEmpty(exportPath):
 
-            jsonutils.dump(exportPath, self.currentSequencer.sequences, indent=4)
+            jsonutils.dump(exportPath, self.currentSequencer.exportRanges, indent=4)
 
         else:
 
@@ -546,12 +547,12 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
 
             for row in selectedRows:
 
-                self.currentSequencer.sequences[row].startFrame = self.scene.getStartTime()
+                self.currentSequencer.exportRanges[row].startFrame = self.scene.getStartTime()
 
         else:
 
             row = selectedRows[0]
-            self.scene.setStartTime(self.currentSequencer.sequences[row].startFrame)
+            self.scene.setStartTime(self.currentSequencer.exportRanges[row].startFrame)
 
     @QtCore.Slot(bool)
     def on_updateEndTimeAction_triggered(self, checked=False):
@@ -579,12 +580,12 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
 
             for row in selectedRows:
 
-                self.currentSequencer.sequences[row].endFrame = self.scene.getEndTime()
+                self.currentSequencer.exportRanges[row].endFrame = self.scene.getEndTime()
 
         else:
 
             row = selectedRows[0]
-            self.scene.setEndTime(self.currentSequencer.sequences[row].endFrame)
+            self.scene.setEndTime(self.currentSequencer.exportRanges[row].endFrame)
 
     @QtCore.Slot(bool)
     def on_updateTimeRangeAction_triggered(self, checked=False):
@@ -612,14 +613,14 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
 
             for row in selectedRows:
 
-                self.currentSequencer.sequences[row].startFrame = self.scene.getStartTime()
-                self.currentSequencer.sequences[row].endFrame = self.scene.getEndTime()
+                self.currentSequencer.exportRanges[row].startFrame = self.scene.getStartTime()
+                self.currentSequencer.exportRanges[row].endFrame = self.scene.getEndTime()
 
         else:
 
             row = selectedRows[0]
-            self.scene.setStartTime(self.currentSequencer.sequences[row].startFrame)
-            self.scene.setEndTime(self.currentSequencer.sequences[row].endFrame)
+            self.scene.setStartTime(self.currentSequencer.exportRanges[row].startFrame)
+            self.scene.setEndTime(self.currentSequencer.exportRanges[row].endFrame)
 
     @QtCore.Slot(bool)
     def on_exportPushButton_clicked(self, checked=False):
@@ -634,16 +635,16 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
         #
         if self.currentSequencer is None:
 
-            QtWidgets.QMessageBox.warning(self, 'Export Sequence', 'No sequencer available to export from!')
+            QtWidgets.QMessageBox.warning(self, 'Export Ranges', 'No sequencer available to export from!')
             return
 
-        # Export selected sequences
+        # Export selected range
         #
         checkout = self.checkoutCheckBox.isChecked()
 
         for row in self.getSelectedRows():
 
-            self.currentSequencer.sequences[row].export(checkout=checkout)
+            self.currentSequencer.exportRanges[row].export(checkout=checkout)
 
     @QtCore.Slot(bool)
     def on_exportAllPushButton_clicked(self, checked=False):
@@ -658,16 +659,16 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
         #
         if self.currentSequencer is None:
 
-            QtWidgets.QMessageBox.warning(self, 'Export Sequences', 'No sequencer available to export from!')
+            QtWidgets.QMessageBox.warning(self, 'Export Ranges', 'No sequencer available to export from!')
             return
 
-        # Export all sequences
+        # Export all ranges
         #
         checkout = self.checkoutCheckBox.isChecked()
 
-        for sequence in self.currentSequencer.sequences:
+        for exportRange in self.currentSequencer.exportRanges:
 
-            sequence.export(checkout=checkout)
+            exportRange.export(checkout=checkout)
 
     @QtCore.Slot(bool)
     def on_addFilesPushButton_clicked(self, checked=False):
@@ -678,29 +679,45 @@ class QFbxSequenceEditor(quicwindow.QUicWindow):
         :rtype: None
         """
 
-        # Prompt user for scene files
+        # Evaluate keyboard modifiers
         #
-        filePaths, selectedFilter = QtWidgets.QFileDialog.getOpenFileNames(
-            self,
-            'Select files to batch',
-            self.scene.currentDirectory(),
-            f"Scene files ({' '.join([f'*.{extension.name}' for extension in self.scene.extensions()])})"
-        )
+        modifiers = QtWidgets.QApplication.keyboardModifiers()
+        currentPaths = [self.fileListWidget.item(i).text() for i in range(self.fileListWidget.count())]
 
-        if not stringutils.isNullOrEmpty(filePaths):
+        if modifiers == QtCore.Qt.ShiftModifier:
 
-            # Add new scene files to list
+            # Add open scene file to list
             #
-            currentPaths = [self.fileListWidget.item(i).text() for i in range(self.fileListWidget.count())]
-            filteredPaths = [path for path in filePaths if path not in currentPaths]
+            filePath = self.scene.currentFilePath()
 
-            for path in filteredPaths:
+            if filePath not in currentPaths:
 
-                self.fileListWidget.addItem(path)
+                self.fileListWidget.addItem(filePath)
 
         else:
 
-            log.info('Operation aborted...')
+            # Prompt user for scene files
+            #
+            filePaths, selectedFilter = QtWidgets.QFileDialog.getOpenFileNames(
+                self,
+                'Select files to batch',
+                self.scene.currentDirectory(),
+                f"Scene files ({' '.join([f'*.{extension.name}' for extension in self.scene.extensions()])})"
+            )
+
+            if not stringutils.isNullOrEmpty(filePaths):
+
+                # Add new scene files to list
+                #
+                filteredPaths = [filePath for filePath in filePaths if filePath not in currentPaths]
+
+                for filePath in filteredPaths:
+
+                    self.fileListWidget.addItem(filePath)
+
+            else:
+
+                log.info('Operation aborted...')
 
     @QtCore.Slot(bool)
     def on_removeFilesPushButton_clicked(self, checked=False):

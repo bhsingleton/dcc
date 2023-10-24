@@ -151,7 +151,7 @@
 						"$ref": "#/definitions/FbxExportSet"
 					}
 				},
-				"useLegacySerializer": { "type": "boolean" }
+				"useBuiltinSerializer": { "type": "boolean" }
 			}
 		}
 	}

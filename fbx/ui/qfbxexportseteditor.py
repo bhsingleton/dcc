@@ -3,7 +3,7 @@ import webbrowser
 
 from Qt import QtCore, QtWidgets, QtGui
 from copy import copy
-from dcc import fnscene, fnnode, fnnotify
+from dcc import fnscene, fnnode, fnskin, fnnotify
 from dcc.python import stringutils
 from dcc.json import jsonutils
 from dcc.ui import quicwindow, qdirectoryedit, qfileedit
@@ -19,7 +19,7 @@ log.setLevel(logging.INFO)
 
 class QFbxExportSetEditor(quicwindow.QUicWindow):
     """
-    Overload of QUicWindow used to edit fbx export set data.
+    Overload of `QUicWindow` used to edit FBX export-set data.
     """
 
     # region Dunderscores
@@ -53,8 +53,8 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
         self.exportAction = None
 
         self.settingsMenu = None
-        self.uselegacySerializerAction = None
-        self.generateLogsActions = None
+        self.useBuiltinSerializerAction = None
+        self.generateLogsAction = None
 
         self.helpMenu = None
         self.usingFbxExportSetEditorAction = None
@@ -96,8 +96,9 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
         self.exportAllPushButton = None
 
         self.customContextMenu = None
-        self.clearItemsAction = None
         self.copySelectionAction = None
+        self.copyInfluencesAction = None
+        self.clearItemsAction = None
     # endregion
 
     # region Properties
@@ -166,6 +167,43 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
 
         self.exportSetTreeView.setItemDelegate(self.exportSetItemDelegate)
 
+        # Initialize file menu
+        #
+        self.saveAction = QtWidgets.QAction(QtGui.QIcon(':dcc/icons/save.svg'), '&Save', parent=self.fileMenu)
+        self.saveAction.setObjectName('saveAction')
+        self.saveAction.triggered.connect(self.on_saveAction_triggered)
+
+        self.importAction = QtWidgets.QAction(QtGui.QIcon(':dcc/icons/import.svg'), '&Import', parent=self.fileMenu)
+        self.importAction.setObjectName('importAction')
+        self.importAction.triggered.connect(self.on_importAction_triggered)
+
+        self.exportAction = QtWidgets.QAction(QtGui.QIcon(':dcc/icons/export.svg'), '&Export', parent=self.fileMenu)
+        self.exportAction.setObjectName('exportAction')
+        self.exportAction.triggered.connect(self.on_exportAction_triggered)
+
+        self.fileMenu.addAction(self.saveAction)
+        self.fileMenu.addSeparator()
+        self.fileMenu.addActions([self.importAction, self.exportAction])
+
+        # Initialize settings menu
+        #
+        self.useBuiltinSerializerAction = QtWidgets.QAction('Use Builtin Serializer', parent=self.settingsMenu)
+        self.useBuiltinSerializerAction.setObjectName('useBuiltinSerializerAction')
+        self.useBuiltinSerializerAction.setCheckable(True)
+        self.useBuiltinSerializerAction.triggered.connect(self.on_useBuiltinSerializerAction_triggered)
+
+        self.generateLogsAction = QtWidgets.QAction('Generate Logs', parent=self.settingsMenu)
+        self.generateLogsAction.setObjectName('generateLogsActions')
+        self.generateLogsAction.setCheckable(True)
+
+        self.settingsMenu.addActions([self.useBuiltinSerializerAction, self.generateLogsAction])
+
+        # Initialize help menu
+        #
+        self.usingFbxExportSetEditorAction = QtWidgets.QAction('Using Fbx Export Set Editor', parent=self.helpMenu)
+        self.usingFbxExportSetEditorAction.setObjectName('usingFbxExportSetEditorAction')
+        self.usingFbxExportSetEditorAction.triggered.connect(self.on_usingFbxExportSetEditorAction_triggered)
+
         # Initialize custom context menu
         #
         self.customContextMenu = QtWidgets.QMenu(parent=self.exportSetTreeView)
@@ -175,11 +213,17 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
         self.copySelectionAction.setObjectName('copySelectionAction')
         self.copySelectionAction.triggered.connect(self.on_copySelectionAction_triggered)
 
+        self.copyInfluencesAction = QtWidgets.QAction('Copy Influences', parent=self.customContextMenu)
+        self.copyInfluencesAction.setObjectName('copyInfluencesAction')
+        self.copyInfluencesAction.triggered.connect(self.on_copyInfluencesAction_triggered)
+
         self.clearItemsAction = QtWidgets.QAction('Clear Items', parent=self.customContextMenu)
         self.clearItemsAction.setObjectName('clearItemsAction')
         self.clearItemsAction.triggered.connect(self.on_clearItemsAction_triggered)
 
-        self.customContextMenu.addActions([self.copySelectionAction, self.clearItemsAction])
+        self.customContextMenu.addActions([self.copySelectionAction, self.copyInfluencesAction])
+        self.customContextMenu.addSeparator()
+        self.customContextMenu.addAction(self.clearItemsAction)
 
     def isNameUnique(self, name):
         """
@@ -242,6 +286,7 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
         self.assetDirectoryLineEdit.setText(self.asset.directory)
         self.fileTypeComboBox.setCurrentIndex(self.asset.fileType)
         self.fileVersionComboBox.setCurrentIndex(self.asset.fileVersion)
+        self.useBuiltinSerializerAction.setChecked(self.asset.useBuiltinSerializer)
 
         # Re-populate combo box
         #
@@ -436,15 +481,15 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
         self.asset.name = text
 
     @QtCore.Slot(bool)
-    def on_useLegacySerializerAction_triggered(self, checked=False):
+    def on_useBuiltinSerializerAction_triggered(self, checked=False):
         """
-        Slot method for the useLegacySerializer's triggered signal.
+        Slot method for the useBuiltinSerializerAction's triggered signal.
 
         :type checked: bool
         :rtype: None
         """
 
-        self.asset.useLegacySerializer = checked
+        self.asset.useBuiltinSerializer = checked
 
     @QtCore.Slot(bool)
     def on_savePushButton_clicked(self, checked=False):
@@ -557,6 +602,102 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
             pass
 
     @QtCore.Slot(bool)
+    def on_copySelectionAction_triggered(self, checked=False):
+        """
+        Slot method for the copySelectionAction's triggered signal.
+
+        :type checked: bool
+        :rtype: None
+        """
+
+        # Evaluate selected indices
+        #
+        indices = [index for index in self.exportSetTreeView.selectedIndexes() if index.column() == 0]
+        numIndices = len(indices)
+
+        if numIndices != 1:
+
+            return
+
+        # Get pre-existing names
+        #
+        index = indices[0]
+        model = index.model()
+
+        currentNames = model.itemFromIndex(index)
+
+        # Extend row using selection
+        #
+        node = fnnode.FnNode()
+        selectedNames = [node(obj).name() for obj in self.scene.getActiveSelection()]
+
+        nodeNames = [nodeName for nodeName in selectedNames if nodeName not in currentNames]
+
+        # Extend row from node names
+        #
+        numNodeNames = len(nodeNames)
+
+        if numNodeNames > 0:
+
+            model.extendRow(nodeNames, parent=index)
+
+    @QtCore.Slot(bool)
+    def on_copyInfluencesAction_triggered(self, checked=False):
+        """
+        Slot method for the copySelectionAction's triggered signal.
+
+        :type checked: bool
+        :rtype: None
+        """
+
+        # Evaluate selected indices
+        #
+        indices = [index for index in self.exportSetTreeView.selectedIndexes() if index.column() == 0]
+        numIndices = len(indices)
+
+        if numIndices != 1:
+
+            return
+
+        # Get pre-existing names
+        #
+        index = indices[0]
+        model = index.model()
+
+        currentNames = model.itemFromIndex(index)
+
+        # Collect used influence names
+        #
+        skin = fnskin.FnSkin()
+        influenceNames = []
+
+        for obj in self.scene.getActiveSelection():
+
+            # Check if object is valid
+            #
+            success = skin.trySetObject(obj)
+
+            if not success:
+
+                continue
+
+            # Extend influence names
+            #
+            influences = skin.influences()
+            usedInfluenceIds = skin.getUsedInfluenceIds()
+            usedInfluenceNames = [influences[influenceId].name() for influenceId in usedInfluenceIds]
+
+            influenceNames.extend([influenceName for influenceName in usedInfluenceNames if influenceName not in currentNames])
+
+        # Extend row from influence names
+        #
+        numInfluenceNames = len(influenceNames)
+
+        if numInfluenceNames > 0:
+
+            model.extendRow(influenceNames, parent=index)
+
+    @QtCore.Slot(bool)
     def on_clearItemsAction_triggered(self, checked=False):
         """
         Slot method for the clearItemsAction's triggered signal.
@@ -584,46 +725,6 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
         if rowCount > 0:
 
             model.removeRows(0, rowCount, parent=index)
-
-    @QtCore.Slot(bool)
-    def on_copySelectionAction_triggered(self, checked=False):
-        """
-        Slot method for the copySelectionAction's triggered signal.
-
-        :type checked: bool
-        :rtype: None
-        """
-
-        # Evaluate selected indices
-        #
-        indices = [index for index in self.exportSetTreeView.selectedIndexes() if index.column() == 0]
-        numIndices = len(indices)
-
-        if numIndices != 1:
-
-            return
-
-        # Remove all child row
-        #
-        index = indices[0]
-        model = index.model()
-
-        rowCount = model.rowCount(parent=index)
-
-        if rowCount > 0:
-
-            model.removeRows(0, rowCount, parent=index)
-
-        # Extend row using selection
-        #
-        node = fnnode.FnNode()
-
-        nodeNames = [node(obj).name() for obj in self.scene.getActiveSelection()]
-        numNodeNames = len(nodeNames)
-
-        if numNodeNames > 0:
-
-            model.extendRow(nodeNames, parent=index)
 
     @QtCore.Slot(int)
     def on_exportSetComboBox_currentIndexChanged(self, index):

@@ -348,12 +348,20 @@ class FbxSerializer(object):
 
             # Reset transform properties
             #
-            childNode.LclTranslation.Set(fbx.FbxDouble3(0.0, 0.0, 0.0))
+            fnChildNode = fntransform.FnTransform(self.getAssociatedNode(childNode))
+            bindMatrix = fnChildNode.bindMatrix()
+
+            translation = bindMatrix.translation()
+            order = fnChildNode.rotationOrder()
+            eulerAngles = list(map(math.degrees, bindMatrix.eulerRotation(order=order)))
+            scale = bindMatrix.scale()
+
+            childNode.LclTranslation.Set(fbx.FbxDouble3(translation.x, translation.y, translation.z))
             childNode.RotationPivot.Set(fbx.FbxDouble3(0.0, 0.0, 0.0))
             childNode.PreRotation.Set(fbx.FbxDouble3(0.0, 0.0, 0.0))
-            childNode.LclRotation.Set(fbx.FbxDouble3(0.0, 0.0, 0.0))
+            childNode.LclRotation.Set(fbx.FbxDouble3(eulerAngles[0], eulerAngles[1], eulerAngles[2]))
             childNode.PostRotation.Set(fbx.FbxDouble3(0.0, 0.0, 0.0))
-            childNode.LclScaling.Set(fbx.FbxDouble3(1.0, 1.0, 1.0))
+            childNode.LclScaling.Set(fbx.FbxDouble3(scale.x, scale.y, scale.z))
 
     def copyTransform(self, copyFrom, copyTo):
         """
@@ -364,27 +372,30 @@ class FbxSerializer(object):
         :rtype: None
         """
 
+        # Edit transformation inheritance
+        #
+        copyTo.SetTransformationInheritType(fbx.FbxTransform.eInheritRSrs)  # Uppercase are for parent (rotation/scaling) and lowercase are for child!
+
         # Update local translation
         #
         matrix = copyFrom.matrix()
-        translation = matrix.translation()
 
+        translation = matrix.translation()
         copyTo.LclTranslation.Set(fbx.FbxDouble3(*translation))
 
         # Update local rotation in degrees
         #
-        rotationOrder = copyFrom.rotationOrder()
-        eulerAngles = list(map(math.degrees, matrix.eulerRotation(order=rotationOrder)))
+        order = copyFrom.rotationOrder()
+        eulerAngles = list(map(math.degrees, matrix.eulerRotation(order=order)))
 
         copyTo.SetRotationActive(True)
-        copyTo.SetRotationOrder(fbx.FbxNode.eSourcePivot, self.__class__.__rotate_orders__[rotationOrder])
+        copyTo.SetRotationOrder(fbx.FbxNode.eSourcePivot, self.__class__.__rotate_orders__[order])
         copyTo.LclRotation.Set(fbx.FbxDouble3(*eulerAngles))
 
         # Update local scale
         #
         scale = matrix.scale()
         copyTo.LclScaling.Set(fbx.FbxDouble3(*scale))
-        copyTo.SetTransformationInheritType(fbx.FbxTransform.eInheritRrs)  # Add support for inverse scale!
 
     def copyMesh(self, copyFrom, copyTo, **kwargs):
         """
@@ -519,7 +530,7 @@ class FbxSerializer(object):
 
                 for index, group in enumerate(smoothingGroups):
 
-                    directArray.SetAt(index, group)
+                    directArray.SetAt(index, group[0])
 
         else:
 
@@ -855,7 +866,7 @@ class FbxSerializer(object):
 
         if not success:
 
-            raise RuntimeError(f'Unable to assign {handle} handle to fbx property!')
+            raise RuntimeError(f'Unable to assign {handle} handle to FBX property!')
 
         return fbxNode
 
@@ -1121,7 +1132,7 @@ class FbxSerializer(object):
         # Create fbx placeholders for joints
         # This ensures parenting can be performed!
         #
-        joints = settings.getObjects(namespace=self.namespace)
+        joints = settings.getHierarchy(namespace=self.namespace)
         self.allocateFbxNodes(*joints)
 
         # Create fbx skeletons
@@ -1195,36 +1206,36 @@ class FbxSerializer(object):
 
         return self.saveAs(exportPath, asAscii=asAscii)
 
-    def serializeSequence(self, sequence, asAscii=False):
+    def serializeExportRange(self, exportRange, asAscii=False):
         """
-        Serializes the nodes from the supplied sequence.
+        Serializes the nodes from the supplied export range.
 
-        :type sequence: dcc.fbx.libs.fbxsequence.FbxSequence
+        :type exportRange: dcc.fbx.libs.fbxexportrange.FbxExportRange
         :type asAscii: bool
         :rtype: str
         """
 
         # Serialize skeleton from associated export set
         #
-        exportSet = sequence.exportSet()
+        exportSet = exportRange.exportSet()
         fbxNodes = self.serializeSkeleton(exportSet.skeleton)
 
         # Bake transform values
         #
-        startFrame, endFrame = sequence.timeRange()
+        startFrame, endFrame = exportRange.timeRange()
 
         self.updateTimeRange(startFrame, endFrame)
         self.bakeAnimation(*fbxNodes, startFrame=startFrame, endFrame=endFrame)
 
         # Check if skeleton should be moved to origin
         #
-        if sequence.moveToOrigin:
+        if exportRange.moveToOrigin:
 
             self.moveToOrigin()
 
         # Save changes
         #
-        exportPath = sequence.exportPath()
+        exportPath = exportRange.exportPath()
         self.scene.ensureDirectory(exportPath)
         self.scene.ensureWritable(exportPath)
 

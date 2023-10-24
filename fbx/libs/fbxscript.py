@@ -33,16 +33,16 @@ class FbxScript(fbxbase.FbxBase):
         Private method called after a new instance has been created.
         """
 
+        # Call parent method
+        #
+        super(FbxScript, self).__init__(*args, **kwargs)
+
         # Declare private variables
         #
         self._scene = fnscene.FnScene()
         self._filePath = kwargs.get('filePath', '')
         self._language = kwargs.get('language', Language.Python)
         self._script = kwargs.get('script', '')
-
-        # Call parent method
-        #
-        super(FbxScript, self).__init__(*args, **kwargs)
     # endregion
 
     # region Properties
