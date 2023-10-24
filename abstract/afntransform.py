@@ -182,16 +182,6 @@ class AFnTransform(with_metaclass(ABCMeta, afnnode.AFnNode)):
         self.setScale(newScale)
 
     @abstractmethod
-    def ensureKeyed(self):
-        """
-        Ensures all transform properties are keyed.
-
-        :rtype: None
-        """
-
-        pass
-
-    @abstractmethod
     def boundingBox(self):
         """
         Returns the bounding box for this node.
@@ -238,6 +228,16 @@ class AFnTransform(with_metaclass(ABCMeta, afnnode.AFnNode)):
 
         :type matrix: transformationmatrix.TransformationMatrix
         :rtype: None
+        """
+
+        pass
+
+    @abstractmethod
+    def bindMatrix(self):
+        """
+        Returns the bind matrix for this node.
+
+        :rtype: transformationmatrix.TransformationMatrix
         """
 
         pass

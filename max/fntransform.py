@@ -2,7 +2,7 @@ import pymxs
 
 from enum import IntEnum
 from dcc.max import fnnode
-from dcc.max.libs import transformutils
+from dcc.max.libs import transformutils, skinutils
 from dcc.abstract import afntransform
 from dcc.dataclasses import vector, eulerangles, transformationmatrix, boundingbox
 
@@ -113,15 +113,6 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
         point = pymxs.runtime.Point3(scale.x, scale.y, scale.z)
         transformutils.setScale(self.object(), point, **kwargs)
 
-    def ensureKeyed(self):
-        """
-        Ensures all transform properties are keyed.
-
-        :rtype: None
-        """
-
-        pass
-
     def boundingBox(self):
         """
         Returns the bounding box for this node.
@@ -185,6 +176,30 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
 
         matrix = self.nativizeMatrix(matrix)
         transformutils.applyTransformMatrix(self.object(), matrix)
+
+    def bindMatrix(self):
+        """
+        Returns the bind matrix for this node.
+
+        :rtype: transformationmatrix.TransformationMatrix
+        """
+
+        # Check if any skins are dependent on this transform
+        #
+        skins = [dependent for dependent in pymxs.runtime.refs.dependents(self.object()) if pymxs.runtime.isKindOf(dependent, pymxs.runtime.Skin)]
+        numSkins = len(skins)
+
+        if numSkins == 0:
+
+            return transformationmatrix.TransformationMatrix()
+
+        # Get bind-matrix from skin
+        #
+        skin = skins[0]
+        node = pymxs.runtime.refs.dependentNode(skin, firstOnly=True)
+        preBindMatrix = pymxs.runtime.skinutils.getBoneBindTM(node, self.object())
+
+        return self.denativizeMatrix(preBindMatrix)
 
     def worldMatrix(self):
         """

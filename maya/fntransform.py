@@ -2,7 +2,7 @@ from maya import cmds as mc
 from maya.api import OpenMaya as om
 from enum import IntEnum
 from dcc.maya import fnnode
-from dcc.maya.libs import transformutils
+from dcc.maya.libs import dagutils, transformutils, skinutils
 from dcc.dataclasses import vector, eulerangles, transformationmatrix, boundingbox
 from dcc.abstract import afntransform
 
@@ -123,15 +123,6 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
 
         transformutils.setScale(dagPath, scale, **kwargs)
 
-    def ensureKeyed(self):
-        """
-        Ensures all transform properties are keyed.
-
-        :rtype: None
-        """
-
-        pass
-
     def boundingBox(self):
         """
         Returns the bounding box for this node.
@@ -193,6 +184,37 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
         matrix = transformutils.getMatrix(dagPath)
 
         return self.denativizeMatrix(matrix)
+
+    def bindMatrix(self):
+        """
+        Returns the bind matrix for this node.
+
+        :rtype: transformationmatrix.TransformationMatrix
+        """
+
+        # Check if any skins are dependent on this transform
+        #
+        skins = list(dagutils.dependents(self.object(), apiType=om.MFn.kSkinClusterFilter))
+        numSkins = len(skins)
+
+        if numSkins > 0:
+
+            # Get bind-matrix from skin
+            #
+            skin = skins[0]
+            influenceId = skinutils.getInfluenceId(skin, self.object())
+            preBindMatrix = skinutils.getPreBindMatrix(skin, influenceId)
+
+            return self.denativizeMatrix(preBindMatrix.inverse())
+
+        else:
+
+            # Check user-properties for skin pose
+            #
+            userProperties = self.userProperties()
+            preBindMatrix = userProperties.get('worldSkinPose', om.MMatrix.kIdentity)
+
+            return transformationmatrix.TransformationMatrix(preBindMatrix)
 
     def worldMatrix(self):
         """
