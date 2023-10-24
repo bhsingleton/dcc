@@ -300,15 +300,6 @@ class FnNode(afnnode.AFnNode):
 
             yield key
 
-    def userPropertyBuffer(self):
-        """
-        Returns the user property buffer.
-
-        :rtype: str
-        """
-
-        return pymxs.runtime.getUserPropBuffer(self.object())
-
     def userProperties(self):
         """
         Returns the user properties.
@@ -316,7 +307,10 @@ class FnNode(afnnode.AFnNode):
         :rtype: dict
         """
 
-        return {}
+        buffer = pymxs.runtime.getUserPropBuffer(self.object())  # type: str
+        keys = [line.split('=')[0].lstrip().rstrip() for line in buffer.splitlines() if '=' in line]
+
+        return {key: pymxs.runtime.getUserPropValue(self.object(), key, asString=False) for key in keys}
 
     def getAssociatedReference(self):
         """
