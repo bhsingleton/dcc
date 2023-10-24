@@ -14,8 +14,8 @@ class BoundingBox(adc.ADC):
     """
 
     # region Fields
-    min: vector.Vector = field(default_factory=lambda: vector.Vector.one)
-    max: vector.Vector = field(default_factory=lambda: -vector.Vector.one)
+    min: vector.Vector = field(default_factory=lambda: vector.Vector.zero)
+    max: vector.Vector = field(default_factory=lambda: vector.Vector.zero)
     # endregion
 
     # region Dunderscores
@@ -76,4 +76,48 @@ class BoundingBox(adc.ADC):
         """
 
         return self.min <= point <= self.max
+
+    def expand(self, *points):
+        """
+        Expands the bounding-box to account for the supplied points.
+
+        :type points: Union[vector.Vector, List[vector.Vector]]
+        :rtype: self
+        """
+
+        # Iterate through points
+        #
+        isEmpty = (self.min.length() == 0.0) and (self.max.length() == 0.0)
+
+        for point in points:
+
+            # Check if bounding-box is empty
+            #
+            if isEmpty:
+
+                self.min = point.copy()
+                self.max = point.copy()
+                isEmpty = False
+
+                continue
+
+            # Iterate through axes
+            #
+            for axis in range(3):
+
+                # Evaluate axis
+                #
+                if point[axis] > self.max[axis]:
+
+                    self.max[axis] = point[axis]
+
+                elif point[axis] < self.min[axis]:
+
+                    self.min[axis] = point[axis]
+
+                else:
+
+                    continue
+
+        return self
     # endregion
