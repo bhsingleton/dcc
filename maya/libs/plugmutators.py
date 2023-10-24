@@ -687,7 +687,10 @@ def setMAngle(plug, value, modifier=None, **kwargs):
     #
     if not isinstance(value, om.MAngle):
 
-        value = om.MAngle(value, unit=om.MAngle.uiUnit())
+        convertUnits = kwargs.get('convertUnits', True)
+        unit = om.MAngle.uiUnit() if convertUnits else om.MAngle.internalUnit()
+
+        value = om.MAngle(value, unit=unit)
 
     # Assign value to plug
     #
@@ -708,7 +711,10 @@ def setMDistance(plug, value, modifier=None, **kwargs):
     #
     if not isinstance(value, om.MDistance):
 
-        value = om.MDistance(value, unit=om.MDistance.uiUnit())
+        convertUnits = kwargs.get('convertUnits', True)
+        unit = om.MDistance.uiUnit() if convertUnits else om.MDistance.internalUnit()
+
+        value = om.MDistance(value, unit=unit)
 
     # Assign value to plug
     #
@@ -785,10 +791,26 @@ def setCompound(plug, values, modifier=None, **kwargs):
                 continue
 
             # Get child plug
+            # TODO: Improve child plug lookup logic
             #
-            childAttribute = fnDependNode.attribute(name)
-            childPlug = plug.child(childAttribute)
+            attribute = fnDependNode.attribute(name)
+            fnAttribute = om.MFnAttribute(attribute)
 
+            parentAttribute = fnAttribute.parent
+            hasParent = plug != parentAttribute and not parentAttribute.isNull()
+
+            childPlug = None
+
+            if hasParent:
+
+                childPlug = plug.child(parentAttribute).child(attribute)
+
+            else:
+
+                childPlug = plug.child(attribute)
+
+            # Update child plug
+            #
             setValue(childPlug, value, modifier=modifier, **kwargs)
 
     elif arrayutils.isArrayLike(values):  # Maya dataclasses aren't derived from the `Sequence` abstract base class!
@@ -798,14 +820,20 @@ def setCompound(plug, values, modifier=None, **kwargs):
         fnCompoundAttribute = om.MFnCompoundAttribute(plug.attribute())
         childCount = fnCompoundAttribute.numChildren()
 
-        for i in range(childCount):
+        for (i, value) in enumerate(values):
 
-            # Get child plug
+            # Check if indexed value is in range
             #
-            childAttribute = fnCompoundAttribute.child(i)
-            childPlug = plug.child(childAttribute)
+            if 0 <= i < childCount:
 
-            setValue(childPlug, values[i], **kwargs)
+                childAttribute = fnCompoundAttribute.child(i)
+                childPlug = plug.child(childAttribute)
+
+                setValue(childPlug, values[i], **kwargs)
+
+            else:
+
+                continue
 
     else:
 
