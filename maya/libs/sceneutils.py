@@ -1,7 +1,7 @@
 import os
 
-from maya import cmds as mc
-from maya import mel
+from maya import cmds as mc, mel as mel
+from itertools import chain
 from . import dagutils
 from ..decorators.undo import undo
 
@@ -637,7 +637,7 @@ def frameVisible(all=False):
     """
 
     cameras = mc.ls(type='camera') if all else [getCurrentCamera()]
-    nodes = [dagutils.getMDagPath(node).fullPathName() for node in dagutils.iterVisibleNodes()]
+    nodes = [dagutils.getMDagPath(shape).fullPathName() for shape in chain(*[list(dagutils.iterShapes(node)) for node in dagutils.iterVisibleNodes()])]
 
     for camera in cameras:
 
