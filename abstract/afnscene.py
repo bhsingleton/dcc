@@ -352,6 +352,17 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
         pathutils.ensureWritable(path)
 
     @classmethod
+    def isPathAbsolute(cls, path):
+        """
+        Evaluates if the supplied path is absolute.
+
+        :type path: str
+        :rtype: bool
+        """
+
+        return os.path.isabs(path)
+
+    @classmethod
     def isPathRelative(cls, path):
         """
         Evaluates if the supplied path is relative.
