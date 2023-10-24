@@ -256,7 +256,7 @@ class QPSONItemModel(QtCore.QAbstractItemModel):
         #
         parentId = self.decodeInternalId(parent.internalId())
 
-        if parentId.supportsChildren() or parentId.isRoot():
+        if parentId.hasChildren() or parentId.isRoot():
 
             parentItem = parentId.value()
             return len(parentItem)
@@ -373,6 +373,23 @@ class QPSONItemModel(QtCore.QAbstractItemModel):
 
             return QtCore.QModelIndex()
 
+    def hasChildren(self, parent=None):
+        """
+        Returns true if parent has any children; otherwise returns false.
+        Use rowCount() on the parent to find out the number of children.
+        Note that it is undefined behavior to report that a particular index hasChildren with this method if the same index has the flag Qt::ItemNeverHasChildren set!
+
+        :type parent: QtCore.QModelIndex
+        :rtype: bool
+        """
+
+        # Check if parent has children
+        #
+        internalId = self.decodeInternalId(parent.internalId())
+        hasChildren = internalId.hasChildren()
+
+        return hasChildren
+
     def flags(self, index):
         """
         Returns the item flags for the given index.
@@ -401,7 +418,7 @@ class QPSONItemModel(QtCore.QAbstractItemModel):
 
         # Evaluate if index has children
         #
-        supportsChildren = internalId.supportsChildren()
+        supportsChildren = internalId.hasChildren()
 
         if not supportsChildren:
 

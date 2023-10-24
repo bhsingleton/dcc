@@ -270,7 +270,7 @@ class QPSONPath(collections_abc.Sequence):
 
             return None
 
-    def supportsChildren(self):
+    def hasChildren(self):
         """
         Evaluates if this path can support children.
 
@@ -447,6 +447,15 @@ class QPSONPath(collections_abc.Sequence):
         :rtype: bool
         """
 
+        # Check if this is a root path
+        # Otherwise, there are no type hints to evaluate!
+        #
+        if self.isRoot():
+
+            return isinstance(self.value(), collections_abc.MutableSequence)
+
+        # Evaluate type hints
+        #
         alias, parameters = self.type(decomposeAliases=True)
         numParameters = len(parameters)
 
@@ -465,6 +474,15 @@ class QPSONPath(collections_abc.Sequence):
         :rtype: bool
         """
 
+        # Check if this is a root path
+        # Otherwise, there are no type hints to evaluate!
+        #
+        if self.isRoot():
+
+            return isinstance(self.value(), collections_abc.MutableMapping)
+
+        # Evaluate type hints
+        #
         alias, parameters = self.type(decomposeAliases=True)
         numParameters = len(parameters)
 
