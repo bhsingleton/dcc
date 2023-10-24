@@ -298,10 +298,27 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
         if wrapperutils.isKindOf(material, pymxs.runtime.Multimaterial):
 
-            # Iterate through material list
+            # Iterate through sub-materials
             #
             subMaterials = list(material.materialList)
-            return [(subMaterial, list(filter(None, subMaterial.maps)))[0].filename for subMaterial in subMaterials if any(subMaterial.maps)]
+            numSubMaterials = len(subMaterials)
+
+            assignedMaterials = [None] * numSubMaterials
+
+            for (i, subMaterial) in enumerate(subMaterials):
+
+                maps = list(filter(None, subMaterial.maps))
+                numMaps = len(maps)
+
+                if numMaps > 0:
+
+                    assignedMaterials[i] = (subMaterial, maps[0].filename)
+
+                else:
+
+                    assignedMaterials[i] = (subMaterial, '')
+
+            return assignedMaterials
 
         elif wrapperutils.isKindOf(material, pymxs.runtime.Standardmaterial):
 
@@ -362,12 +379,13 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
         return meshutils.iterMapFaceVertexIndices(self.baseObject(), channel=(channel + 1), indices=indices)
 
-    def iterTangentsAndBinormals(self, *indices, channel=0):
+    def iterTangentsAndBinormals(self, *indices, cls=Vector, channel=0):
         """
         Returns a generator that yields face-vertex tangents and binormals for the specified channel.
 
+        :type cls: Callable
         :type channel: int
-        :rtype: Iterator[List[Tuple[float, float, float]], List[Tuple[float, float, float]]]
+        :rtype: Iterator[List[Vector], List[Vector]]
         """
 
         return iter([])
@@ -378,7 +396,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
         :type cls: Callable
         :type channel: int
-        :rtype: Iterator[colour.Colour]
+        :rtype: Iterator[Colour]
         """
 
         return iter([])
