@@ -1,12 +1,10 @@
 import os
 import json
 
-from maya import cmds as mc
-from maya import OpenMaya as legacy
+from maya import cmds as mc, OpenMaya as lom
 from maya.api import OpenMaya as om
 from itertools import chain
-
-from . import dagutils
+from . import dagutils, transformutils
 
 import logging
 logging.basicConfig()
@@ -14,17 +12,20 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-COLOUR_RGB = {0: [1.0, 1.0, 0.0], 1: [0.0, 0.0, 1.0], 2: [1.0, 0.0, 0.0], 3: [1.0, 1.0, 0.0]}
+COLOUR_RGB = {0: (1.0, 1.0, 0.0), 1: (0.0, 0.0, 1.0), 2: (1.0, 0.0, 0.0), 3: (1.0, 1.0, 0.0)}
 COLOR_INDEX = {0: 17, 1: 6, 2: 13, 3: 17}
 
 
 class ShapeEncoder(json.JSONEncoder):
     """
-    Overload of JSONEncoder used to create shape templates from shape nodes.
+    Overload of `JSONEncoder` used to create shape templates from shape nodes.
     """
 
+    # region Dunderscores
     __slots__ = ()
+    # endregion
 
+    # region Methods
     def default(self, obj):
         """
         Returns a json serializable object for the given value.
@@ -77,14 +78,14 @@ class ShapeEncoder(json.JSONEncoder):
         Dumps the supplied nurb surface's trimmed boundaries into a json compatible object.
         Please note Autodesk have yet to implement these methods in their newest API!
 
-        :type obj: legacy.MObject
-        :rtype: list[dict]
+        :type obj: lom.MObject
+        :rtype: List[dict]
         """
 
         # Check number of regions
         # If zero then this surface has no trimmed surfaces
         #
-        fnNurbsSurface = legacy.MFnNurbsSurface(obj)
+        fnNurbsSurface = lom.MFnNurbsSurface(obj)
         numRegions = fnNurbsSurface.numRegions()
 
         if numRegions == 0:
@@ -93,14 +94,14 @@ class ShapeEncoder(json.JSONEncoder):
 
         # Iterate through regions
         #
-        fnNurbsCurve = legacy.MFnNurbsCurve()
+        fnNurbsCurve = lom.MFnNurbsCurve()
         items = [None] * numRegions
 
         for region in range(numRegions):
 
             # Get trim boundary from region
             #
-            boundary = legacy.MTrimBoundaryArray()
+            boundary = lom.MTrimBoundaryArray()
             fnNurbsSurface.getTrimBoundaries(boundary, region, True)
 
             numBoundaries = boundary.length()
@@ -190,28 +191,45 @@ class ShapeEncoder(json.JSONEncoder):
             'faceVertexNormals': [[[y.x, y.y, y.z] for y in fnMesh.getFaceVertexNormals(x)] for x in range(fnMesh.numPolygons)],
             'edgeSmoothings': [fnMesh.isEdgeSmooth(x) for x in range(fnMesh.numEdges)]
         }
+    # endregion
 
 
 class ShapeDecoder(json.JSONDecoder):
     """
-    Overload of JSONDecoder used to apply shape templates to transform nodes.
+    Overload of `JSONDecoder` used to apply shape templates to transform nodes.
     """
 
-    __slots__ = ('_parent', '_scale')
+    # region Dunderscores
+    __slots__ = (
+        '_size',
+        '_localPosition',
+        '_localRotate',
+        '_localScale',
+        '_lineWidth',
+        '_parent'
+    )
 
     def __init__(self, *args, **kwargs):
         """
         Private method called after a new instance has been created.
 
+        :key size: float
+        :key localPosition: Union[om.MVector, Tuple[float, float, float]]
+        :key localRotate: Union[om.MVector, Tuple[float, float, float]]
+        :key localScale: Union[om.MVector, Tuple[float, float, float]]
+        :key lineWidth: float
         :key parent: om.MObject
-        :key scale: float
         :rtype: None
         """
 
         # Declare private variables
         #
-        self._parent = kwargs.pop('parent')
-        self._scale = kwargs.pop('scale')
+        self._size = kwargs.pop('size', 1.0)
+        self._localPosition = kwargs.pop('localPosition', om.MVector.kZeroVector)
+        self._localRotate = kwargs.pop('localRotate', om.MVector.kZeroVector)
+        self._localScale = kwargs.pop('localScale', om.MVector.kOneVector)
+        self._lineWidth = kwargs.pop('lineWidth', -1.0)
+        self._parent = kwargs.pop('parent', om.MObject.kNullObj)
 
         # Override object hook
         #
@@ -220,7 +238,9 @@ class ShapeDecoder(json.JSONDecoder):
         # Call parent method
         #
         super(ShapeDecoder, self).__init__(*args, **kwargs)
+    # endregion
 
+    # region Methods
     def default(self, obj):
         """
         Object hook for this decoder.
@@ -232,76 +252,134 @@ class ShapeDecoder(json.JSONDecoder):
         # Inspect type name
         # We don't want to process any nurbs trim surfaces
         #
-        typeName = obj['typeName']
+        typeName = obj.get('typeName', '')
+        func = getattr(self, typeName, None)
 
-        if hasattr(self, typeName):
+        if callable(func):
 
-            func = getattr(self, typeName)
-            return func(obj, scale=self._scale, parent=self._parent)
+            return func(
+                obj,
+                size=self._size,
+                localPosition=self._localPosition,
+                localRotate=self._localRotate,
+                localScale=self._localScale,
+                lineWidth=self._lineWidth,
+                parent=self._parent
+            )
 
         else:
 
             return obj
 
+    @staticmethod
+    def composeMatrix(**kwargs):
+        """
+        Composes a transform matrix from the supplied arguments.
+
+        :key size: float
+        :key localPosition: Union[om.MVector, Tuple[float, float, float]]
+        :key localRotate: Union[om.MVector, Tuple[float, float, float]]
+        :key localScale: Union[om.MVector, Tuple[float, float, float]]
+        :rtype: om.MMatrix
+        """
+
+        size = kwargs.get('size', 1.0)
+        localPosition = kwargs.get('localPosition', om.MVector.kZeroVector)
+        localRotate = kwargs.get('localRotate', om.MVector.kZeroVector)
+        localScale = kwargs.get('localScale', om.MVector.kOneVector)
+
+        sizeMatrix = transformutils.createScaleMatrix(size)
+        translateMatrix = transformutils.createTranslateMatrix(localPosition)
+        rotateMatrix = transformutils.createRotationMatrix(localRotate)
+        scaleMatrix = transformutils.createScaleMatrix(localScale)
+
+        return (scaleMatrix * sizeMatrix) * rotateMatrix * translateMatrix
+
+    @staticmethod
+    def demoteMatrix(matrix):
+        """
+        Demotes the supplied matrix into its legacy equivalent.
+
+        :type matrix: om.MMatrix
+        :rtype: lom.MMatrix
+        """
+
+        demotedMatrix = lom.MMatrix()
+
+        for row in range(4):
+
+            for column in range(4):
+
+                lom.MScriptUtil.setDoubleArray(demotedMatrix[row], column, matrix.getElement(row, column))
+
+        return demotedMatrix
+
     @classmethod
-    def nurbsCurve(cls, obj, scale=1.0, parent=om.MObject.kNullObj):
+    def nurbsCurve(cls, obj, **kwargs):
         """
         Creates a nurbs curve based on the supplied dictionary.
 
         :type obj: dict
-        :type scale: float
-        :type parent: om.MObject
+        :key parent: om.MObject
         :rtype: om.MObject
         """
 
         # Collect arguments
         #
-        cvs = om.MPointArray([om.MPoint(x) * scale for x in obj['controlPoints']])
+        matrix = cls.composeMatrix(**kwargs)
+
+        cvs = om.MPointArray([om.MPoint(point) * matrix for point in obj['controlPoints']])
         knots = om.MDoubleArray(obj['knots'])
         degree = obj['degree']
         form = obj['form']
 
-        # Create nurbs curve using function set
+        # Create nurbs curve
         #
-        fnCurve = om.MFnNurbsCurve()
-        curve = fnCurve.create(cvs, knots, degree, form, False, True, parent)
+        parent = kwargs.get('parent', om.MObject.kNullObj)
+
+        fnNurbsCurve = om.MFnNurbsCurve()
+        curve = fnNurbsCurve.create(cvs, knots, degree, form, False, True, parent=parent)
 
         # Update line width
         #
-        plug = fnCurve.findPlug('lineWidth', False)
-        plug.setFloat(obj['lineWidth'])
+        lineWidth = kwargs.get('lineWidth', -1.0)
+
+        plug = fnNurbsCurve.findPlug('lineWidth', True)
+        plug.setFloat(lineWidth)
 
         return curve
 
     @classmethod
-    def nurbsCurveData(cls, obj, scale=1.0):
+    def nurbsCurveData(cls, obj, **kwargs):
         """
-        Creates a legacy nurbs curve data object from the.
+        Creates a legacy nurbs curve data object from the supplied object.
 
         :type obj: dict
-        :type scale: float
-        :rtype: legacy.MObject
+        :key matrix: lom.MMatrix
+        :rtype: lom.MObject
         """
 
         # Create new data object
         #
-        fnNurbsCurveData = legacy.MFnNurbsCurveData()
+        fnNurbsCurveData = lom.MFnNurbsCurveData()
         curveData = fnNurbsCurveData.create()
 
         # Collect control points
         #
         numControlPoints = len(obj['controlPoints'])
-        controlPoints = legacy.MPointArray(numControlPoints)
+        controlPoints = lom.MPointArray(numControlPoints)
+
+        matrix = kwargs.get('matrix', lom.MMatrix.identity)
 
         for (index, controlPoint) in enumerate(obj['controlPoints']):
 
-            point = legacy.MPoint(controlPoint[0] * scale, controlPoint[1] * scale, controlPoint[2] * scale)
+            point = lom.MPoint(controlPoint[0], controlPoint[1], controlPoint[2]) * matrix
             controlPoints.set(point, index)
 
         # Collect knots
         #
         numKnots = len(obj['knots'])
-        knots = legacy.MDoubleArray(numKnots)
+        knots = lom.MDoubleArray(numKnots)
 
         for (index, knot) in enumerate(obj['knots']):
 
@@ -312,58 +390,61 @@ class ShapeDecoder(json.JSONDecoder):
         degree = obj['degree']
         form = obj['form']
 
-        fnNurbsCurve = legacy.MFnNurbsCurve()
+        fnNurbsCurve = lom.MFnNurbsCurve()
         fnNurbsCurve.create(controlPoints, knots, degree, form, False, True, curveData)
 
         return curveData
 
     @classmethod
-    def trimNurbsSurface(cls, objs, surface=legacy.MObject.kNullObj):
+    def trimNurbsSurface(cls, objs, **kwargs):
         """
         Creates a trim surface based on the supplied objects.
-        Sadly this method on works with the legacy API methods...c'mon Autodesk!
+        Sadly this method only works with the legacy API methods...c'mon Autodesk!
 
         :type objs: list[dict]
-        :type surface: legacy.MObject
-        :type: legacy.MTrimBoundaryArray
+        :key surface: lom.MObject
+        :type: lom.MTrimBoundaryArray
         """
 
         # Build curve data array
         #
         numObjs = len(objs)
-        curveDataArray = legacy.MObjectArray(numObjs)
+        curveDataArray = lom.MObjectArray(numObjs)
 
         for (index, obj) in enumerate(objs):
 
-            curveData = cls.nurbsCurveData(obj)
+            curveData = cls.nurbsCurveData(obj, **kwargs)
             curveDataArray.set(curveData, index)
 
         # Append curves to trim array
         #
-        boundaries = legacy.MTrimBoundaryArray()
+        boundaries = lom.MTrimBoundaryArray()
         boundaries.append(curveDataArray)
 
         # Apply trim boundary to nurbs surface
         #
-        fnNurbsSurface = legacy.MFnNurbsSurface(surface)
+        surface = kwargs.get('surface', lom.MObject.kNullObj)
+
+        fnNurbsSurface = lom.MFnNurbsSurface(surface)
         fnNurbsSurface.trimWithBoundaries(boundaries)
 
         return boundaries
 
     @classmethod
-    def nurbsSurface(cls, obj, scale=1.0, parent=om.MObject.kNullObj):
+    def nurbsSurface(cls, obj, **kwargs):
         """
         Creates a nurbs surface based on the supplied object.
 
         :type obj: dict
-        :type scale: float
-        :type parent: om.MObject
+        :key parent: om.MObject
         :rtype: om.MObject
         """
 
         # Collect arguments
         #
-        cvs = om.MPointArray([om.MPoint(x[0] * scale, x[1] * scale, x[2] * scale) for x in obj['controlPoints']])
+        matrix = cls.composeMatrix(**kwargs)
+
+        cvs = om.MPointArray([om.MPoint(point) * matrix for point in obj['controlPoints']])
         uKnots = om.MDoubleArray(obj['uKnots'])
         vKnots = om.MDoubleArray(obj['vKnots'])
         uDegree = obj['uDegree']
@@ -373,13 +454,18 @@ class ShapeDecoder(json.JSONDecoder):
 
         # Create nurbs surface from function set
         #
+        parent = kwargs.get('parent', om.MObject.kNullObj)
+
         fnNurbsSurface = om.MFnNurbsSurface()
         surface = fnNurbsSurface.create(cvs, uKnots, vKnots, uDegree, vDegree, uForm, vForm, True, parent)
 
         # Create trim surfaces
-        # This can only be done with the legacy API!!!
         #
-        cls.trimNurbsSurface(obj['boundaries'], surface=dagutils.demoteMObject(surface))
+        cls.trimNurbsSurface(
+            obj['boundaries'],
+            matrix=cls.demoteMatrix(matrix),
+            surface=dagutils.demoteMObject(surface)
+        )
 
         # Update curve precision
         #
@@ -389,24 +475,27 @@ class ShapeDecoder(json.JSONDecoder):
         return surface
 
     @classmethod
-    def mesh(cls, obj, scale=1.0, parent=om.MObject.kNullObj):
+    def mesh(cls, obj, **kwargs):
         """
         Creates a mesh based on the supplied dictionary.
 
         :type obj: dict
-        :type scale: float
-        :type parent: om.MObject
+        :key parent: om.MObject
         :rtype: om.MObject
         """
 
         # Collect arguments
         #
-        vertices = om.MPointArray([om.MPoint(x) * scale for x in obj['controlPoints']])
+        matrix = cls.composeMatrix(**kwargs)
+
+        vertices = om.MPointArray([om.MPoint(point) * matrix for point in obj['controlPoints']])
         polygonCounts = obj['polygonCounts']
         polygonConnects = obj['polygonConnects']
 
         # Create mesh from function set
         #
+        parent = kwargs.get('parent', om.MObject.kNullObj)
+
         fnMesh = om.MFnMesh()
         mesh = fnMesh.create(vertices, polygonCounts, list(chain(*polygonConnects)), parent=parent)
 
@@ -434,6 +523,7 @@ class ShapeDecoder(json.JSONDecoder):
                 fnMesh.setFaceVertexNormal(om.MVector(faceVertexNormal), polygonIndex, faceVertexIndex)
 
         return mesh
+    # endregion
 
 
 def applyColorIndex(shape, colorIndex):
@@ -447,14 +537,14 @@ def applyColorIndex(shape, colorIndex):
 
     # Initialize function set
     #
-    fnDagNode = om.MFnDagNode(shape)
-    fullPathName = fnDagNode.fullPathName()
+    dagPath = dagutils.getMDagPath(shape)
+    fullPathName = dagPath.fullPathName()
 
     # Enable color overrides
     #
-    mc.setAttr('%s.overrideEnabled' % fullPathName, True)
-    mc.setAttr('%s.overrideRGBColors' % fullPathName, True)
-    mc.setAttr('%s.overrideColor' % fullPathName, colorIndex)
+    mc.setAttr(f'{fullPathName}.overrideEnabled', True)
+    mc.setAttr(f'{fullPathName}.overrideRGBColors', True)
+    mc.setAttr(f'{fullPathName}.overrideColor', colorIndex)
 
 
 def applyColorRGB(shape, colorRGB):
@@ -468,19 +558,19 @@ def applyColorRGB(shape, colorRGB):
 
     # Initialize function set
     #
-    fnDagNode = om.MFnDagNode(shape)
-    fullPathName = fnDagNode.fullPathName()
+    dagPath = dagutils.getMDagPath(shape)
+    fullPathName = dagPath.fullPathName()
 
     # Enable color overrides
     #
-    mc.setAttr('%s.overrideEnabled' % fullPathName, True)
-    mc.setAttr('%s.overrideRGBColors' % fullPathName, True)
+    mc.setAttr(f'{fullPathName}.overrideEnabled', True)
+    mc.setAttr(f'{fullPathName}.overrideRGBColors', True)
 
     # Set color RGB values
     #
-    mc.setAttr('%s.overrideColorR' % fullPathName, colorRGB[0])
-    mc.setAttr('%s.overrideColorG' % fullPathName, colorRGB[0])
-    mc.setAttr('%s.overrideColorB' % fullPathName, colorRGB[0])
+    mc.setAttr(f'{fullPathName}.overrideColorR', colorRGB[0])
+    mc.setAttr(f'{fullPathName}.overrideColorG', colorRGB[0])
+    mc.setAttr(f'{fullPathName}.overrideColorB', colorRGB[0])
 
 
 def applyColorSide(shape, side):
@@ -504,10 +594,10 @@ def applyLineWidth(shape, lineWidth):
     :rtype: None
     """
 
-    fnDagNode = om.MFnDagNode(shape)
+    dagPath = dagutils.getMDagPath(shape)
+    fullPathName = dagPath.fullPathName()
 
-    plug = fnDagNode.findPlug('lineWidth', False)
-    plug.setFloat(lineWidth)
+    mc.setAttr(f'{fullPathName}.lineWidth', lineWidth)
 
 
 def colorizeShape(shape, **kwargs):
@@ -542,36 +632,38 @@ def colorizeShape(shape, **kwargs):
         return applyColorSide(shape, side)
 
 
-def createShapeTemplate(dependNode, filePath):
+def createShapeTemplate(node, filePath):
     """
-    Creates a shape template from the supplied dependency node.
+    Creates a shape template from the supplied transform or shape node.
 
-    :type dependNode: om.MObject
+    :type node: Union[str, om.MObject, om.MDagPath]
     :type filePath: str
     :rtype: None
     """
 
-    # Inspect api type
+    # Evaluate api type
     #
-    shapes = None
+    node = dagutils.getMObject(node)
+    shapes = []
 
-    if dependNode.hasFn(om.MFn.kTransform):
+    if node.hasFn(om.MFn.kTransform):
 
-        shapes = list(dagutils.iterShapes(dependNode))
+        shapes.extend(list(dagutils.iterShapes(node)))
 
-    elif dependNode.hasFn(om.MFn.kShape):
+    elif node.hasFn(om.MFn.kShape):
 
-        shapes = [dependNode]
+        shapes.append(node)
 
     else:
 
-        raise TypeError('createShapeTemplate() expects a shape node (%s given)!' % dependNode.apiTypeStr)
+        raise TypeError(f'createShapeTemplate() expects a shape node ({node.apiTypeStr} given)!')
 
     # Save json file
     #
     with open(filePath, 'w') as jsonFile:
 
-        json.dump(shapes, jsonFile, cls=ShapeEncoder)
+        log.info(f'Saving shape template to: {filePath}')
+        json.dump(shapes, jsonFile, cls=ShapeEncoder, indent=4)
 
 
 def applyShapeTemplate(filePath, **kwargs):
@@ -580,23 +672,24 @@ def applyShapeTemplate(filePath, **kwargs):
     This name will be used to lookup the json file from the shapes directory.
 
     :type filePath: str
-    :key scale: float
+    :key size: float
+    :key localPosition: Union[om.MVector, Tuple[float, float, float]]
+    :key localRotate: Union[om.MVector, Tuple[float, float, float]]
+    :key localScale: Union[om.MVector, Tuple[float, float, float]]
+    :key lineWidth: float
     :key parent: om.MObject
-    :rtype: list[om.MObject]
+    :rtype: List[om.MObject]
     """
 
     # Check if file exists
     #
     if not os.path.exists(filePath):
 
-        log.warning('Unable to locate shape template: %s' % filePath)
+        log.warning(f'Unable to locate shape template: {filePath}')
         return []
 
     # Iterate through shape nodes
     #
-    parent = kwargs.get('parent', om.MObject.kNullObj)
-    scale = kwargs.get('scale', 1.0)
-
     with open(filePath, 'r') as jsonFile:
 
-        return json.load(jsonFile, cls=ShapeDecoder, scale=scale, parent=parent)
+        return json.load(jsonFile, cls=ShapeDecoder, **kwargs)
