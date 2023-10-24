@@ -48,7 +48,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         """
 
         skin = pymxs.runtime.Skin()
-        pymxs.runtime.addModifier(mesh.object(), skin)
+        pymxs.runtime.addModifier(mesh, skin)
 
         return cls(skin)
 
@@ -234,9 +234,20 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         :rtype: None
         """
 
+        node = fnnode.FnNode()
+
         for influence in influences:
 
-            skinutils.addInfluence(self.object(), influence)
+            success = node.trySetObject(influence)
+
+            if success:
+
+                skinutils.addInfluence(self.object(), node.object())
+
+            else:
+
+                log.warning(f'Unable to locate influence: {influence}')
+                continue
 
     def removeInfluence(self, *influenceIds):
         """

@@ -433,9 +433,20 @@ class FnSkin(fnnode.FnNode, afnskin.AFnSkin):
         :rtype: bool
         """
 
+        node = fnnode.FnNode()
+
         for influence in influences:
 
-            skinutils.addInfluence(self.object(), influence)
+            success = node.trySetObject(influence)
+
+            if success:
+
+                skinutils.addInfluence(self.object(), node.object())
+
+            else:
+
+                log.warning(f'Unable to locate influence: {influence}')
+                continue
 
     def removeInfluence(self, *influenceIds):
         """
