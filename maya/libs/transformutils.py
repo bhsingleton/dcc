@@ -1375,7 +1375,7 @@ def createRotationMatrix(value):
 
         return value.asMatrix()
 
-    elif isinstance(value, (list, tuple)):
+    elif isinstance(value, (list, tuple, om.MVector)):
 
         radians = [math.radians(x) for x in value]
         eulerRotation = om.MEulerRotation(radians, order=EULER_ROTATE_ORDER[0])
