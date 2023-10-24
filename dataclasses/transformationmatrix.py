@@ -18,7 +18,7 @@ class TransformationMatrix(matrix.Matrix):
         """
         Private method called after a new instance is created.
 
-        :type args: List[list[float]]
+        :type args: List[List[float]]
         :key row1: vector.Vector
         :key row2: vector.Vector
         :key row3: vector.Vector
@@ -371,7 +371,7 @@ class TransformationMatrix(matrix.Matrix):
 
         if callable(func):
 
-            return func(self)
+            return func(self.rotationPart())
 
         else:
 
@@ -404,7 +404,7 @@ class TransformationMatrix(matrix.Matrix):
                 self.row1.normalize(),
                 self.row2.normalize(),
                 self.row3.normalize(),
-                vector.Vector.origin
+                vector.Vector.zero
             ]
         )
     # endregion
@@ -554,7 +554,7 @@ class TransformationMatrix(matrix.Matrix):
                 vector.Vector(self.row1.length(), 0.0, 0.0),
                 vector.Vector(0.0, self.row2.length(), 0.0),
                 vector.Vector(0.0, 0.0, self.row3.length()),
-                vector.Vector.origin
+                vector.Vector.zero
             ]
         )
     # endregion
