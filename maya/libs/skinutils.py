@@ -506,6 +506,21 @@ def setWeightList(skinCluster, weightList, modifier=None):
     normalizePlug.setBool(True)
 
 
+def getPreBindMatrix(skinCluster, influenceId):
+    """
+    Returns the pre-bind matrix for the specified influence ID.
+
+    :type skinCluster: om.MMObject
+    :type influenceId: int
+    :rtype: om.MMatrix
+    """
+
+    plug = plugutils.findPlug(skinCluster, 'bindPreMatrix')
+    element = plug.elementByLogicalIndex(influenceId)
+
+    return plugmutators.getValue(element)
+
+
 @undo(name='Reset Pre-Bind Matrices')
 def resetPreBindMatrices(skinCluster, modifier=None):
     """
