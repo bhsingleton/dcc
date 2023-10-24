@@ -1,3 +1,4 @@
+import re
 import fnmatch
 
 from maya import cmds as mc, OpenMaya as legacy
@@ -12,6 +13,11 @@ import logging
 logging.basicConfig()
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
+
+
+__name_regex__ = re.compile(r'^(?:\:?([a-zA-Z0-9_]))+$')
+__uuid_regex__ = re.compile(r'^[A-Z0-9]{8}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{12}$')
+__path_regex__ = re.compile(r'^(.*\|)([^\|]*)$')
 
 
 def getNodeName(node, includePath=False, includeNamespace=False):
@@ -174,55 +180,140 @@ def promoteMObject(node):
 def getMObjectByName(name):
     """
     Returns an MObject from the supplied node name.
-    If a plug is included in the name then a tuple will be returned instead.
-    There's a better plug lookup method inside plugutils!
 
-    :type name: str
+    :type string: Union[str, unicode]
+    :rtype: om.MObject
+    """
+
+    # Check if a namespace was supplied
+    # If not, then use a wildcard to search recursively!
+    #
+    strings = name.split(':')
+    hasNamespace = len(strings) >= 2
+
+    name = strings[-1]
+    namespaces = (':'.join(strings[:-1]),) if hasNamespace else ('', '*')  # Wildcards do not account for the root namespace!
+
+    selection = om.MSelectionList()
+
+    for namespace in namespaces:
+
+        try:
+
+            selection.add(f'{namespace}:{name}')
+
+        except RuntimeError as exception:
+
+            continue
+
+    # Evaluate selection list
+    #
+    selectionCount = selection.length()
+
+    if selectionCount > 0:
+
+        return selection.getDependNode(0)
+
+    else:
+
+        log.debug(f'Cannot locate node from name: "{name}"')
+        return om.MObject.kNullObj
+
+
+def getMObjectByPath(path):
+    """
+    Returns an MObject from the supplied node path.
+
+    :type string: Union[str, unicode]
+    :rtype: om.MObject
+    """
+
+    # Check if a namespace was supplied
+    # If not, then use a wildcard to search recursively!
+    #
+    hierarchy = path.split('|')
+    leafName = hierarchy[-1]
+    strings = leafName.split(':')
+    hasNamespace = len(strings) >= 2
+
+    name = strings[-1]
+    namespaces = (':'.join(strings[:-1]),) if hasNamespace else ('', '*')
+
+    selection = om.MSelectionList()
+
+    for namespace in namespaces:
+
+        try:
+
+            selection.add(f'{namespace}:{name}')
+
+        except RuntimeError as exception:
+
+            continue
+
+    # Evaluate selection list
+    #
+    selectionCount = selection.length()
+
+    if selectionCount == 0:
+
+        log.debug(f'Cannot locate node from path: "{path}"')
+        return om.MObject.kNullObj
+
+    elif selectionCount == 1:
+
+        return selection.getDependNode(0)
+
+    else:
+
+        parentPath = '|'.join(hierarchy[:-1])
+
+        for i in range(selectionCount):
+
+            node = selection.getDependNode(i)
+            nodePath = getNodeName(includePath=True, includeNamespace=hasNamespace)
+
+            if nodePath.startswith(parentPath):
+
+                return node
+
+            else:
+
+                continue
+
+        log.debug(f'Cannot locate node from path: "{path}"')
+        return om.MObject.kNullObj
+
+
+def getMObjectByString(string):
+    """
+    Returns an MObject from the supplied node name.
+
+    :type string: Union[str, unicode]
     :rtype: om.MObject
     """
 
     # Check if string contains an attribute
     #
-    strings = name.split('.', 1)
-    numStrings = len(strings)
+    isName = __name_regex__.match(string)
+    isPath = __path_regex__.match(string)
+    isUUID = __uuid_regex__.match(string)
 
-    if numStrings == 1:
+    if isName:
 
-        # Try and add node name to selection list
-        # If it fails then a `RuntimeError` will be raised
-        #
-        try:
+        return getMObjectByName(string)
 
-            # Append node name to selection list
-            #
-            selection = om.MSelectionList()
-            selection.add(name)
+    elif isPath:
 
-            return selection.getDependNode(0)
+        return getMObjectByPath(string)
 
-        except RuntimeError as exception:
+    elif isUUID:
 
-            log.debug('"%s" node does not exist!' % name)
-            return om.MObject.kNullObj
+        return getMObjectByMUuid(string)
 
     else:
 
-        # Try and add node and attribute name to selection list
-        # If it fails then a RuntimeError will be raised
-        #
-        try:
-
-            # Append path name to selection list
-            #
-            selection = om.MSelectionList()
-            selection.add(name)
-
-            return selection.getDependNode(0), selection.getPlug(0)
-
-        except RuntimeError as exception:
-
-            log.debug('"%s" plug does not exist!' % name)
-            return om.MObject.kNullObj, om.MPlug()
+        raise TypeError(f'getMObjectByName() expects a valid string ("{string}" given)!')
 
 
 def getMObjectByMUuid(uuid):
@@ -273,8 +364,8 @@ def getMObjectByMDagPath(dagPath):
 
 
 __get_mobject__ = {
-    'str': getMObjectByName,
-    'unicode': getMObjectByName,  # Leaving this here for backwards compatibility
+    'str': getMObjectByString,
+    'unicode': getMObjectByString,  # Leaving this here for backwards compatibility!
     'MUuid': getMObjectByMUuid,
     'MObjectHandle': getMObjectByMObjectHandle,
     'MDagPath': getMObjectByMDagPath
@@ -1166,7 +1257,7 @@ def iterNodesByPattern(*patterns, apiType=om.MFn.kDependencyNode, exactType=Fals
 
             yield node
 
-        elif node.hasFn(apiType):
+        elif not exactType and node.hasFn(apiType):
 
             yield node
 
@@ -1278,6 +1369,24 @@ def stripAll(name):
     name = stripNamespace(name)
 
     return name
+
+
+def absolutify(name, namespace=''):
+    """
+    Ensures the supplied name starts with the root namespace.
+
+    :type name: str
+    :type namespace: str
+    :rtype: str
+    """
+
+    if not name.startswith(':'):
+
+        return f'{namespace}:{name}'
+
+    else:
+
+        return name
 
 
 def isDGType(typeName):
@@ -1463,26 +1572,23 @@ def reparentNode(node, otherNode, modifier=None):
     return otherNode
 
 
-def deleteNode(node, modifier=None):
+def deleteNode(node, includeChildren=False):
     """
     Deletes the supplied dependency node from the scene file.
     In order to prevent any other nodes from being deleted this method breaks all connections before deleting the node.
+    TODO: Add undo support!
 
     :type node: om.MObject
-    :type otherNode: om.MObject
+    :type includeChildren: bool
     :rtype: None
     """
-
-    # Check if a dag modifier was supplied
-    #
-    if modifier is None:
-
-        modifier = om.MDGModifier()
 
     # Break all connections to node
     #
     fnDependNode = om.MFnDependencyNode(node)
     plugs = fnDependNode.getConnections()
+
+    modifier = om.MDGModifier()
 
     for plug in plugs:
 
@@ -1492,7 +1598,7 @@ def deleteNode(node, modifier=None):
 
         if not source.isNull:
 
-            log.info('Breaking connection: %s and %s' % (source.info, plug.info))
+            log.debug(f'Breaking connection: {source.info} and {plug.info}')
             modifier.disconnect(source, plug)
 
         # Check if this plug has any destination connections
@@ -1501,15 +1607,34 @@ def deleteNode(node, modifier=None):
 
         for destination in destinations:
 
-            log.info('Breaking connection: %s and %s' % (plug.info, destination.info))
+            log.debug(f'Breaking connection: {plug.info} and {destination.info}')
             modifier.disconnect(plug, destination)
 
-    # Finally, delete node and execute dag modifier
+    # Next, check if children should be deleted
     #
-    log.info('Deleting node: %s' % fnDependNode.name())
-    modifier.deleteNode(node)
+    if includeChildren:
 
-    # Cache and execute modifier
+        # Delete all children in reverse order
+        #
+        for child in reversed(list(iterDescendants(node, apiType=om.MFn.kDagNode))):
+
+            modifier.deleteNode(child, includeParents=False)
+
+    else:
+
+        # Un-parent immediate children
+        #
+        for child in iterChildren(node):
+
+            modifier.reparentNode(node, om.MObject.kNullObj)
+
+        # Delete any shapes
+        #
+        for shape in iterShapes(node):
+
+            modifier.deleteNode(shape, includeParents=False)
+
+    # Finally, delete node and execute modifier stack
     #
-    commit(modifier.doIt, modifier.undoIt)
+    modifier.deleteNode(node, includeParents=False)
     modifier.doIt()
