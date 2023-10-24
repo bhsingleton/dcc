@@ -156,7 +156,9 @@ def isConstrained(plug):
     # Evaluate connected node
     #
     node = plug.source().node()
-    return node.hasFn(om.MFn.kConstraint)
+    isConstraint = any(map(node.hasFn, (om.MFn.kConstraint, om.MFn.kPluginConstraintNode)))
+
+    return isConstraint
 
 
 def isAnimated(plug):
@@ -303,6 +305,7 @@ def connectPlugs(source, destination, force=False, modifier=None):
 
     # Cache and execute dag modifier
     #
+    log.debug(f'Connecting "{source.info}" > "{destination.info}"')
     modifier.connect(source, destination)
 
     commit(modifier.doIt, modifier.undoIt)
@@ -745,20 +748,32 @@ def findConnectedMessage(dependNode, attribute=om.MObject.kNullObj):
     destinations = plug.destinations()
     destinationCount = len(destinations)
 
+    attributeSupplied = not attribute.isNull()
+
     if destinationCount == 0:
 
         return None
 
     elif destinationCount == 1:
 
-        return destinations[0]
+        # Evaluate destination attribute
+        #
+        destination = destinations[0]
 
-    else:
+        if attributeSupplied:
 
+            return destination if (destination.attribute() == attribute) else None
+
+        else:
+
+            return destination
+
+    elif attributeSupplied:
+
+        # Evaluate destination attributes
+        #
         for destination in destinations:
 
-            # Check if attributes match
-            #
             if destination.attribute() == attribute:
 
                 return destination
@@ -766,6 +781,10 @@ def findConnectedMessage(dependNode, attribute=om.MObject.kNullObj):
             else:
 
                 continue
+
+        return None
+
+    else:
 
         return None
 
