@@ -2,7 +2,9 @@ import json
 import sys
 
 from six.moves import collections_abc
+from . import psonremap
 from ..python import importutils, stringutils
+from ..decorators.staticinitializer import staticInitializer
 
 import logging
 logging.basicConfig()
@@ -61,6 +63,7 @@ class PSONEncoder(json.JSONEncoder):
     # endregion
 
 
+@staticInitializer
 class PSONDecoder(json.JSONDecoder):
     """
     Overload of JSONDecoder used to translate JSON objects back into python objects.
@@ -68,6 +71,17 @@ class PSONDecoder(json.JSONDecoder):
 
     # region Dunderscores
     __slots__ = ()
+    __remaps__ = {}
+
+    @classmethod
+    def __static_init__(cls, *args, **kwargs):
+        """
+        Private method called after this class has been initialized.
+
+        :rtype: None
+        """
+
+        cls.__remaps__.update({remap.name: remap for remap in psonremap.iterRemaps()})
 
     def __init__(self, *args, **kwargs):
         """
@@ -110,6 +124,48 @@ class PSONDecoder(json.JSONDecoder):
 
         return True
 
+    def remap(self, obj):
+        """
+        Remaps the class and module on the supplied JSON object.
+
+        :type obj: Dict[str, Any]
+        :rtype Dict[str, Any]
+        """
+
+        # Check if remap exists
+        #
+        className = obj.get('__class__', obj.get('__name__', ''))
+        moduleName = obj.get('__module__', '')
+
+        remap = self.__remaps__.get(className, None)  # type: psonremap.PSONRemap
+
+        if remap is None:
+
+            return obj
+
+        # Check if class requires updating
+        #
+        if not stringutils.isNullOrEmpty(remap.nameChange):
+
+            log.debug(f'Remapping class: "{className}" > "{remap.nameChange}"')
+            obj['__class__'] = remap.nameChange
+
+        # Check if module requires updating
+        #
+        if not stringutils.isNullOrEmpty(remap.pathChange):
+
+            log.debug(f'Remapping module: "{moduleName}" > "{remap.pathChange}"')
+            obj['__module__'] = remap.pathChange
+
+        # Check if properties require updating
+        #
+        if not stringutils.isNullOrEmpty(remap.properties):
+
+            log.debug(f'Remapping properties: {remap.properties}')
+            obj = {remap.properties.get(key, key): value for (key, value) in obj.items()}
+
+        return obj
+
     def default(self, obj):
         """
         Object hook used to find an appropriate class for the supplied object.
@@ -118,6 +174,10 @@ class PSONDecoder(json.JSONDecoder):
         :type obj: dict
         :rtype: Any
         """
+
+        # Remap any internal dataclass changes
+        #
+        obj = self.remap(obj)
 
         # Find associated class
         #

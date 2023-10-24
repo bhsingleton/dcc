@@ -1,0 +1,27 @@
+[
+  {
+    "name": "FbxAsset",
+    "nameChange": "",
+    "path": "dcc.fbx.libs.fbxasset",
+    "pathChange": "",
+    "properties": {
+      "useLegacySerializer": "useBuiltinSerializer"
+    }
+  },
+  {
+    "name": "FbxSequence",
+    "nameChange": "FbxExportRange",
+    "path": "dcc.fbx.libs.fbxsequence",
+    "pathChange": "dcc.fbx.libs.fbxexportrange",
+    "properties": {}
+  },
+  {
+    "name": "FbxSequencer",
+    "nameChange": "",
+    "path": "dcc.fbx.libs.fbxsequencer",
+    "pathChange": "",
+    "properties": {
+      "sequences": "exportRanges"
+    }
+  }
+]

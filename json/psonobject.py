@@ -1,12 +1,12 @@
 import inspect
 import weakref
 
-from abc import ABCMeta
 from six import with_metaclass, string_types
 from six.moves import collections_abc
 from typing import Any, Union, Tuple, List, Dict
 from copy import copy, deepcopy
 from Qt import QtGui
+from . import pabcmeta
 from ..python import annotationutils, stringutils
 from ..decorators.classproperty import classproperty
 
@@ -16,7 +16,7 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-class PSONObject(with_metaclass(ABCMeta, collections_abc.MutableMapping)):
+class PSONObject(collections_abc.MutableMapping, metaclass=pabcmeta.PABCMeta):
     """
     Overload of `MutableMapping` that uses python properties as form of mapping.
     """
@@ -35,13 +35,28 @@ class PSONObject(with_metaclass(ABCMeta, collections_abc.MutableMapping)):
         #
         super(PSONObject, self).__init__()
 
+    def __post_init__(self, *args, **kwargs):
+        """
+        Private method called after a new instance is created.
+
+        :rtype: None
+        """
+
         # Check for any arguments
         #
         numArgs = len(args)
 
-        if numArgs == 1:
+        if numArgs == 0:
 
-            self.update(args[0])
+            return
+
+        # Check if argument is valid
+        #
+        arg = args[0]
+
+        if isinstance(arg, collections_abc.MutableMapping):
+
+            self.update(arg)
 
     def __getitem__(self, key):
         """
@@ -292,7 +307,7 @@ class PSONObject(with_metaclass(ABCMeta, collections_abc.MutableMapping)):
                     continue
 
     @classmethod
-    def properties(cls, readable=False, writable=True, deletable=False):
+    def getProperties(cls, readable=False, writable=True, deletable=False):
         """
         Returns a dictionary of properties from this class.
 
