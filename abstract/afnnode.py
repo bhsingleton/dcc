@@ -207,16 +207,6 @@ class AFnNode(with_metaclass(ABCMeta, afnobject.AFnObject)):
         return selectionCount == 1 and self.isPartiallySelected()
 
     @abstractmethod
-    def userPropertyBuffer(self):
-        """
-        Returns the user property buffer.
-
-        :rtype: str
-        """
-
-        pass
-
-    @abstractmethod
     def userProperties(self):
         """
         Returns the user properties.

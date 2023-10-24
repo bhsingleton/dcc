@@ -4,6 +4,7 @@ import maya.api.OpenMaya as om
 from six import integer_types
 from dcc.abstract import afnnode
 from dcc.maya.libs import dagutils, attributeutils, plugutils, plugmutators
+from dcc.maya.collections import userproperties
 
 import logging
 logging.basicConfig()
@@ -369,25 +370,6 @@ class FnNode(afnnode.AFnNode):
 
         return dagutils.getAssociatedReferenceNode(self.object())
 
-    def userPropertyBuffer(self):
-        """
-        Returns the user property buffer.
-
-        :rtype: str
-        """
-
-        fnDependNode = om.MFnDependencyNode(self.object())
-        hasAttribute = fnDependNode.hasAttribute('notes')
-
-        if hasAttribute:
-
-            plug = plugutils.findPlug(self.object(), 'notes')
-            return plug.asString()
-
-        else:
-
-            return ''
-
     def userProperties(self):
         """
         Returns the user properties.
@@ -395,7 +377,7 @@ class FnNode(afnnode.AFnNode):
         :rtype: dict
         """
 
-        return {}
+        return userproperties.UserProperties(self.object())
 
     def dependsOn(self, apiType=om.MFn.kDependencyNode):
         """
