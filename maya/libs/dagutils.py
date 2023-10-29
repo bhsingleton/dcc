@@ -947,6 +947,14 @@ def iterChildren(node, apiType=om.MFn.kTransform):
     :rtype: Iterator[om.MObject]
     """
 
+    # Verify this is a dag node
+    #
+    node = getMObject(node)
+
+    if not node.hasFn(om.MFn.kDagNode):
+
+        return iter([])
+
     # Iterate through children
     #
     dagPath = getMDagPath(node)
@@ -1624,9 +1632,11 @@ def deleteNode(node, includeChildren=False):
 
         # Un-parent immediate children
         #
+        world = getWorldNode()
+
         for child in iterChildren(node):
 
-            modifier.reparentNode(node, om.MObject.kNullObj)
+            modifier.reparentNode(child, world)
 
         # Delete any shapes
         #
