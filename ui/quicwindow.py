@@ -22,7 +22,6 @@ class QUicWindow(QtWidgets.QMainWindow, metaclass=qsingleton.QSingleton):
     __qt__ = fnqt.FnQt()
     __icon__ = QtGui.QIcon()
     __author__ = 'Ben Singleton'
-    __hotkeys__ = (QtCore.Qt.Key_Backspace, QtCore.Qt.Key_Delete)
 
     def __init__(self, *args, **kwargs):
         """
@@ -47,22 +46,20 @@ class QUicWindow(QtWidgets.QMainWindow, metaclass=qsingleton.QSingleton):
         :rtype: None
         """
 
-        # Edit window properties
-        #
-        self.setObjectName(self.className)
-        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
-
-        # Check if custom icon exists
-        #
-        if not self.customIcon.isNull():
-
-            self.setWindowIcon(self.customIcon)
-
-        # Execute load operations
+        # Load user interface
         #
         self.preLoad(*args, **kwargs)
         self.__load__(*args, **kwargs)
         self.postLoad(*args, **kwargs)
+
+        # Edit window properties
+        #
+        self.setObjectName(self.className)
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose, True)
+
+        if not self.customIcon.isNull():
+
+            self.setWindowIcon(self.customIcon)
 
     def __getattribute__(self, item):
         """
@@ -178,22 +175,6 @@ class QUicWindow(QtWidgets.QMainWindow, metaclass=qsingleton.QSingleton):
     # endregion
 
     # region Events
-    def keyPressEvent(self, event):
-        """
-        This event handler can be reimplemented in a subclass to receive key press events for the widget.
-
-        :type event: QtGui.QKeyEvent
-        :rtype: None
-        """
-
-        if event.key() in self.__class__.__hotkeys__:
-
-            event.accept()  # Steal key-press
-
-        else:
-
-            super(QUicWindow, self).keyPressEvent(event)
-
     def showEvent(self, event):
         """
         Event method called after the window has been shown.
