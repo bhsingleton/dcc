@@ -1593,10 +1593,10 @@ def deleteNode(node, includeChildren=False):
 
     # Break all connections to node
     #
-    fnDependNode = om.MFnDependencyNode(node)
-    plugs = fnDependNode.getConnections()
+    node = getMObject(node)
+    plugs = om.MFnDependencyNode(node).getConnections()
 
-    modifier = om.MDGModifier()
+    modifier = om.MDagModifier() if node.hasFn(om.MFn.kDagNode) else om.MDGModifier()
 
     for plug in plugs:
 
@@ -1632,11 +1632,9 @@ def deleteNode(node, includeChildren=False):
 
         # Un-parent immediate children
         #
-        world = getWorldNode()
-
         for child in iterChildren(node):
 
-            modifier.reparentNode(child, world)
+            modifier.reparentNode(child, om.MObject.kNullObj)
 
         # Delete any shapes
         #
