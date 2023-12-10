@@ -14,6 +14,27 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
+def getEnumMember(obj, member, cls=None):
+    """
+    Returns the enum member value from the supplied object.
+    If no enum member exists then the enum class is inspected next.
+    When enum classes were introduced into python all legacy enum members were consolidated back into their original enum class!
+
+    :type obj: object
+    :type member: str
+    :type cls: object
+    :rtype: Any
+    """
+
+    try:
+
+        return getattr(obj, member)
+
+    except AttributeError:
+
+        return getattr(cls, member)
+
+
 class FbxSerializer(object):
     """
     Base class used for composing fbx files from DCC scene nodes.
@@ -33,23 +54,13 @@ class FbxSerializer(object):
         '_fbxNodes'
     )
 
-    __types__ = {
-        'float': fbx.FbxFloatDT,
-        'double': fbx.FbxDoubleDT,
-        'int': fbx.FbxIntDT,
-        'short': fbx.FbxShortDT,
-        'long': fbx.FbxLongLongDT,
-        'bool': fbx.FbxBoolDT,
-        'string': fbx.FbxStringDT
+    __up_axes__ = {
+        'x': getEnumMember(fbx.FbxAxisSystem, 'eXAxis', cls=fbx.FbxAxisSystem.EUpVector),
+        'y': getEnumMember(fbx.FbxAxisSystem, 'eYAxis', cls=fbx.FbxAxisSystem.EUpVector),
+        'z': getEnumMember(fbx.FbxAxisSystem, 'eZAxis', cls=fbx.FbxAxisSystem.EUpVector)
     }
 
-    __axes__ = {
-        'x': fbx.FbxAxisSystem.eXAxis,
-        'y': fbx.FbxAxisSystem.eYAxis,
-        'z': fbx.FbxAxisSystem.eZAxis
-    }
-
-    __units__ = {
+    __unit_types__ = {
         'millimeter': fbx.FbxSystemUnit.mm,
         'centimeter': fbx.FbxSystemUnit.cm,
         'meter': fbx.FbxSystemUnit.m,
@@ -60,13 +71,23 @@ class FbxSerializer(object):
         'mile': fbx.FbxSystemUnit.Mile,
     }
 
+    __data_types__ = {
+        'float': fbx.FbxFloatDT,
+        'double': fbx.FbxDoubleDT,
+        'int': fbx.FbxIntDT,
+        'short': fbx.FbxShortDT,
+        'long': fbx.FbxLongLongDT,
+        'bool': fbx.FbxBoolDT,
+        'string': fbx.FbxStringDT
+    }
+
     __rotate_orders__ = {
-        'xyz': fbx.eEulerXYZ,
-        'xzy': fbx.eEulerXZY,
-        'yzx': fbx.eEulerYZX,
-        'yxz': fbx.eEulerYXZ,
-        'zxy': fbx.eEulerZXY,
-        'zyx': fbx.eEulerZYX
+        'xyz': getEnumMember(fbx, 'eEulerXYZ', cls=fbx.EFbxRotationOrder),
+        'xzy': getEnumMember(fbx, 'eEulerXZY', cls=fbx.EFbxRotationOrder),
+        'yzx': getEnumMember(fbx, 'eEulerYZX', cls=fbx.EFbxRotationOrder),
+        'yxz': getEnumMember(fbx, 'eEulerYXZ', cls=fbx.EFbxRotationOrder),
+        'zxy': getEnumMember(fbx, 'eEulerZXY', cls=fbx.EFbxRotationOrder),
+        'zyx': getEnumMember(fbx, 'eEulerZYX', cls=fbx.EFbxRotationOrder)
     }
 
     def __init__(self, *args, **kwargs):
@@ -218,9 +239,10 @@ class FbxSerializer(object):
         :rtype: None
         """
 
-        globalSettings = self.fbxScene.GetGlobalSettings()
-        globalSettings.SetTimeMode(fbx.FbxTime.eFrames30)  # TODO: Add support for other time modes!
+        timeMode = getEnumMember(fbx.FbxTime, 'eFrames30', cls=fbx.FbxTime.EMode)  # TODO: Add support for other time modes!
 
+        globalSettings = self.fbxScene.GetGlobalSettings()
+        globalSettings.SetTimeMode(timeMode)
         globalSettings.SetTimelineDefaultTimeSpan(
             fbx.FbxTimeSpan(
                 self.convertFrameToTime(startFrame),
@@ -373,8 +395,10 @@ class FbxSerializer(object):
         """
 
         # Edit transformation inheritance
+        # Uppercase letters represent parent (rotation/scaling) and lowercase for child (rotation/scaling)!
         #
-        copyTo.SetTransformationInheritType(fbx.FbxTransform.eInheritRSrs)  # Uppercase are for parent (rotation/scaling) and lowercase are for child!
+        inheritType = getEnumMember(fbx.FbxTransform, 'eInheritRSrs', cls=fbx.FbxTransform.EInheritType)
+        copyTo.SetTransformationInheritType(inheritType)
 
         # Update local translation
         #
@@ -385,11 +409,12 @@ class FbxSerializer(object):
 
         # Update local rotation in degrees
         #
+        pivotType = getEnumMember(fbx.FbxNode, 'eSourcePivot', cls=fbx.FbxNode.EPivotSet)
         order = copyFrom.rotationOrder()
         eulerAngles = list(map(math.degrees, matrix.eulerRotation(order=order)))
 
         copyTo.SetRotationActive(True)
-        copyTo.SetRotationOrder(fbx.FbxNode.eSourcePivot, self.__class__.__rotate_orders__[order])
+        copyTo.SetRotationOrder(pivotType, self.__class__.__rotate_orders__[order])
         copyTo.LclRotation.Set(fbx.FbxDouble3(*eulerAngles))
 
         # Update local scale
@@ -440,11 +465,13 @@ class FbxSerializer(object):
 
         # Assign material elements
         #
+        mappingMode = getEnumMember(fbx.FbxLayerElement, 'eByPolygon', cls=fbx.FbxLayerElement.EMappingMode)
+        referenceMode = getEnumMember(fbx.FbxLayerElement, 'eIndexToDirect', cls=fbx.FbxLayerElement.EReferenceMode)
         faceMaterialIndices = list(copyFrom.iterFaceMaterialIndices())
 
         materialElement = copyTo.GetElementMaterial()
-        materialElement.SetMappingMode(fbx.FbxLayerElement.eByPolygon)
-        materialElement.SetReferenceMode(fbx.FbxLayerElement.eIndexToDirect)
+        materialElement.SetMappingMode(mappingMode)
+        materialElement.SetReferenceMode(referenceMode)
 
         indexArray = materialElement.GetIndexArray()
         indexArray.SetCount(copyFrom.numFaces())
@@ -461,9 +488,12 @@ class FbxSerializer(object):
 
             # Initialize new normal element
             #
+            mappingMode = getEnumMember(fbx.FbxLayerElement, 'eByPolygonVertex', cls=fbx.FbxLayerElement.EMappingMode)
+            referenceMode = getEnumMember(fbx.FbxLayerElement, 'eIndexToDirect', cls=fbx.FbxLayerElement.EReferenceMode)
+
             normalElement = copyTo.CreateElementNormal()
-            normalElement.SetMappingMode(fbx.FbxLayerElement.eByPolygonVertex)
-            normalElement.SetReferenceMode(fbx.FbxLayerElement.eIndexToDirect)
+            normalElement.SetMappingMode(mappingMode)
+            normalElement.SetReferenceMode(referenceMode)
 
             # Assign normals
             #
@@ -496,9 +526,12 @@ class FbxSerializer(object):
 
                 # Initialize new edge smoothing element
                 #
+                mappingMode = getEnumMember(fbx.FbxLayerElement, 'eByEdge', cls=fbx.FbxLayerElement.EMappingMode)
+                referenceMode = getEnumMember(fbx.FbxLayerElement, 'eDirect', cls=fbx.FbxLayerElement.EReferenceMode)
+
                 smoothingElement = copyTo.CreateElementSmoothing()
-                smoothingElement.SetMappingMode(fbx.FbxLayerElement.eByEdge)
-                smoothingElement.SetReferenceMode(fbx.FbxLayerElement.eDirect)
+                smoothingElement.SetMappingMode(mappingMode)
+                smoothingElement.SetReferenceMode(referenceMode)
 
                 # Assign edge smoothings
                 #
@@ -516,9 +549,12 @@ class FbxSerializer(object):
 
                 # Initialize new smoothing group element
                 #
+                mappingMode = getEnumMember(fbx.FbxLayerElement, 'eByPolygon', cls=fbx.FbxLayerElement.EMappingMode)
+                referenceMode = getEnumMember(fbx.FbxLayerElement, 'eDirect', cls=fbx.FbxLayerElement.EReferenceMode)
+
                 smoothingElement = copyTo.CreateElementSmoothing()
-                smoothingElement.SetMappingMode(fbx.FbxLayerElement.eByPolygon)
-                smoothingElement.SetReferenceMode(fbx.FbxLayerElement.eDirect)
+                smoothingElement.SetMappingMode(mappingMode)
+                smoothingElement.SetReferenceMode(referenceMode)
 
                 # Assign smoothing groups
                 #
@@ -551,11 +587,13 @@ class FbxSerializer(object):
                 # Create new color set element
                 #
                 log.info(f'Creating "{colorSetName}" colour set...')
+                mappingMode = getEnumMember(fbx.FbxLayerElement, 'eByPolygonVertex', cls=fbx.FbxLayerElement.EMappingMode)
+                referenceMode = getEnumMember(fbx.FbxLayerElement, 'eIndexToDirect', cls=fbx.FbxLayerElement.EReferenceMode)
 
                 colorElement = copyTo.CreateElementVertexColor()
                 colorElement.SetName(colorSetName)  # The constructor takes no arguments so use this method to set the name
-                colorElement.SetMappingMode(fbx.FbxLayerElement.eByPolygonVertex)
-                colorElement.SetReferenceMode(fbx.FbxLayerElement.eIndexToDirect)
+                colorElement.SetMappingMode(mappingMode)
+                colorElement.SetReferenceMode(referenceMode)
 
                 # Assign vertex colours
                 #
@@ -594,10 +632,12 @@ class FbxSerializer(object):
             # Create new uv element
             #
             log.info(f'Creating "{uvSetName}" UV set...')
+            mappingMode = getEnumMember(fbx.FbxLayerElement, 'eByPolygonVertex', cls=fbx.FbxLayerElement.EMappingMode)
+            referenceMode = getEnumMember(fbx.FbxLayerElement, 'eIndexToDirect', cls=fbx.FbxLayerElement.EReferenceMode)
 
             layerElement = copyTo.CreateElementUV(uvSetName)
-            layerElement.SetMappingMode(fbx.FbxLayerElement.eByPolygonVertex)
-            layerElement.SetReferenceMode(fbx.FbxLayerElement.eIndexToDirect)
+            layerElement.SetMappingMode(mappingMode)
+            layerElement.SetReferenceMode(referenceMode)
 
             # Assign uv co-ordinates
             #
@@ -632,6 +672,9 @@ class FbxSerializer(object):
             # Create new tangent elements
             # This will create a layer for each UV set!
             #
+            mappingMode = getEnumMember(fbx.FbxLayerElement, 'eByPolygonVertex', cls=fbx.FbxLayerElement.EMappingMode)
+            referenceMode = getEnumMember(fbx.FbxLayerElement, 'eDirect', cls=fbx.FbxLayerElement.EReferenceMode)
+
             copyTo.CreateElementTangent()
             copyTo.CreateElementBinormal()
 
@@ -641,13 +684,13 @@ class FbxSerializer(object):
                 #
                 tangentElement = copyTo.GetElementTangent(channel)
                 tangentElement.SetName(uvSetName)
-                tangentElement.SetMappingMode(fbx.FbxLayerElement.eByPolygonVertex)
-                tangentElement.SetReferenceMode(fbx.FbxLayerElement.eDirect)
+                tangentElement.SetMappingMode(mappingMode)
+                tangentElement.SetReferenceMode(referenceMode)
 
                 binormalElement = copyTo.GetElementBinormal(channel)
                 binormalElement.SetName(uvSetName)
-                binormalElement.SetMappingMode(fbx.FbxLayerElement.eByPolygonVertex)
-                binormalElement.SetReferenceMode(fbx.FbxLayerElement.eDirect)
+                binormalElement.SetMappingMode(mappingMode)
+                binormalElement.SetReferenceMode(referenceMode)
 
                 # Assign tangents
                 #
@@ -774,6 +817,7 @@ class FbxSerializer(object):
 
         names = ('translate', 'rotate', 'scale')
         values = (translation, eulerAngles, scale)
+        interpolationType = getEnumMember(fbx.FbxAnimCurveDef, 'eInterpolationLinear', cls=fbx.FbxAnimCurveDef.EInterpolationType)
 
         for (i, fbxProperty) in enumerate([fbxNode.LclTranslation, fbxNode.LclRotation, fbxNode.LclScaling]):
 
@@ -786,7 +830,7 @@ class FbxSerializer(object):
 
                 animCurve.KeyModifyBegin()
                 keyIndex, lastIndex = animCurve.KeyAdd(time)
-                animCurve.KeySet(keyIndex, time, values[i][j], fbx.FbxAnimCurveDef.eInterpolationLinear)
+                animCurve.KeySet(keyIndex, time, values[i][j], interpolationType)
                 animCurve.KeyModifyEnd()
 
         # TODO: Implement support for custom attributes!
@@ -814,20 +858,27 @@ class FbxSerializer(object):
         animLayer = animStack.GetMember(0)
 
         cls = type(step)
+        frameRange = cls(endFrame - startFrame)
 
-        for frame in inclusiveRange(cls(startFrame), cls(endFrame), step):
+        for frame in inclusiveRange(cls(startFrame - frameRange), cls(endFrame), step):
 
             # Update current time
             #
             self.scene.setTime(frame)
 
-            # Iterate through joints
-            #
-            time = self.convertFrameToTime(frame, timeMode=timeMode)
+            if startFrame <= frame <= endFrame:
 
-            for fbxNode in fbxNodes:
+                # Iterate through joints
+                #
+                time = self.convertFrameToTime(frame, timeMode=timeMode)
 
-                self.bakeFbxNode(fbxNode, time=time, animLayer=animLayer)
+                for fbxNode in fbxNodes:
+
+                    self.bakeFbxNode(fbxNode, time=time, animLayer=animLayer)
+
+            else:
+
+                continue  # This is here to support nodes that utilize internal caching!
 
         # Enable redraw
         #
@@ -859,8 +910,10 @@ class FbxSerializer(object):
         # Create fbx property for reverse lookups
         # This property should not be exported since hash codes are not persistent!
         #
+        flag = getEnumMember(fbx.FbxPropertyFlags, 'eNotSavable', cls=fbx.FbxPropertyFlags.EFlags)
+
         fbxProperty = fbx.FbxProperty.Create(fbxNode, fbx.FbxStringDT, 'handle', '')
-        fbxProperty.ModifyFlag(fbx.FbxPropertyFlags.eNotSavable, True)
+        fbxProperty.ModifyFlag(flag, True)
 
         success = fbxProperty.Set(repr(handle))
 
@@ -890,8 +943,9 @@ class FbxSerializer(object):
 
         # Promote to fbx skeleton
         #
+        skeletonType = getEnumMember(fbx.FbxSkeleton, 'eLimbNode', cls=fbx.FbxSkeleton.EType)
         fbxSkeleton = fbx.FbxSkeleton.Create(self.fbxManager, name)
-        fbxSkeleton.SetSkeletonType(fbx.FbxSkeleton.eLimbNode)
+        fbxSkeleton.SetSkeletonType(skeletonType)
 
         fbxNode.SetNodeAttribute(fbxSkeleton)
 
@@ -981,8 +1035,10 @@ class FbxSerializer(object):
 
         # Link cluster to node
         #
+        linkMode = getEnumMember(fbx.FbxCluster, 'eTotalOne', cls=fbx.FbxCluster.ELinkMode)
+
         fbxCluster.SetLink(fbxLimb)
-        fbxCluster.SetLinkMode(fbx.FbxCluster.eTotalOne)
+        fbxCluster.SetLinkMode(linkMode)
         fbxCluster.SetTransformLinkMatrix(fbxLimb.EvaluateGlobalTransform())
 
         return fbxCluster
@@ -997,8 +1053,10 @@ class FbxSerializer(object):
 
         # Create skin deformer
         #
+        skinningType = getEnumMember(fbx.FbxSkin, 'eLinear', cls=fbx.FbxSkin.EType)
+
         fbxSkin = fbx.FbxSkin.Create(self.fbxManager, skin.name())
-        fbxSkin.SetSkinningType(fbx.FbxSkin.eLinear)
+        fbxSkin.SetSkinningType(skinningType)
 
         # Create skin clusters
         #
@@ -1109,11 +1167,15 @@ class FbxSerializer(object):
         filename = os.path.basename(texturePath)
         name, extension = os.path.splitext(filename)
 
+        textureUse = getEnumMember(fbx.FbxFileTexture, 'eStandard', cls=fbx.FbxFileTexture.ETextureUse)
+        mappingType = getEnumMember(fbx.FbxFileTexture, 'eUV', cls=fbx.FbxFileTexture.EMappingType)
+        materialUse = getEnumMember(fbx.FbxFileTexture, 'eModelMaterial', cls=fbx.FbxFileTexture.EMaterialUse)
+
         fbxFileTexture = fbx.FbxFileTexture.Create(self.fbxManager, name)
         fbxFileTexture.SetFileName(os.path.normpath(os.path.expandvars(texturePath)))
-        fbxFileTexture.SetTextureUse(fbx.FbxTexture.eStandard)
-        fbxFileTexture.SetMappingType(fbx.FbxTexture.eUV)
-        fbxFileTexture.SetMaterialUse(fbx.FbxFileTexture.eModelMaterial)
+        fbxFileTexture.SetTextureUse(textureUse)
+        fbxFileTexture.SetMappingType(mappingType)
+        fbxFileTexture.SetMaterialUse(materialUse)
         fbxFileTexture.SetSwapUV(False)
         fbxFileTexture.SetTranslation(0.0, 0.0)
         fbxFileTexture.SetRotation(0.0, 0.0)
