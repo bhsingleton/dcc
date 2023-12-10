@@ -90,7 +90,7 @@ def rebuildPositionList(node):
         log.warning(f'Unable to locate PRS controller from ${node.name}!' % node.name)
         return False
 
-    # Get rotation list
+    # Get position list
     #
     positionController = controllerutils.decomposePRSController(prs)[0]
     positionList = controllerutils.findControllerByClass(positionController, pymxs.runtime.Position_List)
@@ -101,7 +101,7 @@ def rebuildPositionList(node):
         log.warning(f'Unable to rebuild ${node.name}[#position].controller!')
         return False
 
-    # Freeze rotation using current matrix
+    # Freeze position using current matrix
     #
     frozenPosition = transformutils.getMatrix(node).translationPart
 
