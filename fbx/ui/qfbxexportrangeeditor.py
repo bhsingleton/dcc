@@ -1,3 +1,4 @@
+import math
 import os
 
 from Qt import QtWidgets, QtCore, QtGui
@@ -370,7 +371,7 @@ class QFbxExportRangeEditor(quicwindow.QUicWindow):
 
         if okay:
 
-            index = filteredPaths.index(item)
+            index = referencePaths.index(item)
             guid = reference(references[index]).guid()
             exportRange = self.defaultExportRange()
 
@@ -793,7 +794,7 @@ class QFbxExportRangeEditor(quicwindow.QUicWindow):
             # Try to open scene file
             #
             filePath = self.fileListWidget.item(i).text()
-            progress = increment * float(i + 1)
+            progress = math.ceil(increment * float(i + 1))
 
             success = self.scene.open(filePath)
 
