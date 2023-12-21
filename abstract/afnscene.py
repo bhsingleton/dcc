@@ -469,8 +469,6 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
         if self.isPathRelativeTo(absolutePath, directory):
 
             variablePath = os.path.join(variable, os.path.relpath(absolutePath, directory))
-            log.debug('%s > %s' % (absolutePath, variablePath))
-
             return variablePath
 
         else:
