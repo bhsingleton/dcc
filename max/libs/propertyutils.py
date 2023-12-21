@@ -10,7 +10,7 @@ log.setLevel(logging.INFO)
 
 
 __property_parser__ = re.compile(r'\.([a-zA-Z0-9_]+)')
-__properties__ = {}  # Used with inspectClassProperties
+__properties__ = {}  # Used by `inspectClassProperties` method for caching purposes!
 
 
 def isValue(value):
@@ -38,8 +38,9 @@ def isPropertyAnimatable(obj, name):
 
         return pymxs.runtime.isPropertyAnimatable(obj, name)
 
-    except RuntimeError:
+    except RuntimeError as exception:
 
+        log.debug(exception)
         return False
 
 
@@ -72,7 +73,7 @@ def getDefaultPropertyValue(cls, name):
 
     except (SystemError, RuntimeError):
 
-        log.debug('Error encountered while retrieving "%s::%s" default value!' % (cls, name))
+        log.debug(f'Error encountered while retrieving "{cls}::{name}" default value!')
         return None
 
 
