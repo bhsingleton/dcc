@@ -1,6 +1,6 @@
-from PySide2 import QtCore, QtWidgets, QtGui
-from dcc.python import stringutils
-from dcc.ui.models import qabstractfileitemmodel
+from Qt import QtCore, QtWidgets, QtGui
+from . import qabstractfileitemmodel
+from ...python import stringutils
 
 import logging
 logging.basicConfig()
