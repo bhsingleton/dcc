@@ -351,6 +351,7 @@ def getTypedValue(plug, **kwargs):
 __get_value__ = {
     om.MFn.kNumericAttribute: getNumericValue,
     om.MFn.kUnitAttribute: getUnitValue,
+    om.MFn.kTimeAttribute: getUnitValue,
     om.MFn.kTypedAttribute: getTypedValue,
     om.MFn.kEnumAttribute: getInteger,
     om.MFn.kMatrixAttribute: getMatrix,
