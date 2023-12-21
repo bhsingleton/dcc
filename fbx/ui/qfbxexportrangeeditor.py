@@ -458,6 +458,17 @@ class QFbxExportRangeEditor(quicwindow.QUicWindow):
         :rtype: None
         """
 
+        # Check if there are any rows remaining
+        # We want to make sure there's always at least one export range remaining!
+        #
+        rowCount = self.sequencerItemModel.rowCount()
+
+        if not (rowCount > 1):
+
+            return
+
+        # Remove selected rows
+        #
         selectedRows = self.getSelectedRows()
 
         for (start, end) in reversed(tuple(consecutivePairs(selectedRows))):
