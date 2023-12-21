@@ -184,7 +184,7 @@ def isPathVariable(path):
     :rtype: bool
     """
 
-    return path.startswith(('%', '$'))
+    return path.startswith('$') or (path.startswith('%') and path.endswith('%'))
 
 
 def makePathRelativeTo(path, directory):
@@ -210,13 +210,13 @@ def makePathRelativeTo(path, directory):
     if isPathRelativeTo(path, directory):
 
         relativePath = os.path.relpath(path, directory)
-        log.info('%s > %s' % (path, relativePath))
+        log.info(f'Relativizing path: {path} > {relativePath}')
 
         return relativePath
 
     else:
 
-        log.warning('Cannot make: %s, relative to: %s' % (path, directory))
+        log.warning(f'Unable to make: {path}, relative to: {directory}')
         return path
 
 
@@ -261,6 +261,7 @@ def makePathAbsolute(path, paths=None):
 
         if os.path.exists(absolutePath):
 
+            log.info(f'Absolutifying path: {path} > {absolutePath}')
             return absolutePath
 
         else:
@@ -269,7 +270,7 @@ def makePathAbsolute(path, paths=None):
 
     # Notify user
     #
-    log.warning('Unable to make path absolute: %s' % path)
+    log.warning(f'Unable to make path absolute: {path}')
     return path
 
 
@@ -297,11 +298,11 @@ def makePathVariable(path, variable):
     if isPathRelativeTo(absolutePath, directory):
 
         variablePath = os.path.join(variable, os.path.relpath(absolutePath, directory))
-        log.debug('%s > %s' % (absolutePath, variablePath))
+        log.info(f'Variablizing path: {absolutePath} > {variablePath}')
 
         return variablePath
 
     else:
 
-        log.warning('Unable to make path variable: %s' % path)
+        log.warning(f'Unable to make path variable: {path}')
         return path
