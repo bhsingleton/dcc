@@ -72,13 +72,10 @@ class FbxSerializer(object):
     }
 
     __data_types__ = {
-        'float': fbx.FbxFloatDT,
-        'double': fbx.FbxDoubleDT,
-        'int': fbx.FbxIntDT,
-        'short': fbx.FbxShortDT,
-        'long': fbx.FbxLongLongDT,
         'bool': fbx.FbxBoolDT,
-        'string': fbx.FbxStringDT
+        'int': fbx.FbxUIntDT,
+        'float': fbx.FbxDoubleDT,
+        'str': fbx.FbxStringDT
     }
 
     __rotate_orders__ = {
@@ -290,14 +287,22 @@ class FbxSerializer(object):
         :rtype: None
         """
 
-        # Iterate through nodes
+        # Evaluate supplied nodes
         #
-        node = fnnode.FnNode(iter(nodes))
+        numNodes = len(nodes)
 
-        while not node.isDone():
+        if numNodes > 0:
 
-            self.createFbxNode(node)
-            node.next()
+            node = fnnode.FnNode(iter(nodes))
+
+            while not node.isDone():
+
+                self.createFbxNode(node)
+                node.next()
+
+        else:
+
+            log.debug('No nodes supplied to allocate!')
 
     def ensureParent(self, copyFrom, copyTo):
         """
@@ -431,24 +436,40 @@ class FbxSerializer(object):
         :rtype: None
         """
 
-        # Initialize control points for mesh
+        # Assign triangulated mesh to function set
         #
-        copyTo.InitControlPoints(copyFrom.numVertices())
+        original = copyFrom.object()
+        triangulated = copyFrom.triangulatedObject()
+
+        success = copyFrom.trySetObject(triangulated)
+
+        if not success:
+
+            log.warning(f'Unable to locate triangulated mesh @ {copyFrom.name()}')
+            return
+
+        # Initialize control points
+        #
+        numControlPoints = copyFrom.numVertices()
+        copyTo.InitControlPoints(numControlPoints)
 
         for (index, controlPoint) in enumerate(copyFrom.iterVertices()):
 
             copyTo.SetControlPointAt(fbx.FbxVector4(*controlPoint), index)
 
-        # Assign vertices to polygons
+        # Define face-vertex relationships
         #
-        faceVertexIndices = tuple(copyFrom.iterFaceVertexIndices())
+        normalizeIndex = lambda i: i - copyFrom.arrayIndexType
+        normalizeIndices = lambda x: tuple(map(normalizeIndex, x))
+
+        faceVertexIndices = tuple(map(normalizeIndices, copyFrom.iterFaceVertexIndices()))
         numFaceVertices = sum(map(len, faceVertexIndices))
 
-        for (polygonIndex, faceVertexIndices) in enumerate(faceVertexIndices):
+        for (faceIndex, faceVertexIndices) in enumerate(faceVertexIndices):
 
             # Define face-vertex composition
             #
-            copyTo.BeginPolygon(polygonIndex)
+            copyTo.BeginPolygon(faceIndex)
 
             for vertexIndex in faceVertexIndices:
 
@@ -467,7 +488,7 @@ class FbxSerializer(object):
         #
         mappingMode = getEnumMember(fbx.FbxLayerElement, 'eByPolygon', cls=fbx.FbxLayerElement.EMappingMode)
         referenceMode = getEnumMember(fbx.FbxLayerElement, 'eIndexToDirect', cls=fbx.FbxLayerElement.EReferenceMode)
-        faceMaterialIndices = list(copyFrom.iterFaceMaterialIndices())
+        faceMaterialIndices = tuple(map(normalizeIndex, copyFrom.iterFaceMaterialIndices()))
 
         materialElement = copyTo.GetElementMaterial()
         materialElement.SetMappingMode(mappingMode)
@@ -564,9 +585,9 @@ class FbxSerializer(object):
                 directArray = smoothingElement.GetDirectArray()
                 directArray.SetCount(numSmoothingGroups)
 
-                for index, group in enumerate(smoothingGroups):
+                for (index, groupIndex) in enumerate(smoothingGroups):
 
-                    directArray.SetAt(index, group[0])
+                    directArray.SetAt(index, groupIndex)
 
         else:
 
@@ -591,7 +612,7 @@ class FbxSerializer(object):
                 referenceMode = getEnumMember(fbx.FbxLayerElement, 'eIndexToDirect', cls=fbx.FbxLayerElement.EReferenceMode)
 
                 colorElement = copyTo.CreateElementVertexColor()
-                colorElement.SetName(colorSetName)  # The constructor takes no arguments so use this method to set the name
+                colorElement.SetName(colorSetName)  # The constructor takes no arguments so use this method to set the name!
                 colorElement.SetMappingMode(mappingMode)
                 colorElement.SetReferenceMode(referenceMode)
 
@@ -653,7 +674,7 @@ class FbxSerializer(object):
 
             # Assign uv indices
             #
-            assignedUVs = copyFrom.getAssignedUVs(channel=channel)
+            assignedUVs = tuple(map(normalizeIndices, copyFrom.getAssignedUVs(channel=channel)))
             numAssignedUVs = copyFrom.numFaceVertexIndices()
 
             indexArray = layerElement.GetIndexArray()
@@ -669,52 +690,19 @@ class FbxSerializer(object):
 
         if includeNormals and includeTangentsAndBinormals:
 
-            # Create new tangent elements
-            # This will create a layer for each UV set!
-            #
-            mappingMode = getEnumMember(fbx.FbxLayerElement, 'eByPolygonVertex', cls=fbx.FbxLayerElement.EMappingMode)
-            referenceMode = getEnumMember(fbx.FbxLayerElement, 'eDirect', cls=fbx.FbxLayerElement.EReferenceMode)
+            success = copyTo.GenerateTangentsDataForAllUVSets()
 
-            copyTo.CreateElementTangent()
-            copyTo.CreateElementBinormal()
+            if not success:
 
-            for (channel, uvSetName) in enumerate(uvSetNames):
-
-                # Get indexed elements
-                #
-                tangentElement = copyTo.GetElementTangent(channel)
-                tangentElement.SetName(uvSetName)
-                tangentElement.SetMappingMode(mappingMode)
-                tangentElement.SetReferenceMode(referenceMode)
-
-                binormalElement = copyTo.GetElementBinormal(channel)
-                binormalElement.SetName(uvSetName)
-                binormalElement.SetMappingMode(mappingMode)
-                binormalElement.SetReferenceMode(referenceMode)
-
-                # Assign tangents
-                #
-                tangents, binormals = list(zip(*list(copyFrom.iterTangentsAndBinormals(channel=channel))))
-
-                tangentArray = tangentElement.GetDirectArray()
-                tangentArray.SetCount(numFaceVertices)
-
-                for (index, tangent) in enumerate(chain(*tangents)):
-
-                    tangentArray.SetAt(index, fbx.FbxVector4(tangent[0], tangent[1], tangent[2], 1.0))
-
-                # Assign binormals
-                #
-                binormalArray = binormalElement.GetDirectArray()
-                binormalArray.SetCount(numFaceVertices)
-
-                for (index, binormal) in enumerate(chain(*binormals)):
-
-                    binormalArray.SetAt(index, fbx.FbxVector4(binormal[0], binormal[1], binormal[2], 1.0))
+                log.warning('Unable to generate tangents and binormals!')
 
         else:
 
             log.info('Skipping tangents and binormals...')
+
+        # Reassign original mesh
+        #
+        copyFrom.setObject(original)
 
     def copyMaterials(self, copyFrom, copyTo):
         """
@@ -755,7 +743,32 @@ class FbxSerializer(object):
         :rtype: None
         """
 
-        pass
+        # Iterate through attributes
+        #
+        for attributeName in copyFrom.iterAttr(userDefined=True):
+
+            # Check if attribute type is supported
+            #
+            value = copyFrom.getAttr(attributeName)
+            typeName = type(value).__name__
+
+            if typeName not in self.__data_types__:
+
+                log.debug(f'Cannot find an equivalent FBX type for: {typeName}!')
+                continue
+
+            # Create user property
+            #
+            userDefinedFlag = getEnumMember(fbx.FbxPropertyFlags, 'eUserDefined', cls=fbx.FbxPropertyFlags.EFlags)
+            animatableFlag = getEnumMember(fbx.FbxPropertyFlags, 'eAnimatable', cls=fbx.FbxPropertyFlags.EFlags)
+
+            fbxProperty = fbx.FbxProperty.Create(copyTo, self.__data_types__[typeName], attributeName, '')
+            fbxProperty.ModifyFlag(userDefinedFlag, True)
+
+            isAnimatable = isinstance(value, (bool, int, float))
+            fbxProperty.ModifyFlag(animatableFlag, isAnimatable)
+
+            fbxProperty.Set(value)
 
     def convertFrameToTime(self, frame, timeMode=None):
         """
@@ -812,9 +825,6 @@ class FbxSerializer(object):
 
         # Iterate through transform components
         #
-        handle = joint.handle()
-        fbxNode = self.getFbxNodeByHandle(handle)
-
         names = ('translate', 'rotate', 'scale')
         values = (translation, eulerAngles, scale)
         interpolationType = getEnumMember(fbx.FbxAnimCurveDef, 'eInterpolationLinear', cls=fbx.FbxAnimCurveDef.EInterpolationType)
@@ -833,7 +843,37 @@ class FbxSerializer(object):
                 animCurve.KeySet(keyIndex, time, values[i][j], interpolationType)
                 animCurve.KeyModifyEnd()
 
-        # TODO: Implement support for custom attributes!
+        # Iterate through custom attributes
+        #
+        animatableFlag = getEnumMember(fbx.FbxPropertyFlags, 'eAnimatable', cls=fbx.FbxPropertyFlags.EFlags)
+
+        for attributeName in joint.iterAttr(userDefined=True):
+
+            # Find associated property
+            #
+            fbxProperty = fbxNode.FindProperty(attributeName)
+
+            if not fbxProperty.IsValid():
+
+                continue
+
+            # Check if property is animatable
+            #
+            isAnimatable = fbxProperty.GetFlag(animatableFlag)
+
+            if not isAnimatable:
+
+                continue
+
+            # Update anim-curve
+            #
+            animCurve = fbxProperty.GetCurve(animLayer, True)
+            animCurve.SetName(f'{fbxNode.GetName()}_anim_{attributeName}')
+
+            animCurve.KeyModifyBegin()
+            keyIndex, lastIndex = animCurve.KeyAdd(time)
+            animCurve.KeySet(keyIndex, time, joint.getAttr(attributeName), interpolationType)
+            animCurve.KeyModifyEnd()
 
     def bakeAnimation(self, *fbxNodes, startFrame=0, endFrame=1, step=1):
         """
@@ -920,6 +960,10 @@ class FbxSerializer(object):
         if not success:
 
             raise RuntimeError(f'Unable to assign {handle} handle to FBX property!')
+
+        # Copy custom attributes
+        #
+        self.copyCustomAttributes(node, fbxNode)
 
         return fbxNode
 
@@ -1058,19 +1102,36 @@ class FbxSerializer(object):
         fbxSkin = fbx.FbxSkin.Create(self.fbxManager, skin.name())
         fbxSkin.SetSkinningType(skinningType)
 
+        # Check if any influences are missing
+        #
+        influences = skin.influences()
+        usedInfluenceIds = skin.getUsedInfluenceIds()
+
+        missing = [influence for (influenceId, influence) in influences.items() if not self.hasHandle(influence.handle()) and influenceId in usedInfluenceIds]
+        numMissing = len(missing)
+
+        if numMissing:
+
+            self.allocateFbxNodes(*missing)
+
+            for influence in missing:
+
+                self.createFbxSkeleton(influence)
+
         # Create skin clusters
         #
-        skinWeights = skin.vertexWeights()
-        influences = skin.influences()
-
         fbxClusters = {}
 
         for (influenceId, influence) in influences.items():
 
-            # Get fbx limb from influence's hash code
+            # Get fbx limb from influence's handle
             #
             handle = influence.handle()
-            fbxLimb = self.fbxNodes[handle]
+            fbxLimb = self.fbxNodes.get(handle, None)
+
+            if fbxLimb is None:
+
+                continue  # Anything required should be accounted for by now!
 
             # Create new fbx cluster
             #
@@ -1081,6 +1142,9 @@ class FbxSerializer(object):
 
         # Apply vertex weights
         #
+        normalizeWeights = lambda pair: (pair[0] - skin.arrayIndexType, pair[1])
+        skinWeights = dict(map(normalizeWeights, skin.iterVertexWeights()))
+
         for (vertexIndex, vertexWeights) in skinWeights.items():
 
             # Iterate through influence ids
@@ -1172,7 +1236,7 @@ class FbxSerializer(object):
         materialUse = getEnumMember(fbx.FbxFileTexture, 'eModelMaterial', cls=fbx.FbxFileTexture.EMaterialUse)
 
         fbxFileTexture = fbx.FbxFileTexture.Create(self.fbxManager, name)
-        fbxFileTexture.SetFileName(os.path.normpath(os.path.expandvars(texturePath)))
+        fbxFileTexture.SetFileName(self.scene.makePathAbsolute(texturePath))
         fbxFileTexture.SetTextureUse(textureUse)
         fbxFileTexture.SetMappingType(mappingType)
         fbxFileTexture.SetMaterialUse(materialUse)

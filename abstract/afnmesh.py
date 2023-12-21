@@ -48,7 +48,6 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
     """
 
     __slots__ = ()
-    __face_triangles__ = {}  # Lookup optimization
 
     ComponentType = ComponentType
     Hit = Hit
@@ -97,6 +96,16 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
 
         return enumerate(elements, start=self.arrayIndexType)
+
+    @abstractmethod
+    def triangulatedObject(self):
+        """
+        Returns the triangulated mesh data object for this mesh.
+
+        :rtype: Any
+        """
+
+        pass
 
     @abstractmethod
     def numVertices(self):
@@ -498,6 +507,27 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
 
         return list(self.iterTangentsAndBinormals(*indices, cls=cls, channel=channel))
+
+    @abstractmethod
+    def getColorSetNames(self):
+        """
+        Returns a list of color set names.
+
+        :rtype: List[str]
+        """
+
+        pass
+
+    @abstractmethod
+    def getColorSetName(self, channel):
+        """
+        Returns the color set name at the specified channel.
+
+        :type channel: int
+        :rtype: str
+        """
+
+        pass
 
     @abstractmethod
     def iterColors(self, cls=Colour, channel=0):

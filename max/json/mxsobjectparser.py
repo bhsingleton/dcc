@@ -339,7 +339,7 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
         #
         if wrapperutils.isKindOf(obj, pymxs.runtime.Scene):
 
-            log.info('Serializing scene: %s' % pymxs.runtime.maxFilename)
+            log.info(f'Serializing scene: {pymxs.runtime.maxFilename}')
             return self.serializeScene(obj)
 
         elif wrapperutils.isKindOf(obj, pymxs.runtime.MAXRootNode):
@@ -348,7 +348,7 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
 
         elif pymxs.runtime.isValidNode(obj):
 
-            log.info('Serializing node: %s' % obj.name)
+            log.info(f'Serializing node: {obj.name}')
             return self.serializeNode(obj)
 
         elif pymxs.runtime.isController(obj):
@@ -829,7 +829,7 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
             properties['vertices'] = list(meshutils.iterVertices(mesh))
             properties['faceVertexIndices'] = list(meshutils.iterFaceVertexIndices(mesh))
             properties['faceTriangleVertexIndices'] = faceTriangleVertexIndices
-            properties['smoothingGroups'] = list(meshutils.iterSmoothingGroups(mesh))
+            properties['smoothingGroups'] = [meshutils.decomposeSmoothingGroups(bits) for bits in meshutils.iterSmoothingGroups(mesh)]
             properties['edgeSmoothings'] = list(meshutils.iterEdgeSmoothings(mesh))
             properties['maps'] = [self.serializeMap(mesh, channel=channel) for channel in range(meshutils.mapCount(mesh))]
             properties['faceMaterialIndices'] = list(meshutils.iterFaceMaterialIndices(mesh))

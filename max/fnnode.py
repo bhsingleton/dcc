@@ -2,7 +2,7 @@ import pymxs
 
 from six import string_types, integer_types
 from dcc.abstract import afnnode, ArrayIndexType
-from dcc.max.libs import nodeutils, propertyutils, attributeutils
+from dcc.max.libs import propertyutils, attributeutils, controllerutils
 
 import logging
 logging.basicConfig()
@@ -64,7 +64,7 @@ class FnNode(afnnode.AFnNode):
         :rtype: bool
         """
 
-        return isinstance(obj, (str, pymxs.MXSWrapperBase))
+        return isinstance(obj, (int, str, pymxs.MXSWrapperBase))
 
     def baseObject(self):
         """
@@ -250,7 +250,7 @@ class FnNode(afnnode.AFnNode):
 
         else:
 
-            raise AttributeError('getAttr() "%s" object has no attribute "%s"' % (obj, name))
+            raise AttributeError(f'getAttr() "{obj}" object has no attribute "{name}"')
 
     def hasAttr(self, name):
         """
@@ -287,18 +287,33 @@ class FnNode(afnnode.AFnNode):
 
         else:
 
-            raise AttributeError('setAttr() "%s" object has no attribute "%s"' % (obj, name))
+            raise AttributeError(f'setAttr() "{obj}" object has no attribute "{name}"')
 
-    def iterAttr(self):
+    def iterAttr(self, userDefined=False):
         """
         Returns a generator that yields attribute names.
 
-        :rtype: iter
+        :type userDefined: bool
+        :rtype: Iterator[str]
         """
 
-        for (key, value) in propertyutils.iterStaticProperties(self.object()):
+        obj = self.object()
 
-            yield key
+        if userDefined:
+
+            attributeHolder = obj.modifiers[pymxs.runtime.Name('attributeHolder')]
+
+            for definition in attributeutils.iterDefinitions(attributeHolder):
+
+                for subAnim in controllerutils.iterSubAnims(definition):
+
+                    yield str(subAnim.name)
+
+        else:
+
+            for (key, value) in propertyutils.iterStaticProperties(obj):
+
+                yield key
 
     def userProperties(self):
         """

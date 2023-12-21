@@ -121,23 +121,25 @@ class AFnNode(with_metaclass(ABCMeta, afnobject.AFnObject)):
         pass
 
     @abstractmethod
-    def iterAttr(self):
+    def iterAttr(self, userDefined=False):
         """
         Returns a generator that yields attribute names.
 
-        :rtype: iter
+        :type userDefined: bool
+        :rtype: Iterator[str]
         """
 
         pass
 
-    def listAttr(self):
+    def listAttr(self, userDefined=False):
         """
         Returns a list of attribute names.
 
+        :type userDefined: bool
         :rtype: List[str]
         """
 
-        return list(self.iterAttr())
+        return list(self.iterAttr(userDefined=userDefined))
 
     def select(self, replace=True):
         """

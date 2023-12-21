@@ -325,14 +325,15 @@ class FnNode(afnnode.AFnNode):
         plug = plugutils.findPlug(self.object(), name)
         plugmutators.setValue(plug, value)
 
-    def iterAttr(self):
+    def iterAttr(self, userDefined=False):
         """
         Returns a generator that yields attribute names.
 
-        :rtype: iter
+        :type userDefined: bool
+        :rtype: Iterator[str]
         """
 
-        return attributeutils.iterAttributeNames(self.object())
+        return attributeutils.iterAttributeNames(self.object(), userDefined=userDefined)
 
     def isTransform(self):
         """

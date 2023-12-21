@@ -59,6 +59,27 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
             return om.MMatrix()
 
+    def triangulatedObject(self):
+        """
+        Returns the triangulated mesh data object for this mesh.
+
+        :rtype: om.MObject
+        """
+
+        return meshutils.triangulate(self.object())
+
+    def name(self):
+        """
+        Returns the name of this node.
+
+        :rtype: str
+        """
+
+        parent = dagutils.getParent(self.object())
+        absoluteName = om.MFnDependencyNode(parent).name()
+
+        return dagutils.stripNamespace(absoluteName)
+
     def numVertices(self):
         """
         Returns the number of vertices in this mesh.

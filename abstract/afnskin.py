@@ -3,7 +3,7 @@ from six import with_metaclass, integer_types, string_types
 from six.moves import collections_abc
 from copy import deepcopy
 from itertools import chain
-from dcc import fnnode, fnmesh
+from dcc import fnnode, fntransform, fnmesh
 from dcc.abstract import afnnode
 from dcc.naming import namingutils
 from dcc.python import stringutils
@@ -50,7 +50,7 @@ class Influences(collections_abc.MutableMapping):
         Private method that returns an indexed influence.
 
         :type index: int
-        :rtype: Union[fnnode.FnNode, None]
+        :rtype: Union[fntransform.FnTransform, None]
         """
 
         # Check key type
@@ -74,7 +74,7 @@ class Influences(collections_abc.MutableMapping):
 
         # Check if value is accepted
         #
-        influence = fnnode.FnNode()
+        influence = fntransform.FnTransform()
         success = influence.trySetObject(value)
 
         if success:
@@ -158,7 +158,7 @@ class Influences(collections_abc.MutableMapping):
 
         :type index: int
         :type default: Any
-        :rtype: Union[fnnode.FnNode, None]
+        :rtype: Union[fntransform.FnTransform, None]
         """
 
         return self.__objects__.get(index, None)
@@ -179,7 +179,7 @@ class Influences(collections_abc.MutableMapping):
             #
             if isinstance(influence, string_types):
 
-                influence = fnnode.FnNode(influence)
+                influence = fntransform.FnTransform(influence)
 
             # Get associated value key
             #

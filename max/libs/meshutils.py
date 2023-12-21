@@ -1,6 +1,7 @@
 import pymxs
 
 from collections import defaultdict
+from itertools import chain
 from dcc.python import stringutils
 from dcc.generators.inclusiverange import inclusiveRange
 from dcc.max.decorators.coordsysoverride import coordSysOverride
@@ -603,121 +604,6 @@ def getTriangleFaceIndices(mesh):
     return triangleFaceIndices
 
 
-def computeTangentAndBinormal(points, mapPoints, normal):
-    """
-    Computes the tangent and binormal from the supplied triangle points and normal.
-
-    :type points: List[pymxs.runtime.Point3]
-    :type mapPoints: List[pymxs.runtime.Point3]
-    :type normal: pymxs.runtime.Point3
-    :rtype: Tuple[pymxs.runtime.Point3, pymxs.runtime.Point3]
-    """
-
-    # Calculate edge vectors
-    #
-    tangent = pymxs.runtime.Point3(0.0, 0.0, 0.0)
-    binormal = pymxs.runtime.Point3(0.0, 0.0, 0.0)
-
-    edge1 = pymxs.runtime.normalize(points[1] - points[0])
-    edge2 = pymxs.runtime.normalize(points[2] - points[0])
-
-    mapEdge1 = pymxs.runtime.normalize(mapPoints[1] - mapPoints[0])
-    mapEdge2 = pymxs.runtime.normalize(mapPoints[2] - mapPoints[0])
-
-    # Evaluate face area
-    #
-    det = (mapEdge1.x * mapEdge2.y) - (mapEdge1.y * mapEdge2.x)
-
-    if abs(det) < 1e-3:
-
-        tangent.x = 1.0
-        binormal.y = 1.0
-
-    else:
-
-        det = 1.0 / det
-
-        tangent.x = (mapEdge2.y * edge1.x - mapEdge1.y * edge2.x) * det
-        tangent.y = (mapEdge2.y * edge1.y - mapEdge1.y * edge2.y) * det
-        tangent.z = (mapEdge2.y * edge1.z - mapEdge1.y * edge2.z) * det
-
-        binormal.x = (-mapEdge2.x * edge1.x + mapEdge1.x * edge2.x) * det
-        binormal.y = (-mapEdge2.x * edge1.y + mapEdge1.x * edge2.y) * det
-        binormal.z = (-mapEdge2.x * edge1.z + mapEdge1.x * edge2.z) * det
-
-        tangent = pymxs.runtime.normalize(tangent)
-        binormal = pymxs.runtime.normalize(binormal)
-
-    # Check if binormal requires inversing
-    #
-    b = pymxs.runtime.cross(normal, tangent)
-    dot = pymxs.runtime.dot(b, binormal)
-    w = -1.0 if dot < 0.0 else 1.0
-
-    binormal = b * w
-
-    return tangent, binormal
-
-
-def computeTangentsAndBinormals(mesh, channel=0):
-    """
-    Computes the tangents and binormals from the supplied tri-mesh object.
-
-    :type mesh: pymxs.MXSWrapperBase
-    :type channel: int
-    :rtype: Tuple[list, list]
-    """
-
-    # Inspect supplied mesh
-    #
-    if not isTriMesh(mesh):
-
-        mesh = getTriMesh(mesh)
-
-    # Iterate through faces
-    #
-    faceNormals = list(iterFaceNormals(mesh))
-    faceVertexIndices = list(iterFaceVertexIndices(mesh))
-    faceVertexNormals = list(iterFaceVertexNormals(mesh))
-
-    numFaces = len(faceNormals)
-    faceVertexTangents = [None] * numFaces
-    faceVertexBinormals = [None] * numFaces
-
-    for (faceIndex, (vertexIndices, vertexNormals)) in enumerate(zip(faceVertexIndices, faceVertexNormals), start=1):
-
-        # Get triangle-vertex points
-        #
-        points = list(iterVertices(mesh, indices=vertexIndices))
-        normal = faceNormals[faceIndex]
-
-        mapFaceVertexIndices = list(iterMapFaceVertexIndices(mesh, channel=channel, indices=[faceIndex]))[0]
-        mapPoints = list(iterMapVertices(mesh, channel=channel, indices=mapFaceVertexIndices))
-
-        # Calculate tangent and binormal
-        #
-        tangent, binormal = computeTangentAndBinormal(points, mapPoints, normal)
-
-        # Apply vectors to triangle-vertex normals
-        #
-        faceVertexBinormals[faceIndex] = [pymxs.runtime.cross(normal, tangent) for normal in faceVertexNormals[faceIndex]]
-        faceVertexTangents[faceIndex] = [pymxs.runtime.cross(binormal, normal) for normal in faceVertexNormals[faceIndex]]
-
-    return faceVertexTangents, faceVertexBinormals
-
-
-def getTangentsAndBinormals(mesh, channel=0):
-    """
-    Returns the tangents and binormals from the supplied mesh.
-
-    :type mesh: pymxs.MXSWrapperBase
-    :type channel: int
-    :rtype:
-    """
-
-    pass
-
-
 def getConnectedVerts(mesh, vertices):
     """
     Returns a list of connected vertices.
@@ -789,13 +675,14 @@ def decomposeSmoothingGroups(bits):
     return [i for i in inclusiveRange(1, 32, 1) if pymxs.runtime.Bit.get(bits, i)]
 
 
-def iterSmoothingGroups(mesh, indices=None):
+def iterSmoothingGroups(mesh, indices=None, convertUnits=False):
     """
     Returns a generator that yields face-smoothing indices.
     If no arguments are supplied then all face-smoothing indices will be yielded.
 
     :type mesh: pymxs.MXSWrapperBase
     :type indices: List[int]
+    :type convertUnits: bool
     :rtype: iter
     """
 
@@ -814,7 +701,14 @@ def iterSmoothingGroups(mesh, indices=None):
         for index in indices:
 
             bits = pymxs.runtime.polyOp.getFaceSmoothGroup(mesh, index)
-            yield decomposeSmoothingGroups(bits)
+
+            if convertUnits:
+
+                yield decomposeSmoothingGroups(bits)
+
+            else:
+
+                yield bits
 
     else:
 
@@ -829,7 +723,14 @@ def iterSmoothingGroups(mesh, indices=None):
         for index in indices:
 
             bits = pymxs.runtime.getFaceSmoothGroup(mesh, index)
-            yield decomposeSmoothingGroups(bits)
+
+            if convertUnits:
+
+                yield decomposeSmoothingGroups(bits)
+
+            else:
+
+                yield bits
 
 
 def iterEdgeSmoothings(mesh, indices=None):
@@ -986,3 +887,77 @@ def iterFaceMaterialIndices(mesh, indices=None):
             index = pymxs.runtime.meshOp.getFaceMatID(mesh, index)
             yield int(index)
 
+
+def iterVertexColors(mesh):
+    """
+    Returns a generator that yields the vertex colours from the supplied mesh.
+
+    :type mesh: pymxs.MXSWrapperBase
+    :rtype: Iterator[pymxs.runtime.Color]
+    """
+
+    # Check if this is an editable poly
+    #
+    if isEditablePoly(mesh):
+
+        mesh = getTriMesh(mesh)
+
+    # Evaluate colours per-vertex
+    #
+    numColors = mesh.numCPVVerts
+
+    for i in inclusiveRange(1, numColors, 1):
+
+        yield pymxs.runtime.getVertColor(mesh, i)
+
+
+def iterFaceVertexColorIndices(mesh, indices=None):
+    """
+    Returns a generator that yields face-vertex color indices.
+
+    :type mesh: pymxs.MXSWrapperBase
+    :type indices: Union[List[int], None]
+    :rtype: Iterator[List[int]]
+    """
+
+    # Check if any indices were supplied
+    #
+    if stringutils.isNullOrEmpty(indices):
+
+        indices = list(inclusiveRange(1, faceCount(mesh), 1))
+
+    # Check if this is tri-mesh
+    #
+    if isTriMesh(mesh):
+
+        # Iterate through indices
+        #
+        for index in indices:
+
+            faceIndices = pymxs.runtime.getVCFace(mesh, index)
+            yield tuple(map(int, faceIndices))
+
+    else:
+
+        # Remap triangle-vertex indices
+        #
+        triMesh = getTriMesh(mesh)
+
+        faceTriangleIndices = getFaceTriangleIndices(mesh)
+        faceVertexIndices = list(iterFaceVertexIndices(mesh, indices=indices))
+
+        for (localIndex, globalIndex) in enumerate(indices):
+
+            triangleIndices = faceTriangleIndices[globalIndex]
+            triangleVertexIndices = tuple(chain(*[tuple(map(int, pymxs.runtime.meshOp.getFace(triMesh, triangleIndex))) for triangleIndex in triangleIndices]))
+            triangleVertexColorIndices = tuple(chain(*[tuple(map(int, pymxs.runtime.getVCFace(triMesh, triangleIndex))) for triangleIndex in triangleIndices]))
+
+            vertexIndices = faceVertexIndices[localIndex]
+            faceVertexColorIndices = [None] * len(vertexIndices)
+
+            for (i, vertexIndex) in enumerate(vertexIndices):
+
+                position = triangleVertexIndices.index(vertexIndex)
+                faceVertexColorIndices[i] = triangleVertexColorIndices[position]
+
+            yield faceVertexColorIndices

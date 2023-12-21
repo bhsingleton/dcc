@@ -1,8 +1,7 @@
-import os
-
-from maya import cmds as mc
+from maya import cmds as mc, mel
 from maya.api import OpenMaya as om
-from dcc.maya.libs import dagutils, attributeutils
+from dcc.python import stringutils
+from dcc.maya.libs import dagutils, plugutils
 
 import logging
 logging.basicConfig()
@@ -43,95 +42,221 @@ def nullMeshData():
     return meshData
 
 
-def triangulateMeshData(mesh):
+def transferAttributes(source, destination):
     """
-    Returns a triangulated mesh data object from the supplied mesh.
+    Transfers the attributes from the source to the destination node.
+
+    :type source: Union[str, om.MObject, om.MDagPath]
+    :type destination: Union[str, om.MObject, om.MDagPath]
+    :rtype: None
+    """
+
+    # Evaluate node types
+    #
+    source = dagutils.getMObject(source)
+    destination = dagutils.getMObject(destination)
+
+    if source.apiTypeStr != destination.apiTypeStr:
+
+        raise TypeError('transferAttributes() expects matching node types!')
+
+    # Iterate through top-level plugs
+    #
+    fnAttribute = om.MFnAttribute()
+
+    for plug in plugutils.iterTopLevelPlugs(source):
+
+        # Get other plug
+        #
+        plugPath = plug.partialName(includeNodeName=False, useFullAttributePath=True, useLongNames=True)
+
+        otherPlug = plugutils.findPlug(destination, plugPath)
+        log.info(f'Transferring attributes: {plug.info} > {otherPlug.info}')
+
+        # Check if plug are writable
+        #
+        fnAttribute.setObject(otherPlug.attribute())
+
+        isWritable = fnAttribute.readable and (fnAttribute.writable and fnAttribute.storable) and not fnAttribute.hidden
+        isFreeToChange = otherPlug.isFreeToChange(checkChildren=True) == om.MPlug.kFreeToChange
+        isDefault = plug.isDefaultValue()
+
+        if isDefault or not (isWritable and isFreeToChange):
+
+            continue
+
+        # Copy data handles
+        #
+        handle, otherHandle = None, None
+
+        try:
+
+            handle = plug.asMDataHandle()
+            otherHandle = otherPlug.asMDataHandle()
+
+            otherHandle.copyWritable(handle)
+            otherPlug.setMDataHandle(otherHandle)
+
+        except RuntimeError as exception:
+
+            log.debug(exception)
+
+        finally:
+
+            plug.destructHandle(handle)
+            otherPlug.destructHandle(otherHandle)
+
+
+def clearShaders(mesh):
+    """
+    Removes all shaders from the supplied mesh.
 
     :type mesh: Union[str, om.MObject, om.MDagPath]
-    :rtype: om.MObject
+    :rtype: None
     """
 
-    # Get internal triangles from mesh
-    #
-    mesh = dagutils.getMDagPath(mesh)
-    fnMesh = om.MFnMesh(mesh)
-
-    faceTriangleCounts, triangleConnects = fnMesh.getTriangles()
-
-    # Build triangle counts
-    #
-    numTriangles = sum(faceTriangleCounts)
-    triangleCounts = [3] * numTriangles
-
-    vertices = fnMesh.getPoints()
-
-    # Create triangulate mesh data object
-    #
-    fnMeshData = om.MFnMeshData()
-    meshData = fnMeshData.create()
-
-    fnMesh.create(vertices, triangleCounts, triangleConnects, parent=meshData)  # Do not return this value!
-    return meshData
-
-
-def initializeTriMeshAttribute(mesh):
-    """
-    Initializes the ".triMesh" extension attribute for the supplied mesh.
-    Be aware that accessing null mesh data will crash Maya!
-
-    :type mesh: Union[str, om.MObject, om.MDagPath]
-    :rtype: om.MObject
-    """
-
-    # Initialize the attribute extension
-    #
-    filePath = os.path.join(attributeutils.ATTRIBUTES_PATH, 'trimesh.json')
-    attribute = attributeutils.applyAttributeExtensionTemplate('mesh', filePath)[0]
-
-    # Cache triangulated mesh
+    # Evaluate node type
     #
     mesh = dagutils.getMObject(mesh)
-    meshData = triangulateMeshData(mesh)
 
-    plug = om.MPlug(mesh, attribute)
-    plug.setMObject(meshData)
+    if not mesh.hasFn(om.MFn.kMesh):
 
-    return attribute
+        raise TypeError(f'transferShaders() expects a mesh ({mesh.apiTypeStr} given)!')
+
+    # Get connected shaders
+    #
+    dagPath = dagutils.getMDagPath(mesh)
+    instanceNumber = dagPath.instanceNumber()
+
+    fnMesh = om.MFnMesh(dagPath)
+    shaders, connections = fnMesh.getConnectedShaders(instanceNumber)
+
+    # Remove shaders from mesh components
+    #
+    fnSet = om.MFnSet()
+    fnComponent = om.MFnSingleIndexedComponent()
+
+    component = None
+    selection = om.MSelectionList()
+
+    for (i, shader) in enumerate(shaders):
+
+        fnSet.setObject(shader)
+        faceIndices = [faceIndex for (faceIndex, shaderIndex) in enumerate(connections) if shaderIndex == i]
+
+        component = fnComponent.create(om.MFn.kMeshPolygonComponent)
+        fnComponent.addElements(faceIndices)
+
+        selection.add((dagPath, component))
+        fnSet.removeMembers(selection)
+        selection.clear()
 
 
-def getTriMeshData(mesh):
+def transferShaders(source, destination):
     """
-    Returns the cached triangulated mesh data object from the supplied mesh.
+    Transfers the shaders from the source to the destination mesh.
+
+    :type source: Union[str, om.MObject, om.MDagPath]
+    :type destination: Union[str, om.MObject, om.MDagPath]
+    :rtype: None
+    """
+
+    # Evaluate node types
+    #
+    source = dagutils.getMObject(source)
+    destination = dagutils.getMObject(destination)
+
+    if not (source.hasFn(om.MFn.kMesh) and destination.hasFn(om.MFn.kMesh)):
+
+        raise TypeError(f'transferShaders() expects 2 meshes ({source.apiTypeStr} and {destination.apiTypeStr} given)!')
+
+    # Get connected shaders
+    #
+    instanceNumber = dagutils.getMDagPath(source).instanceNumber()
+
+    fnSource = om.MFnMesh(source)
+    shaders, connections = fnSource.getConnectedShaders(instanceNumber)
+
+    # Copy connected shaders
+    #
+    clearShaders(destination)
+
+    fnSet = om.MFnSet()
+    fnComponent = om.MFnSingleIndexedComponent()
+
+    dagPath = dagutils.getMDagPath(destination)
+    component = None
+    selection = om.MSelectionList()
+
+    for (i, shader) in enumerate(shaders):
+
+        fnSet.setObject(shader)
+        faceIndices = [faceIndex for (faceIndex, shaderIndex) in enumerate(connections) if shaderIndex == i]
+
+        component = fnComponent.create(om.MFn.kMeshPolygonComponent)
+        fnComponent.addElements(faceIndices)
+
+        selection.add((dagPath, component))
+        fnSet.addMembers(selection)
+        selection.clear()
+
+
+def triangulate(mesh):
+    """
+    Returns a triangulated mesh that won't be written on file save.
 
     :type mesh: Union[str, om.MObject, om.MDagPath]
     :rtype: om.MObject
     """
 
-    # Get ".triMesh" plug
+    # Check if intermediate object exists
     #
-    mesh = dagutils.getMDagPath(mesh)
-    fnMesh = om.MFnMesh(mesh)
+    mesh = dagutils.getMObject(mesh)
+    transform = dagutils.getParent(mesh)
 
-    attribute = fnMesh.attribute('triMesh')
+    intermediates = tuple(dagutils.iterIntermediateObjects(transform, apiType=om.MFn.kMesh))
+    numIntermediates = len(intermediates)
 
-    if attribute.isNull():
+    intermediate = None
 
-        attribute = initializeTriMeshAttribute(fnMesh)
+    if numIntermediates == 0:
 
-    # Evaluate mesh data
-    #
-    plug = om.MPlug(mesh.node(), attribute)
-
-    meshData = plug.asMObject()
-    fnMeshData = om.MFnMesh(meshData)
-
-    if fnMesh.numVertices == fnMeshData.numVertices:
-
-        return meshData
+        intermediate = mesh
 
     else:
 
-        meshData = triangulateMeshData(mesh)
-        plug.setMObject(meshData)
+        intermediate = intermediates[0]
 
-        return meshData
+    # Copy mesh to intermediate object
+    #
+    parentName = dagutils.getNodeName(transform)
+    newName = f'{parentName}ShapeTri'
+    exists = mc.objExists(newName)
+
+    fnMesh = om.MFnMesh()
+    newMesh = None
+
+    if exists:
+
+        newMesh = dagutils.getMObject(newName)
+        fnMesh.setObject(newMesh)
+        fnMesh.copyInPlace(intermediate)
+
+    else:
+
+        newMesh = fnMesh.copy(intermediate, parent=transform)
+
+    fnMesh.setName(newName)
+    fnMesh.setDoNotWrite(True)
+    fnMesh.isIntermediateObject = True
+
+    transferShaders(mesh, newMesh)
+
+    # Triangulate intermediate object
+    #
+    newFullPathName = dagutils.getMDagPath(newMesh).fullPathName()
+
+    mc.polyTriangulate(newFullPathName)
+    mc.bakePartialHistory(newFullPathName, prePostDeformers=True)
+
+    return newMesh

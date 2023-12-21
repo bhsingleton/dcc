@@ -1,7 +1,10 @@
 import pymxs
 
+from itertools import chain
+from six import integer_types
 from dcc import fnnode
 from dcc.abstract import afnmesh
+from dcc.python import stringutils
 from dcc.max.libs import wrapperutils, meshutils, arrayutils
 from dcc.dataclasses.vector import Vector
 from dcc.dataclasses.colour import Colour
@@ -19,6 +22,25 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
     __slots__ = ()
 
+    def object(self):
+        """
+        Returns the object assigned to this function set.
+
+        :rtype: pymxs.MXSWrapperBase
+        """
+
+        if isinstance(self._object, integer_types):
+
+            return super(FnMesh, self).object()
+
+        elif isinstance(self._object, pymxs.MXSWrapperBase):
+
+            return self._object
+
+        else:
+
+            return None
+
     def setObject(self, obj):
         """
         Assigns an object to this function set for manipulation.
@@ -31,7 +53,11 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
         #
         obj = self.getMXSWrapper(obj)
 
-        if meshutils.isEditableMesh(obj) or meshutils.isEditablePoly(obj):
+        if meshutils.isTriMesh(obj):
+
+            self._object = obj  # Tri-mesh object handles return the associated node!
+
+        elif meshutils.isEditableMesh(obj) or meshutils.isEditablePoly(obj):
 
             super(FnMesh, self).setObject(obj)
 
@@ -47,16 +73,9 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
         """
 
         obj = self.object()
+        return getattr(obj, 'objectTransform', pymxs.runtime.Matrix3(1))
 
-        if pymxs.runtime.isValidNode(obj):
-
-            return obj.objectTransform
-
-        else:
-
-            return pymxs.runtime.Matrix3(1)
-
-    def triMesh(self):
+    def triangulatedObject(self):
         """
         Returns the triangulated mesh data object for this mesh.
 
@@ -264,7 +283,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
         :rtype: Dict[int, List[Tuple[int, int, int]]]
         """
 
-        triMesh = self.triMesh()
+        triMesh = self.triangulatedObject()
         faceTriangleIndices = self.getFaceTriangleIndices()
 
         faceTriangleVertexIndices = {}
@@ -361,6 +380,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
         """
         Returns a generator that yields UV vertex points from the specified set.
 
+        :type indices: Union[int, List[int]]
         :type channel: int
         :rtype: iter
         """
@@ -373,6 +393,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
         """
         Returns a generator that yields UV face-vertex indices from the specified set.
 
+        :type indices: Union[int, List[int]]
         :type channel: int
         :rtype: iter
         """
@@ -383,12 +404,32 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
         """
         Returns a generator that yields face-vertex tangents and binormals for the specified channel.
 
+        :type indices: Union[int, List[int]]
         :type cls: Callable
         :type channel: int
         :rtype: Iterator[List[Vector], List[Vector]]
         """
 
-        return iter([])
+        return iter([])  # As far as I'm aware this data is not readily available?
+
+    def getColorSetNames(self):
+        """
+        Returns a list of color set names.
+
+        :rtype: List[str]
+        """
+
+        return ['']  # 3ds Max does not utilize colour set names!
+
+    def getColorSetName(self, channel):
+        """
+        Returns the color set name at the specified channel.
+
+        :type channel: int
+        :rtype: str
+        """
+
+        return self.getColorSetNames()[0]
 
     def iterColors(self, cls=Colour, channel=0):
         """
@@ -399,7 +440,9 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
         :rtype: Iterator[Colour]
         """
 
-        return iter([])
+        for color in meshutils.iterVertexColors(self.object()):
+
+            yield cls((color.r / 255.0), (color.g / 255.0), (color.b / 255.0))
 
     def iterFaceVertexColorIndices(self, *indices, channel=0):
         """
@@ -409,7 +452,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
         :rtype: Iterator[List[int]]
         """
 
-        return iter([])
+        return meshutils.iterFaceVertexColorIndices(self.object(), indices=indices)
 
     def iterConnectedVertices(self, *indices, **kwargs):
         """
