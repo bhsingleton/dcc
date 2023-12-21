@@ -336,27 +336,42 @@ def trace(attribute):
     yield attribute
 
 
-def iterAttributes(dependNode):
+def iterAttributes(dependNode, userDefined=False):
     """
     Returns a generator that yields attributes.
 
     :type dependNode: om.MObject
+    :type userDefined: bool
     :rtype: Iterator[om.MObject]
     """
 
+    # Iterate through attributes
+    #
     fnDependNode = om.MFnDependencyNode(dependNode)
     numAttributes = fnDependNode.attributeCount()
 
+    fnAttribute = om.MFnAttribute()
+
     for i in range(numAttributes):
 
-        yield fnDependNode.attribute(i)
+        # Check if attribute is dynamic
+        #
+        attribute = fnDependNode.attribute(i)
+        fnAttribute.setObject(attribute)
+
+        if userDefined and not fnAttribute.dynamic:
+
+            continue
+
+        yield attribute
 
 
-def iterTopLevelAttributes(dependNode):
+def iterTopLevelAttributes(dependNode, userDefined=False):
     """
     Returns a generator that yields top-level attributes.
 
     :type dependNode: om.MObject
+    :type userDefined: bool
     :rtype: Iterator[om.MObject]
     """
 
@@ -364,7 +379,7 @@ def iterTopLevelAttributes(dependNode):
     #
     fnAttribute = om.MFnAttribute()
 
-    for attribute in iterAttributes(dependNode):
+    for attribute in iterAttributes(dependNode, userDefined=userDefined):
 
         # Check if attribute has a parent
         #
@@ -380,19 +395,26 @@ def iterTopLevelAttributes(dependNode):
             continue
 
 
-def iterAttributeNames(dependNode, shortNames=False):
+def iterAttributeNames(dependNode, shortNames=False, topLevel=False, userDefined=False):
     """
     Returns a generator that yields attribute names.
 
     :type dependNode: om.MObject
     :type shortNames: bool
+    :type topLevel: bool
+    :type userDefined: bool
     :rtype: iter
     """
 
+    # Iterate through attributes
+    #
+    generator = iterTopLevelAttributes if topLevel else iterAttributes
     fnAttribute = om.MFnAttribute()
 
-    for attribute in iterAttributes(dependNode):
+    for attribute in generator(dependNode, userDefined=userDefined):
 
+        # Check if short name should be yielded
+        #
         fnAttribute.setObject(attribute)
 
         if shortNames:
