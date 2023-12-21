@@ -121,7 +121,7 @@ class AFnTexture(with_metaclass(ABCMeta, afnnode.AFnNode)):
         """
 
         filePath = self.filePath()
-        variablePath = self.scene.makePathVariable(filePath, 'P4ROOT')
+        variablePath = self.scene.makePathVariable(filePath, '$P4ROOT')
 
         if filePath != variablePath:
 
