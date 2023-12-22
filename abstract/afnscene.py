@@ -521,36 +521,6 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
             texture.makeVariable()
             texture.next()
 
-    def syncMissingTextures(self):
-        """
-        Syncs any missing textures using perforce.
-
-        :rtype: None
-        """
-
-        texture = fntexture.FnTexture()
-        texture.setQueue(texture.instances())
-
-        while not texture.isDone():
-
-            texture.getLatest()
-            texture.next()
-
-    def fixBrokenTextures(self):
-        """
-        Repairs any broken texture paths using perforce.
-
-        :rtype: None
-        """
-
-        texture = fntexture.FnTexture()
-        texture.setQueue(texture.instances())
-
-        while not texture.isDone():
-
-            texture.fix()
-            texture.next()
-
     @abstractmethod
     def suspendViewport(self):
         """

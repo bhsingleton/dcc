@@ -4,9 +4,9 @@ import json
 import subprocess
 
 from P4 import P4Exception
-from . import createAdapter, cmds, clientutils
+from . import createAdapter, cmds, clientutils, searchutils
 from .decorators.relogin import relogin
-from .. import fnscene
+from .. import fnscene, fntexture
 
 import logging
 logging.basicConfig()
@@ -391,3 +391,164 @@ def saveChangelist(changelist, filePath, **kwargs):
 
         log.error(exception.message)
         return False
+
+
+@relogin
+def findDepotPath(filePath):
+    """
+    Returns the depot path for this texture from perforce.
+
+    :rtype: str
+    """
+
+    # Check for empty string
+    #
+    if isNullOrEmpty(filePath):
+
+        return ''
+
+    # Search for file in client view
+    #
+    client = clientutils.getCurrentClient()
+
+    found = searchutils.findFile(filePath, client=client)
+    numFound = len(found)
+
+    if numFound == 0:
+
+        return ''
+
+    elif numFound == 1:
+
+        return found[0]['depotFile']
+
+    else:
+
+        log.warning(f'Multiple depot files found for: {filePath}')
+        return ''
+
+
+@relogin
+def fixBrokenTextures():
+    """
+    Fixes any broken textures using perforce.
+
+    :rtype: bool
+    """
+
+    # Iterate through texture nodes
+    #
+    scene = fnscene.FnScene()
+
+    texture = fntexture.FnTexture()
+    texture.setQueue(texture.instances())
+
+    while not texture.isDone():
+
+        # Find associated depot file
+        #
+        filePath = texture.filePath()
+        depotPath = findDepotPath(filePath)
+
+        if isNullOrEmpty(depotPath):
+
+            log.warning(f'Unable to fix file path: {filePath}')
+            texture.next()
+
+            continue
+
+        # Get file stats
+        #
+        stats = cmds.fstat(depotPath)
+        numStats = len(stats)
+
+        if numStats == 0:
+
+            log.warning(f'Unable to locate file stats: {filePath}')
+            texture.next()
+
+            continue
+
+        # Check if file needs syncing
+        #
+        fileStat = stats[0]
+        haveRev = fileStat.get('haveRev', 0)  # P4 omits `haveRev` if the file has not been synced!
+
+        if haveRev != fileStat['headRev']:
+
+            cmds.sync(depotPath)
+
+        # Convert to local path
+        #
+        client = clientutils.getCurrentClient()
+
+        localPath = client.mapToView(depotPath)
+        absolutePath = scene.makePathAbsolute(filePath)  # This will resolve once the file has been synced
+
+        if localPath != absolutePath:
+
+            log.info(f'Fixing {filePath} to {localPath}')
+            texture.setFilePath(localPath)
+
+        # Go to next item
+        #
+        texture.next()
+
+
+@relogin
+def syncMissingTextures():
+    """
+    Syncs any missing textures from perforce.
+
+    :rtype: None
+    """
+
+    # Iterate through texture nodes
+    #
+    texture = fntexture.FnTexture()
+    texture.setQueue(texture.instances())
+
+    while not texture.isDone():
+
+        # Check if file exists in client view
+        #
+        fullFilePath = texture.fullFilePath()
+        client = clientutils.getCurrentClient()
+
+        if not client.hasAbsoluteFile(fullFilePath):
+
+            log.warning(f'Unable to locate: {fullFilePath}, from perforce!')
+            texture.next()
+
+            continue
+
+        # Check if file needs syncing
+        #
+        depotPath = client.mapToDepot(fullFilePath)
+
+        stats = cmds.fstat(depotPath)
+        numStats = len(stats)
+
+        if numStats == 0:
+
+            log.warning(f'Unable to locate file stats: {depotPath}, from perforce!')
+            texture.next()
+
+            continue
+
+        # Check if file is up-to-date
+        #
+        fileStat = stats[0]
+        haveRev = fileStat.get('haveRev', 0)  # P4 omits `haveRev` if the file has not been synced!
+
+        if haveRev != fileStat['headRev']:
+
+            cmds.sync(depotPath)
+
+        else:
+
+            log.info(f'File is already up to date: {depotPath}')
+
+        # Go to next item
+        #
+        texture.next()

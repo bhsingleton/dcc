@@ -100,7 +100,7 @@ class SearchEngine(object):
 
         try:
 
-            log.info('Searching for: %s' % search)
+            log.info(f'Searching for: {search}')
             fileSpecs = cmds.files(search, client=client.name, ignoreDeleted=True)
 
         except P4.P4Exception as exception:
@@ -109,7 +109,7 @@ class SearchEngine(object):
 
         finally:
 
-            log.info('Found: %s' % fileSpecs)
+            log.info(f'Found: {fileSpecs}')
             return fileSpecs if not stringutils.isNullOrEmpty(fileSpecs) else []
 
     def searchClients(self, search):
