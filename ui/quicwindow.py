@@ -295,7 +295,16 @@ class QUicWindow(QtWidgets.QMainWindow, metaclass=qsingleton.QSingleton):
 
         if pos is not None:
 
-            self.move(pos)
+            screens = QtWidgets.QApplication.screens()
+            isValid = any([screen.geometry().contains(pos) for screen in screens])
+
+            if isValid:
+
+                self.move(pos)
+
+            else:
+
+                log.debug(f'{self.className} window is out of bounds @ {pos}')
 
     def saveSettings(self, settings):
         """
