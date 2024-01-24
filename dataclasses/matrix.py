@@ -92,6 +92,7 @@ class Matrix(Sequence):
 
     # region Dunderscores
     __slots__ = ('__shape__', '__rows__', '__precision__')
+    __decimals__ = 6
 
     def __init__(self, *args, **kwargs):
         """
@@ -210,11 +211,11 @@ class Matrix(Sequence):
 
             if isinstance(columnIndex, int):
 
-                return row[columnIndex]
+                return round(row[columnIndex], self.__decimals__)
 
             elif isinstance(columnIndex, slice):
 
-                return tuple(islice(row, columnIndex.start, columnIndex.stop, columnIndex.step))
+                return tuple(round(column, self.__decimals__) for column in islice(row, columnIndex.start, columnIndex.stop, columnIndex.step))
 
             else:
 
