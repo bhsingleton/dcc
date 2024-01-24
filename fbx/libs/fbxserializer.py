@@ -630,7 +630,7 @@ class FbxSerializer(object):
 
                 # Assign face-vertex color indices
                 #
-                faceVertexColorIndices = tuple(chain(*copyFrom.getFaceVertexColorIndices()))
+                faceVertexColorIndices = tuple(map(normalizeIndex, chain(*copyFrom.getFaceVertexColorIndices())))
                 numFaceVertexColorIndices = len(faceVertexColorIndices)
 
                 indexArray = colorElement.GetIndexArray()
@@ -961,10 +961,6 @@ class FbxSerializer(object):
 
             raise RuntimeError(f'Unable to assign {handle} handle to FBX property!')
 
-        # Copy custom attributes
-        #
-        self.copyCustomAttributes(node, fbxNode)
-
         return fbxNode
 
     def createFbxSkeleton(self, joint, **kwargs):
@@ -983,7 +979,15 @@ class FbxSerializer(object):
         fbxNode = self.createFbxNode(joint)
         self.ensureParent(joint, fbxNode)
         self.copyTransform(joint, fbxNode)
-        self.copyCustomAttributes(joint, fbxNode)
+
+        # Check if custom attributes should be copied
+        #
+        rootNode = self.fbxScene.GetRootNode()
+        isTopLevelNode = fbxNode.GetParent() is rootNode
+
+        if isTopLevelNode:
+
+            self.copyCustomAttributes(joint, fbxNode)
 
         # Promote to fbx skeleton
         #
@@ -1010,7 +1014,6 @@ class FbxSerializer(object):
 
         fbxNode = self.createFbxNode(camera)
         self.copyTransform(camera, fbxNode)
-        self.copyCustomAttributes(camera, fbxNode)
 
         # Create fbx camera attribute
         #
@@ -1035,7 +1038,6 @@ class FbxSerializer(object):
         fbxNode = self.createFbxNode(mesh, **kwargs)
         self.ensureParent(mesh, fbxNode)
         self.copyMaterials(mesh, fbxNode)
-        self.copyCustomAttributes(mesh, fbxNode)
 
         # Create fbx mesh attribute
         #
@@ -1087,6 +1089,47 @@ class FbxSerializer(object):
 
         return fbxCluster
 
+    def ensureInfluences(self, influences):
+        """
+        Ensures FBX nodes exist for the supplied influences.
+
+        :type influences: Dict[int, fntransform.FnTransform]
+        :rtype: None
+        """
+
+        # Check if any influences are missing
+        #
+        missing = [influence for (influenceId, influence) in influences.items() if not self.hasHandle(influence.handle())]
+        numMissing = len(missing)
+
+        if numMissing == 0:
+
+            return
+
+        # Iterate through missing influences
+        #
+        ancestor = fntransform.FnTransform()
+
+        for influence in missing:
+
+            # Trace hierarchy for any missing parents
+            #
+            ancestor.setQueue(influence.trace())
+
+            while not ancestor.isDone():
+
+                # Check if ancestor exists
+                #
+                handle = ancestor.handle()
+
+                if not self.hasHandle(handle):
+
+                    self.createFbxSkeleton(ancestor)
+
+                # Go to next ancestor
+                #
+                ancestor.next()
+
     def createFbxSkin(self, skin, **kwargs):
         """
         Returns an FBX skin from the supplied scene node.
@@ -1102,24 +1145,11 @@ class FbxSerializer(object):
         fbxSkin = fbx.FbxSkin.Create(self.fbxManager, skin.name())
         fbxSkin.SetSkinningType(skinningType)
 
-        # Check if any influences are missing
-        #
-        influences = skin.influences()
-        usedInfluenceIds = skin.getUsedInfluenceIds()
-
-        missing = [influence for (influenceId, influence) in influences.items() if not self.hasHandle(influence.handle()) and influenceId in usedInfluenceIds]
-        numMissing = len(missing)
-
-        if numMissing:
-
-            self.allocateFbxNodes(*missing)
-
-            for influence in missing:
-
-                self.createFbxSkeleton(influence)
-
         # Create skin clusters
         #
+        influences = skin.influences()
+        self.ensureInfluences(influences)
+
         fbxClusters = {}
 
         for (influenceId, influence) in influences.items():
