@@ -54,7 +54,7 @@ class PSONObject(collections_abc.MutableMapping, metaclass=pabcmeta.PABCMeta):
         #
         arg = args[0]
 
-        if isinstance(arg, collections_abc.MutableMapping):
+        if isinstance(arg, (collections_abc.MutableSequence, collections_abc.MutableMapping)):
 
             self.update(arg)
 
@@ -400,17 +400,47 @@ class PSONObject(collections_abc.MutableMapping, metaclass=pabcmeta.PABCMeta):
         :rtype: None
         """
 
-        # Iterate through items
+        # Evaluate supplied object
         #
-        for (key, value) in obj.items():
+        if not isinstance(obj, (collections_abc.MutableSequence, collections_abc.MutableMapping)):
+
+            raise TypeError(f'update() expects a dict ({type(obj).__name__} given)!')
+
+        # Iterate through key-value pairs
+        #
+        iterator = obj.items() if isinstance(obj, collections_abc.MutableMapping) else iter(obj)
+
+        for pair in iterator:
+
+            # Evaluate key-value pair
+            #
+            numItems = len(pair) if isinstance(pair, collections_abc.Sequence) else 0
+
+            if numItems != 2:
+
+                continue
 
             # Check if collection has property
             #
+            key, value = pair
+
             if hasattr(self, key):
 
-                self.__setitem__(key, value)
+                setattr(self, key, value)
 
             else:
 
                 continue
+
+    def get(self, key, default=None):
+        """
+        Returns the value from the associated key.
+        If no key exists then the default value is returned instead!
+
+        :type key: str
+        :type default: Any
+        :rtype: Any
+        """
+
+        return getattr(self, key, default)
     # endregion
