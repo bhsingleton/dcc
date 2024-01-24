@@ -669,7 +669,7 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
         # Collect used influence names
         #
         skin = fnskin.FnSkin()
-        influenceNames = []
+        influenceNames = set()
 
         for obj in self.scene.getActiveSelection():
 
@@ -687,7 +687,7 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
             usedInfluenceIds = skin.getUsedInfluenceIds()
             usedInfluenceNames = [influences[influenceId].name() for influenceId in usedInfluenceIds]
 
-            influenceNames.extend([influenceName for influenceName in usedInfluenceNames if influenceName not in currentNames])
+            influenceNames = influenceNames.union({influenceName for influenceName in usedInfluenceNames if influenceName not in currentNames})
 
         # Extend row from influence names
         #
@@ -695,7 +695,7 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
 
         if numInfluenceNames > 0:
 
-            model.extendRow(influenceNames, parent=index)
+            model.extendRow(sorted(influenceNames), parent=index)
 
     @QtCore.Slot(bool)
     def on_clearItemsAction_triggered(self, checked=False):
