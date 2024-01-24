@@ -279,6 +279,10 @@ def trace(node):
     :rtype: iter
     """
 
+    if not pymxs.runtime.isValidNode(node):
+
+        return iter([])
+
     parents = getParents(node)
 
     for parent in reversed(parents):
