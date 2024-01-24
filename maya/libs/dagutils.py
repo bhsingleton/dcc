@@ -1580,14 +1580,12 @@ def reparentNode(node, otherNode, modifier=None):
     return otherNode
 
 
-def deleteNode(node, includeChildren=False):
+def deleteNode(node):
     """
     Deletes the supplied dependency node from the scene file.
     In order to prevent any other nodes from being deleted this method breaks all connections before deleting the node.
-    TODO: Add undo support!
 
     :type node: om.MObject
-    :type includeChildren: bool
     :rtype: None
     """
 
@@ -1596,7 +1594,7 @@ def deleteNode(node, includeChildren=False):
     node = getMObject(node)
     plugs = om.MFnDependencyNode(node).getConnections()
 
-    modifier = om.MDagModifier() if node.hasFn(om.MFn.kDagNode) else om.MDGModifier()
+    modifier = om.MDGModifier()
 
     for plug in plugs:
 
@@ -1618,31 +1616,41 @@ def deleteNode(node, includeChildren=False):
             log.debug(f'Breaking connection: {plug.info} and {destination.info}')
             modifier.disconnect(plug, destination)
 
+    commit(modifier.doIt, modifier.undoIt)
+    modifier.doIt()
+
     # Next, check if children should be deleted
     #
-    if includeChildren:
+    isDagNode = node.hasFn(om.MFn.kDagNode)
 
-        # Delete all children in reverse order
-        #
-        for child in reversed(list(iterDescendants(node, apiType=om.MFn.kDagNode))):
-
-            modifier.deleteNode(child, includeParents=False)
-
-    else:
+    if isDagNode:
 
         # Un-parent immediate children
         #
+        modifier = om.MDagModifier()
+
         for child in iterChildren(node):
 
             modifier.reparentNode(child, om.MObject.kNullObj)
 
+        commit(modifier.doIt, modifier.undoIt)
+        modifier.doIt()
+
         # Delete any shapes
         #
+        modifier = om.MDagModifier()
+
         for shape in iterShapes(node):
 
             modifier.deleteNode(shape, includeParents=False)
 
+        commit(modifier.doIt, modifier.undoIt)
+        modifier.doIt()
+
     # Finally, delete node and execute modifier stack
     #
+    modifier = om.MDGModifier()
     modifier.deleteNode(node, includeParents=False)
+
+    commit(modifier.doIt, modifier.undoIt)
     modifier.doIt()
