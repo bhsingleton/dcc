@@ -132,9 +132,11 @@ class PSONDecoder(json.JSONDecoder):
         :rtype Dict[str, Any]
         """
 
-        # Check if remap exists
+        # Evaluate dictionary for any numerical keys
+        # Next, check if remap object exists
         #
-        className = obj.get('__class__', obj.get('__name__', ''))
+        obj = {stringutils.eval(key): value for (key, value) in obj.items()}
+        className = obj.get('__class__', obj.get('__name__', ''))  # This is here for legacy purposes!
         moduleName = obj.get('__module__', '')
 
         remap = self.__remaps__.get(className, None)  # type: psonremap.PSONRemap
