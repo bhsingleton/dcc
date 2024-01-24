@@ -419,7 +419,16 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
         :rtype: List[str]
         """
 
-        return ['']  # 3ds Max does not utilize colour set names!
+        triMesh = self.triangulatedObject()
+        hasColors = bool(triMesh.numCPVVerts)
+
+        if hasColors:
+
+            return ['']  # 3ds Max does not utilize colour set names!
+
+        else:
+
+            return []
 
     def getColorSetName(self, channel):
         """
@@ -429,7 +438,16 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
         :rtype: str
         """
 
-        return self.getColorSetNames()[0]
+        colorSetNames = self.getColorSetNames()
+        numColorSetNames = len(colorSetNames)
+
+        if 0 <= channel < numColorSetNames:
+
+            return colorSetNames[channel]
+
+        else:
+
+            return ''
 
     def iterColors(self, cls=Colour, channel=0):
         """
