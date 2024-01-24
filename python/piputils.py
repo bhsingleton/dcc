@@ -131,11 +131,11 @@ def installRequirements(filePath, target=None, executable=None):
 
     if target is not None:
 
-        args = [executable, '-m', 'pip', 'install', '-r', filePath, '--user', '--upgrade']
+        args = [executable, '-m', 'pip', 'install', '-r', filePath, '--target', target, '--upgrade']
 
     else:
 
-        args = [executable, '-m', 'pip', 'install', '-r', filePath, '--target', target, '--upgrade']
+        args = [executable, '-m', 'pip', 'install', '-r', filePath, '--user', '--upgrade']
 
     # Try and install requirements
     #
