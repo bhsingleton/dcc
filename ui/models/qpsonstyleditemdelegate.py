@@ -1,9 +1,8 @@
 import inspect
 
-from PySide2 import QtCore, QtWidgets, QtGui
+from Qt import QtCore, QtWidgets, QtGui
 from six.moves import collections_abc
 from enum import Enum, IntEnum
-from collections import defaultdict
 from . import qpsonpath
 from ...python import annotationutils
 
@@ -18,6 +17,7 @@ class QPSONStyledItemDelegate(QtWidgets.QStyledItemDelegate):
     Overload of QStyledItemDelegate used to edit python data.
     """
 
+    # region Dunderscores
     __builtins__ = (bool, int, float, str)
 
     __getters__ = {
@@ -35,9 +35,9 @@ class QPSONStyledItemDelegate(QtWidgets.QStyledItemDelegate):
         'QLineEdit': lambda widget, value: widget.setText(value),
         'QFileEdit': lambda widget, value: widget.setText(value),
         'QDirectoryEdit': lambda widget, value: widget.setText(value),
-        'QSpinBox': lambda widget, value: widget.setValue(value),
-        'QDoubleSpinBox': lambda widget, value: widget.setValue(value),
-        'QTimeSpinBox': lambda widget, value: widget.setValue(value),
+        'QSpinBox': lambda widget, value: (widget.setRange(-9999, 9999), widget.setValue(len(value)) if isinstance(value, collections_abc.MutableSequence) else widget.setValue(value)),
+        'QDoubleSpinBox': lambda widget, value: (widget.setRange(-9999, 9999), widget.setValue(value)),
+        'QTimeSpinBox': lambda widget, value: (widget.setRange(-9999, 9999), widget.setValue(value)),
         'QCheckBox': lambda widget, value: widget.setChecked(value),
         'QComboBox': lambda widget, value: widget.setCurrentIndex(value)
     }
@@ -50,24 +50,9 @@ class QPSONStyledItemDelegate(QtWidgets.QStyledItemDelegate):
         'bool': QtWidgets.QCheckBox,
         'list': QtWidgets.QSpinBox
     }
+    # endregion
 
-    def __init__(self, parent=None):
-        """
-        Private method called after a new instance has been created.
-
-        :type parent: QtWidgets.QWidget
-        :rtype: None
-        """
-
-        # Call parent method
-        #
-        super(QPSONStyledItemDelegate, self).__init__(parent=parent)
-
-        # Declare private variables
-        #
-        self._getters = dict(self.__getters__)
-        self._setters = dict(self.__setters__)
-
+    # region Methods
     def createEditor(self, parent, option, index):
         """
         Returns the widget used to edit the item specified by index for editing.
@@ -220,8 +205,10 @@ class QPSONStyledItemDelegate(QtWidgets.QStyledItemDelegate):
         :rtype: Any
         """
 
+        # Evaluate widget type
+        #
         typeName = type(editor).__name__
-        func = self._getters.get(typeName, None)
+        func = self.__getters__.get(typeName, None)
 
         if callable(func):
 
@@ -229,7 +216,7 @@ class QPSONStyledItemDelegate(QtWidgets.QStyledItemDelegate):
 
         else:
 
-            raise TypeError('getEditorData() expects a supported widget (%s given)!' % typeName)
+            raise TypeError(f'getEditorData() expects a supported widget ({typeName} given)!')
 
     def setEditorData(self, editor, index):
         """
@@ -242,42 +229,19 @@ class QPSONStyledItemDelegate(QtWidgets.QStyledItemDelegate):
 
         # Evaluate widget type
         #
+        typeName = type(editor).__name__
+        func = self.__setters__.get(typeName, None)
+
         model = index.model()
         value = model.itemFromIndex(index)
 
-        if isinstance(editor, QtWidgets.QSpinBox):
+        if callable(func):
 
-            # Inspect value type
-            #
-            editor.setRange(-9999, 9999)  # Default range is -99:99
-
-            if isinstance(value, collections_abc.MutableSequence):
-
-                editor.setValue(len(value))
-
-            else:
-
-                editor.setValue(value)
-
-        elif isinstance(editor, QtWidgets.QDoubleSpinBox):
-
-            editor.setValue(value)
-
-        elif isinstance(editor, QtWidgets.QLineEdit):
-
-            editor.setText(value)
-
-        elif isinstance(editor, QtWidgets.QCheckBox):
-
-            editor.setChecked(value)
-
-        elif isinstance(editor, QtWidgets.QComboBox):
-
-            editor.setCurrentIndex(value)
+            return func(editor, value)
 
         else:
 
-            raise TypeError('setEditorData() expects a supported widget (%s given)!' % type(editor).__name__)
+            raise TypeError(f'setEditorData() expects a supported widget ({typeName} given)!')
 
     def updateEditorGeometry(self, editor, option, index):
         """
@@ -304,19 +268,4 @@ class QPSONStyledItemDelegate(QtWidgets.QStyledItemDelegate):
 
         value = self.getEditorData(editor)
         model.setData(index, value, role=QtCore.Qt.EditRole)
-
-    def registerEditor(self, editor, getter, setter):
-        """
-        Registers a custom editor for data entry.
-        The getter should return the value from the editor.
-        Whereas the setter should update the editor with the passed value.
-
-        :type editor: class
-        :type getter: lambda
-        :type setter: lambda
-        :rtype: None
-        """
-
-        typeName = editor.__name__
-        self._getters[typeName] = getter
-        self._setters[typeName] = setter
+    # endregion
