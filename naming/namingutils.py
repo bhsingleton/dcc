@@ -13,6 +13,9 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
+__dir__ = os.path.dirname(os.path.abspath(__file__))
+
+
 def getSideMappings():
     """
     Returns a map of all the possible sides and their opposites.
@@ -22,7 +25,7 @@ def getSideMappings():
 
     # Concatenate file path
     #
-    filePath = os.path.join(os.path.dirname(__file__), r'sides.json')
+    filePath = os.path.join(__dir__, r'sides.json')
 
     with open(filePath, 'r') as jsonFile:
 
@@ -81,8 +84,7 @@ def getDefaultConfiguration():
     :rtype: str
     """
 
-    directory = os.path.dirname(os.path.abspath(__file__))
-    return os.path.join(directory, 'configs', 'default.config')
+    return os.path.join(__dir__, 'configs', 'default.config')
 
 
 def changeConfiguration(*args):
@@ -136,7 +138,7 @@ def loadConfiguration(*args):
         raise TypeError('loadConfiguration() cannot locate configuration: %s' % filePath)
 
 
-def getAbbreviation(typeName):
+def getAcronym(typeName):
     """
     Returns an abbreviation for the supplied type name using the current configuration.
 
@@ -154,38 +156,38 @@ def getAbbreviation(typeName):
 
     # Check if abbreviations section exists
     #
-    if not __config__.has_section('abbreviations'):
+    if not __config__.has_section('acronyms'):
 
-        raise TypeError('getAbbreviation() expects a naming configuration with an abbreviations section!')
+        raise TypeError('getAcronym() expects a naming configuration with an abbreviations section!')
 
     # Check if type name exists in section
     #
-    abbreviation = None
+    acronym = None
 
-    if __config__.has_option('abbreviations', typeName):
+    if __config__.has_option('acronyms', typeName):
 
         # Get option and capitalize
         #
-        abbreviation = __config__.get('abbreviations', typeName)
+        acronym = __config__.get('acronyms', typeName)
 
     else:
 
-        abbreviation = typeName
+        acronym = typeName
 
     # Check if abbreviation should be titleized
     #
-    titleize = __config__.getboolean('pattern', 'titleize')
+    titleize = __config__.getboolean('format', 'titleize')
 
     if titleize:
 
-        return abbreviation.upper()
+        return acronym.upper()
 
     else:
 
-        return abbreviation.lower()
+        return acronym.lower()
 
 
-def applyCasing(name):
+def caseify(name):
     """
     Enforces the casing setting from the current configuration.
 
@@ -197,7 +199,7 @@ def applyCasing(name):
 
     # Evaluate which casing style to use
     #
-    titleize = __config__.getboolean('pattern', 'titleize')
+    titleize = __config__.getboolean('format', 'titleize')
 
     if titleize:
 
@@ -224,7 +226,7 @@ def applyCasing(name):
             return ''
 
 
-def applyPadding(number, padding):
+def padify(number, padding):
     """
     Converts the supplied number into a string with the specified padding.
 
@@ -259,7 +261,7 @@ def applyPadding(number, padding):
         #
         if stringutils.isNumber(number):
 
-            return applyPadding(int(number), padding)
+            return padify(int(number), padding)
 
         else:
 
@@ -270,7 +272,7 @@ def applyPadding(number, padding):
         raise TypeError('applyPadding() expects either an int or float (%s given)!' % type(number).__name__)
 
 
-def expandSide(side):
+def sideify(side):
     """
     Returns the name associated with the supplied side enumerator.
 
@@ -301,7 +303,7 @@ def expandSide(side):
 
     # Check if side should be titleized
     #
-    titleize = __config__.getboolean('pattern', 'titleize')
+    titleize = __config__.getboolean('format', 'titleize')
 
     if titleize:
 
@@ -328,7 +330,7 @@ def removeDuplicateUnderscores(name):
     return re.sub('_+', '_', name)
 
 
-def formatName(name=None, id=None, subname=None, type=None, index=None, side=None):
+def formatName(name=None, id=None, subname=None, kinemat=None, index=None, type=None, side=None):
     """
     Concatenates a name based on the current configuration file.
 
@@ -345,27 +347,30 @@ def formatName(name=None, id=None, subname=None, type=None, index=None, side=Non
 
     # Get configuration section
     #
-    pattern = __config__.get('pattern', 'name')
-    idPadding = __config__.getint('pattern', 'id_padding')
-    indexPadding = __config__.getint('pattern', 'index_padding')
+    nameFormat = __config__.get('format', 'name')
+    useAcronyms = __config__.getboolean('format', 'use_acronyms')
+    idPadding = __config__.getint('format', 'id_padding')
+    indexPadding = __config__.getint('format', 'index_padding')
 
-    name = applyCasing(name)
-    subname = applyCasing(subname)
-    abbreviation = getAbbreviation(type)
-    side = expandSide(side)
-    id = applyPadding(id, idPadding)
-    index = applyPadding(index, indexPadding)
+    name = caseify(name)
+    subname = caseify(subname)
+    kinemat = caseify(kinemat)
+    type = getAcronym(type) if useAcronyms else caseify(type)
+    side = sideify(side)
+    id = padify(id, idPadding)
+    index = padify(index, indexPadding)
 
-    name = pattern.format(
+    newName = nameFormat.format(
         name=name,
         subname=subname,
-        type=abbreviation,
+        kinemat=kinemat,
+        type=type,
         side=side,
         id=id,
         index=index
     )
 
-    return removeDuplicateUnderscores(name)
+    return removeDuplicateUnderscores(newName)
 
 
 __config__ = loadConfiguration()  # Initialize default configuration
