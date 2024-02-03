@@ -43,28 +43,44 @@ def findPlug(node, path):
     Unlike the API method derived from MFnDependencyNode this function supports indices and children.
     This method also accepts partial paths in that a parent attribute can be omitted and still resolved.
 
-    :type node: om.MObject
+    :type node: Union[str, om.MObject, om.MDagPath]
     :type path: str
     :rtype: om.MPlug
     """
 
-    # Break down string path into groups
+    # Evaluate supplied node
     #
     node = dagutils.getMObject(node)
 
+    if node.isNull():
+
+        raise TypeError('findPlug() expects a valid node!')
+
+    # Check if path contains an alias
+    #
+    aliases = getAliases(node)
+    alias = aliases.get(path, None)
+
+    if alias is not None:
+
+        log.debug(f'Converting path to alias: {path} > {alias}')
+        path = alias
+
+    # Evaluate supplied path
+    #
     groups = __plug_parser__.findall(path)
     numGroups = len(groups)
 
     if numGroups == 0:
 
-        raise TypeError('findPlug() unable to split path: "%s"!' % path)
+        raise TypeError(f'findPlug() expects a valid path ("{path}" given)!')
 
     # Evaluate if attribute exists
     #
     fnDependNode = om.MFnDependencyNode(node)
     nodeName = fnDependNode.name()
-    attributeName = groups[-1][0]
 
+    attributeName = groups[-1][0]
     attribute = fnDependNode.attribute(attributeName)
 
     if attribute.isNull():
