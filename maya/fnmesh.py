@@ -832,11 +832,15 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
         elif componentType == self.ComponentType.Face:
 
             iterFaces = om.MItMeshPolygon(self.object())
-            connectedEdges = iterFaces.getConnectedEdges()
 
-            for connectedEdge in connectedEdges:
+            for arg in indices:
 
-                yield connectedEdge
+                iterFaces.setIndex(arg)
+                connectedEdges = iterFaces.getConnectedEdges()
+
+                for connectedEdge in connectedEdges:
+
+                    yield connectedEdge
 
         else:
 
