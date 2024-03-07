@@ -146,3 +146,20 @@ def slugify(text, whitespace='_', illegal=''):
     name = re.sub(r'[-\s]+', whitespace, name)
 
     return name
+
+
+def stripCartesian(text):
+    """
+    Removes any cartesian characters from the end of the supplied string.
+
+    :type text: str
+    :rtype: str
+    """
+
+    if any([text.endswith(axis) for axis in ('X', 'Y', 'Z')]):
+
+        return text[:-1]
+
+    else:
+
+        return text
