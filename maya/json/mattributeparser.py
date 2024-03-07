@@ -20,6 +20,7 @@ class MAttributeDecoder(json.JSONDecoder):
 
     __numeric_types__ = {
         'bool': om.MFnNumericData.kBoolean,
+        'addr': om.MFnNumericData.kAddr,
         'long': om.MFnNumericData.kLong,
         'short': om.MFnNumericData.kShort,
         'int': om.MFnNumericData.kInt,
@@ -38,8 +39,9 @@ class MAttributeDecoder(json.JSONDecoder):
         'double2': om.MFnNumericData.k2Double,
         'double3': om.MFnNumericData.k3Double,
         'double4': om.MFnNumericData.k4Double,
-        'doubleArray': om.MFnNumericData.kDoubleArray,
+        'intArray': om.MFnData.kIntArray,
         'floatArray': om.MFnNumericData.kFloatArray,
+        'doubleArray': om.MFnNumericData.kDoubleArray,
         'vectorArray': om.MFnNumericData.kVectorArray,
         'pointArray': om.MFnNumericData.kPointArray,
         'matrixArray': om.MFnNumericData.kMatrixArray
