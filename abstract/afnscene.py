@@ -53,6 +53,21 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         pass
 
+    def isReadOnly(self):
+        """
+        Evaluates whether the open scene file is read-only.
+
+        :rtype: bool
+        """
+
+        if not self.isNewScene():
+
+            return pathutils.isReadOnly(self.currentFilePath())
+
+        else:
+
+            return False
+
     @abstractmethod
     def new(self):
         """
@@ -397,16 +412,17 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
         return pathutils.isPathRelativeTo(path, directory)
 
     @classmethod
-    def makePathRelativeTo(cls, path, directory):
+    def makePathRelativeTo(cls, path, directory, force=False):
         """
         Returns a path relative to the supplied directory.
 
         :type path: str
         :type directory: str
+        :type force: bool
         :rtype: str
         """
 
-        return pathutils.makePathRelativeTo(path, directory)
+        return pathutils.makePathRelativeTo(path, directory, force=force)
 
     def makePathRelative(self, path):
         """
