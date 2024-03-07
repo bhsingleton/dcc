@@ -141,6 +141,27 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
         """
 
         return self._currentExportSet
+
+    @property
+    def checkout(self):
+        """
+        Getter method that returns the checkout state.
+
+        :rtype: bool
+        """
+
+        return self.checkoutCheckBox.isChecked()
+
+    @checkout.setter
+    def checkout(self, checkout):
+        """
+        Setter method that updates the checkout state.
+
+        :type checkout: bool
+        :rtype: None
+        """
+
+        self.checkoutCheckBox.setChecked(checkout)
     # endregion
 
     # region Methods
@@ -224,6 +245,38 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
         self.customContextMenu.addActions([self.copySelectionAction, self.copyInfluencesAction])
         self.customContextMenu.addSeparator()
         self.customContextMenu.addAction(self.clearItemsAction)
+
+    def saveSettings(self, settings):
+        """
+        Saves the user settings.
+
+        :type settings: QtCore.QSettings
+        :rtype: None
+        """
+
+        # Call parent method
+        #
+        super(QFbxExportSetEditor, self).saveSettings(settings)
+
+        # Save user settings
+        #
+        settings.setValue('editor/checkout', int(self.checkout))
+
+    def loadSettings(self, settings):
+        """
+        Loads the user settings.
+
+        :type settings: QtCore.QSettings
+        :rtype: None
+        """
+
+        # Call parent method
+        #
+        super(QFbxExportSetEditor, self).loadSettings(settings)
+
+        # Load user settings
+        #
+        self.checkout = bool(settings.value('editor/checkout', defaultValue=1))
 
     def isNameUnique(self, name):
         """
@@ -528,7 +581,7 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
         #
         currentDirectory = os.path.expandvars(self.asset.directory)
 
-        assetDirectory = QtWidgets.QFileDialog.getExistingDirectory(
+        directory = QtWidgets.QFileDialog.getExistingDirectory(
             parent=self,
             caption='Select Asset Directory',
             dir=currentDirectory,
@@ -536,11 +589,11 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
         )
 
         # Check if path is valid
-        # A null value will be returned if the user exited
         #
-        if assetDirectory:
+        if not stringutils.isNullOrEmpty(directory):
 
-            self.assetDirectoryLineEdit.setText(assetDirectory)
+            directory = self.scene.makePathVariable(directory, '$P4ROOT')
+            self.assetDirectoryLineEdit.setText(directory)
 
         else:
 
@@ -978,8 +1031,7 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
 
         # Export current set
         #
-        checkout = self.checkoutCheckBox.isChecked()
-        self.currentExportSet.export(checkout=checkout)
+        self.currentExportSet.export(checkout=self.checkout)
 
     @QtCore.Slot(bool)
     def on_exportAllPushButton_clicked(self, checked=False):
@@ -999,11 +1051,9 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
 
         # Export all sets
         #
-        checkout = self.checkoutCheckBox.isChecked()
-
         for exportSet in self.asset.exportSets:
 
-            exportSet.export(checkout=checkout)
+            exportSet.export(checkout=self.checkout)
 
     @QtCore.Slot(bool)
     def on_usingFbxExportSetEditorAction_triggered(self, checked=False):
