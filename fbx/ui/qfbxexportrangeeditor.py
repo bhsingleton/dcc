@@ -130,6 +130,27 @@ class QFbxExportRangeEditor(quicwindow.QUicWindow):
         """
 
         return self._currentSequencer
+
+    @property
+    def checkout(self):
+        """
+        Getter method that returns the checkout state.
+
+        :rtype: bool
+        """
+
+        return self.checkoutCheckBox.isChecked()
+
+    @checkout.setter
+    def checkout(self, checkout):
+        """
+        Setter method that updates the checkout state.
+
+        :type checkout: bool
+        :rtype: None
+        """
+
+        self.checkoutCheckBox.setChecked(checkout)
     # endregion
 
     # region Methods
@@ -166,6 +187,38 @@ class QFbxExportRangeEditor(quicwindow.QUicWindow):
         self.sequencerItemDelegate.setObjectName('sequencerItemDelegate')
 
         self.sequencerTreeView.setItemDelegate(self.sequencerItemDelegate)
+
+    def saveSettings(self, settings):
+        """
+        Saves the user settings.
+
+        :type settings: QtCore.QSettings
+        :rtype: None
+        """
+
+        # Call parent method
+        #
+        super(QFbxExportRangeEditor, self).saveSettings(settings)
+
+        # Save user settings
+        #
+        settings.setValue('editor/checkout', int(self.checkout))
+
+    def loadSettings(self, settings):
+        """
+        Loads the user settings.
+
+        :type settings: QtCore.QSettings
+        :rtype: None
+        """
+
+        # Call parent method
+        #
+        super(QFbxExportRangeEditor, self).loadSettings(settings)
+
+        # Load user settings
+        #
+        self.checkout = bool(settings.value('editor/checkout', defaultValue=1))
 
     def defaultExportRange(self):
         """
@@ -286,6 +339,24 @@ class QFbxExportRangeEditor(quicwindow.QUicWindow):
         # Clear notifies
         #
         self._notifies.clear()
+    # endregion
+
+    # region Methods
+    def save(self):
+        """
+        Commits any changes to the file properties.
+
+        :rtype: None
+        """
+
+        if not self.scene.isReadOnly():
+
+            self.manager.saveSequencers(self.sequencers)
+            self.scene.save()
+
+        else:
+
+            log.warning('Cannot save changes to read-only scene file!')
     # endregion
 
     # region Slots
@@ -434,8 +505,7 @@ class QFbxExportRangeEditor(quicwindow.QUicWindow):
         :rtype: None
         """
 
-        self.manager.saveSequencers(self.sequencers)
-        self.scene.save()
+        self.save()
 
     @QtCore.Slot(bool)
     def on_addExportRangeAction_triggered(self, checked=False):
@@ -652,11 +722,11 @@ class QFbxExportRangeEditor(quicwindow.QUicWindow):
 
         # Export selected range
         #
-        checkout = self.checkoutCheckBox.isChecked()
+        self.save()
 
         for row in self.getSelectedRows():
 
-            self.currentSequencer.exportRanges[row].export(checkout=checkout)
+            self.currentSequencer.exportRanges[row].export(checkout=self.checkout)
 
     @QtCore.Slot(bool)
     def on_exportAllPushButton_clicked(self, checked=False):
@@ -676,11 +746,11 @@ class QFbxExportRangeEditor(quicwindow.QUicWindow):
 
         # Export all ranges
         #
-        checkout = self.checkoutCheckBox.isChecked()
+        self.save()
 
         for exportRange in self.currentSequencer.exportRanges:
 
-            exportRange.export(checkout=checkout)
+            exportRange.export(checkout=self.checkout)
 
     @QtCore.Slot(bool)
     def on_addFilesPushButton_clicked(self, checked=False):
