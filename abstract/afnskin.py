@@ -997,7 +997,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
             log.debug('Vertex weights have already been normalized.')
             return weights
 
-        # Check if can be normalized
+        # Check if weights can be normalized
         #
         total = sum(weights.values())
 
