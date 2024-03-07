@@ -118,9 +118,9 @@ class FbxExportSet(fbxbase.FbxBase):
         #
         cwd = self.cwd(expandVars=True)
 
-        if self.scene.isPathAbsolute(directory) and self.scene.isPathRelativeTo(directory, cwd):
+        if self.scene.isPathAbsolute(directory):
 
-            directory = self.scene.makePathRelativeTo(directory, cwd)
+            directory = self.scene.makePathRelativeTo(directory, cwd, force=True)
 
         self._directory = directory
 
@@ -351,7 +351,7 @@ class FbxExportSet(fbxbase.FbxBase):
 
         if not self.scene.isNullOrEmpty(cwd) and self.scene.isPathRelative(path):
 
-            return os.path.normpath(os.path.join(cwd, path))
+            return os.path.realpath(os.path.join(cwd, path))
 
         else:
 
