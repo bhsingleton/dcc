@@ -3,7 +3,6 @@ from ...maya.libs import sceneutils
 from ...decorators import abstractdecorator
 
 import logging
-
 logging.basicConfig()
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
