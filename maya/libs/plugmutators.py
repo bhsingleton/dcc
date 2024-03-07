@@ -971,9 +971,9 @@ def setValue(plug, value, modifier=None, **kwargs):
 
         # Check value type
         #
-        if not isinstance(value, (list, tuple)):
+        if not (arrayutils.isArray(value) or arrayutils.isArrayLike(value)):
 
-            raise TypeError('setValue() expects a sequence of values for array plugs!')
+            raise TypeError(f'setValue() expects a sequence of values ({type(value).__name__} given)!')
 
         # Check if space should be reallocated
         #
