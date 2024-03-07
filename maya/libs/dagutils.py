@@ -820,11 +820,13 @@ def getRichSelection(apiType=om.MFn.kMeshVertComponent):
         return None, None
 
 
-def iterActiveComponentSelection():
+def iterActiveComponentSelection(apiType=om.MFn.kDagNode, skipNullComponents=True):
     """
     Returns a generator that yields the active component selection.
     Each tuple yielded consists on a dag path and a component object.
 
+    :type apiType: int
+    :type skipNullComponents: bool
     :rtype: Iterator[Tuple[om.MDagPath, om.MObject]]
     """
 
@@ -845,25 +847,31 @@ def iterActiveComponentSelection():
 
     # Iterate through selection
     #
-    iterSelection = om.MItSelectionList(selection, om.MFn.kMeshComponent)
+    selectionCount = selection.length()
 
-    while not iterSelection.isDone():
+    for i in range(selectionCount):
 
-        # Check if item has a valid component
+        # Evaluate api type
         #
-        dagPath, component = iterSelection.getComponent()
+        node = selection.getDependNode(i)
+        isDagNode = node.hasFn(om.MFn.kDagNode)
 
-        if dagPath.isValid() and not component.isNull():
+        if not (node.hasFn(apiType) and isDagNode):
+
+            continue
+
+        # Evaluate component object
+        #
+        dagPath, component = selection.getComponent(i)
+
+        if not (component.isNull() and skipNullComponents):
 
             yield dagPath, component
 
         else:
 
-            log.debug('Skipping invalid component selection on %s.' % dagPath.partialPathName())
-
-        # Go to next selection
-        #
-        iterSelection.next()
+            log.debug(f'Skipping null component @ {dagPath.partialPathName()}')
+            continue
 
 
 def getParent(node):
@@ -1274,7 +1282,7 @@ def iterNodesByPattern(*patterns, apiType=om.MFn.kDependencyNode, exactType=Fals
             continue
 
 
-def iterDependencies(node, apiType, typeName='', direction=om.MItDependencyGraph.kDownstream, traversal=om.MItDependencyGraph.kDepthFirst):
+def iterDependencies(node, apiType, typeName=None, direction=om.MItDependencyGraph.kDownstream, traversal=om.MItDependencyGraph.kDepthFirst):
     """
     Returns a generator that yields dependencies based on the specified criteria.
 
@@ -1283,7 +1291,7 @@ def iterDependencies(node, apiType, typeName='', direction=om.MItDependencyGraph
     :param apiType: The specific api type to collect, the default being all dependency nodes.
     :type apiType: int
     :param typeName: The specific type name to collect if supplied.
-    :type typeName: str
+    :type typeName: Union[str, None]
     :param direction: The direction to traverse in the node graph.
     :type direction: int
     :param traversal: The order of traversal.
@@ -1293,6 +1301,8 @@ def iterDependencies(node, apiType, typeName='', direction=om.MItDependencyGraph
 
     # Initialize dependency graph iterator
     #
+    fnDependNode = om.MFnDependencyNode()
+
     iterDepGraph = om.MItDependencyGraph(
         node,
         filter=apiType,
@@ -1301,46 +1311,49 @@ def iterDependencies(node, apiType, typeName='', direction=om.MItDependencyGraph
         level=om.MItDependencyGraph.kNodeLevel
     )
 
-    fnDependNode = om.MFnDependencyNode()
+    useTypeName = not stringutils.isNullOrEmpty(typeName)
+    typeNames = mc.nodeType(typeName, isTypeName=True, derived=True) if useTypeName else []
 
     while not iterDepGraph.isDone():
 
-        # Insect current node
+        # Evaluate current node
         #
         currentNode = iterDepGraph.currentNode()
         fnDependNode.setObject(currentNode)
 
-        if fnDependNode.typeName == typeName or stringutils.isNullOrEmpty(typeName):
+        if (fnDependNode.typeName in typeNames and useTypeName) or not useTypeName:
 
             yield currentNode
 
-        # Increment iterator
+        # Go to next item
         #
         iterDepGraph.next()
 
 
-def dependsOn(node, apiType=om.MFn.kDependencyNode):
+def dependsOn(node, apiType=om.MFn.kDependencyNode, typeName=None):
     """
     Returns a list of nodes that this object is dependent on.
 
     :type node: om.MObject
     :type apiType: int
+    :type typeName: Union[str, None]
     :rtype: List[om.MObject]
     """
 
-    return list(iterDependencies(node, apiType, direction=om.MItDependencyGraph.kUpstream))
+    return list(iterDependencies(node, apiType, typeName=typeName, direction=om.MItDependencyGraph.kUpstream))
 
 
-def dependents(node, apiType=om.MFn.kDependencyNode):
+def dependents(node, apiType=om.MFn.kDependencyNode, typeName=None):
     """
     Returns a list of nodes that are dependent on this object.
 
     :type node: om.MObject
     :type apiType: int
+    :type typeName: Union[str, None]
     :rtype: List[om.MObject]
     """
 
-    return list(iterDependencies(node, apiType, direction=om.MItDependencyGraph.kDownstream))
+    return list(iterDependencies(node, apiType, typeName=typeName, direction=om.MItDependencyGraph.kDownstream))
 
 
 def stripDagPath(name):
@@ -1589,67 +1602,62 @@ def deleteNode(node):
     :rtype: None
     """
 
-    # Break all connections to node
+    # Break any connections to node
     #
     node = getMObject(node)
     plugs = om.MFnDependencyNode(node).getConnections()
+    hasPlugs = len(plugs) > 0
 
     modifier = om.MDGModifier()
 
-    for plug in plugs:
+    if hasPlugs:
 
-        # Check if this plug has a source connection
-        #
-        source = plug.source()
+        for plug in plugs:
 
-        if not source.isNull:
+            # Check if this plug has a source connection
+            #
+            source = plug.source()
 
-            log.debug(f'Breaking connection: {source.info} and {plug.info}')
-            modifier.disconnect(source, plug)
+            if not source.isNull:
 
-        # Check if this plug has any destination connections
-        #
-        destinations = plug.destinations()
+                log.debug(f'Breaking connection: {source.info} and {plug.info}')
+                modifier.disconnect(source, plug)
 
-        for destination in destinations:
+            # Check if this plug has any destination connections
+            #
+            destinations = plug.destinations()
 
-            log.debug(f'Breaking connection: {plug.info} and {destination.info}')
-            modifier.disconnect(plug, destination)
+            for destination in destinations:
 
-    commit(modifier.doIt, modifier.undoIt)
-    modifier.doIt()
+                log.debug(f'Breaking connection: {plug.info} and {destination.info}')
+                modifier.disconnect(plug, destination)
 
-    # Next, check if children should be deleted
+        commit(modifier.doIt, modifier.undoIt)
+        modifier.doIt()
+
+    # Next, check if children should be re-parented
     #
     isDagNode = node.hasFn(om.MFn.kDagNode)
 
     if isDagNode:
 
-        # Un-parent immediate children
-        #
         modifier = om.MDagModifier()
+        children = list(iterChildren(node))
 
-        for child in iterChildren(node):
+        hasChildren = len(children) > 0
 
-            modifier.reparentNode(child, om.MObject.kNullObj)
+        if hasChildren:
 
-        commit(modifier.doIt, modifier.undoIt)
-        modifier.doIt()
+            for child in children:
 
-        # Delete any shapes
-        #
-        modifier = om.MDagModifier()
+                modifier.reparentNode(child, om.MObject.kNullObj)
 
-        for shape in iterShapes(node):
-
-            modifier.deleteNode(shape, includeParents=False)
-
-        commit(modifier.doIt, modifier.undoIt)
-        modifier.doIt()
+            commit(modifier.doIt, modifier.undoIt)
+            modifier.doIt()
 
     # Finally, delete node and execute modifier stack
     #
-    modifier = om.MDGModifier()
+    modifier = om.MDagModifier() if isDagNode else om.MDGModifier()
     modifier.deleteNode(node, includeParents=False)
 
     commit(modifier.doIt, modifier.undoIt)
