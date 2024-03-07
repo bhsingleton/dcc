@@ -12,11 +12,11 @@ class QXyzWidget(QtWidgets.QWidget):
     """
 
     # region Dunderscores
-    def __init__(self, title, parent=None, f=QtCore.Qt.WindowFlags()):
+    def __init__(self, *args, parent=None, f=QtCore.Qt.WindowFlags()):
         """
         Private method called after a new instance has been created.
 
-        :type title: str
+        :type args: Union[str, None]
         :type parent: QtWidgets.QWidget
         :type f: QtCore.Qt.WindowFlags
         :rtype: None
@@ -28,7 +28,10 @@ class QXyzWidget(QtWidgets.QWidget):
 
         # Create push buttons
         #
-        self.matchPushButton = QtWidgets.QPushButton(title)
+        numArgs = len(args)
+        text = args[0] if numArgs == 1 else ''
+
+        self.matchPushButton = QtWidgets.QPushButton(text)
         self.matchPushButton.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.MinimumExpanding)
         self.matchPushButton.setCheckable(True)
         self.matchPushButton.toggled.connect(self.on_matchPushButton_toggled)
@@ -66,6 +69,25 @@ class QXyzWidget(QtWidgets.QWidget):
     # endregion
 
     # region Methods
+    def text(self):
+        """
+        Returns the button text.
+
+        :rtype: str
+        """
+
+        return self.matchPushButton.text()
+
+    def setText(self, text):
+        """
+        Updates the button text.
+
+        :type text: str
+        :rtype: None
+        """
+
+        self.matchPushButton.setText(text)
+
     def matches(self):
         """
         Returns a list of state values for each button.
