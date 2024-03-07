@@ -18,6 +18,15 @@ class MShapeEncoder(json.JSONEncoder):
 
     # region Dunderscores
     __slots__ = ()
+
+    __shape_types__ = {
+        'nurbsCurve': 'serializeNurbsCurve',
+        'bezierCurve': 'serializeNurbsCurve',
+        'nurbsTrimSurface': 'serializeNurbsTrimSurface',
+        'nurbsSurface': 'serializeNurbsSurface',
+        'mesh': 'serializeMesh'
+
+    }
     # endregion
 
     # region Methods
@@ -29,10 +38,12 @@ class MShapeEncoder(json.JSONEncoder):
         :rtype: Any
         """
 
+        # Evaluate object type
+        #
         if isinstance(obj, om.MObject):
 
-            typeName = om.MFnDependencyNode(obj).typeName
-            func = getattr(self, typeName)
+            delegate = self.__shape_types__[om.MFnDependencyNode(obj).typeName]
+            func = getattr(self, delegate)
 
             return func(obj)
 
@@ -45,7 +56,7 @@ class MShapeEncoder(json.JSONEncoder):
             return super(MShapeEncoder, self).default(obj)
 
     @classmethod
-    def nurbsCurve(cls, obj):
+    def serializeNurbsCurve(cls, obj):
         """
         Dumps the supplied nurbs curve into a json compatible object.
 
@@ -68,7 +79,7 @@ class MShapeEncoder(json.JSONEncoder):
         }
 
     @classmethod
-    def nurbsTrimSurface(cls, obj):
+    def serializeNurbsTrimSurface(cls, obj):
         """
         Dumps the supplied nurb surface's trimmed boundaries into a json compatible object.
         Please note Autodesk have yet to implement these methods in their newest API!
@@ -138,7 +149,7 @@ class MShapeEncoder(json.JSONEncoder):
         return items
 
     @classmethod
-    def nurbsSurface(cls, obj):
+    def serializeNurbsSurface(cls, obj):
         """
         Dumps the supplied nurbs surface into a json compatible object.
 
@@ -165,7 +176,7 @@ class MShapeEncoder(json.JSONEncoder):
         }
 
     @classmethod
-    def mesh(cls, obj):
+    def serializeMesh(cls, obj):
         """
         Dumps the supplied mesh into a json compatible object.
 
@@ -203,6 +214,15 @@ class MShapeDecoder(json.JSONDecoder):
         '_lineWidth',
         '_parent'
     )
+
+    __shape_types__ = {
+        'nurbsCurve': 'deserializeNurbsCurve',
+        'bezierCurve': 'deserializeNurbsCurve',
+        'nurbsTrimSurface': 'deserializeNurbsTrimSurface',
+        'nurbsSurface': 'deserializeNurbsSurface',
+        'mesh': 'deserializeMesh'
+
+    }
 
     def __init__(self, *args, **kwargs):
         """
@@ -244,11 +264,10 @@ class MShapeDecoder(json.JSONDecoder):
         :rtype: om.MObject
         """
 
-        # Inspect type name
-        # We don't want to process any nurbs trim surfaces
+        # Evaluate type name
         #
         typeName = obj.get('typeName', '')
-        func = getattr(self, typeName, None)
+        func = getattr(self, self.__shape_types__[typeName], None)
 
         if callable(func):
 
@@ -310,7 +329,7 @@ class MShapeDecoder(json.JSONDecoder):
         return demotedMatrix
 
     @classmethod
-    def nurbsCurve(cls, obj, **kwargs):
+    def deserializeNurbsCurve(cls, obj, **kwargs):
         """
         Creates a nurbs curve based on the supplied dictionary.
 
@@ -345,7 +364,7 @@ class MShapeDecoder(json.JSONDecoder):
         return curve
 
     @classmethod
-    def nurbsCurveData(cls, obj, **kwargs):
+    def deserializeNurbsCurveData(cls, obj, **kwargs):
         """
         Creates a legacy nurbs curve data object from the supplied object.
 
@@ -391,7 +410,7 @@ class MShapeDecoder(json.JSONDecoder):
         return curveData
 
     @classmethod
-    def trimNurbsSurface(cls, objs, **kwargs):
+    def deserializeTrimNurbsSurface(cls, objs, **kwargs):
         """
         Creates a trim surface based on the supplied objects.
         Sadly this method only works with the legacy API methods...c'mon Autodesk!
@@ -426,7 +445,7 @@ class MShapeDecoder(json.JSONDecoder):
         return boundaries
 
     @classmethod
-    def nurbsSurface(cls, obj, **kwargs):
+    def deserializeNurbsSurface(cls, obj, **kwargs):
         """
         Creates a nurbs surface based on the supplied object.
 
@@ -470,7 +489,7 @@ class MShapeDecoder(json.JSONDecoder):
         return surface
 
     @classmethod
-    def mesh(cls, obj, **kwargs):
+    def deserializeMesh(cls, obj, **kwargs):
         """
         Creates a mesh based on the supplied dictionary.
 
