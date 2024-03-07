@@ -187,12 +187,13 @@ def isPathVariable(path):
     return path.startswith('$') or (path.startswith('%') and path.endswith('%'))
 
 
-def makePathRelativeTo(path, directory):
+def makePathRelativeTo(path, directory, force=False):
     """
     Returns a path relative to the supplied directory.
 
     :type path: str
     :type directory: str
+    :type force: bool
     :rtype: str
     """
 
@@ -207,7 +208,7 @@ def makePathRelativeTo(path, directory):
     path = os.path.normpath(path)
     directory = os.path.normpath(os.path.expandvars(directory))
 
-    if isPathRelativeTo(path, directory):
+    if isPathRelativeTo(path, directory) or force:
 
         relativePath = os.path.relpath(path, directory)
         log.info(f'Relativizing path: {path} > {relativePath}')
