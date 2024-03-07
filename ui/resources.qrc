@@ -1,5 +1,6 @@
 <RCC>
   <qresource prefix="dcc">
+    <file>icons/refresh.svg</file>
     <file>icons/settings.svg</file>
     <file>icons/no.png</file>
     <file>icons/check.svg</file>
