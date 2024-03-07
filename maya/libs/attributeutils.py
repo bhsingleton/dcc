@@ -3,7 +3,7 @@ import json
 
 from maya.api import OpenMaya as om
 from six import string_types
-from . import dagutils
+from . import dagutils, iterEnumMembers
 from ..json import mattributeparser
 from ..decorators.undo import commit
 
@@ -13,6 +13,9 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
+NUMERIC_TYPES = {value: key for (key, value) in iterEnumMembers(om.MFnNumericData)}
+ATTR_TYPES = {value: key for (key, value) in iterEnumMembers(om.MFnData)}
+UNIT_TYPES = {value: key for (key, value) in iterEnumMembers(om.MFnUnitAttribute)}
 SCHEMA_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'schemas')
 ATTRIBUTES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'attributes')
 
@@ -227,65 +230,6 @@ def findAttribute(*args):
         raise TypeError('findAttribute() expects 1-2 arguments (%s given)!' % numArgs)
 
 
-def getAttributeTypeName(attribute):
-    """
-    Returns the type name for the supplied attribute.
-    This is the string that correlates with setAttr commands.
-
-    :type attribute: om.MObject
-    :rtype: str
-    """
-
-    # Check attribute type
-    #
-    if attribute.hasFn(om.MFn.kNumericAttribute):
-
-        fnNumericAttribute = om.MFnNumericAttribute(attribute)
-        dataType = NUMERIC_TYPES[fnNumericAttribute.numericType()][1:]  # Strip the 'k' prefix
-
-        if dataType[0].isdigit():
-
-            return '{letter}{name}{digit}'.format(
-                letter=dataType[1].lower(),
-                name=dataType[2:],
-                digit=dataType[0]
-            )
-
-        else:
-
-            return '{letter}{name}'.format(
-                letter=dataType[0].lower(),
-                name=dataType[1:]
-            )
-
-    elif attribute.hasFn(om.MFn.kTypedAttribute):
-
-        fnTypedAttribute = om.MFnTypedAttribute(attribute)
-        dataType = ATTR_TYPES[fnTypedAttribute.attrType()][1:]  # Strip the 'k' prefix
-
-        return '{letter}{name}'.format(
-            letter=dataType[0].lower(),
-            name=dataType[1:]
-        )
-
-    elif attribute.hasFn(om.MFn.kUnitAttribute):
-
-        fnUnitAttribute = om.MFnUnitAttribute(attribute)
-        dataType = UNIT_TYPES[fnUnitAttribute.unitType()][1:]  # Strip the 'k' prefix
-
-        return '{letter}{name}'.format(
-            letter=dataType[0].lower(),
-            name=dataType[1:]
-        )
-
-    else:
-
-        return '{letter}{name}'.format(
-            letter=attribute.apiTypeStr[1].lower(),
-            name=attribute.apiTypeStr[2:-9]  # Strip the 'Attribute' suffix
-        )
-
-
 def iterParents(attribute):
     """
     Returns a generator that yields the parents from the supplied attribute.
@@ -426,25 +370,115 @@ def iterAttributeNames(dependNode, shortNames=False, topLevel=False, userDefined
             yield fnAttribute.name
 
 
-def iterEnums(obj):
+def getAttributeTypeName(attribute):
     """
-    Returns a generator that yields Maya enums pairs from the supplied object.
+    Returns the type name for the supplied attribute.
+    This is the string that correlates with setAttr commands.
 
-    :type obj: Any
-    :rtype: iter
+    :type attribute: Union[om.MObject, om.MPlug]
+    :rtype: str
     """
 
-    for (key, value) in obj.__dict__.items():
+    # Inspect supplied argument
+    #
+    if isinstance(attribute, om.MPlug):
 
-        if key.startswith('k') and isinstance(value, int):
+        attribute = attribute.attribute()
 
-            yield key, value
+    # Check attribute type
+    #
+    if attribute.hasFn(om.MFn.kNumericAttribute):
+
+        fnNumericAttribute = om.MFnNumericAttribute(attribute)
+        dataType = NUMERIC_TYPES[fnNumericAttribute.numericType()][1:]  # Strip the 'k' prefix
+
+        if dataType[0].isdigit():
+
+            return '{letter}{name}{digit}'.format(
+                letter=dataType[1].lower(),
+                name=dataType[2:],
+                digit=dataType[0]
+            )
 
         else:
 
-            continue
+            return '{letter}{name}'.format(
+                letter=dataType[0].lower(),
+                name=dataType[1:]
+            )
+
+    elif attribute.hasFn(om.MFn.kTypedAttribute):
+
+        fnTypedAttribute = om.MFnTypedAttribute(attribute)
+        dataType = ATTR_TYPES[fnTypedAttribute.attrType()][1:]  # Strip the 'k' prefix
+
+        return '{letter}{name}'.format(
+            letter=dataType[0].lower(),
+            name=dataType[1:]
+        )
+
+    elif attribute.hasFn(om.MFn.kUnitAttribute):
+
+        fnUnitAttribute = om.MFnUnitAttribute(attribute)
+        dataType = UNIT_TYPES[fnUnitAttribute.unitType()][1:]  # Strip the 'k' prefix
+
+        return '{letter}{name}'.format(
+            letter=dataType[0].lower(),
+            name=dataType[1:]
+        )
+
+    else:
+
+        return '{letter}{name}'.format(
+            letter=attribute.apiTypeStr[1].lower(),
+            name=attribute.apiTypeStr[2:-9]  # Strip the 'Attribute' suffix
+        )
 
 
-NUMERIC_TYPES = dict(iterEnums(om.MFnNumericData))
-ATTR_TYPES = dict(iterEnums(om.MFnData))
-UNIT_TYPES = dict(iterEnums(om.MFnUnitAttribute))
+def getDefaultValue(attribute, convertUnits=False):
+    """
+    Returns the default value from the supplied attribute.
+
+    :type attribute: Union[om.MObject, om.MPlug]
+    :type convertUnits: bool
+    :rtype: Union[bool, int, float, None]
+    """
+
+    # Inspect supplied argument
+    #
+    if isinstance(attribute, om.MPlug):
+
+        attribute = attribute.attribute()
+
+    # Evaluate attribute type
+    #
+    value = None
+
+    if attribute.hasFn(om.MFn.kNumericAttribute):
+
+        value = om.MFnNumericAttribute(attribute).default
+
+    elif attribute.hasFn(om.MFn.kUnitAttribute):
+
+        value = om.MFnUnitAttribute(attribute).default
+
+    elif attribute.hasFn(om.MFn.kEnumAttribute):
+
+        value = om.MFnEnumAttribute(attribute).default
+
+    else:
+
+        pass
+
+    # Check if units require converting
+    #
+    if convertUnits and isinstance(value, (om.MDistance, om.MAngle, om.MTime)):
+
+        cls = type(value)
+        uiUnit = cls.uiUnit()
+
+        return value.asUnits(uiUnit)
+
+    else:
+
+        return value
