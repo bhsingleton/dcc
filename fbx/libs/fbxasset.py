@@ -1,4 +1,5 @@
 from . import fbxbase, fbxexportset, FbxFileType, FbxFileVersion
+from ... import fnscene
 from ...collections import notifylist
 
 import logging
@@ -14,6 +15,7 @@ class FbxAsset(fbxbase.FbxBase):
 
     # region Dunderscores
     __slots__ = (
+        '_scene',
         '_directory',
         '_frameRate',
         '_fileType',
@@ -35,6 +37,7 @@ class FbxAsset(fbxbase.FbxBase):
 
         # Declare private variables
         #
+        self._scene = fnscene.FnScene()
         self._directory = kwargs.get('directory', '')
         self._frameRate = kwargs.get('frameRate', 30)
         self._fileType = kwargs.get('fileType', FbxFileType.Binary)
@@ -49,6 +52,16 @@ class FbxAsset(fbxbase.FbxBase):
     # endregion
 
     # region Properties
+    @property
+    def scene(self):
+        """
+        Getter method that returns the scene interface.
+
+        :rtype: fnscene.FnScene
+        """
+
+        return self._scene
+
     @property
     def directory(self):
         """
