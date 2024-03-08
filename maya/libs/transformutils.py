@@ -563,27 +563,12 @@ def resetPivots(node):
     :rtype: None
     """
 
-    # Inspect dag path
-    #
-    dagPath = dagutils.getMDagPath(node)
+    node = dagutils.getMDagPath(node)
 
-    if not dagPath.isValid():
+    for attribute in ('rotatePivot', 'rotatePivotTranslate', 'scalePivot', 'scalePivotTranslate'):
 
-        raise TypeError('resetPivot() expects a valid dag path!')
-
-    # Initialize function set
-    #
-    fnTransform = om.MFnTransform(dagPath)
-
-    # Reset rotation pivot
-    #
-    fnTransform.setRotatePivot(om.MPoint.kOrigin, om.MSpace.kTransform, False)
-    fnTransform.setRotatePivotTranslation(om.MVector.kZeroVector, om.MSpace.kTransform)
-
-    # Reset scale pivot
-    #
-    fnTransform.setScalePivot(om.MPoint.kOrigin, om.MSpace.kTransform, False)
-    fnTransform.setScalePivotTranslation(om.MVector.kZeroVector, om.MSpace.kTransform)
+        plug = plugutils.findPlug(node, attribute)
+        plugmutators.resetValue(plug)
 
 
 def getBoundingBox(node):
@@ -1188,17 +1173,8 @@ def setOffsetParentMatrix(node, offsetParentMatrix):
     :rtype: None
     """
 
-    # Get offset parent matrix plug
-    #
-    dagPath = dagutils.getMDagPath(node)
-    fnTransform = om.MFnTransform(dagPath)
-
-    plug = fnTransform.findPlug('offsetParentMatrix', True)
-    offsetParentMatrixData = createMatrixData(offsetParentMatrix)
-
-    # Assign matrix data to plug
-    #
-    plug.setMObject(offsetParentMatrixData)
+    plug = plugutils.findPlug(node, 'offsetParentMatrix')
+    plugmutators.setValue(plug, offsetParentMatrix)
 
 
 def getWorldMatrix(node, asTransformationMatrix=False):
