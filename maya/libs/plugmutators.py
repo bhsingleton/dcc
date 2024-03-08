@@ -53,15 +53,22 @@ def getMatrix(plug, **kwargs):
     :rtype: om.MMatrix
     """
 
-    fnMatrixData = om.MFnMatrixData(plug.asMObject())
+    try:
 
-    if fnMatrixData.isTransformation():
+        matrixData = plug.asMObject()
+        fnMatrixData = om.MFnMatrixData(matrixData)
 
-        return fnMatrixData.transformation().asMatrix()
+        if fnMatrixData.isTransformation():
 
-    else:
+            return fnMatrixData.transformation().asMatrix()
 
-        return fnMatrixData.matrix()
+        else:
+
+            return fnMatrixData.matrix()
+
+    except RuntimeError:
+
+        return om.MMatrix()
 
 
 def getMatrixArray(plug, **kwargs):
