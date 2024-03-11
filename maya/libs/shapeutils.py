@@ -1,12 +1,9 @@
-import os
 import math
-import json
 
-from maya import cmds as mc, OpenMaya as lom
+from maya import cmds as mc
 from maya.api import OpenMaya as om
 from enum import IntEnum
 from . import dagutils, plugutils
-from ..json import mshapeparser
 from ...python import stringutils
 
 import logging
@@ -329,66 +326,3 @@ def createStar(outerRadius, innerRadius, numPoints=5, normal=om.MVector.kXaxisVe
         fnCurve.create(controlPoints, knots, degree, om.MFnNurbsCurve.kClosed, False, True, parent=curveData)
 
         return curveData
-
-
-def createShapeTemplate(node, filePath):
-    """
-    Creates a shape template from the supplied transform or shape node.
-
-    :type node: Union[str, om.MObject, om.MDagPath]
-    :type filePath: str
-    :rtype: None
-    """
-
-    # Evaluate api type
-    #
-    node = dagutils.getMObject(node)
-    shapes = None
-
-    if node.hasFn(om.MFn.kTransform):
-
-        shapes = list(dagutils.iterShapes(node))
-
-    elif node.hasFn(om.MFn.kShape):
-
-        shapes = [node]
-
-    else:
-
-        raise TypeError(f'createShapeTemplate() expects a shape node ({node.apiTypeStr} given)!')
-
-    # Save json file
-    #
-    with open(filePath, 'w') as jsonFile:
-
-        log.info(f'Saving shape template to: {filePath}')
-        json.dump(shapes, jsonFile, cls=mshapeparser.MShapeEncoder, indent=4)
-
-
-def loadShapeTemplate(filePath, **kwargs):
-    """
-    Recreates the shapes from the supplied file path.
-    This name will be used to lookup the json file from the shapes directory.
-
-    :type filePath: str
-    :key size: float
-    :key localPosition: Union[om.MVector, Tuple[float, float, float]]
-    :key localRotate: Union[om.MVector, Tuple[float, float, float]]
-    :key localScale: Union[om.MVector, Tuple[float, float, float]]
-    :key lineWidth: float
-    :key parent: om.MObject
-    :rtype: List[om.MObject]
-    """
-
-    # Check if file exists
-    #
-    if not os.path.exists(filePath):
-
-        log.warning(f'Unable to locate shape template: {filePath}')
-        return []
-
-    # Iterate through shape nodes
-    #
-    with open(filePath, 'r') as jsonFile:
-
-        return json.load(jsonFile, cls=mshapeparser.MShapeDecoder, **kwargs)

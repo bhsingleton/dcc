@@ -1,9 +1,10 @@
+import os
 import json
 
+from maya import cmds as mc, OpenMaya as lom
 from maya.api import OpenMaya as om
-from maya import OpenMaya as lom
 from itertools import chain
-from ..libs import dagutils, transformutils
+from ..libs import dagutils, transformutils, shapeutils
 
 import logging
 logging.basicConfig()
@@ -13,7 +14,7 @@ log.setLevel(logging.INFO)
 
 class MShapeEncoder(json.JSONEncoder):
     """
-    Overload of `JSONEncoder` used to create shape templates from shape nodes.
+    Overload of `JSONEncoder` that encodes Maya shapes.
     """
 
     # region Dunderscores
@@ -202,7 +203,7 @@ class MShapeEncoder(json.JSONEncoder):
 
 class MShapeDecoder(json.JSONDecoder):
     """
-    Overload of `JSONDecoder` used to apply shape templates to transform nodes.
+    Overload of `JSONDecoder` that decodes Maya shapes.
     """
 
     # region Dunderscores
@@ -211,6 +212,9 @@ class MShapeDecoder(json.JSONDecoder):
         '_localPosition',
         '_localRotate',
         '_localScale',
+        '_colorIndex',
+        '_colorRGB',
+        '_side',
         '_lineWidth',
         '_parent'
     )
@@ -243,6 +247,9 @@ class MShapeDecoder(json.JSONDecoder):
         self._localPosition = kwargs.pop('localPosition', om.MVector.kZeroVector)
         self._localRotate = kwargs.pop('localRotate', om.MVector.kZeroVector)
         self._localScale = kwargs.pop('localScale', om.MVector.kOneVector)
+        self._colorIndex = kwargs.pop('colorIndex', None)
+        self._colorRGB = kwargs.pop('colorRGB', None)
+        self._side = kwargs.pop('side', None)
         self._lineWidth = kwargs.pop('lineWidth', -1.0)
         self._parent = kwargs.pop('parent', om.MObject.kNullObj)
 
@@ -253,6 +260,48 @@ class MShapeDecoder(json.JSONDecoder):
         # Call parent method
         #
         super(MShapeDecoder, self).__init__(*args, **kwargs)
+    # endregion
+
+    # region Properties
+    @property
+    def colorIndex(self):
+        """
+        Getter method that returns the color index.
+
+        :rtype: Union[int, None]
+        """
+
+        return self._colorIndex
+
+    @property
+    def colorRGB(self):
+        """
+        Getter method that returns the color RGB value.
+
+        :rtype: Union[Tuple[float, float, float], None]
+        """
+
+        return self._colorRGB
+
+    @property
+    def side(self):
+        """
+        Getter method that returns the side flag.
+
+        :rtype: Union[IntEnum, None]
+        """
+
+        return self._side
+
+    @property
+    def lineWidth(self):
+        """
+        Getter method that returns the line width.
+
+        :rtype: Union[int, None]
+        """
+
+        return self._lineWidth
     # endregion
 
     # region Methods
@@ -271,15 +320,18 @@ class MShapeDecoder(json.JSONDecoder):
 
         if callable(func):
 
-            return func(
+            shape = func(
                 obj,
                 size=self._size,
                 localPosition=self._localPosition,
                 localRotate=self._localRotate,
                 localScale=self._localScale,
-                lineWidth=self._lineWidth,
                 parent=self._parent
             )
+
+            shapeutils.colorizeShape(shape, colorIndex=self.colorIndex, colorRGB=self.colorRGB, side=self.side, lineWidth=self.lineWidth)
+
+            return shape
 
         else:
 
@@ -354,17 +406,10 @@ class MShapeDecoder(json.JSONDecoder):
         fnNurbsCurve = om.MFnNurbsCurve()
         curve = fnNurbsCurve.create(cvs, knots, degree, form, False, True, parent=parent)
 
-        # Update line width
-        #
-        lineWidth = kwargs.get('lineWidth', -1.0)
-
-        plug = fnNurbsCurve.findPlug('lineWidth', True)
-        plug.setFloat(lineWidth)
-
         return curve
 
     @classmethod
-    def deserializeNurbsCurveData(cls, obj, **kwargs):
+    def deserializeNurbsTrimBoundary(cls, obj, **kwargs):
         """
         Creates a legacy nurbs curve data object from the supplied object.
 
@@ -410,41 +455,6 @@ class MShapeDecoder(json.JSONDecoder):
         return curveData
 
     @classmethod
-    def deserializeTrimNurbsSurface(cls, objs, **kwargs):
-        """
-        Creates a trim surface based on the supplied objects.
-        Sadly this method only works with the legacy API methods...c'mon Autodesk!
-
-        :type objs: list[dict]
-        :key surface: lom.MObject
-        :type: lom.MTrimBoundaryArray
-        """
-
-        # Build curve data array
-        #
-        numObjs = len(objs)
-        curveDataArray = lom.MObjectArray(numObjs)
-
-        for (index, obj) in enumerate(objs):
-
-            curveData = cls.nurbsCurveData(obj, **kwargs)
-            curveDataArray.set(curveData, index)
-
-        # Append curves to trim array
-        #
-        boundaries = lom.MTrimBoundaryArray()
-        boundaries.append(curveDataArray)
-
-        # Apply trim boundary to nurbs surface
-        #
-        surface = kwargs.get('surface', lom.MObject.kNullObj)
-
-        fnNurbsSurface = lom.MFnNurbsSurface(surface)
-        fnNurbsSurface.trimWithBoundaries(boundaries)
-
-        return boundaries
-
-    @classmethod
     def deserializeNurbsSurface(cls, obj, **kwargs):
         """
         Creates a nurbs surface based on the supplied object.
@@ -473,13 +483,32 @@ class MShapeDecoder(json.JSONDecoder):
         fnNurbsSurface = om.MFnNurbsSurface()
         surface = fnNurbsSurface.create(cvs, uKnots, vKnots, uDegree, vDegree, uForm, vForm, True, parent)
 
-        # Create trim surfaces
+        # Trim surface
         #
-        cls.trimNurbsSurface(
-            obj['boundaries'],
-            matrix=cls.demoteMatrix(matrix),
-            surface=dagutils.demoteMObject(surface)
-        )
+        boundaries = obj['boundaries']
+        numBoundaries = len(boundaries)
+
+        if numBoundaries > 0:
+
+            # Deserialize boundaries
+            #
+            curveDataArray = lom.MObjectArray(numBoundaries)
+            boundaryMatrix = cls.demoteMatrix(matrix)
+
+            for (index, boundary) in enumerate(boundaries):
+
+                curveData = cls.deserializeNurbsTrimBoundary(boundary, matrix=boundaryMatrix)
+                curveDataArray.set(curveData, index)
+
+            # Append curves to trim array
+            #
+            boundaries = lom.MTrimBoundaryArray()
+            boundaries.append(curveDataArray)
+
+            # Apply trim boundary to nurbs surface
+            #
+            fnNurbsSurface = lom.MFnNurbsSurface(dagutils.demoteMObject(surface))
+            fnNurbsSurface.trimWithBoundaries(boundaries)
 
         # Update curve precision
         #
@@ -538,3 +567,66 @@ class MShapeDecoder(json.JSONDecoder):
 
         return mesh
     # endregion
+
+
+def createShapeTemplate(node, filePath):
+    """
+    Creates a shape template from the supplied transform or shape node.
+
+    :type node: Union[str, om.MObject, om.MDagPath]
+    :type filePath: str
+    :rtype: None
+    """
+
+    # Evaluate api type
+    #
+    node = dagutils.getMObject(node)
+    shapes = None
+
+    if node.hasFn(om.MFn.kTransform):
+
+        shapes = list(dagutils.iterShapes(node))
+
+    elif node.hasFn(om.MFn.kShape):
+
+        shapes = [node]
+
+    else:
+
+        raise TypeError(f'createShapeTemplate() expects a shape node ({node.apiTypeStr} given)!')
+
+    # Save json file
+    #
+    with open(filePath, 'w') as jsonFile:
+
+        log.info(f'Saving shape template to: {filePath}')
+        json.dump(shapes, jsonFile, cls=MShapeEncoder, indent=4)
+
+
+def loadShapeTemplate(filePath, **kwargs):
+    """
+    Recreates the shapes from the supplied file path.
+    This name will be used to lookup the json file from the shapes directory.
+
+    :type filePath: str
+    :key size: float
+    :key localPosition: Union[om.MVector, Tuple[float, float, float]]
+    :key localRotate: Union[om.MVector, Tuple[float, float, float]]
+    :key localScale: Union[om.MVector, Tuple[float, float, float]]
+    :key lineWidth: float
+    :key parent: om.MObject
+    :rtype: List[om.MObject]
+    """
+
+    # Check if file exists
+    #
+    if not os.path.exists(filePath):
+
+        log.warning(f'Unable to locate shape template: {filePath}')
+        return []
+
+    # Iterate through shape nodes
+    #
+    with open(filePath, 'r') as jsonFile:
+
+        return json.load(jsonFile, cls=MShapeDecoder, **kwargs)
