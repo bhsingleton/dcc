@@ -13,7 +13,7 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-__dir__ = os.path.dirname(os.path.abspath(__file__))
+__location__ = os.path.dirname(os.path.abspath(__file__))
 
 
 def getSideMappings():
@@ -25,7 +25,7 @@ def getSideMappings():
 
     # Concatenate file path
     #
-    filePath = os.path.join(__dir__, r'sides.json')
+    filePath = os.path.join(__location__, r'sides.json')
 
     with open(filePath, 'r') as jsonFile:
 
@@ -84,7 +84,7 @@ def getDefaultConfiguration():
     :rtype: str
     """
 
-    return os.path.join(__dir__, 'configs', 'default.config')
+    return os.path.join(__location__, 'configs', 'default.config')
 
 
 def changeConfiguration(*args):
