@@ -555,6 +555,231 @@ def scaleTo(node, scale, **kwargs):
     setScale(node, newScale, **kwargs)
 
 
+@undo(name='Freeze Pivots')
+def freezePivots(node, includeTranslate=True, includeRotate=True, includeScale=False):
+    """
+    Pushes the transform's local matrix into the parent offset matrix.
+
+    :type node: Union[str, om.MObject, om.MDagPath]
+    :type includeTranslate: bool
+    :type includeRotate: bool
+    :type includeScale: bool
+    :rtype: None
+    """
+
+    # Inspect dag path
+    #
+    dagPath = dagutils.getMDagPath(node)
+
+    if not dagPath.isValid():
+
+        raise TypeError('freezePivots() expects a valid dag path!')
+
+    # Check if translation should be frozen
+    #
+    isJoint = dagPath.hasFn(om.MFn.kJoint)
+    includeTranslate = includeTranslate and not isJoint
+
+    initialMatrix = getMatrix(dagPath)
+
+    if includeTranslate and not isJoint:
+
+        translation = breakMatrix(initialMatrix)[3]
+
+        rotatePivotPlug = plugutils.findPlug(dagPath, 'rotatePivot')
+        plugmutators.setValue(rotatePivotPlug, translation)
+
+        scalePivotPlug = plugutils.findPlug(dagPath, 'scalePivot')
+        plugmutators.setValue(scalePivotPlug, translation)
+
+        resetTranslation(dagPath)
+
+    # Check if rotation should be frozen
+    #
+    if includeRotate and isJoint:
+
+        eulerRotation = getEulerRotation(dagPath)
+        jointOrientation = getJointOrient(dagPath)
+        quaternion = eulerRotation.asQuaternion() * jointOrientation.asQuaternion()
+
+        frozenRotation = om.MEulerRotation()
+        frozenRotation.setValue(quaternion)
+
+        setJointOrient(dagPath, frozenRotation)
+        resetEulerRotation(dagPath)
+
+    else:
+
+        resetEulerRotation(dagPath)
+
+    # Check if scale should be frozen
+    #
+    if includeScale:
+
+        resetScale(dagPath)
+
+    # Check if shapes require updating
+    #
+    if includeTranslate or includeRotate or includeScale:
+
+        frozenMatrix = getMatrix(dagPath)
+        matrix = initialMatrix * frozenMatrix.inverse()
+
+        isDeformed = len(dagutils.dependsOn(dagPath.node(), apiType=om.MFn.kGeometryFilt)) > 0
+        iterShapes = dagutils.iterIntermediateObjects(dagPath) if isDeformed else dagutils.iterShapes(dagPath)
+
+        for shape in iterShapes:
+
+            if shape.hasFn(om.MFn.kLocator):
+
+                localPositionPlug = plugutils.findPlug(shape, 'localPosition')
+                localPositionMatrix = createTranslateMatrix(plugmutators.getValue(localPositionPlug))
+
+                localScalePlug = plugutils.findPlug(shape, 'localScale')
+                localScaleMatrix = createScaleMatrix(plugmutators.getValue(localScalePlug))
+
+                localMatrix = localScaleMatrix * localPositionMatrix * matrix
+                translation, eulerRotation, scale = decomposeTransformMatrix(localMatrix)
+
+                plugmutators.setValue(localPositionPlug, translation)
+                plugmutators.setValue(localScalePlug, scale)
+
+            elif shape.hasFn(om.MFn.kNurbsCurve):
+
+                fnNurbsCurve = om.MFnNurbsCurve(shape)
+                controlPoints = [om.MPoint(point) * matrix for point in fnNurbsCurve.cvPositions()]
+
+                fnNurbsCurve.setCVPositions(controlPoints)
+                fnNurbsCurve.updateCurve()
+
+            elif shape.hasFn(om.MFn.kNurbsSurface):
+
+                fnNurbsSurface = om.MFnNurbsSurface(shape)
+                controlPoints = [om.MPoint(point) * matrix for point in fnNurbsSurface.cvPositions()]
+
+                fnNurbsSurface.setCVPositions(controlPoints)
+                fnNurbsSurface.updateSurface()
+
+            elif shape.hasFn(om.MFn.kMesh):
+
+                fnMesh = om.MFnMesh(shape)
+                controlPoints = [om.MPoint(point) * matrix for point in fnMesh.getPoints()]
+
+                fnMesh.setPoints(controlPoints)
+                fnMesh.updateSurface()
+
+            else:
+
+                log.warning(f'Cannot freeze "{shape.apiTypeStr}" shape!')
+                continue
+
+        resetScale(dagPath)
+
+
+@undo(name='Un-Freeze Pivots')
+def unfreezePivots(node):
+    """
+    Pushes the transform's parent offset matrix back into its matrix.
+
+    :type node: Union[str, om.MObject, om.MDagPath]
+    :rtype: None
+    """
+
+    # Inspect dag path
+    #
+    dagPath = dagutils.getMDagPath(node)
+
+    if not dagPath.isValid():
+
+        raise TypeError('freezePivots() expects a valid dag path!')
+
+    # Reset pivots
+    #
+    initialMatrix = getMatrix(dagPath)
+
+    rotatePivotPlug = plugutils.findPlug(dagPath, 'rotatePivot')
+    rotatePivot = om.MVector(plugmutators.getValue(rotatePivotPlug))
+    translation = getTranslation(dagPath) + rotatePivot
+
+    setTranslation(dagPath, translation)
+    resetPivots(dagPath)
+
+    # Reset joint orientation
+    #
+    isJoint = dagPath.hasFn(om.MFn.kJoint)
+
+    if isJoint:
+
+        eulerRotation = getEulerRotation(dagPath)
+        jointOrientation = getJointOrient(dagPath)
+        quaternion = eulerRotation.asQuaternion() * jointOrientation.asQuaternion()
+
+        order = getRotationOrder(dagPath)
+        unfrozenRotation = om.MEulerRotation(0.0, 0.0, 0.0, order=order)
+        unfrozenRotation.setValue(quaternion)
+
+        setEulerRotation(dagPath, unfrozenRotation)
+        resetJointOrient(dagPath)
+
+    # Check if shapes require updating
+    #
+    unfrozenMatrix = getMatrix(dagPath)
+
+    if not initialMatrix.isEquivalent(unfrozenMatrix):
+
+        # Iterate through shapes
+        #
+        matrix = initialMatrix * unfrozenMatrix.inverse()
+
+        isDeformed = len(dagutils.dependsOn(dagPath.node(), apiType=om.MFn.kGeometryFilt)) > 0
+        iterShapes = dagutils.iterIntermediateObjects(dagPath) if isDeformed else dagutils.iterShapes(dagPath)
+
+        for shape in iterShapes:
+
+            if shape.hasFn(om.MFn.kLocator):
+
+                localPositionPlug = plugutils.findPlug(shape, 'localPosition')
+                localPositionMatrix = createTranslateMatrix(plugmutators.getValue(localPositionPlug))
+
+                localScalePlug = plugutils.findPlug(shape, 'localScale')
+                localScaleMatrix = createScaleMatrix(plugmutators.getValue(localScalePlug))
+
+                localMatrix = localScaleMatrix * localPositionMatrix * matrix
+                translation, eulerRotation, scale = decomposeTransformMatrix(localMatrix)
+
+                plugmutators.setValue(localPositionPlug, translation)
+                plugmutators.setValue(localScalePlug, scale)
+
+            elif shape.hasFn(om.MFn.kNurbsCurve):
+
+                fnNurbsCurve = om.MFnNurbsCurve(shape)
+                controlPoints = [om.MPoint(point) * matrix for point in fnNurbsCurve.cvPositions()]
+
+                fnNurbsCurve.setCVPositions(controlPoints)
+                fnNurbsCurve.updateCurve()
+
+            elif shape.hasFn(om.MFn.kNurbsSurface):
+
+                fnNurbsSurface = om.MFnNurbsSurface(shape)
+                controlPoints = [om.MPoint(point) * matrix for point in fnNurbsSurface.cvPositions()]
+
+                fnNurbsSurface.setCVPositions(controlPoints)
+                fnNurbsSurface.updateSurface()
+
+            elif shape.hasFn(om.MFn.kMesh):
+
+                fnMesh = om.MFnMesh(shape)
+                controlPoints = [om.MPoint(point) * matrix for point in fnMesh.getPoints()]
+
+                fnMesh.setPoints(controlPoints)
+                fnMesh.updateSurface()
+
+            else:
+
+                log.warning(f'Cannot freeze "{shape.apiTypeStr}" shape!')
+                continue
+
+
 def resetPivots(node):
     """
     Resets all the pivot components for the given dag path.
@@ -771,7 +996,7 @@ def copyTransform(*args, **kwargs):
 @undo(name='Freeze Transform')
 def freezeTransform(node, includeTranslate=True, includeRotate=True, includeScale=False):
     """
-    Pushes the transform's local matrix into the parent offset matrix.
+    Pushes the transform's matrix into the parent offset matrix.
 
     :type node: Union[str, om.MObject, om.MDagPath]
     :type includeTranslate: bool
@@ -802,7 +1027,7 @@ def freezeTransform(node, includeTranslate=True, includeRotate=True, includeScal
 @undo(name='Un-Freeze Transform')
 def unfreezeTransform(node):
     """
-    Pushes the transform's parent offset matrix into the local matrix.
+    Pushes the transform's parent offset matrix back into its matrix.
 
     :type node: Union[str, om.MObject, om.MDagPath]
     :rtype: None
@@ -1731,7 +1956,7 @@ def reorientMatrix(forwardAxis, upAxis, matrix, forwardAxisSign=1, upAxisSign=1)
     :type upAxis: int
     :type matrix: om.MMatrix
     :type forwardAxisSign: int
-    :type: upAxisSign: int
+    :type upAxisSign: int
     :rtype: om.MMatrix
     """
 
