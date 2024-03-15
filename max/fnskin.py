@@ -73,6 +73,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
 
         self._node = pymxs.runtime.getHandleByAnim(node)
         self._baseObject = pymxs.runtime.getHandleByAnim(node.baseObject)
+        self._influences.clear()
 
     def transform(self):
         """

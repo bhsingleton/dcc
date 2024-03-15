@@ -79,6 +79,7 @@ class FnSkin(fnnode.FnNode, afnskin.AFnSkin):
         self._transform = om.MObjectHandle(transform)
         self._shape = om.MObjectHandle(shape)
         self._intermediateObject = om.MObjectHandle(intermediateObject)
+        self._influences.clear()
 
     def transform(self):
         """
