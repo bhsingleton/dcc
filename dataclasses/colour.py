@@ -1,4 +1,5 @@
 import math
+import colorsys
 
 from dataclasses import dataclass, fields, replace
 from . import adc
@@ -51,7 +52,7 @@ class Colour(adc.ADC):
 
         else:
 
-            raise TypeError(f'__post_init__() expects either an int or float ({type(arg).__name__} given)!')
+            raise TypeError(f'__post_init__() expects either an int or float ({type(args).__name__} given)!')
 
     def __eq__(self, other):
         """
@@ -154,6 +155,36 @@ class Colour(adc.ADC):
     # endregion
 
     # region Methods
+    def darker(self, amount=0.25):
+        """
+        Returns a darker colour.
+
+        :type amount: float
+        :rtype: Color
+        """
+
+        hue, lightness, saturation = colorsys.rgb_to_hls(self.r, self.g, self.b)
+        lightness -= (lightness * amount)
+
+        red, green, blue = colorsys.hls_to_rgb(hue, lightness, saturation)
+
+        return Colour(red, green, blue)
+
+    def lighter(self, amount=0.25):
+        """
+        Returns a lighter colour.
+
+        :type amount: float
+        :rtype: Color
+        """
+
+        hue, lightness, saturation = colorsys.rgb_to_hls(self.r, self.g, self.b)
+        lightness += ((1.0 - lightness) * amount)
+
+        red, green, blue = colorsys.hls_to_rgb(hue, lightness, saturation)
+
+        return Colour(red, green, blue)
+
     def hexify(self):
         """
         Converts this colour to a hex string.
