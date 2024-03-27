@@ -104,10 +104,10 @@ def colorizeShape(*shapes, **kwargs):
 
     # Iterate through shapes
     #
+    lineWidth = kwargs.get('lineWidth', None)
     colorIndex = kwargs.get('colorIndex', None)
     colorRGB = kwargs.get('colorRGB', None)
     side = kwargs.get('side', None)
-    lineWidth = kwargs.get('lineWidth', None)
 
     for shape in shapes:
 
