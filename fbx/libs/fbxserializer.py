@@ -1063,7 +1063,7 @@ class FbxSerializer(object):
 
         if includeBlendshapes:
 
-            pass
+            raise NotImplementedError('createFbxMesh() no support for blendshape serialization!')
 
         return fbxNode
 
