@@ -44,7 +44,7 @@ class Vector(adc.ADC):
 
             # Un-package items into vector
             #
-            for (i, item) in enumerate(args):
+            for (i, item) in enumerate(args[0:3]):
 
                 self[i] = item
 
