@@ -501,7 +501,7 @@ class MAttributeDecoder(json.JSONDecoder):
 
         elif isinstance(fields, (list, tuple)):
 
-            fields = dict(enumerate(fields))
+            fields = {field: i for (i, field) in enumerate(fields)}
 
         elif hasattr(fields, '__members__'):  # Reserved for enum types
 
