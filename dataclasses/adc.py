@@ -78,6 +78,14 @@ class ADC(Mapping, metaclass=ABCMeta):
 
                 raise IndexError('__getitem__() index is out of range!')
 
+        elif isinstance(key, slice):
+
+            start = key.start if isinstance(key.start, int) else 0
+            stop = key.stop if isinstance(key.stop, int) else len(self)
+            step = key.step if isinstance(key.step, int) else 1
+
+            return [self.__getitem__(i) for i in range(start, stop, step)]
+
         else:
 
             raise TypeError(f'__getitem__() expects either a str or int ({type(key).__name__} given)!')
