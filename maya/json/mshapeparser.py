@@ -5,6 +5,7 @@ from maya import cmds as mc, OpenMaya as lom
 from maya.api import OpenMaya as om
 from itertools import chain
 from ..libs import dagutils, transformutils, shapeutils
+from ...python import stringutils
 
 import logging
 logging.basicConfig()
@@ -222,7 +223,6 @@ class MShapeDecoder(json.JSONDecoder):
     __shape_types__ = {
         'nurbsCurve': 'deserializeNurbsCurve',
         'bezierCurve': 'deserializeNurbsCurve',
-        'nurbsTrimSurface': 'deserializeNurbsTrimSurface',
         'nurbsSurface': 'deserializeNurbsSurface',
         'mesh': 'deserializeMesh'
 
@@ -316,10 +316,11 @@ class MShapeDecoder(json.JSONDecoder):
         # Evaluate type name
         #
         typeName = obj.get('typeName', '')
-        func = getattr(self, self.__shape_types__[typeName], None)
+        delegate = self.__shape_types__.get(typeName, None)
 
-        if callable(func):
+        if not stringutils.isNullOrEmpty(delegate):
 
+            func = getattr(self, delegate)
             shape = func(
                 obj,
                 size=self._size,
@@ -500,15 +501,13 @@ class MShapeDecoder(json.JSONDecoder):
                 curveData = cls.deserializeNurbsTrimBoundary(boundary, matrix=boundaryMatrix)
                 curveDataArray.set(curveData, index)
 
-            # Append curves to trim array
+            # Apply trim boundaries to nurbs surface
             #
-            boundaries = lom.MTrimBoundaryArray()
-            boundaries.append(curveDataArray)
+            trims = lom.MTrimBoundaryArray()
+            trims.append(curveDataArray)
 
-            # Apply trim boundary to nurbs surface
-            #
             fnNurbsSurface = lom.MFnNurbsSurface(dagutils.demoteMObject(surface))
-            fnNurbsSurface.trimWithBoundaries(boundaries)
+            fnNurbsSurface.trimWithBoundaries(trims)
 
         # Update curve precision
         #
