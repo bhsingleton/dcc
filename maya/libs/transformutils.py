@@ -699,7 +699,9 @@ def unfreezePivots(node):
 
     rotatePivotPlug = plugutils.findPlug(dagPath, 'rotatePivot')
     rotatePivot = om.MVector(plugmutators.getValue(rotatePivotPlug))
-    translation = getTranslation(dagPath) + rotatePivot
+    rotatePivotTranslatePlug = plugutils.findPlug(dagPath, 'rotatePivotTranslate')
+    rotatePivotTranslate = om.MVector(plugmutators.getValue(rotatePivotTranslatePlug))
+    translation = getTranslation(dagPath) + rotatePivot + rotatePivotTranslate
 
     setTranslation(dagPath, translation)
     resetPivots(dagPath)
