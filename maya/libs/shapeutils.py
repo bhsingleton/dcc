@@ -89,7 +89,11 @@ def setLineWidth(shape, lineWidth):
     dagPath = dagutils.getMDagPath(shape)
     fullPathName = dagPath.fullPathName()
 
-    mc.setAttr(f'{fullPathName}.lineWidth', lineWidth)
+    attributeExists = mc.attributeQuery('lineWidth', node=fullPathName, exists=True)
+
+    if attributeExists:
+
+        mc.setAttr(f'{fullPathName}.lineWidth', lineWidth)
 
 
 def colorizeShape(*shapes, **kwargs):
