@@ -262,21 +262,25 @@ def createCurveFromPoints(controlPoints, degree=1, periodic=False, parent=om.MOb
         return curveData
 
 
-def createStar(outerRadius, innerRadius, numPoints=5, normal=om.MVector.kXaxisVector, parent=om.MObject.kNullObj):
+def createStar(outerRadius, innerRadius, **kwargs):
     """
     Creates a star nurbs curve data object.
     If a parent is supplied then a new shape is created under that object.
 
     :type outerRadius: float
     :type innerRadius: float
-    :type numPoints: int
-    :type normal: om.MVector
-    :type parent: om.MObject
+    :key numPoints: int
+    :key normal: om.MVector
+    :key parent: om.MObject
     :rtype: om.MObject
     """
 
     # Collect star points
     #
+    numPoints = kwargs.get('numPoints', 5)
+    normal = kwargs.get('normal', om.MVector.kXaxisVector)
+    parent = kwargs.get('parent', om.MObject.kNullObj)
+
     size = numPoints * 2
     angleFactor = (math.pi * 2.0) / size
 
