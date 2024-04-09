@@ -6,6 +6,7 @@ from maya.api import OpenMaya as om, OpenMayaAnim as oma
 from six import string_types, integer_types
 from collections import deque
 from itertools import chain
+from . import plugutils
 from ..decorators.undo import commit
 from ...python import stringutils
 
@@ -1467,7 +1468,7 @@ def createNode(typeName, name='', parent=None, skipSelect=True):
     # Create new node
     #
     node = om.MObject.kNullObj
-    parent = om.MObject.kNullObj if parent is None else getMObject(parent)
+    parent = om.MObject.kNullObj if (parent is None) else getMObject(parent)
 
     modifier = None
 
@@ -1481,6 +1482,17 @@ def createNode(typeName, name='', parent=None, skipSelect=True):
         modifier = om.MDGModifier()
         node = modifier.createNode(typeName)
 
+    # Check if inverse-scale is required
+    #
+    if node.hasFn(om.MFn.kJoint) and parent.hasFn(om.MFn.kJoint):
+
+        source = plugutils.findPlug(parent, 'scale')
+        destination = plugutils.findPlug(node, 'inverseScale')
+
+        plugutils.connectPlugs(source, destination)
+
+    # Execute modifier
+    #
     commit(modifier.doIt, modifier.undoIt)
     modifier.doIt()
 
