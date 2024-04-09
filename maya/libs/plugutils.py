@@ -3,7 +3,7 @@ import re
 from maya import cmds as mc
 from maya.api import OpenMaya as om, OpenMayaAnim as oma
 from collections import deque
-from . import attributeutils, dagutils
+from . import dagutils, attributeutils
 from ..decorators.undo import commit
 from ...python import stringutils
 
@@ -39,9 +39,9 @@ def getApiType(obj):
 
 def findPlug(node, path):
     """
-    Returns the plug derived from the supplied string path relative to the given node.
-    Unlike the API method derived from MFnDependencyNode this function supports indices and children.
-    This method also accepts partial paths in that a parent attribute can be omitted and still resolved.
+    Returns the plug derived from the supplied node and string path.
+    Unlike the API method `MFnDependencyNode::findPlug` this function supports element and child accessors.
+    Partial paths and attribute aliases are also supported!
 
     :type node: Union[str, om.MObject, om.MDagPath]
     :type path: str
