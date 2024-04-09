@@ -2,7 +2,7 @@ import re
 import inspect
 
 from typing import Any, Union, List, Tuple, Dict
-from six import string_types
+from six import string_types, integer_types
 from six.moves import collections_abc
 
 import logging
@@ -14,6 +14,9 @@ log.setLevel(logging.INFO)
 __type__ = re.compile(r'(?:(?::type\s)|(?::key\s))([a-zA-Z0-9_]+)(?:\:\s)([a-zA-Z._]+[\[a-zA-Z_.,\s\]]*)\n')
 __rtype__ = re.compile(r'(?:\:rtype:\s)([a-zA-Z._]+[\[a-zA-Z_.,\s\]]*)\n')
 __index__ = re.compile(r'([a-zA-Z._]+)(?:\[([a-zA-Z_.,\s]+)\])?')
+
+
+NoneType = type(None)
 
 
 def isParameterizedAlias(obj):
@@ -80,7 +83,7 @@ def isBuiltinType(T):
 
     elif inspect.isclass(T):
 
-        return issubclass(T, (bool, int, float, str, list, dict))
+        return issubclass(T, (bool, *integer_types, float, *string_types, collections_abc.MutableSequence, collections_abc.MutableMapping, NoneType))
 
     else:
 
