@@ -2,7 +2,7 @@ import pymxs
 
 from six import string_types, integer_types
 from dcc.abstract import afnnode, ArrayIndexType
-from dcc.max.libs import propertyutils, attributeutils, controllerutils
+from dcc.max.libs import wrapperutils, controllerutils, propertyutils, attributeutils
 
 import logging
 logging.basicConfig()
@@ -208,7 +208,7 @@ class FnNode(afnnode.AFnNode):
         :rtype: bool
         """
 
-        return pymxs.runtime.isProperty(self.object(), 'transform')
+        return wrapperutils.isKindOf(self.object(), pymxs.runtime.Node)
 
     def isJoint(self):
         """
@@ -227,7 +227,7 @@ class FnNode(afnnode.AFnNode):
         :rtype: bool
         """
 
-        return pymxs.runtime.classOf(self.object()) in (pymxs.runtime.PolyMeshObject, pymxs.runtime.Editable_Poly, pymxs.runtime.Editable_Mesh)
+        return wrapperutils.isKindOf(self.object(), (pymxs.runtime.PolyMeshObject, pymxs.runtime.Editable_Poly, pymxs.runtime.Editable_Mesh))
 
     def getAttr(self, name):
         """
