@@ -276,20 +276,23 @@ class FbxObjectSet(fbxbase.FbxBase):
         :rtype: List[Any]
         """
 
-        nodes = self.getObjects(namespace=namespace)
+        objects = self.getObjects(namespace=namespace)
         hierarchy = {}
 
-        node = fnnode.FnNode(iter(nodes))
-        parentNode = fnnode.FnNode()
+        node = fnnode.FnNode(iter(objects))
+        ancestor = fnnode.FnNode()
 
         while not node.isDone():
 
-            parentNode.setQueue(node.trace())
+            ancestor.setQueue(node.trace())
 
-            while not parentNode.isDone():
+            while not ancestor.isDone():
 
-                hierarchy[parentNode.handle()] = parentNode.object()
-                parentNode.next()
+                if ancestor.isJoint():
+
+                    hierarchy[ancestor.handle()] = ancestor.object()
+
+                ancestor.next()
 
             node.next()
 
