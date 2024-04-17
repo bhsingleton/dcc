@@ -175,7 +175,7 @@ class FbxBase(with_metaclass(ABCMeta, psonobject.PSONObject)):
 
             # Check if expression is valid
             #
-            if stringutils.isNullOrEmpty(regex):
+            if stringutils.isNullOrEmpty(expression):
 
                 continue
 
@@ -183,7 +183,7 @@ class FbxBase(with_metaclass(ABCMeta, psonobject.PSONObject)):
             #
             if not stringutils.isNullOrEmpty(namespace):
 
-                expression = r'(?:{namespace}\:)?{regex}'.format(namespace=namespace, regex=regex)
+                expression = r'(?:{namespace}\:)?{regex}'.format(namespace=namespace, regex=expression)
 
-            yield from fnnode.FnNode.iterInstancesByRegex(regex)
+            yield from fnnode.FnNode.iterInstancesByRegex(expression)
     # endregion
