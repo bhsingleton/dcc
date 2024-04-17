@@ -60,7 +60,7 @@ class Locksmith(abstractdecorator.AbstractDecorator):
 
         elif self.plug.isLocked and not self.force:
 
-            raise TypeError('__enter__() cannot mutate locked plug!')
+            log.debug(f'Cannot mutate locked "{self.plug.info}" plug!')
 
         else:
 
