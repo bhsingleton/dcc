@@ -276,11 +276,13 @@ class FbxObjectSet(fbxbase.FbxBase):
         :rtype: List[Any]
         """
 
-        objects = self.getObjects(namespace=namespace)
-        hierarchy = {}
+        includeObjects = list(self.iterIncludeObjects(namespace=namespace))
+        excludeObjects = list(self.iterExcludeObjects(namespace=namespace))
 
-        node = fnnode.FnNode(iter(objects))
+        node = fnnode.FnNode(iter(includeObjects))
         ancestor = fnnode.FnNode()
+
+        hierarchy = {}
 
         while not node.isDone():
 
@@ -288,7 +290,10 @@ class FbxObjectSet(fbxbase.FbxBase):
 
             while not ancestor.isDone():
 
-                if ancestor.isJoint():
+                isJoint = ancestor.isJoint()
+                isExcluded = ancestor.object() in excludeObjects
+
+                if isJoint and not isExcluded:
 
                     hierarchy[ancestor.handle()] = ancestor.object()
 
