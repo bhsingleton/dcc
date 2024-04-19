@@ -24,9 +24,14 @@ class FnSelectionSet(fnnode.FnNode, afnselectionset.AFnSelectionSet):
         """
 
         fnSet = om.MFnSet(self.object())
-        members = fnSet.getMembers()
+        members = fnSet.getMembers(True)
 
-        return iter(members)
+        numMembers = members.length()
+
+        for i in range(numMembers):
+
+            member = members.getDependNode(i)
+            yield member
 
     def addNodes(self, *nodes):
         """
