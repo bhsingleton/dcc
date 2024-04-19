@@ -16,8 +16,8 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-__file__ = re.compile(r'(?:[a-zA-Z]:[\\\/])(?:[a-zA-Z0-9_]+[\\\/])*([a-zA-Z0-9_]+\.[a-zA-Z0-9]+)')
-__directory__ = re.compile(r'(?:[a-zA-Z]:[\\\/])(?:[a-zA-Z0-9]+[\\\/])*')
+__file__ = re.compile(r'(?:[a-zA-Z]:[\\\/])(?:[a-zA-Z0-9_\-]+[\\\/])*([a-zA-Z0-9_\-]+\.[a-zA-Z0-9]+)')
+__directory__ = re.compile(r'(?:[a-zA-Z]:[\\\/])(?:[a-zA-Z0-9_\-]+[\\\/])*')
 
 
 def getDriveLetters():
