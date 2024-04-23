@@ -1,11 +1,14 @@
 {
 	"c": "c",
+	"c0": "c0",
 	"ctr": "ctr",
 	"center": "center",
 	"l": "r",
-	"r": "l",
+	"l0": "r0",
 	"lf": "rt",
-	"rt": "lf",
 	"left": "right",
+	"r": "l",
+	"r0": "l0",
+	"rt": "lf",
 	"right": "left"
 }
