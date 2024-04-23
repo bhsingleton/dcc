@@ -91,6 +91,12 @@ class FbxIO(singleton.Singleton):
         :rtype: fbxasset.FbxAsset
         """
 
+        # Check if file exists
+        #
+        if not os.path.exists(filePath):
+
+            return None
+
         # Check if cache exists
         #
         stats = os.stat(filePath)
