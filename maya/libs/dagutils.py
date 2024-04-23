@@ -1597,7 +1597,7 @@ def reparentNode(node, otherNode, modifier=None):
 
     # Cache and execute modifier
     #
-    modifier.reparentNode(node, otherNode)
+    modifier.reparentNode(node, newParent=otherNode)
 
     commit(modifier.doIt, modifier.undoIt)
     modifier.doIt()
@@ -1654,7 +1654,7 @@ def deleteNode(node):
     if isDagNode:
 
         modifier = om.MDagModifier()
-        children = list(iterChildren(node))
+        children = list(iterChildren(node, apiType=om.MFn.kTransform))
 
         hasChildren = len(children) > 0
 
@@ -1662,7 +1662,7 @@ def deleteNode(node):
 
             for child in children:
 
-                modifier.reparentNode(child, om.MObject.kNullObj)
+                modifier.reparentNode(child)
 
             commit(modifier.doIt, modifier.undoIt)
             modifier.doIt()
