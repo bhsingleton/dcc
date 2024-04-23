@@ -2,8 +2,8 @@ import os
 import P4
 
 from collections import defaultdict
-from dcc.python import stringutils
-from dcc.perforce import clientutils, cmds
+from . import clientutils, cmds
+from ..python import stringutils
 
 import logging
 logging.basicConfig()

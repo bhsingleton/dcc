@@ -1,12 +1,12 @@
 import os
 import getpass
 
-from PySide2 import QtWidgets
+from Qt import QtWidgets
 from six.moves import collections_abc
 from collections import namedtuple
-from dcc import fnqt
-from dcc.perforce import cmds
-from dcc.perforce.decorators import relogin
+from . import cmds
+from .decorators import relogin
+from .. import fnqt
 
 import logging
 logging.basicConfig()

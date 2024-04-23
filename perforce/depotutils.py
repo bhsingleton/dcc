@@ -2,8 +2,8 @@ import os
 import getpass
 
 from six.moves import collections_abc
-from dcc.perforce import cmds
-from dcc.perforce.decorators import relogin
+from . import cmds
+from .decorators import relogin
 
 import logging
 logging.basicConfig()
