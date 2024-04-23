@@ -1,5 +1,3 @@
-import numpy
-
 from abc import ABCMeta, abstractmethod
 from six import with_metaclass
 from dcc.abstract import afnnode
@@ -317,7 +315,7 @@ class AFnTransform(with_metaclass(ABCMeta, afnnode.AFnNode)):
         :type maintainTranslate: bool
         :type maintainRotate: bool
         :type maintainScale: bool
-        :rtype: numpy.matrix
+        :rtype: transformationmatrix.TransformationMatrix
         """
 
         # Calculate offset matrix
