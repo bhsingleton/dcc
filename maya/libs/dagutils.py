@@ -1614,23 +1614,41 @@ def deleteNode(node):
     :rtype: None
     """
 
-    # Break any connections to node
+    # Check if node is valid
     #
     node = getMObject(node)
+
+    if node.isNull():
+
+        return
+
+    # Break any connections to node
+    #
+    nodeName = getNodeName(node)
+    log.debug(f'Deleting scene node: "{nodeName}"')
+
     plugs = om.MFnDependencyNode(node).getConnections()
-    hasPlugs = len(plugs) > 0
+    hasConnections = len(plugs) > 0
 
     modifier = om.MDGModifier()
 
-    if hasPlugs:
+    if hasConnections:
 
         for plug in plugs:
+
+            # Check if plug requires unlocking
+            #
+            if plug.isLocked:
+
+                plug.isLocked = False
 
             # Check if this plug has a source connection
             #
             source = plug.source()
 
             if not source.isNull:
+
+                source.isLocked = False
 
                 log.debug(f'Breaking connection: {source.info} and {plug.info}')
                 modifier.disconnect(source, plug)
@@ -1640,6 +1658,8 @@ def deleteNode(node):
             destinations = plug.destinations()
 
             for destination in destinations:
+
+                destination.isLocked = False
 
                 log.debug(f'Breaking connection: {plug.info} and {destination.info}')
                 modifier.disconnect(plug, destination)
@@ -1662,6 +1682,7 @@ def deleteNode(node):
 
             for child in children:
 
+                modifier.setNodeLockState(child, False)
                 modifier.reparentNode(child)
 
             commit(modifier.doIt, modifier.undoIt)
@@ -1670,6 +1691,7 @@ def deleteNode(node):
     # Finally, delete node and execute modifier stack
     #
     modifier = om.MDagModifier() if isDagNode else om.MDGModifier()
+    modifier.setNodeLockState(node, False)
     modifier.deleteNode(node, includeParents=False)
 
     commit(modifier.doIt, modifier.undoIt)
