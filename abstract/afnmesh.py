@@ -5,8 +5,8 @@ from itertools import chain
 from collections import deque
 from dataclasses import dataclass, field
 from typing import List, Tuple
-from scipy.spatial import cKDTree
 from dcc.abstract import afnbase
+from dcc.python import importutils
 from dcc.math import linearalgebra
 from dcc.dataclasses.vector import Vector
 from dcc.dataclasses.colour import Colour
@@ -15,6 +15,9 @@ import logging
 logging.basicConfig()
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
+
+
+spatial = importutils.tryImport('scipy.spatial', __locals__=locals(), __globals__=globals())
 
 
 class ComponentType(IntEnum):
@@ -755,7 +758,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         # Query the closest points from point tree
         # TODO: Might be worth trying to optimize this with only opposite points?
         #
-        tree = cKDTree(self.getVertices())
+        tree = spatial.cKDTree(self.getVertices())
         distances, closestIndices = tree.query(mirrorPoints, distance_upper_bound=tolerance)
 
         # Generate mirror map
