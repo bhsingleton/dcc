@@ -179,26 +179,36 @@ def findClass(className, modulePath, __locals__=None, __globals__=None):
     return getattr(module, className)
 
 
-def tryImport(path, default=None, __locals__=None, __globals__=None):
+def tryImport(path, default=None, quiet=True, __locals__=None, __globals__=None):
     """
     Tries to import the given module path.
     If no module exists then the default value is returned instead.
 
     :type path: str
     :type default: Any
+    :type quiet: bool
     :type __locals__: dict
     :type __globals__: dict
     :rtype: module
     """
 
-    # Try and import path
+    # Try and import module from path
     #
+    module = None
+
     try:
 
         fromlist = path.split('.', 1)
-        return __import__(path, locals=__locals__, globals=__globals__, fromlist=fromlist, level=0)
+        module = __import__(path, locals=__locals__, globals=__globals__, fromlist=fromlist, level=0)  # TODO: Replace with `importlib` method
 
     except ImportError as exception:
 
-        log.info(exception)
-        return default
+        if not quiet:
+
+            log.info(exception)
+
+        module = default
+
+    finally:
+
+        return module
