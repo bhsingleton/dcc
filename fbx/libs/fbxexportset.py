@@ -517,7 +517,10 @@ class FbxExportSet(fbxbase.FbxBase):
 
         # Check if file requires checking-out
         #
-        if checkout and not stringutils.isNullOrEmpty(exportPath):
+        isValidPath = not stringutils.isNullOrEmpty(exportPath)
+        hasPerforce = p4utils.isInstalled()
+
+        if isValidPath and (checkout and hasPerforce):
 
             p4utils.smartCheckout(exportPath)
 

@@ -3,15 +3,28 @@ import stat
 import json
 import subprocess
 
-from P4 import P4Exception
 from . import createAdapter, cmds, clientutils, searchutils
 from .decorators.relogin import relogin
 from .. import fnscene, fntexture
+from ..python import importutils
 
 import logging
 logging.basicConfig()
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
+
+
+P4 = importutils.tryImport('P4', __locals__=locals(), __globals__=globals())
+
+
+def isInstalled():
+    """
+    Evaluates if `p4python` is installed.
+
+    :rtype: bool
+    """
+
+    return P4 is not None
 
 
 def isNullOrEmpty(value):
@@ -387,7 +400,7 @@ def saveChangelist(changelist, filePath, **kwargs):
         p4.disconnect()
         return True
 
-    except P4Exception as exception:
+    except P4.P4Exception as exception:
 
         log.error(exception.message)
         return False

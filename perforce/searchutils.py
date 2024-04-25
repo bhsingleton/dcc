@@ -1,14 +1,16 @@
 import os
-import P4
 
 from collections import defaultdict
 from . import clientutils, cmds
-from ..python import stringutils
+from ..python import stringutils, importutils
 
 import logging
 logging.basicConfig()
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
+
+
+P4 = importutils.tryImport('P4', __locals__=locals(), __globals__=globals())
 
 
 class SearchEngine(object):

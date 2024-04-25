@@ -1,5 +1,5 @@
 from Qt import QtCore, QtWidgets, QtGui
-from dcc.ui.dialogs import quicdialog
+from ...ui.dialogs import quicdialog
 
 import logging
 logging.basicConfig()

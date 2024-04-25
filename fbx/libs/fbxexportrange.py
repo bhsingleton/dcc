@@ -521,7 +521,10 @@ class FbxExportRange(fbxbase.FbxBase):
 
         # Check if file requires adding
         #
-        if checkout and not stringutils.isNullOrEmpty(exportPath):
+        isValidPath = not stringutils.isNullOrEmpty(exportPath)
+        hasPerforce = p4utils.isInstalled()
+        
+        if isValidPath and (checkout and hasPerforce):
 
             p4utils.smartCheckout(exportPath)
 

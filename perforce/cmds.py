@@ -5,13 +5,16 @@ Each command is capable of augmenting the environment settings to support client
 """
 import os
 
-from P4 import P4Exception
-from dcc.perforce import createAdapter
+from . import createAdapter
+from ..python import importutils
 
 import logging
 logging.basicConfig()
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
+
+
+P4 = importutils.tryImport('P4', __locals__=locals(), __globals__=globals())
 
 
 def logResults(results, **kwargs):
@@ -104,7 +107,7 @@ def files(*args, **kwargs):
         p4.connect()
         specs = p4.run('files', '-e', *args)
 
-    except P4Exception:
+    except P4.P4Exception:
 
         logErrors(p4.errors, **kwargs)
 
@@ -131,7 +134,7 @@ def dirs(*args, **kwargs):
         p4.connect()
         specs = p4.run('dirs', '-C', *args)
 
-    except P4Exception:
+    except P4.P4Exception:
 
         logErrors(p4.errors, **kwargs)
 
@@ -159,7 +162,7 @@ def where(*args, **kwargs):
         p4.connect()
         specs = p4.run('where', *args)
 
-    except P4Exception:
+    except P4.P4Exception:
 
         logErrors(p4.errors, **kwargs)
 
@@ -186,7 +189,7 @@ def fstat(*args, **kwargs):
         p4.connect()
         specs = p4.run('fstat', *args)
 
-    except P4Exception:
+    except P4.P4Exception:
 
         logErrors(p4.errors, **kwargs)
 
@@ -225,7 +228,7 @@ def sync(*args, **kwargs):
 
         logResults(specs, **kwargs)
 
-    except P4Exception:
+    except P4.P4Exception:
 
         logErrors(p4.errors, **kwargs)
 
@@ -257,7 +260,7 @@ def add(*args, **kwargs):
         specs = p4.run('add', '-c', changelist, *args)
         logResults(specs, **kwargs)
 
-    except P4Exception:
+    except P4.P4Exception:
 
         logErrors(p4.errors, **kwargs)
 
@@ -289,7 +292,7 @@ def edit(*args, **kwargs):
         specs = p4.run('edit', '-c', changelist, *args)
         logResults(specs, **kwargs)
 
-    except P4Exception:
+    except P4.P4Exception:
 
         logErrors(p4.errors, **kwargs)
 
@@ -324,7 +327,7 @@ def move(fromFile, toFile, **kwargs):
 
         success = True
 
-    except P4Exception:
+    except P4.P4Exception:
 
         logErrors(p4.errors, **kwargs)
 
@@ -353,7 +356,7 @@ def delete(*args, **kwargs):
         specs = p4.run('delete', '-c', kwargs.get('changelist', 'default'), *args)
         logResults(specs, **kwargs)
 
-    except P4Exception:
+    except P4.P4Exception:
 
         logErrors(p4.errors, **kwargs)
 
@@ -383,7 +386,7 @@ def revert(*args, **kwargs):
         specs = p4.run('revert', '-a', *args)
         logResults(specs, **kwargs)
 
-    except P4Exception:
+    except P4.P4Exception:
 
         logErrors(p4.errors, **kwargs)
 
@@ -421,7 +424,7 @@ def clients(*args, **kwargs):
 
             specs = [x for x in p4.iterate_clients(['-u', p4.user])]
 
-    except P4Exception:
+    except P4.P4Exception:
 
         logErrors(p4.errors, **kwargs)
 
@@ -448,7 +451,7 @@ def client(*args, **kwargs):
         p4.connect()
         specs = p4.fetch_client(args[0])
 
-    except P4Exception:
+    except P4.P4Exception:
 
         logErrors(p4.errors, **kwargs)
 
@@ -475,7 +478,7 @@ def depots(*args, **kwargs):
         p4.connect()
         specs = list(p4.iterate_depots())
 
-    except P4Exception:
+    except P4.P4Exception:
 
         logErrors(p4.errors, **kwargs)
 
@@ -502,7 +505,7 @@ def depot(*args, **kwargs):
         p4.connect()
         specs = p4.fetch_depot(args[0])
 
-    except P4Exception:
+    except P4.P4Exception:
 
         logErrors(p4.errors, **kwargs)
 
@@ -533,7 +536,7 @@ def changes(*args, **kwargs):
         p4.connect()
         specs = p4.run('changes', '-c', kwargs.get('client', os.environ['P4CLIENT']), '-s', kwargs.get('status', 'pending'))
 
-    except P4Exception:
+    except P4.P4Exception:
 
         logErrors(p4.errors, **kwargs)
 
@@ -567,7 +570,7 @@ def login(password, **kwargs):
 
         success = int(specs[0]['TicketExpiration']) > 0
 
-    except P4Exception:
+    except P4.P4Exception:
 
         logErrors(p4.errors, **kwargs)
 
@@ -599,7 +602,7 @@ def loginExpiration(*args, **kwargs):
 
         expiration = int(specs[0]['TicketExpiration'])
 
-    except P4Exception:
+    except P4.P4Exception:
 
         logErrors(p4.errors, **kwargs)
 

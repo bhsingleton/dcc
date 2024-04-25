@@ -2,9 +2,9 @@ import os
 import getpass
 
 from functools import partial
-from dcc.perforce import cmds
-from dcc.perforce.dialogs import qlogindialog
-from dcc.decorators import abstractdecorator
+from .. import cmds
+from ..dialogs import qlogindialog
+from ...decorators import abstractdecorator
 
 import logging
 logging.basicConfig()
