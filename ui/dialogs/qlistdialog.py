@@ -1,14 +1,17 @@
-import pyperclip
 import json
 
-from PySide2 import QtCore, QtWidgets, QtGui
+from Qt import QtCore, QtWidgets, QtGui
 from six import string_types
 from . import quicdialog
+from ...python import importutils
 
 import logging
 logging.basicConfig()
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
+
+
+pyperclip = importutils.tryImport('pyperclip', __locals__=locals(), __globals__=globals())
 
 
 class QListDialog(quicdialog.QUicDialog):
@@ -226,7 +229,7 @@ class QListDialog(quicdialog.QUicDialog):
     @QtCore.Slot(QtCore.QPoint)
     def on_listWidget_customContextMenuRequested(self, point):
         """
-        Slot method for the listWidget's `customContextMenuRequested` signal.
+        Slot method for the `listWidget` widget's `customContextMenuRequested` signal.
 
         :type point: QtCore.QPoint
         :rtype: None
@@ -237,17 +240,23 @@ class QListDialog(quicdialog.QUicDialog):
 
     def on_copyItemsAction_triggered(self, checked=False):
         """
-        Slot method for the copyItemsAction's `triggered` signal.
+        Slot method for the `copyItemsAction` widget's `triggered` signal.
 
         :type checked: bool
         :rtype: None
         """
 
-        pyperclip.copy(json.dumps(self.items()))
+        try:
+
+            pyperclip.copy(json.dumps(self.items()))
+
+        except AttributeError:
+
+            pass
 
     def on_pasteItemsAction_triggered(self, checked=False):
         """
-        Slot method for the pasteItemsAction's `triggered` signal.
+        Slot method for the `pasteItemsAction` widget's `triggered` signal.
 
         :type checked: bool
         :rtype: None
@@ -258,13 +267,13 @@ class QListDialog(quicdialog.QUicDialog):
             items = json.loads(pyperclip.paste())
             self.setItems(items)
 
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, AttributeError):
 
             pass
 
     def on_clearItemsAction_triggered(self, checked=False):
         """
-        Slot method for the clearItemsAction's `triggered` signal.
+        Slot method for the `clearItemsAction` widget's `triggered` signal.
 
         :type checked: bool
         :rtype: None
@@ -273,11 +282,10 @@ class QListDialog(quicdialog.QUicDialog):
         self.setItems([])
 
     @QtCore.Slot(bool)
-    def on_addPushButton_clicked(self, checked=False):
+    def on_addPushButton_clicked(self):
         """
-        Clicked slot method that adds a new item to the list.
+        Slot method for the `addPushButton` widget's `clicked` signal.
 
-        :type checked: bool
         :rtype: None
         """
 
@@ -318,11 +326,10 @@ class QListDialog(quicdialog.QUicDialog):
             self.listWidget.addItem(listWidgetItem)
 
     @QtCore.Slot(bool)
-    def on_removePushButton_clicked(self, checked=False):
+    def on_removePushButton_clicked(self):
         """
-        Clicked slot method that removes the selected item from the list.
+        Slot method for the `removePushButton` widget's `clicked` signal.
 
-        :type checked: bool
         :rtype: None
         """
 
@@ -343,11 +350,10 @@ class QListDialog(quicdialog.QUicDialog):
             self.listWidget.takeItem(currentRow)
 
     @QtCore.Slot(bool)
-    def on_upPushButton_clicked(self, checked=False):
+    def on_upPushButton_clicked(self):
         """
-        Clicked slot method that moves the selected item up in the list.
+        Slot method for the `upPushButton` widget's `clicked` signal.
 
-        :type checked: bool
         :rtype: None
         """
 
@@ -371,11 +377,10 @@ class QListDialog(quicdialog.QUicDialog):
             self.listWidget.setCurrentRow(newRow)
 
     @QtCore.Slot(bool)
-    def on_downPushButton_clicked(self, checked=False):
+    def on_downPushButton_clicked(self):
         """
-        Clicked slot method that moves the selected item down in the list.
+        Slot method for the `downPushButton` widget's `clicked` signal.
 
-        :type checked: bool
         :rtype: None
         """
 
