@@ -4,7 +4,7 @@ import subprocess
 import getpass
 import socket
 
-from P4 import P4
+from ..python import importutils
 
 import logging
 logging.basicConfig()
@@ -14,6 +14,9 @@ log.setLevel(logging.INFO)
 
 CREATION_FLAGS = 0x08000000
 PING_FLAG = '-n' if platform.system().lower() == 'windows' else '-c'
+
+
+P4 = importutils.tryImport('P4', __locals__=locals(), __globals__=globals())
 
 
 def createAdapter(**kwargs):
