@@ -1170,6 +1170,10 @@ def keyValue(plug, value, time=None, convertUnits=True, change=None):
 
             value = animutils.expandUnits(value, asInternal=True) / animutils.expandUnits(otherValue, asInternal=True)
 
+        elif blendMode == 2:  # Override
+
+            pass
+
         else:
 
             raise NotImplementedError(f'keyValue() no support for "{value.name}" blend mode!')

@@ -20,6 +20,7 @@ class BlendMode(IntEnum):
 
     additive = 0
     multiply = 1
+    override = 2
 
 
 def isAnimCurve(obj):
@@ -381,6 +382,10 @@ def getBlendMode(blend):
     elif blend.hasFn(om.MFn.kBlendNodeAdditiveRotation):
 
         return BlendMode.additive  # As far as I'm aware this only supports additive
+
+    elif blend.hasFn(om.MFn.kBlendNodeEnum):
+
+        return BlendMode.override  # Only supports overrides
 
     else:
 
