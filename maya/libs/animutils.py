@@ -381,11 +381,11 @@ def getBlendMode(blend):
 
     elif blend.hasFn(om.MFn.kBlendNodeAdditiveRotation):
 
-        return BlendMode.additive  # As far as I'm aware this only supports additive
+        return BlendMode.additive  # As far as I'm aware this only supports additive!
 
-    elif blend.hasFn(om.MFn.kBlendNodeEnum):
+    elif blend.hasFn(om.MFn.kBlendNodeEnum) or blend.hasFn(om.MFn.kBlendNodeBoolean):
 
-        return BlendMode.override  # Only supports overrides
+        return BlendMode.override  # These only support overrides!
 
     else:
 
