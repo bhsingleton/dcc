@@ -132,3 +132,14 @@ def removeNodesFromLayer(layer, nodes):
         destination = plugutils.findPlug(node, 'drawOverride')
 
         plugutils.disconnectPlugs(source, destination)
+
+
+def getManagerFromLayer(layer):
+    """
+    Returns the layer manager associated with the supplied layer.
+
+    :type layer: om.MObject
+    :rtype: om.MObject
+    """
+
+    return plugutils.findPlug(layer, 'identification').source().node()
