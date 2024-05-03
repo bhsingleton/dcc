@@ -28,12 +28,12 @@ def createAdapter(**kwargs):
     :key port: The server address to access.
     :key host: The host name to filter values.
     :key client: The client name associated with the user.
-    :rtype: P4
+    :rtype: P4.P4
     """
 
     # Define new instance of P4
     #
-    p4 = P4()
+    p4 = P4.P4()
 
     # Check if a user was supplied
     #
