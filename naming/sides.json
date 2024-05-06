@@ -5,10 +5,16 @@
 	"center": "center",
 	"l": "r",
 	"l0": "r0",
+	"l1": "r1",
+	"l2": "r2",
+	"l3": "r3",
 	"lf": "rt",
 	"left": "right",
 	"r": "l",
 	"r0": "l0",
+	"r1": "l1",
+	"r2": "l2",
+	"r3": "l3",
 	"rt": "lf",
 	"right": "left"
 }
