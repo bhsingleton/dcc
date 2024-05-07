@@ -351,7 +351,7 @@ class FnNode(afnnode.AFnNode):
         :rtype: bool
         """
 
-        return self.isTransform() and not any(map(self.object().hasFn, (om.MFn.kConstraint, om.MFn.kPluginConstraintNode)))
+        return any(map(self.object().hasFn, (om.MFn.kJoint, om.MFn.kPluginTransformNode)))  # Purposely including transform plugins to support `maxform` bones!
 
     def isMesh(self):
         """
