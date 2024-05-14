@@ -28,6 +28,7 @@ class UserProperties(collections_abc.MutableMapping):
         :type obj: Union[str, om.MObject, om.MDagPath]
         :rtype: None
         """
+
         # Call parent method
         #
         super(UserProperties, self).__init__()
@@ -37,6 +38,10 @@ class UserProperties(collections_abc.MutableMapping):
         self.__handle__ = dagutils.getMObjectHandle(obj)
         self.__buffer__ = ''
         self.__properties__ = {}
+
+        # Reload internal buffer
+        #
+        self.reload()
 
     def __getitem__(self, key):
         """
