@@ -235,6 +235,17 @@ def getAny(plug, **kwargs):
     return None  # TODO: Implement support for any types!
 
 
+def getInvalid(plug, **kwargs):
+    """
+    Gets the value from the supplied plug.
+
+    :type plug: om.MPlug
+    :rtype: None
+    """
+
+    return None
+
+
 def getCompound(plug, **kwargs):
     """
     Returns all the child values from the compound plug.
@@ -278,7 +289,8 @@ __get_typed_value__ = {
     om.MFnData.kFloatArray: getDoubleArray,
     om.MFnData.kDoubleArray: getDoubleArray,
     om.MFnData.kStringArray: getStringArray,
-    om.MFnData.kAny: getAny
+    om.MFnData.kAny: getAny,
+    om.MFnData.kInvalid: getInvalid,
 }
 
 
