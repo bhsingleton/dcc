@@ -30,6 +30,11 @@ class QLoginDialog(quicdialog.QUicDialog):
         #
         self._username = ''
         self._port = ''
+
+        # Declare public variables
+        #
+        self.usernameLabel = None
+        self.passwordLineEdit = None
     # endregion
 
     # region Properties
