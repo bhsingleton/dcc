@@ -59,6 +59,38 @@ class QUicDialog(QtWidgets.QDialog, metaclass=qabcmeta.QABCMeta):
         #
         self.__setstate__(kwargs)
 
+    def __getattribute__(self, item):
+        """
+        Private method returns an internal attribute with the associated name.
+        Sadly all pointers are lost from QUicLoader, so we have to relocate them on demand.
+
+        :type item: str
+        :rtype: Any
+        """
+
+        # Call parent method
+        #
+        obj = super(QUicDialog, self).__getattribute__(item)
+
+        if isinstance(obj, QtCore.QObject):
+
+            # Check if C++ pointer is still valid
+            #
+            if not QtCompat.isValid(obj):
+
+                obj = self.findChild(QtCore.QObject, item)
+                setattr(self, item, obj)
+
+                return obj
+
+            else:
+
+                return obj
+
+        else:
+
+            return obj
+
     def __setstate__(self, state):
         """
         Private method that inherits the contents of the pickled object.
