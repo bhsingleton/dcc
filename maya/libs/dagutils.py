@@ -205,6 +205,7 @@ def getMObjectByName(name):
 
         except RuntimeError as exception:
 
+            log.debug(exception)
             continue
 
     # Evaluate selection list
@@ -250,6 +251,7 @@ def getMObjectByPath(path):
 
         except RuntimeError as exception:
 
+            log.debug(exception)
             continue
 
     # Evaluate selection list
@@ -640,20 +642,32 @@ def getAssociatedReferenceNode(node):
     # Iterate through reference nodes
     #
     fnReference = om.MFnReference()
+    containsNode = False
 
     for reference in iterNodes(apiType=om.MFn.kReference):
 
         # Check if reference contains node
+        # Using a try/except to safeguard against corrupted references!
         #
-        fnReference.setObject(reference)
+        try:
 
-        if fnReference.containsNodeExactly(node):
+            fnReference.setObject(reference)
+            containsNode = fnReference.containsNodeExactly(node)
 
-            return reference
+        except RuntimeError as exception:
 
-        else:
+            log.debug(exception)
+            containsNode = False
 
-            continue
+        finally:
+
+            if containsNode:
+
+                return reference
+
+            else:
+
+                continue
 
     return None
 
@@ -1218,6 +1232,8 @@ def iterNodesByUuid(*uuids):
 
     # Iterate through UUIDs
     #
+    selection = om.MSelectionList()
+
     for uuid in uuids:
 
         # Inspect UUID type
@@ -1228,12 +1244,20 @@ def iterNodesByUuid(*uuids):
 
         # Add uuid to selection list
         #
-        selection = om.MSelectionList()
-        selection.add(uuid)
+        selection.clear()
 
-        for i in range(selection.length()):
+        try:
 
-            yield selection.getDependNode(i)
+            selection.add(uuid)
+
+            for i in range(selection.length()):
+
+                yield selection.getDependNode(i)
+
+        except RuntimeError as exception:
+
+            log.debug(exception)
+            continue
 
 
 def iterNodesByPattern(*patterns, apiType=om.MFn.kDependencyNode, exactType=False):
