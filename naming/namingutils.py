@@ -187,6 +187,34 @@ def getAcronym(typeName):
         return acronym.lower()
 
 
+def findSide(name):
+    """
+    Returns the side from the supplied name.
+    The side correlates to the key name from the sides section in the config file!
+
+    :type name: str
+    :rtype: str
+    """
+
+    global __config__
+
+    # Create reverse lookup map
+    #
+    sides = {value: key for (key, value) in __config__['sides'].items()}
+    strings = name.split('_')
+
+    for string in strings:
+
+        side = sides.get(string.lower(), None)
+        hasSide = side is not None
+
+        if hasSide:
+
+            return side
+
+    return ''
+
+
 def caseify(name):
     """
     Enforces the casing setting from the current configuration.
