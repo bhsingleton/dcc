@@ -60,6 +60,7 @@ class FileProperties(collections_abc.MutableMapping):
         """
 
         mc.fileInfo(key, value)
+        self.markDirty()
         self.invalidate(force=True)
 
     def __delitem__(self, key):
@@ -71,6 +72,7 @@ class FileProperties(collections_abc.MutableMapping):
         """
 
         mc.fileInfo(remove=key)
+        self.markDirty()
         self.invalidate(force=True)
 
     def __len__(self):
@@ -138,9 +140,40 @@ class FileProperties(collections_abc.MutableMapping):
         self.invalidate()
         return self.__properties__.get(key, default)
 
+    def update(self, values):
+        """
+        Merges the supplied values with this instance.
+
+        :type values: Union[List[Tuple[str, Any]], Dict[str, Any]]
+        :rtype: FileProperties
+        """
+
+        iterable = None
+
+        if isinstance(values, list):
+
+            iterable = iter(values)
+
+        elif isinstance(values, dict):
+
+            iterable = values.items()
+
+        else:
+
+            raise TypeError(f'update() expects an array of key-value pairs ({type(values).__name__} given)!')
+
+        for (key, value) in iterable:
+
+            mc.fileInfo(key, value)
+
+        self.markDirty()
+        self.invalidate(force=True)
+
+        return self
+
     def invalidate(self, force=False):
         """
-        Updates the internal properties.
+        Updates the internal properties if the scene is dirty.
 
         :type force: bool
         :rtype: None
@@ -166,5 +199,18 @@ class FileProperties(collections_abc.MutableMapping):
         :rtype: bool
         """
 
-        return (sceneutils.currentFilePath() != self.__scene__ or sceneutils.isDirty()) or self.isOutOfDate()
+        fileChanged = sceneutils.currentFilePath() != self.__scene__
+        fileDirty = sceneutils.isDirty()
+        fileOutdated = self.isOutOfDate()
+
+        return (fileChanged or fileDirty) or fileOutdated
+
+    def markDirty(self):
+        """
+        Marks the scene as dirty requiring the user to save.
+
+        :rtype: None
+        """
+
+        sceneutils.markDirty()
     # endregion
