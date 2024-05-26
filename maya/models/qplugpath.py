@@ -19,7 +19,7 @@ class QPlugPath(collections_abc.Sequence):
     """
 
     # region Dunderscores
-    __slots__ = ('_path', '_model')
+    __slots__ = ('_path', '_model', '_plug')
     __builtin_types__ = (bool, int, float, str, collections_abc.MutableSequence, collections_abc.MutableMapping)
 
     def __init__(self, *args, **kwargs):
@@ -38,6 +38,7 @@ class QPlugPath(collections_abc.Sequence):
         #
         self._model = lambda: None
         self._path = ()
+        self._plug = om.MPlug()
 
         # Check if an item model was supplied
         #
@@ -320,7 +321,7 @@ class QPlugPath(collections_abc.Sequence):
 
             else:
 
-                raise IndexError('child()')
+                raise IndexError('child() index out of range!')
 
         else:
 
@@ -418,7 +419,11 @@ class QPlugPath(collections_abc.Sequence):
         :rtype: om.MPlug
         """
 
-        return self.eval()
+        if self._plug.isNull:
+
+            self._plug = self.eval()
+
+        return self._plug
 
     def value(self):
         """
@@ -443,9 +448,21 @@ class QPlugPath(collections_abc.Sequence):
         :rtype: None
         """
 
-        if not self.isRoot():
+        if self.isRoot():
 
-            plugmutators.setValue(self.plug(), value)
+            return False
+
+        plug = self.plug()
+        isReadOnly = plug.isFreeToChange() == om.MPlug.kNotFreeToChange
+
+        if not isReadOnly:
+
+            plugmutators.setValue(plug, value)
+            return True
+
+        else:
+
+            return False
 
     def isArray(self):
         """
@@ -505,7 +522,7 @@ class QPlugPath(collections_abc.Sequence):
         :rtype: bool
         """
 
-        # Redundancy check
+        # Check if plug is valid
         #
         plug = self.plug()
 
@@ -532,6 +549,81 @@ class QPlugPath(collections_abc.Sequence):
         else:
 
             return False
+
+    def isCheckable(self):
+        """
+        Evaluates if this path is checkable.
+
+        :rtype: bool
+        """
+
+        # Check if plug is valid
+        #
+        plug = self.plug()
+
+        if plug.isNull:
+
+            return False
+
+        # Check if plug is numeric
+        #
+        attribute = plug.attribute()
+        isNumeric = attribute.hasFn(om.MFn.kNumericAttribute)
+
+        if isNumeric:
+
+            return om.MFnNumericAttribute(attribute).numericType() == om.MFnNumericData.kBoolean
+
+        else:
+
+            return False
+
+    def isEnum(self):
+        """
+        Evaluates if this path uses enums.
+
+        :rtype: bool
+        """
+
+        plug = self.plug()
+
+        if not plug.isNull:
+
+            return plug.attribute().hasFn(om.MFn.kEnumAttribute)
+
+        else:
+
+            return False
+
+    def enumOptions(self):
+        """
+        Returns the enum options from this path.
+
+        :rtype: Dict[str, int]
+        """
+
+        # Check if plug is valid
+        #
+        plug = self.plug()
+
+        if plug.isNull:
+
+            return {}
+
+        # Check if this is an enum attribute
+        #
+        attribute = plug.attribute()
+
+        if attribute.hasFn(om.MFn.kEnumAttribute):
+
+            fnAttribute = om.MFnEnumAttribute(attribute)
+            minValue, maxValue = fnAttribute.getMin(), fnAttribute.getMax()
+
+            return {fnAttribute.fieldName(fieldValue): fieldValue for fieldValue in range(minValue, maxValue + 1)}
+
+        else:
+
+            return {}
 
     def trace(self, *path):
         """

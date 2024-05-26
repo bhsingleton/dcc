@@ -1,7 +1,6 @@
 from maya.api import OpenMaya as om
 from Qt import QtCore, QtWidgets, QtGui, QtCompat
 from enum import IntEnum
-from dcc import fnqt
 from dcc.python import stringutils
 from dcc.maya.libs import dagutils
 from . import qplugpath
@@ -12,7 +11,7 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-class ViewDetails(IntEnum):
+class ViewDetail(IntEnum):
     """
     Overload of `IntEnum` that contains all the displayable data.
     """
@@ -42,24 +41,14 @@ class QPlugItemModel(QtCore.QAbstractItemModel):
 
         # Declare private variables
         #
-        self._qt = fnqt.FnQt()
         self._invisibleRootItem = om.MObjectHandle()
-        self._viewDetails = [ViewDetails.Name, ViewDetails.Value]
+        self._viewDetails = [ViewDetail.Name, ViewDetail.Value]
         self._headerLabels = [stringutils.pascalize(x.name, separator=' ') for x in self._viewDetails]
+        self._readOnly = False
         self._internalIds = {}
     # endregion
 
     # region Properties
-    @property
-    def qt(self):
-        """
-        Getter method that returns the qt function set.
-
-        :rtype: fnqt.FnQt
-        """
-
-        return self._qt
-
     @property
     def invisibleRootItem(self):
         """
@@ -140,44 +129,30 @@ class QPlugItemModel(QtCore.QAbstractItemModel):
         """
 
         return self._headerLabels
+
+    @property
+    def readOnly(self):
+        """
+        Getter method that returns the read-only state.
+
+        :rtype: bool
+        """
+
+        return self._readOnly
+
+    @readOnly.setter
+    def readOnly(self, readOnly):
+        """
+        Setter method that updates the read-only state.
+
+        :type readOnly: bool
+        :rtype: None
+        """
+
+        self._readOnly = readOnly
     # endregion
 
     # region Methods
-    def getTextSizeHint(self, text):
-        """
-        Returns a size hint for the supplied text.
-
-        :type text: str
-        :rtype: QtCore.QSize
-        """
-
-        # Check if model has a parent
-        #
-        parent = super(QtCore.QAbstractItemModel, self).parent()
-
-        if parent is None:
-
-            parent = self.qt.getApplication()
-
-        # Evaluate contents size from font metrics
-        #
-        options = QtWidgets.QStyleOptionViewItem()
-        options.initFrom(parent)
-
-        contentSize = options.fontMetrics.size(QtCore.Qt.TextSingleLine, text)
-
-        # Evaluate item size
-        #
-        style = parent.style()
-
-        if QtCompat.isValid(style):  # QStyle pointers get deleted easily!
-
-            return style.sizeFromContents(QtWidgets.QStyle.CT_ItemViewItem, options, contentSize, parent)
-
-        else:
-
-            return contentSize
-
     def encodeInternalId(self, *indices):
         """
         Returns an internal ID for the supplied item path.
@@ -318,11 +293,19 @@ class QPlugItemModel(QtCore.QAbstractItemModel):
         column = index.column()
 
         isEditable = internalId.isEditable()
-        isValueColumn = self.viewDetails.index(ViewDetails.Value) == column
+        isValueColumn = self.viewDetails.index(ViewDetail.Value) == column
 
-        if isEditable and isValueColumn:
+        if (isEditable and isValueColumn) and not self.readOnly:
 
             flags |= QtCore.Qt.ItemIsEditable
+
+        # Evaluate if index is checkable
+        #
+        isCheckable = internalId.isCheckable()
+
+        if isCheckable and not self.readOnly:
+
+            flags |= QtCore.Qt.ItemIsUserCheckable
 
         return flags
 
@@ -367,10 +350,9 @@ class QPlugItemModel(QtCore.QAbstractItemModel):
 
         return False
 
-    def details(self, index):
+    def detail(self, index):
         """
-        Returns the details for the given index.
-        This method is intended to be used with indices derived from the details view mode.
+        Returns the detail for the supplied index.
 
         :type index: QtCore.QModelIndex
         :rtype: Any
@@ -380,21 +362,55 @@ class QPlugItemModel(QtCore.QAbstractItemModel):
         column = index.column()
         viewDetail = self.viewDetails[column]
 
-        if viewDetail == ViewDetails.Name:
+        if viewDetail == ViewDetail.Name:
 
             return path.name()
 
-        elif viewDetail == ViewDetails.Type:
+        elif viewDetail == ViewDetail.Type:
 
             return path.typeName()
 
-        elif viewDetail == ViewDetails.Value:
+        elif viewDetail == ViewDetail.Value:
 
-            return path.value()
+            if path.isArray():
+
+                return f'{path.childCount()} items'
+
+            elif path.isEnum():
+
+                enumOptions = path.enumOptions()
+                enumValue = path.value()
+
+                return list(enumOptions.keys())[enumValue]
+
+            else:
+
+                return path.value()
 
         else:
 
             return None
+
+    def setDetail(self, index, value):
+        """
+        Updates the detail for the supplied index.
+
+        :type index: QtCore.QModelIndex
+        :type value: Any
+        :rtype: bool
+        """
+
+        path = self.decodeInternalId(index.internalId())
+        column = index.column()
+        viewDetail = self.viewDetails[column]
+
+        if viewDetail == ViewDetail.Value:
+
+            return path.setValue(value)
+
+        else:
+
+            return False
 
     def icon(self, index):
         """
@@ -408,11 +424,42 @@ class QPlugItemModel(QtCore.QAbstractItemModel):
         #
         column = index.column()
         path = self.decodeInternalId(index.internalId())
-        isNameColumn = self.viewDetails.index(ViewDetails.Name) == column
+        isNameColumn = self.viewDetails.index(ViewDetail.Name) == column
 
         if isNameColumn:
 
             return path.icon()
+
+        else:
+
+            return None
+
+    def checkState(self, index):
+        """
+        Returns the check state for the supplied index.
+
+        :type index: QtCore.QModelIndex
+        :rtype: QtCore.Qt.CheckState
+        """
+
+        # Evaluate requested column
+        #
+        column = index.column()
+        viewDetail = self.viewDetails[column]
+
+        if viewDetail != ViewDetail.Value:
+
+            return None
+
+        # Check if plug is checkable
+        #
+        path = self.decodeInternalId(index.internalId())
+        isCheckable = path.isCheckable()
+
+        if isCheckable:
+
+            isChecked = path.value()
+            return QtCore.Qt.Checked if isChecked else QtCore.Qt.Unchecked
 
         else:
 
@@ -429,17 +476,21 @@ class QPlugItemModel(QtCore.QAbstractItemModel):
 
         # Evaluate data role
         #
-        if role == QtCore.Qt.DisplayRole:
+        if role == QtCore.Qt.EditRole:
+
+            return self.detail(index)
+
+        elif role == QtCore.Qt.DisplayRole:
 
             return str(self.data(index, role=QtCore.Qt.EditRole))
-
-        elif role == QtCore.Qt.EditRole:
-
-            return self.details(index)
 
         elif role == QtCore.Qt.DecorationRole:
 
             return self.icon(index)
+
+        elif role == QtCore.Qt.CheckStateRole:
+
+            return self.checkState(index)
 
         else:
 
@@ -456,14 +507,16 @@ class QPlugItemModel(QtCore.QAbstractItemModel):
         :rtype: bool
         """
 
-        # Evaluate view mode
+        # Evaluate data role
         #
         if role == QtCore.Qt.EditRole:
 
-            internalId = self.decodeInternalId(index.internalId())
-            internalId.setValue(value)
+            return self.setDetail(index, value)
 
-            return True
+        elif role == QtCore.Qt.CheckStateRole:
+
+            isChecked = value == QtCore.Qt.Checked
+            return self.setDetail(index, isChecked)
 
         else:
 
@@ -474,8 +527,8 @@ class QPlugItemModel(QtCore.QAbstractItemModel):
         Returns the data for the given role and section in the header with the specified orientation.
 
         :type section: int
-        :type orientation: int
-        :type role: int
+        :type orientation: QtCore.Qt.Orientation
+        :type role: QtCore.Qt.ItemDataRole
         :rtype: Any
         """
 

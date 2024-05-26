@@ -1,5 +1,5 @@
+from maya.api import OpenMaya as om
 from Qt import QtCore, QtWidgets, QtGui
-from dcc.python import stringutils
 from . import qplugitemmodel
 
 import logging
@@ -28,8 +28,74 @@ class QPlugItemFilterModel(QtCore.QSortFilterProxyModel):
 
         # Declare private variables
         #
-        self._ignoreStaticAttributes = False
-        self._ignoreDynamicAttributes = False
+        self._hideStaticAttributes = False
+        self._hideDynamicAttributes = False
+        self._showHiddenAttributes = False
+    # endregion
+
+    # region Mutators
+    def hideStaticAttributes(self):
+        """
+        Returns the `hideStaticAttributes` flag.
+
+        :rtype: bool
+        """
+
+        return self._hideStaticAttributes
+
+    @QtCore.Slot(bool)
+    def setHideStaticAttributes(self, hideStaticAttributes):
+        """
+        Updates the `hideStaticAttributes` flag.
+
+        :type hideStaticAttributes: bool
+        :rtype: None
+        """
+
+        self._hideStaticAttributes = hideStaticAttributes
+        self.invalidateFilter()
+
+    def hideDynamicAttributes(self):
+        """
+        Returns the `hideDynamicAttributes` flag.
+
+        :rtype: bool
+        """
+
+        return self._hideDynamicAttributes
+
+    @QtCore.Slot(bool)
+    def setHideDynamicAttributes(self, hideDynamicAttributes):
+        """
+        Updates the `hideDynamicAttributes` flag.
+
+        :type hideDynamicAttributes: bool
+        :rtype: None
+        """
+
+        self._hideDynamicAttributes = hideDynamicAttributes
+        self.invalidateFilter()
+
+    def showHiddenAttributes(self):
+        """
+        Returns the `showHiddenAttributes` flag.
+
+        :rtype: bool
+        """
+
+        return self._showHiddenAttributes
+
+    @QtCore.Slot(bool)
+    def setShowHiddenAttributes(self, showHiddenAttributes):
+        """
+        Returns the `showHiddenAttributes` flag.
+
+        :type showHiddenAttributes: bool
+        :rtype: None
+        """
+
+        self._showHiddenAttributes = showHiddenAttributes
+
     # endregion
 
     # region Methods
@@ -45,48 +111,6 @@ class QPlugItemFilterModel(QtCore.QSortFilterProxyModel):
         sourceModel = self.sourceModel()
 
         return sourceModel.plugFromIndex(sourceIndex)
-
-    def ignoreStaticAttributes(self):
-        """
-        Returns the `ignoreStaticAttributes` flag.
-
-        :rtype: bool
-        """
-
-        return self._ignoreStaticAttributes
-
-    @QtCore.Slot(bool)
-    def setIgnoreStaticAttributes(self, ignoreStaticAttributes):
-        """
-        Updates the `ignoreStaticAttributes` flag.
-
-        :type ignoreStaticAttributes: bool
-        :rtype: None
-        """
-
-        self._ignoreStaticAttributes = ignoreStaticAttributes
-        self.invalidateFilter()
-
-    def ignoreDynamicAttributes(self):
-        """
-        Returns the `ignoreDynamicAttributes` flag.
-
-        :rtype: bool
-        """
-
-        return self._ignoreDynamicAttributes
-
-    @QtCore.Slot(bool)
-    def setIgnoreDynamicAttributes(self, ignoreDynamicAttributes):
-        """
-        Updates the `ignoreDynamicAttributes` flag.
-
-        :type ignoreDynamicAttributes: bool
-        :rtype: None
-        """
-
-        self._ignoreDynamicAttributes = ignoreDynamicAttributes
-        self.invalidateFilter()
 
     def setSourceModel(self, sourceModel):
         """
@@ -126,13 +150,25 @@ class QPlugItemFilterModel(QtCore.QSortFilterProxyModel):
         index = sourceModel.index(row, 0, parent=parent)
         plug = sourceModel.plugFromIndex(index)
 
-        # Check if path meets filtering criteria
-        #
-        if self.ignoreStaticAttributes() and not plug.isDynamic:
+        if plug.isNull:
 
             return False
 
-        elif self.ignoreDynamicAttributes() and plug.isDynamic:
+        # Check if path meets filtering criteria
+        #
+        isDynamic = plug.isDynamic
+        isStatic = not isDynamic
+        isHidden = om.MFnAttribute(plug.attribute()).hidden
+
+        if self.hideStaticAttributes() and isStatic:
+
+            return False
+
+        elif self.hideDynamicAttributes() and isDynamic:
+
+            return False
+
+        elif not self.showHiddenAttributes() and isHidden:
 
             return False
 
