@@ -402,8 +402,18 @@ class FbxSerializer(object):
         # Edit transformation inheritance
         # Uppercase letters represent parent (rotation/scaling) and lowercase for child (rotation/scaling)!
         #
-        inheritType = getEnumMember(fbx.FbxTransform, 'eInheritRSrs', cls=fbx.FbxTransform.EInheritType)
-        copyTo.SetTransformationInheritType(inheritType)
+        inverseScaleEnabled = copyFrom.inverseScaleEnabled()
+        inheritType = None
+
+        if inverseScaleEnabled:
+
+            inheritType = getEnumMember(fbx.FbxTransform, 'eInheritRrs', cls=fbx.FbxTransform.EInheritType)
+            copyTo.SetTransformationInheritType(inheritType)
+
+        else:
+
+            inheritType = getEnumMember(fbx.FbxTransform, 'eInheritRSrs', cls=fbx.FbxTransform.EInheritType)
+            copyTo.SetTransformationInheritType(inheritType)
 
         # Update local translation
         #
@@ -919,6 +929,21 @@ class FbxSerializer(object):
             else:
 
                 continue  # This is here to support nodes that utilize internal caching!
+
+        # Apply resample filter
+        #
+        unrollFilter = fbx.FbxAnimCurveFilterUnroll()
+        unrollFilter.SetStartTime(self.convertFrameToTime(startFrame))
+        unrollFilter.SetStopTime(self.convertFrameToTime(endFrame))
+
+        for fbxNode in fbxNodes:
+
+            animCurveNode = fbxNode.LclRotation.GetCurveNode(animLayer, False)
+            success = unrollFilter.Apply(animCurveNode)
+
+            if not success:
+
+                log.warning(f'Unable to apply unroll filter to {fbxNode.GetName()} joint!')
 
         # Enable redraw
         #

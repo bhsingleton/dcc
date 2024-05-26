@@ -180,6 +180,16 @@ class AFnTransform(with_metaclass(ABCMeta, afnnode.AFnNode)):
         self.setScale(newScale)
 
     @abstractmethod
+    def inverseScaleEnabled(self):
+        """
+        Evaluates if inverse scale is enabled.
+
+        :rtype: bool
+        """
+
+        pass
+
+    @abstractmethod
     def boundingBox(self):
         """
         Returns the bounding box for this node.

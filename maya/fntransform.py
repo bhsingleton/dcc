@@ -123,6 +123,23 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
 
         transformutils.setScale(dagPath, scale, **kwargs)
 
+    def inverseScaleEnabled(self):
+        """
+        Evaluates if inverse scale is enabled.
+
+        :rtype: bool
+        """
+
+        obj = self.object()
+
+        if obj.hasFn(om.MFn.kJoint):
+
+            return self.getAttr('segmentScaleCompensate')
+
+        else:
+
+            return False
+
     def boundingBox(self):
         """
         Returns the bounding box for this node.

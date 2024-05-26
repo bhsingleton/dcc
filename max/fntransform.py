@@ -113,6 +113,15 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
         point = pymxs.runtime.Point3(scale.x, scale.y, scale.z)
         transformutils.setScale(self.object(), point, **kwargs)
 
+    def inverseScaleEnabled(self):
+        """
+        Evaluates if inverse scale is enabled.
+
+        :rtype: bool
+        """
+
+        return False  # Max does not support inverse scale!
+
     def boundingBox(self):
         """
         Returns the bounding box for this node.
