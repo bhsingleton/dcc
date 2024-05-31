@@ -39,10 +39,6 @@ class UserProperties(collections_abc.MutableMapping):
         self.__buffer__ = ''
         self.__properties__ = {}
 
-        # Reload internal buffer
-        #
-        self.reload()
-
     def __getitem__(self, key):
         """
         Private method that returns an indexed item.
@@ -51,7 +47,7 @@ class UserProperties(collections_abc.MutableMapping):
         :rtype: Any
         """
 
-        self.reload()
+        self.pullBuffer()
         return self.__properties__[key]
 
     def __setitem__(self, key, value):
@@ -63,6 +59,7 @@ class UserProperties(collections_abc.MutableMapping):
         :rtype: None
         """
 
+        self.pullBuffer()
         self.__properties__[key] = value
         self.pushBuffer()
 
@@ -74,6 +71,7 @@ class UserProperties(collections_abc.MutableMapping):
         :rtype: None
         """
 
+        self.pullBuffer()
         del self.__properties__[key]
         self.pushBuffer()
 
@@ -84,7 +82,7 @@ class UserProperties(collections_abc.MutableMapping):
         :rtype: int
         """
 
-        self.reload()
+        self.pullBuffer()
         return len(self.__properties__)
 
     def __iter__(self):
@@ -94,7 +92,7 @@ class UserProperties(collections_abc.MutableMapping):
         :rtype: iter
         """
 
-        self.reload()
+        self.pullBuffer()
         return iter(self.__properties__)
     # endregion
 
@@ -132,7 +130,7 @@ class UserProperties(collections_abc.MutableMapping):
 
         else:
 
-            return self.objectName()
+            return self.name()
 
     def keys(self):
         """
@@ -141,7 +139,7 @@ class UserProperties(collections_abc.MutableMapping):
         :rtype: iter
         """
 
-        self.reload()
+        self.pullBuffer()
         return self.__properties__.keys()
 
     def values(self):
@@ -151,7 +149,7 @@ class UserProperties(collections_abc.MutableMapping):
         :rtype: iter
         """
 
-        self.reload()
+        self.pullBuffer()
         return self.__properties__.values()
 
     def items(self):
@@ -161,7 +159,7 @@ class UserProperties(collections_abc.MutableMapping):
         :rtype: iter
         """
 
-        self.reload()
+        self.pullBuffer()
         return self.__properties__.items()
 
     def update(self, obj):
@@ -172,42 +170,19 @@ class UserProperties(collections_abc.MutableMapping):
         :rtype: None
         """
 
+        self.pullBuffer()
         self.__properties__.update(obj)
         self.pushBuffer()
 
-    def ensureNotes(self):
+    def clear(self):
         """
-        Ensures that the supplied node has a notes attribute.
+        Removes all items from the internal properties.
 
         :rtype: None
         """
 
-        # Check if notes exist
-        #
-        fullPathName = self.fullPathName()
-
-        hasAttribute = mc.attributeQuery('notes', node=fullPathName, exists=True)
-        isLocked = mc.lockNode(fullPathName, query=True, lock=True)[0]
-
-        if not hasAttribute and not isLocked:
-
-            mc.addAttr(fullPathName, longName='notes', shortName='nts', dataType='string', cachedInternally=True)
-
-    def tryGetBuffer(self):
-        """
-        Returns the user property buffer from the notes plug.
-        If the plug does not exist then an empty string is returned instead.
-
-        :rtype: str
-        """
-
-        try:
-
-            return self.buffer()
-
-        except AttributeError:
-
-            return ''
+        self.__properties__.clear()
+        self.pushBuffer()
 
     def buffer(self):
         """
@@ -244,22 +219,57 @@ class UserProperties(collections_abc.MutableMapping):
         # Get notes from node
         #
         return mc.getAttr(f'{fullPathName}.notes')
-    
-    def setBuffer(self, buffer):
-        """
-        Updates the user property buffer.
 
-        :type buffer: str
+    def tryGetBuffer(self):
+        """
+        Returns the user property buffer from the notes plug.
+        If the plug does not exist then an empty string is returned instead.
+
+        :rtype: str
+        """
+
+        try:
+
+            return self.buffer()
+
+        except AttributeError:
+
+            return ''
+
+    def ensureNotes(self):
+        """
+        Ensures that the supplied node has a notes attribute.
+
         :rtype: None
         """
 
-        # Evaluate buffer size
+        # Check if notes exist
         #
-        if stringutils.isNullOrEmpty(buffer):
+        fullPathName = self.fullPathName()
+
+        hasAttribute = mc.attributeQuery('notes', node=fullPathName, exists=True)
+        isLocked = mc.lockNode(fullPathName, query=True, lock=True)[0]
+
+        if not hasAttribute and not isLocked:
+
+            mc.addAttr(fullPathName, longName='notes', shortName='nts', dataType='string', cachedInternally=True)
+
+    def pullBuffer(self):
+        """
+        Loads the user properties from the `notes` attribute.
+
+        :rtype: None
+        """
+
+        # Redundancy check
+        #
+        buffer = self.tryGetBuffer()
+
+        if buffer == self.__buffer__ or stringutils.isNullOrEmpty(buffer):
 
             return
 
-        # Ensure ".notes" attribute exists
+        # Ensure `notes` attribute exists
         #
         self.ensureNotes()
 
@@ -278,7 +288,7 @@ class UserProperties(collections_abc.MutableMapping):
 
     def pushBuffer(self):
         """
-        Dumps the user properties into the notes plug.
+        Dumps the user properties into the `notes` attribute.
 
         :rtype: None
         """
@@ -293,23 +303,21 @@ class UserProperties(collections_abc.MutableMapping):
         #
         self.ensureNotes()
 
-        # Update notes attribute
+        # Dump properties to buffer
         #
-        fullPathName = self.fullPathName()
-        notes = json.dumps(self.__properties__, indent=4, cls=mdataparser.MDataEncoder)
+        buffer = ''
 
-        mc.setAttr(f'{fullPathName}.notes', notes, type='string')
+        try:
 
-    def reload(self):
-        """
-        Reloads the user properties from the current buffer.
+            buffer = json.dumps(self.__properties__, indent=4, cls=mdataparser.MDataEncoder)
 
-        :rtype: None
-        """
+        except TypeError as exception:
 
-        buffer = self.tryGetBuffer()
+            log.error(exception)
+            return
 
-        if buffer != self.__buffer__:
+        finally:
 
-            self.setBuffer(buffer)
+            fullPathName = self.fullPathName()
+            mc.setAttr(f'{fullPathName}.notes', buffer, type='string')
     # endregion
