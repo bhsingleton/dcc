@@ -1,6 +1,6 @@
 from Qt import QtCore, QtWidgets, QtGui
 from maya.api import OpenMaya as om
-from dcc.maya.libs import plugmutators
+from dcc.maya.libs import attributeutils, plugmutators
 
 import logging
 logging.basicConfig()
@@ -160,16 +160,11 @@ class QPlugStyledItemDelegate(QtWidgets.QStyledItemDelegate):
 
         elif attribute.hasFn(om.MFn.kEnumAttribute):
 
-            # Get enum fields
-            #
-            fnAttribute = om.MFnEnumAttribute(attribute)
-            minValue, maxValue = fnAttribute.getMin(), fnAttribute.getMax()
-
-            fields = [fnAttribute.fieldName(value) for value in range(minValue, maxValue + 1)]
-
             # Create new editor instance
             # Populate field items
             #
+            fields = attributeutils.getEnumFields(attribute)
+
             editor = QtWidgets.QComboBox(parent)
             editor.addItems(fields)
 

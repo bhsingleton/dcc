@@ -606,20 +606,9 @@ class QPlugPath(collections_abc.Sequence):
         #
         plug = self.plug()
 
-        if plug.isNull:
+        if not plug.isNull:
 
-            return {}
-
-        # Check if this is an enum attribute
-        #
-        attribute = plug.attribute()
-
-        if attribute.hasFn(om.MFn.kEnumAttribute):
-
-            fnAttribute = om.MFnEnumAttribute(attribute)
-            minValue, maxValue = fnAttribute.getMin(), fnAttribute.getMax()
-
-            return {fnAttribute.fieldName(fieldValue): fieldValue for fieldValue in range(minValue, maxValue + 1)}
+            return attributeutils.getEnumFields(plug.attribute())
 
         else:
 

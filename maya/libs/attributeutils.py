@@ -6,6 +6,7 @@ from six import string_types
 from . import dagutils, iterEnumMembers
 from ..json import mattributeparser
 from ..decorators.undo import commit
+from ...generators.inclusiverange import inclusiveRange
 
 import logging
 logging.basicConfig()
@@ -482,3 +483,38 @@ def getDefaultValue(attribute, convertUnits=False):
     else:
 
         return value
+
+
+def getEnumFields(attribute):
+    """
+    Returns the field name-value pairs for the supplied enum attribute.
+
+    :type attribute: om.MObject
+    :rtype: Dict[str, int]
+    """
+
+    # Check if attribute is valid
+    #
+    if not attribute.hasFn(om.MFn.kEnumAttribute):
+
+        return {}
+
+    # Iterate through enum range
+    #
+    fnAttribute = om.MFnEnumAttribute(attribute)
+    minValue, maxValue = fnAttribute.getMin(), fnAttribute.getMax()
+
+    fields = {}
+
+    for i in inclusiveRange(minValue, maxValue, 1):
+
+        try:
+
+            name = fnAttribute.fieldName(i)
+            fields[name] = i
+
+        except RuntimeError:
+
+            continue  # Reserved for gaps in enum range!
+
+    return fields
