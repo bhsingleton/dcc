@@ -836,7 +836,7 @@ def applyTransformMatrix(node, matrix, **kwargs):
     #
     dagPath = dagutils.getMDagPath(node)
 
-    if not dagPath.isValid() or not isinstance(matrix, om.MMatrix):
+    if not dagPath.isValid() or not isinstance(matrix, (om.MMatrix, om.MTransformationMatrix)):
 
         raise TypeError('applyTransformMatrix() expects an MDagPath and MMatrix!')
 
@@ -1782,16 +1782,16 @@ def createScaleMatrix(value):
         raise TypeError('createScaleMatrix() expects a list (%s given)!' % type(value).__name__)
 
 
-def decomposeTransformNode(dagPath, space=om.MSpace.kTransform):
+def decomposeTransformNode(node, space=om.MSpace.kTransform):
     """
-    Decomposes a node's transformation matrix into separate translate, rotate and scale components.
+    Breaks apart the supplied node's matrix into translate, rotate and scale components.
 
-    :type dagPath: Union[str, om.MObject, om.MDagPath]
+    :type node: Union[str, om.MObject, om.MDagPath]
     :type space: int
-    :rtype: om.MVector, om.MEulerRotation, list[float, float, float]
+    :rtype: Tuple[om.MVector, om.MEulerRotation, list[float, float, float]]
     """
 
-    dagPath = dagutils.getMDagPath(dagPath)
+    dagPath = dagutils.getMDagPath(node)
     rotateOrder = getRotationOrder(dagPath)
 
     if space == om.MSpace.kWorld:
@@ -1801,39 +1801,35 @@ def decomposeTransformNode(dagPath, space=om.MSpace.kTransform):
 
     else:
 
-        translation = getTranslation(dagPath)
-        rotation = getEulerRotation(dagPath)
-        scale = getScale(dagPath)
-
-        return translation, rotation, scale
+        matrix = getMatrix(dagPath, asTransformationMatrix=True)
+        return decomposeTransformMatrix(matrix)
 
 
 def decomposeTransformMatrix(matrix, rotateOrder=om.MEulerRotation.kXYZ):
     """
-    Breaks apart the matrix into its individual translate, rotate and scale components.
-    A rotation order must be supplied in order to be resolved correctly.
+    Breaks apart the supplied matrix into translate, rotate and scale components.
+    An optional rotation order can be supplied to convert euler rotations.
 
-    :type matrix: Union[list, tuple, om.MMatrix, om.MObject]
+    :type matrix: Union[list, tuple, om.MObject, om.MMatrix, om.MTransformationMatrix]
     :type rotateOrder: int
     :rtype: Tuple[om.MVector, om.MEulerRotation, Tuple[float, float, float]]
     """
 
-    # Check value type
+    # Evaluate matrix type
     #
-    if isinstance(matrix, om.MMatrix):
+    if isinstance(matrix, om.MTransformationMatrix):
 
-        # Reorder rotations
+        # Extract translate, rotate and scale components
         #
-        transformationMatrix = om.MTransformationMatrix(matrix)
-        transformationMatrix.reorderRotation(TRANSFORM_ROTATE_ORDER[rotateOrder])
-
-        # Get translate, rotate, and scale components
-        #
-        translation = transformationMatrix.translation(om.MSpace.kTransform)
-        rotation = transformationMatrix.rotation(asQuaternion=False)
-        scale = transformationMatrix.scale(om.MSpace.kTransform)
+        translation = matrix.translation(om.MSpace.kTransform)
+        rotation = matrix.rotation(asQuaternion=False)
+        scale = matrix.scale(om.MSpace.kTransform)
 
         return translation, rotation, scale
+
+    elif isinstance(matrix, om.MMatrix):
+
+        return decomposeTransformMatrix(om.MTransformationMatrix(matrix), rotateOrder=rotateOrder)
 
     elif isinstance(matrix, (list, tuple)):
 
