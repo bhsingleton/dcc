@@ -93,7 +93,8 @@ class MDataEncoder(psonparser.PSONEncoder):
     # endregion
 
     # region Methods
-    def acceptsType(self, T):
+    @classmethod
+    def acceptsType(cls, T):
         """
         Evaluates whether this serializer accepts the supplied type.
 
@@ -101,7 +102,7 @@ class MDataEncoder(psonparser.PSONEncoder):
         :rtype: bool
         """
 
-        return T.__name__ in self.__value_types__
+        return T.__name__ in cls.__value_types__
 
     def default(self, obj):
         """
@@ -351,14 +352,15 @@ class MDataEncoder(psonparser.PSONEncoder):
         obj = self.serializeWrapper(transform)
         obj['args'] = []
         obj['kwargs'] = {
-            'translation': transform.translation(),
-            'rotation': transform.rotation(),
+            'translation': transform.translation(om.MSpace.kTransform),
+            'rotatePivot': transform.rotatePivot(om.MSpace.kTransform),
+            'rotatePivotTranslation': transform.rotatePivotTranslation(om.MSpace.kTransform),
             'orientation': transform.rotationOrientation(),
-            'rotatePivot': transform.rotatePivot(),
-            'rotatePivotTranslation': transform.rotatePivotTranslation(),
-            'scalePivot': transform.scalePivot(),
-            'scalePivotTranslation': transform.scalePivotTranslation(),
-            'shear': transform.shear()
+            'rotation': transform.rotation(asQuaternion=False),
+            'scalePivot': transform.scalePivot(om.MSpace.kTransform),
+            'scalePivotTranslation': transform.scalePivotTranslation(om.MSpace.kTransform),
+            'shear': transform.shear(om.MSpace.kTransform),
+            'scale': transform.scale(om.MSpace.kTransform)
         }
 
         return obj
@@ -672,15 +674,15 @@ class MDataDecoder(psonparser.PSONDecoder):
         """
 
         transform = om.MTransformationMatrix()
-        transform.setTranslation(obj['kwargs']['translation'])
-        transform.setRotation(obj['kwargs']['rotation'])
-        transform.setScale(obj['kwargs']['scale'])
+        transform.setTranslation(obj['kwargs']['translation'], om.MSpace.kTransform)
+        transform.setRotatePivot(obj['kwargs']['rotatePivot'], om.MSpace.kTransform, False)
+        transform.setRotatePivotTranslation(obj['kwargs']['rotatePivotTranslation'], om.MSpace.kTransform)
         transform.setRotationOrientation(obj['kwargs']['orientation'])
-        transform.setRotatePivot(obj['kwargs']['rotatePivot'])
-        transform.setRotatePivotTranslation(obj['kwargs']['rotatePivotTranslation'])
-        transform.setScalePivot(obj['kwargs']['scalePivot'])
-        transform.setScalePivotTranslation(obj['kwargs']['scalePivotTranslation'])
-        transform.setShear(obj['kwargs']['shear'])
+        transform.setRotation(obj['kwargs']['rotation'])
+        transform.setScalePivot(obj['kwargs']['scalePivot'], om.MSpace.kTransform, False)
+        transform.setScalePivotTranslation(obj['kwargs']['scalePivotTranslation'], om.MSpace.kTransform)
+        transform.setShear(obj['kwargs']['shear'], om.MSpace.kTransform)
+        transform.setScale(obj['kwargs']['scale'], om.MSpace.kTransform)
 
         return transform
 
