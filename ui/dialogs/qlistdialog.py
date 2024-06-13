@@ -11,7 +11,7 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-pyperclip = importutils.tryImport('pyperclip', __locals__=locals(), __globals__=globals())
+clipman = importutils.tryImport('clipman', __locals__=locals(), __globals__=globals())
 
 
 class QListDialog(quicdialog.QUicDialog):
@@ -248,7 +248,7 @@ class QListDialog(quicdialog.QUicDialog):
 
         try:
 
-            pyperclip.copy(json.dumps(self.items()))
+            clipman.set(json.dumps(self.items()))
 
         except AttributeError:
 
@@ -264,7 +264,7 @@ class QListDialog(quicdialog.QUicDialog):
 
         try:
 
-            items = json.loads(pyperclip.paste())
+            items = json.loads(clipman.get())
             self.setItems(items)
 
         except (json.JSONDecodeError, AttributeError):
