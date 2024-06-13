@@ -27,7 +27,6 @@ class MShapeEncoder(json.JSONEncoder):
         'nurbsTrimSurface': 'serializeNurbsTrimSurface',
         'nurbsSurface': 'serializeNurbsSurface',
         'mesh': 'serializeMesh'
-
     }
     # endregion
 
@@ -568,16 +567,17 @@ class MShapeDecoder(json.JSONDecoder):
     # endregion
 
 
-def createShapeTemplate(node, filePath):
+def dumps(node, **kwargs):
     """
-    Creates a shape template from the supplied transform or shape node.
+    Dumps the supplied node's shapes into a JSON serializable string.
 
     :type node: Union[str, om.MObject, om.MDagPath]
-    :type filePath: str
-    :rtype: None
+    :key indent: int
+    :key sort_keys: bool
+    :rtype: List[dict]
     """
 
-    # Evaluate api type
+    # Evaluate supplied node
     #
     node = dagutils.getMObject(node)
     shapes = None
@@ -592,20 +592,77 @@ def createShapeTemplate(node, filePath):
 
     else:
 
-        raise TypeError(f'createShapeTemplate() expects a shape node ({node.apiTypeStr} given)!')
+        raise TypeError(f'dumps() expects a shape node ({node.apiTypeStr} given)!')
 
-    # Save json file
+    # Serialize shapes as string
+    #
+    return json.dumps(shapes, cls=MShapeEncoder, **kwargs)
+
+
+def dump(node, filePath, **kwargs):
+    """
+    Dumps the supplied node's shapes into a JSON serializable object.
+
+    :type node: Union[str, om.MObject, om.MDagPath]
+    :type filePath: str
+    :key indent: int
+    :key sort_keys: bool
+    :rtype: None
+    """
+
+    # Evaluate supplied node
+    #
+    node = dagutils.getMObject(node)
+    shapes = None
+
+    if node.hasFn(om.MFn.kTransform):
+
+        shapes = list(dagutils.iterShapes(node))
+
+    elif node.hasFn(om.MFn.kShape):
+
+        shapes = [node]
+
+    else:
+
+        raise TypeError(f'dump() expects a shape node ({node.apiTypeStr} given)!')
+
+    # Serialize shapes to file
     #
     with open(filePath, 'w') as jsonFile:
 
-        log.info(f'Saving shape template to: {filePath}')
-        json.dump(shapes, jsonFile, cls=MShapeEncoder, indent=4)
+        log.info(f'Saving shapes to: {filePath}')
+        json.dump(shapes, jsonFile, cls=MShapeEncoder, **kwargs)
 
 
-def loadShapeTemplate(filePath, **kwargs):
+def loads(string, **kwargs):
     """
-    Recreates the shapes from the supplied file path.
-    This name will be used to lookup the json file from the shapes directory.
+    Loads the shapes from the supplied JSON string onto the specified parent.
+
+    :type string: str
+    :key size: float
+    :key localPosition: Union[om.MVector, Tuple[float, float, float]]
+    :key localRotate: Union[om.MVector, Tuple[float, float, float]]
+    :key localScale: Union[om.MVector, Tuple[float, float, float]]
+    :key lineWidth: float
+    :key parent: om.MObject
+    :rtype: List[om.MObject]
+    """
+
+    # Check if file exists
+    #
+    if stringutils.isNullOrEmpty(string):
+
+        raise TypeError('loads() expects a valid string!')
+
+    # Load shapes onto supplied parent
+    #
+    return json.loads(string, cls=MShapeDecoder, **kwargs)
+
+
+def load(filePath, **kwargs):
+    """
+    Loads the shapes from the supplied JSON file onto the specified parent.
 
     :type filePath: str
     :key size: float
@@ -621,10 +678,9 @@ def loadShapeTemplate(filePath, **kwargs):
     #
     if not os.path.exists(filePath):
 
-        log.warning(f'Unable to locate shape template: {filePath}')
-        return []
+        raise TypeError('load() expects a valid file path!')
 
-    # Iterate through shape nodes
+    # Load shapes onto supplied parent
     #
     with open(filePath, 'r') as jsonFile:
 
