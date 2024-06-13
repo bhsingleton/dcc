@@ -23,13 +23,12 @@ def getRequirements(filePath):
     Returns any option variables from the supplied requirements file.
 
     :type filePath: str
-    :rtype: Tuple[List[Requirement], Dict[str, Any]]
+    :rtype: List[Requirement]
     """
 
     # Iterate through file
     #
     requirements = []
-    options = {}
 
     with open(filePath, 'r') as file:
 
@@ -46,75 +45,36 @@ def getRequirements(filePath):
             # Parse line for requirement
             #
             isComment = line.startswith('#')
-            line = line.replace('#', '').lstrip().rstrip()
-
-            results = __regex__.findall(line)
-            numResults = len(results)
-
-            if numResults != 1:
-
-                continue
-
-            # Append requirement
-            #
-            name, operator, version = results[0]
 
             if isComment:
 
-                options[name] = version
+                continue
+
+            # Check if line is valid
+            #
+            results = __regex__.findall(line)
+            isValid = len(results) == 1
+
+            if isValid:
+
+                name, operator, version = results[0]
+                requirements.append(Requirement(name=name, operator=operator, version=version))
 
             else:
 
-                requirements.append(Requirement(name=name, operator=operator, version=version))
+                continue
 
-    return requirements, options
-
-
-def updateRequirements(filePath, requirements, options, **kwargs):
-    """
-    Updates the specified path with the supplied requirements and options.
-
-    :type filePath: str
-    :type requirements: List[Requirement]
-    :type options: Dict[str, Any]
-    :key lastModified: float
-    :rtype: None
-    """
-
-    # Check if file is read-only
-    #
-    isReadOnly = not os.access(filePath, os.R_OK | os.W_OK)
-
-    if isReadOnly:
-
-        os.chmod(filePath, stat.S_IWRITE)
-
-    # Update requirements file
-    #
-    with open(filePath, 'w') as file:
-
-        lines = [f'# {key}=={value}\n' for (key, value) in options.items()]
-        file.writelines(lines)
-
-        lines = [f'{requirement.name}{requirement.operator}{requirement.version}\n' for requirement in requirements]
-        file.writelines(lines)
-
-    # Check if last-modified time was supplied
-    #
-    lastModified = kwargs.get('lastModified', None)
-
-    if isinstance(lastModified, float):
-
-        os.utime(filePath, (lastModified, lastModified))
+    return requirements
 
 
-def installRequirements(filePath, target=None, executable=None):
+def installRequirements(filePath, target=None, upgrade=True, executable=None):
     """
     Installs the supplied requirements file into the target directory.
     If no target is specified then the requirements directory is used instead.
 
     :type filePath: str
     :type target: str
+    :type upgrade: bool
     :type executable: str
     :rtype: bool
     """
@@ -131,11 +91,17 @@ def installRequirements(filePath, target=None, executable=None):
 
     if target is not None:
 
-        args = [executable, '-m', 'pip', 'install', '-r', filePath, '--target', target, '--upgrade']
+        args = [executable, '-m', 'pip', 'install', '-r', filePath, '--target', target]
 
     else:
 
-        args = [executable, '-m', 'pip', 'install', '-r', filePath, '--user', '--upgrade']
+        args = [executable, '-m', 'pip', 'install', '-r', filePath, '--user']
+
+    # Check if upgrade is required
+    #
+    if upgrade:
+
+        args.append('--upgrade')
 
     # Try and install requirements
     #
