@@ -305,11 +305,9 @@ class UserProperties(collections_abc.MutableMapping):
 
         # Dump properties to buffer
         #
-        buffer = ''
-
         try:
 
-            buffer = json.dumps(self.__properties__, indent=4, cls=mdataparser.MDataEncoder)
+            self.__buffer__ = json.dumps(self.__properties__, indent=4, cls=mdataparser.MDataEncoder)
 
         except TypeError as exception:
 
@@ -319,5 +317,5 @@ class UserProperties(collections_abc.MutableMapping):
         finally:
 
             fullPathName = self.fullPathName()
-            mc.setAttr(f'{fullPathName}.notes', buffer, type='string')
+            mc.setAttr(f'{fullPathName}.notes', self.__buffer__, type='string')
     # endregion
