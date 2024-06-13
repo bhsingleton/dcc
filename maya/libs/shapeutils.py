@@ -143,7 +143,7 @@ def colorizeShape(*shapes, **kwargs):
             continue
 
 
-def createKnotVector(count, degree, periodic=False):
+def createKnotVector(count, degree, form=om.MFnNurbsCurve.kOpen):
     """
     Returns a knot vector from the given parameters.
     The minimum number of CVs needed to create a periodic curve is: numCVs >= ( 2 * degree ) + 1
@@ -151,11 +151,13 @@ def createKnotVector(count, degree, periodic=False):
 
     :type count: int
     :type degree: int
-    :type periodic: bool
+    :type form: om.MFnNurbsCurve.Form
     :rtype: Tuple[List[int], int]
     """
 
-    if periodic:
+    isClosed = form in (om.MFnNurbsCurve.kClosed, om.MFnNurbsCurve.kPeriodic)
+
+    if isClosed:
 
         # Check if there are enough CVs
         #
@@ -224,21 +226,25 @@ def createKnotVector(count, degree, periodic=False):
         return knots, degree
 
 
-def createCurveFromPoints(controlPoints, degree=1, periodic=False, parent=om.MObject.kNullObj):
+def createCurveFromPoints(controlPoints, degree=1, form=om.MFnNurbsCurve.kOpen, parent=om.MObject.kNullObj):
     """
     Creates a curve data object from the supplied points.
 
     :type controlPoints: List[om.MVector]
     :type degree: int
-    :type periodic: bool
+    :type form: om.MFnNurbsCurve.Form
     :type parent: om.MObject
     :rtype: om.MObject
     """
 
+    # Create knot vector
+    #
     numControlPoints = len(controlPoints)
-    form = om.MFnNurbsCurve.kPeriodic if periodic else om.MFnNurbsCurve.kOpen
-    knots, degree = createKnotVector(numControlPoints, degree, periodic=periodic)
+    knots, degree = createKnotVector(numControlPoints, degree, form=form)
 
+    # Check if a parent was supplied
+    # If not, then create a curve data object instead!
+    #
     hasParent = not parent.isNull()
 
     if hasParent:
@@ -312,13 +318,15 @@ def createStar(outerRadius, innerRadius, **kwargs):
 
     # Check if a parent was supplied
     #
-    knots, degree = createKnotVector(len(controlPoints), 1, periodic=True)
+    form = om.MFnNurbsCurve.kClosed
+    knots, degree = createKnotVector(len(controlPoints), 1, form=form)
+
     hasParent = not parent.isNull()
 
     if hasParent:
 
         fnCurve = om.MFnNurbsCurve()
-        curve = fnCurve.create(controlPoints, knots, degree, om.MFnNurbsCurve.kClosed, False, True, parent=parent)
+        curve = fnCurve.create(controlPoints, knots, degree, form, False, True, parent=parent)
 
         curveName = f'{dagutils.getNodeName(parent)}Shape'
         fnCurve.setName(curveName)
