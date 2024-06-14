@@ -226,13 +226,15 @@ def createKnotVector(count, degree, form=om.MFnNurbsCurve.kOpen):
         return knots, degree
 
 
-def createCurveFromPoints(controlPoints, degree=1, form=om.MFnNurbsCurve.kOpen, parent=om.MObject.kNullObj):
+def createCurveFromPoints(controlPoints, degree=1, form=om.MFnNurbsCurve.kOpen, is2D=False, rational=True, parent=om.MObject.kNullObj):
     """
     Creates a curve data object from the supplied points.
 
     :type controlPoints: List[om.MVector]
     :type degree: int
     :type form: om.MFnNurbsCurve.Form
+    :type is2D: bool
+    :type rational: bool
     :type parent: om.MObject
     :rtype: om.MObject
     """
@@ -250,7 +252,7 @@ def createCurveFromPoints(controlPoints, degree=1, form=om.MFnNurbsCurve.kOpen, 
     if hasParent:
 
         fnCurve = om.MFnNurbsCurve()
-        curve = fnCurve.create(controlPoints, knots, degree, form, False, True, parent=parent)
+        curve = fnCurve.create(controlPoints, knots, degree, form, is2D, rational, parent=parent)
 
         curveName = f'{dagutils.getNodeName(parent)}Shape'
         fnCurve.setName(curveName)
@@ -263,7 +265,7 @@ def createCurveFromPoints(controlPoints, degree=1, form=om.MFnNurbsCurve.kOpen, 
         curveData = fnCurveData.create()
 
         fnCurve = om.MFnNurbsCurve()
-        fnCurve.create(controlPoints, knots, degree, form, False, True, parent=curveData)
+        fnCurve.create(controlPoints, knots, degree, form, is2D, rational, parent=curveData)
 
         return curveData
 
