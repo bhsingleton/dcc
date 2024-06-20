@@ -1561,8 +1561,8 @@ def createTranslateMatrix(value):
 
 def createRotationMatrix(value):
     """
-    Creates a rotation matrix based on the supplied value.
-    Degrees should not be used for any of these methods!
+    Creates a rotation matrix from the supplied value.
+    Any lists will be treated as a degrees and converted to radians!
 
     :type value: Union[list, tuple, om.MEulerRotation, om.MQuaternion, om.MMatrix]
     :rtype: om.MMatrix
@@ -1975,6 +1975,18 @@ def mirrorVector(vector, normal=om.MVector.kXaxisVector):
     """
 
     return vector - (2.0 * (vector * normal) * normal)
+
+
+def projectVector(vector, normal):
+    """
+    Projects the supplied vector onto the specified normal.
+
+    :type vector: om.MVector
+    :type normal: om.MVector
+    :rtype: om.MVector
+    """
+
+    return vector - (normal * (vector * normal))
 
 
 def isArray(value):
