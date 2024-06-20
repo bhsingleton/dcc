@@ -312,30 +312,33 @@ class MShapeDecoder(json.JSONDecoder):
         :rtype: om.MObject
         """
 
-        # Evaluate type name
+        # Check if delegate exists
         #
         typeName = obj.get('typeName', '')
         delegate = self.__shape_types__.get(typeName, None)
 
-        if not stringutils.isNullOrEmpty(delegate):
+        if stringutils.isNullOrEmpty(delegate):
 
-            func = getattr(self, delegate)
-            shape = func(
-                obj,
-                size=self._size,
-                localPosition=self._localPosition,
-                localRotate=self._localRotate,
-                localScale=self._localScale,
-                parent=self._parent
-            )
+            return obj
+
+        # Call delegate with parameters
+        #
+        func = getattr(self, delegate)
+
+        shape = func(
+            obj,
+            size=self._size,
+            localPosition=self._localPosition,
+            localRotate=self._localRotate,
+            localScale=self._localScale,
+            parent=self._parent
+        )
+
+        if shape.hasFn(om.MFn.kShape):
 
             shapeutils.colorizeShape(shape, colorIndex=self.colorIndex, colorRGB=self.colorRGB, side=self.side, lineWidth=self.lineWidth)
 
-            return shape
-
-        else:
-
-            return obj
+        return shape
 
     @staticmethod
     def composeMatrix(**kwargs):
@@ -390,23 +393,35 @@ class MShapeDecoder(json.JSONDecoder):
         :rtype: om.MObject
         """
 
-        # Collect arguments
+        # Check if a parent was supplied
         #
         matrix = cls.composeMatrix(**kwargs)
-
-        cvs = om.MPointArray([om.MPoint(point) * matrix for point in obj['controlPoints']])
+        cvs = om.MPointArray(list(map(lambda point: om.MPoint(point) * matrix, obj['controlPoints'])))
         knots = om.MDoubleArray(obj['knots'])
         degree = obj['degree']
         form = obj['form']
+        is2D = kwargs.get('is2D', False)
+        rational = kwargs.get('rational', True)
 
-        # Create nurbs curve
-        #
         parent = kwargs.get('parent', om.MObject.kNullObj)
+        hasParent = not parent.isNull()
 
-        fnNurbsCurve = om.MFnNurbsCurve()
-        curve = fnNurbsCurve.create(cvs, knots, degree, form, False, True, parent=parent)
+        if hasParent:
 
-        return curve
+            fnNurbsCurve = om.MFnNurbsCurve()
+            curve = fnNurbsCurve.create(cvs, knots, degree, form, is2D, rational, parent=parent)
+
+            return curve
+
+        else:
+
+            fnCurveData = om.MFnNurbsCurveData()
+            curveData = fnCurveData.create()
+
+            fnCurve = om.MFnNurbsCurve()
+            fnCurve.create(cvs, knots, degree, form, is2D, rational, parent=curveData)
+
+            return curveData
 
     @classmethod
     def deserializeNurbsTrimBoundary(cls, obj, **kwargs):
@@ -464,56 +479,71 @@ class MShapeDecoder(json.JSONDecoder):
         :rtype: om.MObject
         """
 
-        # Collect arguments
+        # Check if a parent was supplied
         #
         matrix = cls.composeMatrix(**kwargs)
-
-        cvs = om.MPointArray([om.MPoint(point) * matrix for point in obj['controlPoints']])
+        cvs = om.MPointArray(list(map(lambda point: om.MPoint(point) * matrix, obj['controlPoints'])))
         uKnots = om.MDoubleArray(obj['uKnots'])
         vKnots = om.MDoubleArray(obj['vKnots'])
         uDegree = obj['uDegree']
         vDegree = obj['vDegree']
         uForm = obj['uForm']
         vForm = obj['vForm']
+        rational = kwargs.get('rational', True)
 
-        # Create nurbs surface from function set
-        #
         parent = kwargs.get('parent', om.MObject.kNullObj)
+        hasParent = not parent.isNull()
 
-        fnNurbsSurface = om.MFnNurbsSurface()
-        surface = fnNurbsSurface.create(cvs, uKnots, vKnots, uDegree, vDegree, uForm, vForm, True, parent)
+        if hasParent:
 
-        # Trim surface
-        #
-        boundaries = obj['boundaries']
-        numBoundaries = len(boundaries)
-
-        if numBoundaries > 0:
-
-            # Deserialize boundaries
+            # Create nurbs surface
             #
-            curveDataArray = lom.MObjectArray(numBoundaries)
-            boundaryMatrix = cls.demoteMatrix(matrix)
+            fnNurbsSurface = om.MFnNurbsSurface()
+            surface = fnNurbsSurface.create(cvs, uKnots, vKnots, uDegree, vDegree, uForm, vForm, rational, parent)
 
-            for (index, boundary) in enumerate(boundaries):
-
-                curveData = cls.deserializeNurbsTrimBoundary(boundary, matrix=boundaryMatrix)
-                curveDataArray.set(curveData, index)
-
-            # Apply trim boundaries to nurbs surface
+            # Trim surface
             #
-            trims = lom.MTrimBoundaryArray()
-            trims.append(curveDataArray)
+            boundaries = obj['boundaries']
+            numBoundaries = len(boundaries)
 
-            fnNurbsSurface = lom.MFnNurbsSurface(dagutils.demoteMObject(surface))
-            fnNurbsSurface.trimWithBoundaries(trims)
+            if numBoundaries > 0:
 
-        # Update curve precision
-        #
-        plug = fnNurbsSurface.findPlug('curvePrecisionShaded', True)
-        plug.setFloat(obj['precision'])
+                # Deserialize boundaries
+                #
+                curveDataArray = lom.MObjectArray(numBoundaries)
+                boundaryMatrix = cls.demoteMatrix(matrix)
 
-        return surface
+                for (index, boundary) in enumerate(boundaries):
+
+                    curveData = cls.deserializeNurbsTrimBoundary(boundary, matrix=boundaryMatrix)
+                    curveDataArray.set(curveData, index)
+
+                # Apply trim boundaries to nurbs surface
+                #
+                trims = lom.MTrimBoundaryArray()
+                trims.append(curveDataArray)
+
+                fnNurbsSurface = lom.MFnNurbsSurface(dagutils.demoteMObject(surface))
+                fnNurbsSurface.trimWithBoundaries(trims)
+
+            # Update curve precision
+            #
+            plug = fnNurbsSurface.findPlug('curvePrecisionShaded', True)
+            plug.setFloat(obj['precision'])
+
+            return surface
+
+        else:
+
+            # Create nurbs surface data
+            #
+            fnSurfaceData = om.MFnNurbsSurfaceData()
+            surfaceData = fnSurfaceData.create()
+
+            fnNurbsSurface = om.MFnNurbsSurface()
+            fnNurbsSurface.create(cvs, uKnots, vKnots, uDegree, vDegree, uForm, vForm, rational, parent=surfaceData)
+
+            return surfaceData
 
     @classmethod
     def deserializeMesh(cls, obj, **kwargs):
@@ -525,45 +555,59 @@ class MShapeDecoder(json.JSONDecoder):
         :rtype: om.MObject
         """
 
-        # Collect arguments
+        # Check if a parent was supplied
         #
         matrix = cls.composeMatrix(**kwargs)
-
-        vertices = om.MPointArray([om.MPoint(point) * matrix for point in obj['controlPoints']])
+        vertices = om.MPointArray(list(map(lambda point: om.MPoint(point) * matrix, obj['controlPoints'])))
         polygonCounts = obj['polygonCounts']
         polygonConnects = obj['polygonConnects']
 
-        # Create mesh from function set
-        #
         parent = kwargs.get('parent', om.MObject.kNullObj)
+        hasParent = not parent.isNull()
 
-        fnMesh = om.MFnMesh()
-        mesh = fnMesh.create(vertices, polygonCounts, list(chain(*polygonConnects)), parent=parent)
+        if hasParent:
 
-        # Set edge smoothings
-        #
-        edgeSmoothings = obj['edgeSmoothings']
+            # Create mesh
+            #
+            fnMesh = om.MFnMesh()
+            mesh = fnMesh.create(vertices, polygonCounts, list(chain(*polygonConnects)), parent=parent)
 
-        for edgeIndex in range(fnMesh.numEdges):
+            # Update edge smoothings
+            #
+            edgeSmoothings = obj['edgeSmoothings']
 
-            fnMesh.setEdgeSmoothing(edgeIndex, edgeSmoothings[edgeIndex])
+            for edgeIndex in range(fnMesh.numEdges):
 
-        fnMesh.cleanupEdgeSmoothing()
+                fnMesh.setEdgeSmoothing(edgeIndex, edgeSmoothings[edgeIndex])
 
-        # Set face vertex normals
-        #
-        faceVertexNormals = obj['faceVertexNormals']
+            fnMesh.cleanupEdgeSmoothing()
 
-        for polygonIndex in range(fnMesh.numPolygons):
+            # Update face vertex normals
+            #
+            faceVertexNormals = obj['faceVertexNormals']
 
-            faceVertices = fnMesh.getPolygonVertices(polygonIndex)
-            normals = faceVertexNormals[polygonIndex]
+            for polygonIndex in range(fnMesh.numPolygons):
 
-            for (faceVertexIndex, faceVertexNormal) in zip(faceVertices, normals):
+                faceVertices = fnMesh.getPolygonVertices(polygonIndex)
+                normals = faceVertexNormals[polygonIndex]
 
-                fnMesh.setFaceVertexNormal(om.MVector(faceVertexNormal), polygonIndex, faceVertexIndex)
+                for (faceVertexIndex, faceVertexNormal) in zip(faceVertices, normals):
 
-        return mesh
+                    fnMesh.setFaceVertexNormal(om.MVector(faceVertexNormal), polygonIndex, faceVertexIndex)
+
+            return mesh
+
+        else:
+
+            # Create mesh data
+            #
+            fnMeshData = om.MFnMeshData()
+            meshData = fnMeshData.create()
+
+            fnMesh = om.MFnMesh()
+            fnMesh.create(vertices, polygonCounts, list(chain(*polygonConnects)), parent=meshData)
+
+            return meshData
     # endregion
 
 
