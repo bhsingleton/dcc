@@ -201,7 +201,7 @@ class NotifyList(collections_abc.MutableSequence):
             stop = len(self) if index.stop is None else index.stop
             step = 1 if index.step is None else index.step
 
-            return [self.pop(i) for i in range(start, stop, step)]
+            return [self.pop(i) for i in reversed(range(start, stop, step))]
 
         else:
 
