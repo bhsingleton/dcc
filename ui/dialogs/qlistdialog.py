@@ -45,6 +45,7 @@ class QListDialog(quicdialog.QUicDialog):
         self.listWidget = None
 
         self.buttonsWidget = None
+        self.interopWidget = None
         self.addPushButton = None
         self.removePushButton = None
         self.upPushButton = None
@@ -149,6 +150,34 @@ class QListDialog(quicdialog.QUicDialog):
 
             self.listWidget.setCurrentRow(0)
 
+    def selectedItems(self):
+        """
+        Returns the selected items.
+
+        :rtype: List[str]
+        """
+
+        return [item.text() for item in self.listWidget.selectedItems()]
+
+    def selectionMode(self):
+        """
+        Returns the selection mode.
+
+        :rtype: QtWidgets.QAbstractItemView.SelectionMode
+        """
+
+        return self.listWidget.selectionMode()
+
+    def setSelectionMode(self, selectionMode):
+        """
+        Updates the selection mode.
+
+        :type selectionMode: QtWidgets.QAbstractItemView.SelectionMode
+        :rtype: None
+        """
+
+        self.listWidget.setSelectionMode(selectionMode)
+
     def textFilter(self):
         """
         Returns the text filter object.
@@ -223,6 +252,69 @@ class QListDialog(quicdialog.QUicDialog):
         """
 
         return not any(item == text for item in self.iterItems())
+
+    @classmethod
+    def editItems(cls, items, title='Edit Items', textFilter=None, parent=None):
+        """
+        Prompts the user to edit the supplied list of items.
+
+        :type items: List[str]
+        :type title: str
+        :type textFilter: Callable
+        :type parent: QtWidgets.QMainWindow
+        :rtype: Tuple[bool, List[str]]
+        """
+
+        # Initialize dialog
+        #
+        dialog = cls(title, parent=parent)
+        dialog.interopWidget.setVisible(True)
+        dialog.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
+        dialog.setItems(items)
+
+        if callable(textFilter):
+
+            dialog.setTextFilter(textFilter)
+
+        # Execute dialog
+        #
+        response = dialog.exec_()
+
+        if response:
+
+            return True, dialog.items()
+
+        else:
+
+            return False, items
+
+    @classmethod
+    def getItems(cls, items, title='Get Items', parent=None):
+        """
+        Prompts the user to select from a list of items.
+
+        :type items: List[str]
+        :type title: str
+        :type parent: QtWidgets.QMainWindow
+        :rtype: Tuple[bool, List[str]]
+        """
+
+        dialog = cls(title, parent=parent)
+        dialog.interopWidget.setHidden(True)
+        dialog.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
+        dialog.setItems(items)
+
+        # Execute dialog
+        #
+        response = dialog.exec_()
+
+        if response:
+
+            return True, dialog.selectedItems()
+
+        else:
+
+            return False, items
     # endregion
 
     # region Slots
@@ -238,11 +330,11 @@ class QListDialog(quicdialog.QUicDialog):
         globalPoint = self.sender().mapToGlobal(point)
         self.editMenu.exec_(globalPoint)
 
-    def on_copyItemsAction_triggered(self, checked=False):
+    @QtCore.Slot()
+    def on_copyItemsAction_triggered(self):
         """
         Slot method for the `copyItemsAction` widget's `triggered` signal.
 
-        :type checked: bool
         :rtype: None
         """
 
@@ -254,11 +346,11 @@ class QListDialog(quicdialog.QUicDialog):
 
             pass
 
-    def on_pasteItemsAction_triggered(self, checked=False):
+    @QtCore.Slot()
+    def on_pasteItemsAction_triggered(self):
         """
         Slot method for the `pasteItemsAction` widget's `triggered` signal.
 
-        :type checked: bool
         :rtype: None
         """
 
@@ -271,17 +363,17 @@ class QListDialog(quicdialog.QUicDialog):
 
             pass
 
-    def on_clearItemsAction_triggered(self, checked=False):
+    @QtCore.Slot()
+    def on_clearItemsAction_triggered(self):
         """
         Slot method for the `clearItemsAction` widget's `triggered` signal.
 
-        :type checked: bool
         :rtype: None
         """
 
         self.setItems([])
 
-    @QtCore.Slot(bool)
+    @QtCore.Slot()
     def on_addPushButton_clicked(self):
         """
         Slot method for the `addPushButton` widget's `clicked` signal.
@@ -325,7 +417,7 @@ class QListDialog(quicdialog.QUicDialog):
             listWidgetItem = QtWidgets.QListWidgetItem(text)
             self.listWidget.addItem(listWidgetItem)
 
-    @QtCore.Slot(bool)
+    @QtCore.Slot()
     def on_removePushButton_clicked(self):
         """
         Slot method for the `removePushButton` widget's `clicked` signal.
@@ -349,7 +441,7 @@ class QListDialog(quicdialog.QUicDialog):
 
             self.listWidget.takeItem(currentRow)
 
-    @QtCore.Slot(bool)
+    @QtCore.Slot()
     def on_upPushButton_clicked(self):
         """
         Slot method for the `upPushButton` widget's `clicked` signal.
@@ -376,7 +468,7 @@ class QListDialog(quicdialog.QUicDialog):
             self.listWidget.insertItem(newRow, item)
             self.listWidget.setCurrentRow(newRow)
 
-    @QtCore.Slot(bool)
+    @QtCore.Slot()
     def on_downPushButton_clicked(self):
         """
         Slot method for the `downPushButton` widget's `clicked` signal.

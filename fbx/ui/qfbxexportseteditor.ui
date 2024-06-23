@@ -863,7 +863,7 @@
            <verstretch>0</verstretch>
           </sizepolicy>
          </property>
-         <layout class="QHBoxLayout" name="exportButtonsLayout">
+         <layout class="QGridLayout" name="gridLayout">
           <property name="leftMargin">
            <number>0</number>
           </property>
@@ -876,7 +876,35 @@
           <property name="bottomMargin">
            <number>0</number>
           </property>
-          <item>
+          <item row="1" column="1">
+           <widget class="QPushButton" name="exportAllPushButton">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>24</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>16777215</width>
+              <height>24</height>
+             </size>
+            </property>
+            <property name="toolTip">
+             <string>Exports all of the sets.</string>
+            </property>
+            <property name="text">
+             <string>Export All</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="0">
            <widget class="QPushButton" name="exportPushButton">
             <property name="sizePolicy">
              <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
@@ -904,31 +932,20 @@
             </property>
            </widget>
           </item>
-          <item>
-           <widget class="QPushButton" name="exportAllPushButton">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="minimumSize">
-             <size>
-              <width>0</width>
-              <height>24</height>
-             </size>
-            </property>
-            <property name="maximumSize">
-             <size>
-              <width>16777215</width>
-              <height>24</height>
-             </size>
-            </property>
-            <property name="toolTip">
-             <string>Exports all of the sets.</string>
+          <item row="0" column="1">
+           <widget class="QPushButton" name="exportSelectionPushButton">
+            <property name="enabled">
+             <bool>true</bool>
             </property>
             <property name="text">
-             <string>Export All</string>
+             <string>Export Selection</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QPushButton" name="exportSubsetPushButton">
+            <property name="text">
+             <string>Export Subset</string>
             </property>
            </widget>
           </item>

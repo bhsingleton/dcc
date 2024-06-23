@@ -422,24 +422,22 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
     # endregion
 
     # region Slots
-    @QtCore.Slot(bool)
-    def on_saveAction_triggered(self, checked=False):
+    @QtCore.Slot()
+    def on_saveAction_triggered(self):
         """
-        Slot method for the saveAction's triggered signal.
+        Slot method for the `saveAction` widget's `triggered` signal.
 
-        :type checked: bool
         :rtype: None
         """
 
         self.manager.saveAsset(self.asset)
         self.scene.save()
 
-    @QtCore.Slot(bool)
-    def on_saveAsAction_triggered(self, checked=False):
+    @QtCore.Slot()
+    def on_saveAsAction_triggered(self):
         """
-        Slot method for the saveAsAction's triggered signal.
+        Slot method for the `saveAsAction` widget's `triggered` signal.
 
-        :type checked: bool
         :rtype: None
         """
 
@@ -465,12 +463,11 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
 
             log.info('Operation aborted...')
 
-    @QtCore.Slot(bool)
-    def on_importAction_triggered(self, checked=False):
+    @QtCore.Slot()
+    def on_importAction_triggered(self):
         """
-        Slot method for the importAction's triggered signal.
+        Slot method for the `importAction` widget's `triggered` signal.
 
-        :type checked: bool
         :rtype: None
         """
 
@@ -494,12 +491,11 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
 
             log.info('Operation aborted...')
 
-    @QtCore.Slot(bool)
-    def on_exportAction_triggered(self, checked=False):
+    @QtCore.Slot()
+    def on_exportAction_triggered(self):
         """
-        Slot method for the exportAction's triggered signal.
+        Slot method for the `exportAction` widget's `triggered` signal.
 
-        :type checked: bool
         :rtype: None
         """
 
@@ -525,7 +521,7 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
     @QtCore.Slot(str)
     def on_assetNameLineEdit_textChanged(self, text):
         """
-        Slot method for the assetNameLineEdit's textChanged signal.
+        Slot method for the `assetNameLineEdit` widget's `textChanged` signal.
 
         :type text: str
         :rtype: None
@@ -536,7 +532,7 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
     @QtCore.Slot(bool)
     def on_useBuiltinSerializerAction_triggered(self, checked=False):
         """
-        Slot method for the useBuiltinSerializerAction's triggered signal.
+        Slot method for the `useBuiltinSerializerAction` widget's `triggered` signal.
 
         :type checked: bool
         :rtype: None
@@ -544,12 +540,11 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
 
         self.asset.useBuiltinSerializer = checked
 
-    @QtCore.Slot(bool)
-    def on_savePushButton_clicked(self, checked=False):
+    @QtCore.Slot()
+    def on_savePushButton_clicked(self):
         """
-        Slot method for the savePushButton's clicked signal.
+        Slot method for the `savePushButton` widget's `clicked` signal.
 
-        :type checked: bool
         :rtype: None
         """
 
@@ -559,7 +554,7 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
     @QtCore.Slot(str)
     def on_assetDirectoryLineEdit_textChanged(self, text):
         """
-        Slot method for the assetDirectoryLineEdit's textChanged signal.
+        Slot method for the `assetDirectoryLineEdit` widget's `textChanged` signal.
 
         :type text: str
         :rtype: None
@@ -568,12 +563,11 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
         self.asset.directory = os.path.normpath(text)
         self.invalidateExportPath()
 
-    @QtCore.Slot(bool)
-    def on_assetDirectoryPushButton_clicked(self, checked=False):
+    @QtCore.Slot()
+    def on_assetDirectoryPushButton_clicked(self):
         """
-        Slot method for the assetDirectoryPushButton's clicked signal.
+        Slot method for the `assetDirectoryPushButton` widget's `clicked` signal.
 
-        :type checked: bool
         :rtype: None
         """
 
@@ -602,7 +596,7 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
     @QtCore.Slot(int)
     def on_fileTypeComboBox_currentIndexChanged(self, index):
         """
-        Slot method for the fileTypeComboBox's currentIndexChanged signal.
+        Slot method for the `fileTypeComboBox` widget's `currentIndexChanged` signal.
 
         :type index: int
         :rtype: None
@@ -613,7 +607,7 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
     @QtCore.Slot(int)
     def on_fileVersionComboBox_currentIndexChanged(self, index):
         """
-        Slot method for the fileVersionComboBox's currentIndexChanged signal.
+        Slot method for the `fileVersionComboBox` widget's `currentIndexChanged` signal.
 
         :type index: int
         :rtype: None
@@ -624,7 +618,7 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
     @QtCore.Slot(QtCore.QPoint)
     def on_exportSetTreeView_customContextMenuRequested(self, point):
         """
-        Slot method for the exportSetTreeView's customContextMenuRequested signal.
+        Slot method for the `exportSetTreeView` widget's `customContextMenuRequested` signal.
 
         :type point: QtCore.QPoint
         :rtype: None
@@ -654,12 +648,11 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
 
             pass
 
-    @QtCore.Slot(bool)
-    def on_copySelectionAction_triggered(self, checked=False):
+    @QtCore.Slot()
+    def on_copySelectionAction_triggered(self):
         """
-        Slot method for the copySelectionAction's triggered signal.
+        Slot method for the `copySelectionAction` widget's `triggered` signal.
 
-        :type checked: bool
         :rtype: None
         """
 
@@ -694,12 +687,11 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
 
             model.extendRow(nodeNames, parent=index)
 
-    @QtCore.Slot(bool)
-    def on_copyInfluencesAction_triggered(self, checked=False):
+    @QtCore.Slot()
+    def on_copyInfluencesAction_triggered(self):
         """
-        Slot method for the copySelectionAction's triggered signal.
+        Slot method for the `copyInfluencesAction` widget's `triggered` signal.
 
-        :type checked: bool
         :rtype: None
         """
 
@@ -750,12 +742,11 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
 
             model.extendRow(sorted(influenceNames), parent=index)
 
-    @QtCore.Slot(bool)
-    def on_clearItemsAction_triggered(self, checked=False):
+    @QtCore.Slot()
+    def on_clearItemsAction_triggered(self):
         """
-        Slot method for the clearItemsAction's triggered signal.
+        Slot method for the `clearItemsAction` widget's `triggered` signal.
 
-        :type checked: bool
         :rtype: None
         """
 
@@ -782,7 +773,7 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
     @QtCore.Slot(int)
     def on_exportSetComboBox_currentIndexChanged(self, index):
         """
-        Slot method for the exportSetComboBox's currentIndexChanged signal.
+        Slot method for the `exportSetComboBox` widget's `currentIndexChanged` signal.
 
         :type index: int
         :rtype: None
@@ -795,12 +786,11 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
             self._currentExportSet = self.asset.exportSets[index]
             self.invalidateExportSet()
 
-    @QtCore.Slot(bool)
-    def on_newExportSetPushButton_clicked(self, checked=False):
+    @QtCore.Slot()
+    def on_newExportSetPushButton_clicked(self):
         """
-        Slot method for the newExportSetPushButton's clicked signal.
+        Slot method for the `newExportSetPushButton` widget's `clicked` signal.
 
-        :type checked: bool
         :rtype: None
         """
 
@@ -850,12 +840,11 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
             self.exportSetComboBox.addItem(fbxExportSet.name)
             self.exportSetComboBox.setCurrentIndex(len(self.asset.exportSets) - 1)
 
-    @QtCore.Slot(bool)
-    def on_duplicateExportSetPushButton_clicked(self, checked=False):
+    @QtCore.Slot()
+    def on_duplicateExportSetPushButton_clicked(self):
         """
-        Slot method for the duplicateExportSetPushButton's clicked signal.
+        Slot method for the `duplicateExportSetPushButton` widget's `clicked` signal.
 
-        :type checked: bool
         :rtype: None
         """
 
@@ -877,12 +866,11 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
         #
         self.exportSetComboBox.addItem(fbxExportSet.name)
 
-    @QtCore.Slot(bool)
-    def on_renameExportSetPushButton_clicked(self, checked=False):
+    @QtCore.Slot()
+    def on_renameExportSetPushButton_clicked(self):
         """
-        Slot method for the renameExportSetPushButton's clicked signal.
+        Slot method for the `renameExportSetPushButton` widget's `clicked` signal.
 
-        :type checked: bool
         :rtype: None
         """
 
@@ -938,12 +926,11 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
             currentIndex = self.exportSetComboBox.currentIndex()
             self.exportSetComboBox.setItemText(currentIndex, newName)
 
-    @QtCore.Slot(bool)
-    def on_reorderExportSetPushButton_clicked(self, checked=False):
+    @QtCore.Slot()
+    def on_reorderExportSetPushButton_clicked(self):
         """
-        Slot method for the reorderExportSetPushButton's clicked signal.
+        Slot method for the `reorderExportSetPushButton` widget's `clicked` signal.
 
-        :type checked: bool
         :rtype: None
         """
 
@@ -956,44 +943,36 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
 
         # Prompt user
         #
-        dialog = qlistdialog.QListDialog('Reorder Export Sets', parent=self)
-        dialog.setTextFilter(stringutils.slugify)
-        dialog.setItems([x.name for x in self.asset.exportSets])
+        items = {x.name: x for x in self.asset.exportSets}
+        success, edits = qlistdialog.QListDialog.editItems(list(items.keys()), title='Reorder Export Sets', textFilter=stringutils.slugify, parent=self)
 
-        response = dialog.exec_()
-
-        if not response:
+        if not success:
 
             log.info('Operation aborted...')
             return
 
         # Reassign fbx export sets
         #
-        items = dialog.items()
-        numItems = len(items)
+        numEdits = len(edits)
+        exportSets = [None] * numEdits
 
-        itemLookup = {x.name: x for x in self.asset.exportSets}
-        exportSets = [None] * numItems
+        for i in range(numEdits):
 
-        for i in range(numItems):
-
-            item = items[i]
-            exportSets[i] = itemLookup.get(item, fbxexportset.FbxExportSet(name=item))
+            item = edits[i]
+            exportSets[i] = items.get(item, fbxexportset.FbxExportSet(name=item))
 
         # Assign reordered list back to asset
-        # All notifies will be preserved this way
         #
         self.asset.exportSets = exportSets
 
         self.exportSetComboBox.clear()
         self.exportSetComboBox.addItems([x.name for x in self.asset.exportSets])
 
-    @QtCore.Slot(bool)
-    def on_deleteExportSetPushButton_clicked(self, checked=False):
+    @QtCore.Slot()
+    def on_deleteExportSetPushButton_clicked(self):
         """
-        Slot method for the deleteExportSetPushButton's clicked signal.
+        Slot method for the `deleteExportSetPushButton` widget's `clicked` signal.
 
-        :type checked: bool
         :rtype: None
         """
 
@@ -1013,12 +992,11 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
         #
         self.exportSetComboBox.removeItem(currentIndex)
 
-    @QtCore.Slot(bool)
-    def on_exportPushButton_clicked(self, checked=False):
+    @QtCore.Slot()
+    def on_exportPushButton_clicked(self):
         """
-        Slot method for the exportPushButton's clicked signal.
+        Slot method for the `exportPushButton` widget's `clicked` signal.
 
-        :type checked: bool
         :rtype: None
         """
 
@@ -1033,12 +1011,46 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
         #
         self.currentExportSet.export(checkout=self.checkout)
 
-    @QtCore.Slot(bool)
-    def on_exportAllPushButton_clicked(self, checked=False):
+    @QtCore.Slot()
+    def on_exportSelectionPushButton_clicked(self):
         """
-        Slot method for the exportAllPushButton's clicked signal.
+        Slot method for the `exportSelectionPushButton` widget's `clicked` signal.
 
-        :type checked: bool
+        :rtype: None
+        """
+
+        QtWidgets.QMessageBox.information(self, 'Export Selection', 'Coming Soon!')
+
+    @QtCore.Slot()
+    def on_exportSubsetPushButton_clicked(self):
+        """
+        Slot method for the `exportSubsetPushButton` widget's `clicked` signal.
+
+        :rtype: None
+        """
+
+        # Prompt user for subset
+        #
+        items = [x.name for x in self.asset.exportSets]
+        success, selectedItems = qlistdialog.QListDialog.getItems(items, title='Export Subset', parent=self)
+
+        if not success:
+
+            log.info('Operation aborted...')
+            return
+
+        # Iterate through export sets
+        #
+        for item in selectedItems:
+
+            index = items.index(item)
+            self.asset.exportSets[index].export(checkout=self.checkout)
+
+    @QtCore.Slot()
+    def on_exportAllPushButton_clicked(self):
+        """
+        Slot method for the `exportAllPushButton` widget's `clicked` signal.
+
         :rtype: None
         """
 
@@ -1055,12 +1067,11 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
 
             exportSet.export(checkout=self.checkout)
 
-    @QtCore.Slot(bool)
-    def on_usingFbxExportSetEditorAction_triggered(self, checked=False):
+    @QtCore.Slot()
+    def on_usingFbxExportSetEditorAction_triggered(self):
         """
-        Slot method for the usingFbxExportSetEditorAction's triggered signal.
+        Slot method for the `usingFbxExportSetEditorAction` widget's `clicked` signal.
 
-        :type checked: bool
         :rtype: None
         """
 
