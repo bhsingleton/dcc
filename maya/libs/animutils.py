@@ -213,12 +213,13 @@ def internalToUiUnit(value, animCurveType=oma.MFnAnimCurve.kAnimCurveTL):
         return value
 
 
-def findAnimatedPlug(plug):
+def findAnimatedPlug(plug, animLayer=None):
     """
     Returns the plug that is currently being animated on.
     If the plug is being used by an anim-layer then the input plug from the blend node will be returned!
 
     :type plug: om.MPlug
+    :type animLayer: Union[om.MObject, None]
     :rtype: om.MPlug
     """
 
@@ -238,7 +239,7 @@ def findAnimatedPlug(plug):
 
         # Get preferred anim-layer
         #
-        bestLayer = getBestAnimLayer(plug)
+        bestLayer = getBestAnimLayer(plug) if (animLayer is None) else animLayer
 
         if bestLayer.isNull():
 
@@ -281,12 +282,13 @@ def findAnimatedPlug(plug):
         return plug
 
 
-def findAnimCurve(plug, create=False):
+def findAnimCurve(plug, animLayer=None, create=False):
     """
     Returns the anim-curve associated with the supplied plug.
     If the plug is not animated then a null object is returned!
 
     :type plug: om.MPlug
+    :type animLayer: Union[om.MObject, None]
     :type create: bool
     :rtype: om.MObject
     """
@@ -299,7 +301,7 @@ def findAnimCurve(plug, create=False):
 
     # Evaluate animated plug
     #
-    otherPlug = findAnimatedPlug(plug)
+    otherPlug = findAnimatedPlug(plug, animLayer=animLayer)
     isAnimated = plugutils.isAnimated(otherPlug)
 
     if isAnimated:
