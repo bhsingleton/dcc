@@ -59,9 +59,9 @@ class FileProperties(collections_abc.MutableMapping):
         :rtype: None
         """
 
-        mc.fileInfo(key, value)
+        self.__properties__[key] = value
+        self.itemChanged(key, value)
         self.markDirty()
-        self.invalidate(force=True)
 
     def __delitem__(self, key):
         """
@@ -71,9 +71,9 @@ class FileProperties(collections_abc.MutableMapping):
         :rtype: None
         """
 
-        mc.fileInfo(remove=key)
+        del self.__properties__[key]
+        self.itemRemoved(key)
         self.markDirty()
-        self.invalidate(force=True)
 
     def __len__(self):
         """
@@ -171,17 +171,26 @@ class FileProperties(collections_abc.MutableMapping):
 
         return self
 
-    def invalidate(self, force=False):
+    def itemChanged(self, key, value):
         """
-        Updates the internal properties if the scene is dirty.
+        Propagates any internal item changes to the file properties.
 
-        :type force: bool
+        :type key: str
+        :type value: Any
         :rtype: None
         """
 
-        if self.isDirty() or force:
+        mc.fileInfo(key, value)
 
-            self.__properties__ = dict(sceneutils.iterFileProperties())
+    def itemRemoved(self, key):
+        """
+        Propagates any internal item removals to the file properties.
+
+        :type key: str
+        :rtype: None
+        """
+
+        mc.fileInfo(remove=key)
 
     def isOutOfDate(self):
         """
@@ -213,4 +222,16 @@ class FileProperties(collections_abc.MutableMapping):
         """
 
         sceneutils.markDirty()
+
+    def invalidate(self, force=False):
+        """
+        Loads the user properties from the `notes` attribute.
+
+        :type force: bool
+        :rtype: None
+        """
+
+        if self.isDirty() or force:
+
+            self.__properties__ = dict(sceneutils.iterFileProperties())
     # endregion
