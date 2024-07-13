@@ -668,6 +668,14 @@ def freezePivots(node, includeTranslate=True, includeRotate=True, includeScale=F
                 fnMesh.setPoints(controlPoints)
                 fnMesh.updateSurface()
 
+                hasLockedNormals = fnMesh.isNormalLocked(0)
+
+                if hasLockedNormals:
+
+                    normals = [om.MVector(normal) * matrix for normal in fnMesh.getNormals()]
+                    fnMesh.setNormals(normals)
+                    fnMesh.updateSurface()
+
             else:
 
                 log.warning(f'Cannot freeze "{shape.apiTypeStr}" shape!')
