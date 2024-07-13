@@ -182,7 +182,7 @@ def getMObjectByName(name):
     """
     Returns an MObject from the supplied node name.
 
-    :type string: Union[str, unicode]
+    :type name: Union[str, unicode]
     :rtype: om.MObject
     """
 
@@ -1492,7 +1492,7 @@ def createNode(typeName, name='', parent=None, skipSelect=True):
     # Create new node
     #
     node = om.MObject.kNullObj
-    parent = om.MObject.kNullObj if (parent is None) else getMObject(parent)
+    parent = om.MObject.kNullObj if stringutils.isNullOrEmpty(parent) else getMObject(parent)
 
     modifier = None
 
