@@ -201,6 +201,17 @@ def transferShaders(source, destination):
         selection.clear()
 
 
+def isValidIntermediate(intermediate):
+    """
+    Evaluates if the supplied intermediate is valid.
+
+    :type intermediate: om.MObject
+    :rtype: bool
+    """
+
+    return om.MFnMesh(intermediate).findPlug('outMesh', True).isSource
+
+
 def triangulate(mesh):
     """
     Returns a triangulated mesh that won't be written on file save.
@@ -214,7 +225,7 @@ def triangulate(mesh):
     mesh = dagutils.getMObject(mesh)
     transform = dagutils.getParent(mesh)
 
-    intermediates = tuple(dagutils.iterIntermediateObjects(transform, apiType=om.MFn.kMesh))
+    intermediates = [intermediate for intermediate in dagutils.iterIntermediateObjects(transform, apiType=om.MFn.kMesh) if isValidIntermediate(intermediate)]
     numIntermediates = len(intermediates)
 
     intermediate = None
