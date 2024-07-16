@@ -43,7 +43,7 @@ def getNodeName(node, includePath=False, includeNamespace=False):
     #
     if includePath:
 
-        return '|'.join([getNodeName(ancestor, includeNamespace=includeNamespace) for ancestor in traceHierarchy(node)])
+        return '|{path}'.format(path='|'.join([getNodeName(ancestor, includeNamespace=includeNamespace) for ancestor in traceHierarchy(node)]))
 
     elif includeNamespace:
 
@@ -226,7 +226,7 @@ def getMObjectByPath(path):
     """
     Returns an MObject from the supplied node path.
 
-    :type string: Union[str, unicode]
+    :type path: Union[str, unicode]
     :rtype: om.MObject
     """
 
@@ -269,14 +269,16 @@ def getMObjectByPath(path):
 
     else:
 
+        depth = len(hierarchy)
         parentPath = '|'.join(hierarchy[:-1])
 
         for i in range(selectionCount):
 
             node = selection.getDependNode(i)
-            nodePath = getNodeName(includePath=True, includeNamespace=hasNamespace)
+            nodePath = getNodeName(node, includePath=True, includeNamespace=hasNamespace)
+            nodeDepth = len(nodePath.split('|'))
 
-            if nodePath.startswith(parentPath):
+            if nodePath.startswith(parentPath) and depth == nodeDepth:
 
                 return node
 
