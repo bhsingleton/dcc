@@ -24,10 +24,14 @@ class QSingleton(ShibokenObject):
         :rtype: QSingleton
         """
 
+        # Check if instance exists
+        #
         hasInstance = cls.hasInstance()
 
         if hasInstance:
 
+            # Return cached instance
+            #
             instance = cls.getInstance(*args, **kwargs)
             instance.setWindowState(QtCore.Qt.WindowActive)  # Reverts minimized state!
 
@@ -35,6 +39,8 @@ class QSingleton(ShibokenObject):
 
         else:
 
+            # Create and store new instance
+            #
             instance = super(QSingleton, cls).__call__(*args, **kwargs)
             instance.__post_init__(*args, **kwargs)
 
@@ -53,7 +59,7 @@ class QSingleton(ShibokenObject):
 
         instance = cls.__instances__.get(cls.__name__, None)
 
-        if instance is not None:
+        if isinstance(instance, QtCore.QObject):
 
             return QtCompat.isValid(instance)
 
