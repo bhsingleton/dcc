@@ -77,6 +77,15 @@ class AFnNotify(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
 
         self.clear()
+
+    def __len__(self):
+        """
+        Private method that returns the size of this instance.
+
+        :rtype: int
+        """
+
+        return sum(map(len, self._notifications.values()))
     # endregion
 
     # region Callbacks

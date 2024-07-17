@@ -399,9 +399,14 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
         #
         super(QFbxExportSetEditor, self).showEvent(event)
 
-        # Add post file-open notify
+        # Add notifies
         #
-        self._notifies.addPostFileOpenNotify(self.sceneChanged)
+        hasNotifies = len(self._notifies) > 0
+
+        if not hasNotifies:
+
+            self._notifies.addPostFileOpenNotify(self.sceneChanged)
+
         self.sceneChanged()
 
     def closeEvent(self, event):
@@ -412,13 +417,13 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
         :rtype: None
         """
 
+        # Remove notifies
+        #
+        self._notifies.clear()
+
         # Call parent method
         #
         super(QFbxExportSetEditor, self).closeEvent(event)
-
-        # Clear notifies
-        #
-        self._notifies.clear()
     # endregion
 
     # region Slots
