@@ -51,6 +51,12 @@ class FnNode(afnnode.AFnNode):
         :rtype: None
         """
 
+        # Inspect object
+        #
+        if isinstance(obj, integer_types):
+
+            obj = self.__handles__.get(obj, om.MObject.kNullObj)
+
         # Get object
         #
         dependNode = dagutils.getMObject(obj)
