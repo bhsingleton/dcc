@@ -930,6 +930,30 @@ def moveConnectedElements(plug, index):
         connectPlugs(source, nextElement)
 
 
+def hasConnection(plug):
+    """
+    Evaluates if the supplied plug or any of its children have incoming connections.
+
+    :type plug: om.MPlug
+    :rtype: bool
+    """
+
+    isArray = plug.isArray and not plug.isElement
+    isCompound = plug.isCompound and not plug.isChild
+
+    if isArray:
+
+        return plug.isDestination or any([element.isDestination for element in iterElements(plug)])
+
+    elif isCompound:
+
+        return plug.isDestination or any([child.isDestination for child in iterChildren(plug)])
+
+    else:
+
+        return plug.isDestination
+
+
 def hasAlias(plug):
     """
     Evaluates if the supplied node has an alias.
