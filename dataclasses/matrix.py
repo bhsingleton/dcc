@@ -6,7 +6,6 @@ from itertools import islice
 from dataclasses import dataclass
 from collections import deque
 from collections.abc import Sequence, Mapping
-from copy import deepcopy
 from . import adc
 from ..generators.flatten import flatten
 
@@ -476,6 +475,15 @@ class Matrix(Sequence):
         """
 
         return self.shape.rows
+
+    def __copy__(self):
+        """
+        Private method that returns a copy of this matrix.
+
+        :rtype: Matrix
+        """
+
+        return self.copy()
     # endregion
 
     # region Properties
@@ -861,7 +869,7 @@ class Matrix(Sequence):
 
     def isEquivalent(self, other, tolerance=1e-3):
         """
-        Evaluates if the two supplied vectors are equivalent.
+        Evaluates if the two supplied matrices are equivalent.
 
         :type other: Matrix
         :type tolerance: float
@@ -885,7 +893,10 @@ class Matrix(Sequence):
         :rtype: Matrix
         """
 
-        return deepcopy(self)
+        matrix = self.__class__(self.shape)
+        matrix.fill(self, shape=self.shape)
+
+        return matrix
 
     def toList(self, collapse=False):
         """
