@@ -15,7 +15,7 @@ class QSingleton(ShibokenObject):
     """
 
     # region Dunderscores
-    __instances__ = {}
+    __singletons__ = {}
 
     def __call__(cls, *args, **kwargs):
         """
@@ -44,7 +44,7 @@ class QSingleton(ShibokenObject):
             instance = super(QSingleton, cls).__call__(*args, **kwargs)
             instance.__post_init__(*args, **kwargs)
 
-            cls.__instances__[cls.__name__] = instance
+            cls.__singletons__[cls.__name__] = instance
 
             return instance
     # endregion
@@ -57,7 +57,7 @@ class QSingleton(ShibokenObject):
         :rtype: bool
         """
 
-        instance = cls.__instances__.get(cls.__name__, None)
+        instance = cls.__singletons__.get(cls.__name__, None)
 
         if isinstance(instance, QtCore.QObject):
 
@@ -79,7 +79,7 @@ class QSingleton(ShibokenObject):
 
         if hasInstance:
 
-            return cls.__instances__[cls.__name__]
+            return cls.__singletons__[cls.__name__]
 
         else:
 
