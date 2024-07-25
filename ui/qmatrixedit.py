@@ -1,8 +1,9 @@
 import sys
 
-from Qt import QtCore, QtWidgets, QtGui
+from Qt import QtCore, QtWidgets, QtGui, QtCompat
 from dcc.ui import qlineeditgroup
 from dcc.dataclasses import matrix
+from dcc.generators.inclusiverange import inclusiveRange
 
 import logging
 logging.basicConfig()
@@ -15,11 +16,13 @@ class QMatrixEdit(QtWidgets.QWidget):
     Overload of QWidget used to edit transform matrices.
     """
 
+    # region Signals
     readOnlyChanged = QtCore.Signal(bool)
     validatorChanged = QtCore.Signal(QtGui.QValidator)
     cellEdited = QtCore.Signal(int, int)
     cellChanged = QtCore.Signal(int, int)
     matrixChanged = QtCore.Signal(object)
+    # endregion
 
     # region Dunderscores
     __decimals__ = 3
@@ -46,27 +49,91 @@ class QMatrixEdit(QtWidgets.QWidget):
         self._matrix = matrix.Matrix(self._rowCount, self._columnCount)
         self._readOnly = False
         self._validator = self.defaultValidator()
+        self._labels = [None] * self._rowCount
         self._rows = [None] * self._rowCount
 
-        # Initialize matrix rows
+        # Initialize widget
+        #
+        self.setContentsMargins(0, 0, 0, 0)
+
+        # Initialize central layout
         #
         gridLayout = QtWidgets.QGridLayout()
         gridLayout.setSpacing(8)
         gridLayout.setContentsMargins(0, 0, 0, 0)
 
+        self.setLayout(gridLayout)
+
+        # Initialize matrix rows
+        #
         for row in range(self._rowCount):
 
+            # Create label
+            #
+            label = QtWidgets.QLabel(f'Row {row + 1}:')
+            label.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+            label.setFixedHeight(24)
+            label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+            self._labels[row] = label
+
+            gridLayout.addWidget(label, row, 0)
+
+            # Create line-edit group
+            #
             self._rows[row] = self.createLineEditGroup(self._columnCount)
 
             for column in range(self._columnCount):
 
-                gridLayout.addWidget(self._rows[row][column], row, column)
-
-        self.setContentsMargins(0, 0, 0, 0)
-        self.setLayout(gridLayout)
+                gridLayout.addWidget(self._rows[row][column], row, column + 1)
     # endregion
 
     # region Methods
+    def rowLabels(self):
+        """
+        Returns the row label texts.
+
+        :rtype: List[str]
+        """
+
+        return [label.text() for label in self._labels if QtCompat.isvalid(label)]
+
+    def setRowLabels(self, labels):
+        """
+        Updates the row label texts.
+
+        :type labels: List[str]
+        :rtype: None
+        """
+
+        for (i, label) in enumerate(labels):
+
+            if not (0 <= i < self._rowCount):
+
+                continue
+
+            widget = self._labels[i]
+
+            if QtCompat.isValid(widget):
+
+                self._labels[i].setText(label)
+
+            else:
+
+                continue
+
+    def replaceLabel(self, row, widget):
+        """
+        Replaces the specified row label with the supplied widget.
+
+        :type row: int
+        :type widget: QtWidgets.QWidget
+        :rtype: None
+        """
+
+        if 0 <= row < self._rowCount:
+
+            self.layout().replaceWidget(self._labels[row], widget)
+
     def readOnly(self):
         """
         Returns the read-only state.
@@ -153,7 +220,7 @@ class QMatrixEdit(QtWidgets.QWidget):
         :rtype: qlineeditgroup.QLineEditGroup
         """
 
-        return self.rows()[row]
+        return self._rows[row]
 
     def matrix(self):
         """
