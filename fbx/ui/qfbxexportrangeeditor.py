@@ -150,7 +150,9 @@ class QFbxExportRangeEditor(quicwindow.QUicWindow):
         :rtype: None
         """
 
-        self.checkoutCheckBox.setChecked(checkout)
+        if isinstance(checkout, bool):
+
+            self.checkoutCheckBox.setChecked(checkout)
     # endregion
 
     # region Methods
@@ -218,7 +220,7 @@ class QFbxExportRangeEditor(quicwindow.QUicWindow):
 
         # Load user settings
         #
-        self.checkout = bool(settings.value('editor/checkout', defaultValue=1))
+        self.checkout = bool(settings.value('editor/checkout', defaultValue=1, type=int))
 
     def defaultExportRange(self):
         """
