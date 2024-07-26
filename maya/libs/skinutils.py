@@ -364,9 +364,9 @@ def removeInfluence(skinCluster, influenceId):
     fnSkinCluster = om.MFnDependencyNode(skinCluster)
     skinClusterName = fnSkinCluster.absoluteName()
 
-    fnInfluence = om.MFnDagNode(influence)
-    influenceName = fnInfluence.fullPathName()
-    instanceNumber = fnInfluence.dagPath().instanceNumber()
+    influencePath = dagutils.getMDagPath(influence)
+    influenceName = influencePath.fullPathName()
+    instanceNumber = influencePath.instanceNumber()
 
     mc.disconnectAttr(f'{influenceName}.worldMatrix[{instanceNumber}]', f'{skinClusterName}.matrix[{influenceId}]')
     mc.disconnectAttr(f'{influenceName}.objectColorRGB', f'{skinClusterName}.influenceColor[{influenceId}]')
