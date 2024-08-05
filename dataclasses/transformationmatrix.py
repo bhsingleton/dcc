@@ -41,14 +41,28 @@ class TransformationMatrix(matrix.Matrix):
 
         if numArgs == 1:
 
-            self.fill(args[0])
+            # Evaluate argument
+            #
+            arg = args[0]
+
+            if isinstance(arg, matrix.Sequence):
+
+                self.fill(args[0])
+
+            else:
+
+                raise TypeError(f'__init__() expects a sequence ({type(arg).__name__} given)!')
 
         elif numArgs > 1:
 
+            # Fill transform from arguments
+            #
             self.fill(args)
 
         elif numKwargs > 0:
 
+            # Fill transform from rows
+            #
             row1 = kwargs.get('row1', vector.Vector.xAxis)
             row2 = kwargs.get('row2', vector.Vector.yAxis)
             row3 = kwargs.get('row3', vector.Vector.zAxis)
@@ -104,6 +118,15 @@ class TransformationMatrix(matrix.Matrix):
     # endregion
 
     # region Matrix Methods
+    def inverse(self):
+        """
+        Returns the inverse of this transformation matrix.
+
+        :rtype: TransformationMatrix
+        """
+
+        return TransformationMatrix(super(TransformationMatrix, self).inverse())
+
     def decompose(self, normalize=False):
         """
         Returns the x, y, z and position components from this matrix.
