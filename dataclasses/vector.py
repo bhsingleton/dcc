@@ -121,7 +121,7 @@ class Vector(adc.ADC):
         """
 
         copy = self.copy()
-        copy += other
+        copy.__iadd__(other)
 
         return copy
 
@@ -164,7 +164,7 @@ class Vector(adc.ADC):
 
         else:
 
-            raise NotImplemented(f'__iadd__() expects either a float or Vector ({type(other).__name__} given)!')
+            return NotImplemented
 
         return self
 
@@ -177,7 +177,7 @@ class Vector(adc.ADC):
         """
 
         copy = self.copy()
-        copy -= other
+        copy.__isub__(other)
 
         return copy
 
@@ -196,7 +196,7 @@ class Vector(adc.ADC):
 
         else:
 
-            raise NotImplemented(f'__rsub__() expects either an int or float ({type(other).__name__} given)!')
+            return NotImplemented
 
     def __isub__(self, other):
         """
@@ -220,7 +220,7 @@ class Vector(adc.ADC):
 
         else:
 
-            raise NotImplemented(f'__isub__() expects either a float or Vector ({type(other).__name__} given)!')
+            return NotImplemented
 
         return self
 
@@ -239,9 +239,26 @@ class Vector(adc.ADC):
         else:
 
             copy = self.copy()
-            copy *= other
+            copy.__imul__(other)
 
             return copy
+
+    def __rmul__(self, other):
+        """
+        Private method that implements the right-side multiplication operator.
+
+        :type other: Union[int, float]
+        :rtype: Vector
+        """
+
+        if isinstance(other, (int, float)):
+
+            copy = self.copy()
+            return copy.__imul__(other)
+
+        else:
+
+            return NotImplemented
 
     def __imul__(self, other):
         """
@@ -272,7 +289,7 @@ class Vector(adc.ADC):
 
         else:
 
-            raise NotImplemented(f'__imul__() expects either a float or Vector ({type(other).__name__} given)!')
+            return NotImplemented
 
         return self
 
@@ -285,9 +302,26 @@ class Vector(adc.ADC):
         """
 
         copy = self.copy()
-        copy /= other
+        copy.__itruediv__(other)
 
         return copy
+
+    def __rtruediv__(self, other):
+        """
+        Private method that implements the right-side division operator.
+
+        :type other: Union[int, float]
+        :rtype: Vector
+        """
+
+        if isinstance(other, (int, float)):
+
+            other = Vector(other, other, other)
+            return other.__itruediv__(self)
+
+        else:
+
+            raise NotImplemented(f'__rtruediv__() expects either an int or float ({type(other).__name__} given)!')
 
     def __itruediv__(self, other):
         """
@@ -326,6 +360,35 @@ class Vector(adc.ADC):
             raise NotImplemented(f'__itruediv__() expects either a float or Vector ({type(other).__name__} given)!')
 
         return self
+
+    def __pow__(self, power, modulo=None):
+        """
+        Private method that implements the power operator.
+
+        :type power: Union[int, float]
+        :type modulo: Union[int, float, None]
+        :rtype: Vector
+        """
+
+        copy = self.copy()
+
+        if isinstance(power, (int, float)):
+
+            copy.x = copy.x ** power
+            copy.y = copy.y ** power
+            copy.z = copy.z ** power
+
+        elif isinstance(power, Vector):
+
+            copy.x = copy.x ** power.x
+            copy.y = copy.y ** power.y
+            copy.z = copy.z ** power.z
+
+        else:
+
+            return NotImplemented
+
+        return copy
 
     def __xor__(self, other):
         """
@@ -540,4 +603,13 @@ class Vector(adc.ADC):
         """
 
         return list(self)
+
+    def toTuple(self):
+        """
+        Converts this vector a list.
+
+        :rtype: Tuple[float, float, float]
+        """
+
+        return tuple(self)
     # endregion
