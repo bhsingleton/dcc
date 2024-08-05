@@ -10,6 +10,8 @@ from dcc.python import importutils
 from dcc.math import linearalgebra
 from dcc.dataclasses.vector import Vector
 from dcc.dataclasses.colour import Colour
+from dcc.dataclasses.plane import Plane
+from dcc.dataclasses.transformationmatrix import TransformationMatrix
 
 import logging
 logging.basicConfig()
@@ -39,10 +41,9 @@ class Hit:
     point: Vector = field(default_factory=lambda: Vector())
     faceIndex: int = 0
     faceVertexIndices: List[int] = field(default_factory=lambda: [])
-    biCoords: Tuple[float, float] = field(default_factory=lambda: (0.0, 0.0))
-    triangleIndex: int = 0
-    triangleVertexIndices: List[int] = field(default_factory=lambda: [])
+    faceVertexPoints: List[Vector] = field(default_factory=lambda: [])
     baryCoords: Tuple[float, float, float] = field(default_factory=lambda: (0.0, 0.0, 0.0))
+    biCoords: Tuple[float, float] = field(default_factory=lambda: (0.0, 0.0))
 
 
 class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
@@ -759,13 +760,24 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         # TODO: Might be worth trying to optimize this with only opposite points?
         #
         tree = spatial.cKDTree(self.getVertices())
-        distances, closestIndices = tree.query(mirrorPoints, distance_upper_bound=tolerance)
+        closestDistances, closestIndices = tree.query(mirrorPoints, distance_upper_bound=tolerance)
 
         # Generate mirror map
-        # Be sure to compensate for 1-based arrays!
         #
+        mirrorMap = {}
         numVertices = self.numVertices()
-        return {vertexIndex: int(closestIndex + self.arrayIndexType) for (vertexIndex, closestIndex) in zip(vertexIndices, closestIndices) if closestIndex != numVertices}
+
+        for (vertexIndex, closestIndex) in zip(vertexIndices, closestIndices):
+
+            if closestIndex != numVertices:
+
+                mirrorMap[vertexIndex] = int(closestIndex + self.arrayIndexType)  # Don't forget to compensate for 1-based arrays!
+
+            else:
+
+                continue
+
+        return mirrorMap
 
     def nearestNeighbours(self, *indices):
         """
@@ -812,7 +824,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         otherPoints = self.getVertices(*otherIndices)
         indexMap = dict(enumerate(otherIndices))
 
-        tree = cKDTree(otherPoints)
+        tree = spatial.cKDTree(otherPoints)
 
         # Find the closest vertices
         #
@@ -844,15 +856,16 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         # Query point tree
         #
-        tree = cKDTree(vertexPoints)
+        tree = spatial.cKDTree(vertexPoints)
         distances, indices = tree.query(points)
 
         return [vertexMap[x] for x in indices]
 
-    def getBarycentricCoordinates(self, point, triangle):
+    @classmethod
+    def getBarycentricCoordinates(cls, point, triangle):
         """
         Returns the barycentric co-ordinates for the point on the supplied triangle.
-        Shamelessly ripped from: http://www.geometrictools.com/Documentation/DistancePoint3Triangle3.pdf
+        See the following for details: http://www.geometrictools.com/Documentation/DistancePoint3Triangle3.pdf
 
         :type point: Vector
         :type triangle: Tuple[Vector, Vector, Vector]
@@ -955,31 +968,71 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         return float(1.0 - s - t), float(s), float(t)
 
-    def getBilinearCoordinates(self, point, faceIndex):
+    @classmethod
+    def getBilinearCoordinates(cls, point, quadrilateral):
         """
-        Returns the bilinear co-ordinates for the point on the specified face.
-        Shamelessly ripped from: https://math.stackexchange.com/questions/13404/mapping-irregular-quadrilateral-to-a-rectangle
+        Returns the bilinear co-ordinates for the point on the specified quadrilateral.
+        See the following for details: https://www.shadertoy.com/view/Dl3GDs
 
         :type point: Vector
-        :type faceIndex: int
+        :type quadrilateral: Tuple[Vector, Vector, Vector, Vector]
         :rtype: Tuple[float, float]
         """
 
-        # Get tangent vectors
+        # Decompose quadrilateral
         #
-        faceVertexIndices = self.getFaceVertexIndices(faceIndex)[0]
-        p0, p1, p2, p3 = self.getVertices(*faceVertexIndices, worldSpace=True)
-        n = self.getFaceNormals(faceIndex)[0]
+        p0, p1, p2, p3 = quadrilateral
+        o = (p0 * 0.25) + (p1 * 0.25) + (p2 * 0.25) + (p3 * 0.25)
 
-        n0 = ((p3 - p0) ^ n).normal()
-        n1 = (n ^ (p1 - p0)).normal()
-        n2 = (n ^ (p2 - p1)).normal()
-        n3 = ((p2 - p3) ^ n).normal()
-
-        # Calculate bi-linear co-ordinates
+        # Calculate normal vector
         #
-        u = ((point - p0) * n0) / (((point - p0) * n0) + ((point - p2) * n2))
-        v = ((point - p0) * n1) / (((point - p0) * n1) + ((point - p3) * n3))
+        n0 = ((p1 - p0) ^ (p3 - p0)).normal()
+        n1 = ((p2 - p1) ^ (p0 - p1)).normal()
+        n2 = ((p3 - p2) ^ (p1 - p2)).normal()
+        n3 = ((p0 - p3) ^ (p2 - p3)).normal()
+
+        n = ((n0 * 0.25) + (n1 * 0.25) + (n2 * 0.25) + (n3 * 0.25)).normal()
+
+        # Flatten quadrilateral using averaged normal
+        #
+        p0 = Plane(origin=o, normal=n).project(p0)
+        p1 = Plane(origin=o, normal=n).project(p1)
+        p2 = Plane(origin=o, normal=n).project(p2)
+        p3 = Plane(origin=o, normal=n).project(p3)
+        point = Plane(origin=o, normal=n).project(point)
+
+        # Convert points into local space
+        #
+        zAxis = ((p1 - p0).normal() ^ (p2 - p0).normal()).normal()
+        xAxis = (p1 - p0).normal()
+        yAxis = (zAxis ^ xAxis).normal()
+        matrix = TransformationMatrix(row1=xAxis, row2=yAxis, row3=zAxis, row4=p0)
+        inverseMatrix = matrix.inverse()
+
+        p0 *= inverseMatrix
+        p1 *= inverseMatrix
+        p2 *= inverseMatrix
+        p3 *= inverseMatrix
+        point *= inverseMatrix
+
+        # Iteratively solve for UV weights
+        #
+        u, v = 0.0, 0.0
+
+        for i in range(5):
+
+            r1 = p0.x * (1.0 - u) * (1.0 - v) + p1.x * u * (1.0 - v) + p2.x * u * v + p3.x * (1.0 - u) * v - point.x
+            r2 = p0.y * (1.0 - u) * (1.0 - v) + p1.y * u * (1.0 - v) + p2.y * u * v + p3.y * (1.0 - u) * v - point.y
+
+            J11 = -p0.x * (1.0 - v) + p1.x * (1.0 - v) + p2.x * v - p3.x * v
+            J21 = -p0.y * (1.0 - v) + p1.y * (1.0 - v) + p2.y * v - p3.y * v
+            J12 = -p0.x * (1.0 - u) - p1.x * u + p2.x * u + p3.x * (1.0 - u)
+            J22 = -p0.y * (1.0 - u) - p1.y * u + p2.y * u + p3.y * (1.0 - u)
+
+            inv_detJ = 1.0 / (J11 * J22 - J12 * J21)
+
+            u = u - inv_detJ * (J22 * r1 - J12 * r2)
+            v = v - inv_detJ * (-J21 * r1 + J11 * r2)
 
         return u, v
 
@@ -999,20 +1052,17 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
             dataset = list(self.range(self.numFaces()))
 
-        # Get control points
+        # Get face centroids
         #
-        faceTriangleVertexIndices = self.getFaceTriangleVertexIndices()
+        faceMap = dict(enumerate(dataset))
+        faceVertexIndices = self.getFaceVertexIndices(*dataset)
+        faceVertexPoints = [self.getVertices(*vertexIndices, worldSpace=True) for vertexIndices in faceVertexIndices]
 
-        triangleIndices = list(chain(*[[(faceIndex, triangleIndex) for triangleIndex in range(len(faceTriangleVertexIndices[faceIndex]))] for faceIndex in dataset]))
-        triangleMap = dict(enumerate(triangleIndices))
-
-        triangles = [faceTriangleVertexIndices[faceIndex][triangleIndex] for (faceIndex, triangleIndex) in triangleIndices]
-        trianglePoints = [self.getVertices(*vertexIndices, worldSpace=True) for vertexIndices in triangles]
-        triangleCentroids = [sum(vertexPoints) / len(vertexPoints) for vertexPoints in trianglePoints]
+        faceCentroids = [sum(vertexPoints) / len(vertexPoints) for vertexPoints in faceVertexPoints]
 
         # Get the closest triangles using point tree
         #
-        tree = cKDTree(triangleCentroids)
+        tree = spatial.cKDTree(faceCentroids)
         distances, closestIndices = tree.query(points)
 
         # Project points onto the closest triangles
@@ -1021,27 +1071,46 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         numHits = len(closestIndices)
         hits = [None] * numHits
 
-        for (i, (closestIndex, point)) in enumerate(zip(closestIndices, points)):
+        for (i, (closestIndex, closestPoint)) in enumerate(zip(closestIndices, points)):
 
-            point = Vector(*point)
-            faceIndex, triangleIndex = triangleMap[closestIndex]
-            faceVertexIndices = self.getFaceVertexIndices(faceIndex)[0]
-            triangleVertexIndices = triangles[closestIndex]
+            # Evaluate face topology
+            #
+            closestPoint = Vector(*closestPoint)
+            faceIndex = faceMap[closestIndex]
 
-            vertexPoints = trianglePoints[closestIndex]
-            baryCoords = self.getBarycentricCoordinates(point, vertexPoints)
-            closestPoint = (vertexPoints[0] * baryCoords[0]) + (vertexPoints[1] * baryCoords[1]) + (vertexPoints[2] * baryCoords[2])
-            biCoords = self.getBilinearCoordinates(closestPoint, faceIndex) if len(faceVertexIndices) == 4 else None
+            faceCentroid = faceCentroids[closestIndex]
+            vertexIndices = faceVertexIndices[closestIndex]
+            vertexPoints = faceVertexPoints[closestIndex]
+            numVertices = len(vertexIndices)
 
-            log.debug('Hit: point=%s -> closestPoint=%s, bary=%s' % (point, closestPoint, baryCoords))
+            hitPoint = None
+            baryCoords, biCoords = None, None
+
+            if numVertices == 3:
+
+                baryCoords = self.getBarycentricCoordinates(closestPoint, vertexPoints)
+                hitPoint = (vertexPoints[0] * baryCoords[0]) + (vertexPoints[1] * baryCoords[1]) + (vertexPoints[2] * baryCoords[2])
+
+            elif numVertices == 4:
+
+                biCoords = self.getBilinearCoordinates(closestPoint, vertexPoints)
+                hitPoint = linearalgebra.lerp(linearalgebra.lerp(vertexPoints[0], vertexPoints[1], biCoords[0]), linearalgebra.lerp(vertexPoints[3], vertexPoints[2], biCoords[0]), biCoords[1])
+
+            else:
+
+                faceNormal = self.getFaceNormals(faceIndex)[0]
+                hitPoint = Plane(origin=faceCentroid, normal=faceNormal).project(closestPoint)  # It's lazy but we shouldn't even be supporting n-gons!
+
+            # Initialize hit specs
+            #
+            log.debug('Hit: point=%s -> closestPoint=%s, bary=%s' % (hitPoint, closestPoint, baryCoords))
             hits[i] = self.Hit(
-                point=closestPoint,
+                point=hitPoint,
                 faceIndex=faceIndex,
-                faceVertexIndices=faceVertexIndices,
-                biCoords=biCoords,
-                triangleIndex=triangleIndex,
-                triangleVertexIndices=triangleVertexIndices,
-                baryCoords=baryCoords
+                faceVertexIndices=vertexIndices,
+                faceVertexPoints=vertexPoints,
+                baryCoords=baryCoords,
+                biCoords=biCoords
             )
 
         return hits
