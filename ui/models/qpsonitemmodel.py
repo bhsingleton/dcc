@@ -158,41 +158,6 @@ class QPSONItemModel(QtCore.QAbstractItemModel):
     # endregion
 
     # region Methods
-    def getTextSizeHint(self, text):
-        """
-        Returns a size hint for the supplied text.
-
-        :type text: str
-        :rtype: QtCore.QSize
-        """
-
-        # Check if model has a parent
-        #
-        parent = super(QtCore.QAbstractItemModel, self).parent()
-
-        if parent is None:
-
-            parent = self.qt.getApplication()
-
-        # Evaluate contents size from font metrics
-        #
-        options = QtWidgets.QStyleOptionViewItem()
-        options.initFrom(parent)
-
-        contentSize = options.fontMetrics.size(QtCore.Qt.TextSingleLine, text)
-
-        # Evaluate item size
-        #
-        style = parent.style()
-
-        if QtCompat.isValid(style):  # QStyle pointers get deleted easily!
-
-            return style.sizeFromContents(QtWidgets.QStyle.CT_ItemViewItem, options, contentSize, parent)
-
-        else:
-
-            return contentSize
-
     def encodeInternalId(self, *indices):
         """
         Returns an internal ID for the supplied item path.
