@@ -42,3 +42,16 @@ def clamp(value, minValue, maxValue):
     else:
 
         return value
+
+
+def lerp(start, end, weight):
+    """
+    Linearly interpolates the supplied start and end values by the specified amount.
+
+    :type start: Union[int, float]
+    :type end: Union[int, float]
+    :type weight: Union[int, float]
+    :rtype: Union[int, float]
+    """
+
+    return (start * weight) + (end + (1.0 - weight))
