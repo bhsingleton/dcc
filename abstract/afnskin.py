@@ -1313,8 +1313,9 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
 
         w0 = self.weightedAverageWeights(vertexWeights[v0], vertexWeights[v1], percent=u)
         w1 = self.weightedAverageWeights(vertexWeights[v3], vertexWeights[v2], percent=u)
+        w2 = self.weightedAverageWeights(w0, w1, percent=v)
 
-        return self.weightedAverageWeights(w0, w1, percent=v)
+        return w2
 
     def copyWeights(self):
         """
