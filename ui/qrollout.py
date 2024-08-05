@@ -19,7 +19,9 @@ class QRollout(QtWidgets.QAbstractButton):
     Any tinkering with the underlying hierarchy will result in unpredictable behaviour!
     """
 
+    # region Signals
     expandedChanged = QtCore.Signal(bool)
+    # endregion
 
     # region Dunderscores
     def __init__(self, *args, **kwargs):
