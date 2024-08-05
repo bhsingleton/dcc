@@ -295,11 +295,11 @@ class FbxExportRange(fbxbase.FbxBase):
 
         elif name == 'startFrame':
 
-            return qtimespinbox.QTimeSpinBox(defaultType=qtimespinbox.DefaultType.StartTime, parent=parent)
+            return qtimespinbox.QTimeSpinBox(defaultType=qtimespinbox.DefaultType.START_TIME, parent=parent)
 
         elif name == 'endFrame':
 
-            return qtimespinbox.QTimeSpinBox(defaultType=qtimespinbox.DefaultType.EndTime, parent=parent)
+            return qtimespinbox.QTimeSpinBox(defaultType=qtimespinbox.DefaultType.END_TIME, parent=parent)
 
         else:
 
