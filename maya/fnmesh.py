@@ -780,7 +780,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
             for arg in indices:
 
                 iterFaces.setIndex(arg)
-                connectedVertices = iterFaces.getConnectedVertices()
+                connectedVertices = iterFaces.getVertices()
 
                 for connectedVertex in connectedVertices:
 
@@ -836,7 +836,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
             for arg in indices:
 
                 iterFaces.setIndex(arg)
-                connectedEdges = iterFaces.getConnectedEdges()
+                connectedEdges = iterFaces.getEdges()
 
                 for connectedEdge in connectedEdges:
 
