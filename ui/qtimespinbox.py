@@ -13,9 +13,10 @@ class DefaultType(IntEnum):
     Enum class that contains all the valid reset types.
     """
 
-    StartTime = 0
-    EndTime = 1
-    CurrentTime = 2
+    NONE = -1
+    START_TIME = 0
+    END_TIME = 1
+    CURRENT_TIME = 2
 
 
 class QTimeSpinBox(QtWidgets.QSpinBox):
@@ -44,7 +45,7 @@ class QTimeSpinBox(QtWidgets.QSpinBox):
         # Declare public variables
         #
         self._scene = fnscene.FnScene()
-        self._defaultType = kwargs.get('defaultType', DefaultType.StartTime)
+        self._defaultType = kwargs.get('defaultType', DefaultType.NONE)
     # endregion
 
     # region Properties
@@ -69,15 +70,19 @@ class QTimeSpinBox(QtWidgets.QSpinBox):
 
         defaultType = self.defaultType()
 
-        if defaultType == DefaultType.StartTime:
+        if defaultType == DefaultType.NONE:
+
+            return self.minimum()
+
+        elif defaultType == DefaultType.START_TIME:
 
             return self.scene.getStartTime()
 
-        elif defaultType == DefaultType.EndTime:
+        elif defaultType == DefaultType.END_TIME:
 
             return self.scene.getEndTime()
 
-        elif defaultType == DefaultType.CurrentTime:
+        elif defaultType == DefaultType.CURRENT_TIME:
 
             return self.scene.getTime()
 
@@ -121,6 +126,19 @@ class QTimeSpinBox(QtWidgets.QSpinBox):
         """
 
         return self.scene.getEndTime()
+    # endregion
+
+    # region Events
+    def wheelEvent(self, event):
+        """
+        Event method used to extend the behavior of the scroll wheel on spin boxes.
+        This overload will ignore any input!
+
+        :type event: QtGui.QWheelEvent
+        :rtype: None
+        """
+
+        event.ignore()
 
     def contextMenuEvent(self, event):
         """
@@ -160,3 +178,4 @@ class QTimeSpinBox(QtWidgets.QSpinBox):
 
             super(QTimeSpinBox, self).contextMenuEvent(event)
     # endregion
+
