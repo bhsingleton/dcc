@@ -8,7 +8,7 @@ log.setLevel(logging.INFO)
 
 class QXyzWidget(QtWidgets.QWidget):
     """
-    Overload of QWidget used to edit match flags for XYZ transform components.
+    Overload of `QWidget` that provides an interface for specifying XYZ axes.
     """
 
     # region Dunderscores
@@ -26,49 +26,59 @@ class QXyzWidget(QtWidgets.QWidget):
         #
         super(QXyzWidget, self).__init__(parent=parent)
 
-        # Create push buttons
+        # Initialize cartesian buttons
         #
         numArgs = len(args)
-        text = args[0] if numArgs == 1 else ''
+        text = args[0] if (numArgs == 1) else ''
 
-        self.matchPushButton = QtWidgets.QPushButton(text)
-        self.matchPushButton.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred)
-        self.matchPushButton.setCheckable(True)
-        self.matchPushButton.toggled.connect(self.on_matchPushButton_toggled)
+        self.cartesianPushButton = QtWidgets.QPushButton(text)
+        self.cartesianPushButton.setObjectName('cartesianPushButton')
+        self.cartesianPushButton.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred)
+        self.cartesianPushButton.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.cartesianPushButton.setCheckable(True)
+        self.cartesianPushButton.toggled.connect(self.on_cartesianPushButton_toggled)
 
-        self.matchXPushButton = QtWidgets.QPushButton('X')
-        self.matchXPushButton.setMinimumWidth(16.0)
-        self.matchXPushButton.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Preferred)
-        self.matchXPushButton.setCheckable(True)
+        self.cartesianXPushButton = QtWidgets.QPushButton('X')
+        self.cartesianXPushButton.setObjectName('cartesianXPushButton')
+        self.cartesianXPushButton.setMinimumWidth(16.0)
+        self.cartesianXPushButton.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Preferred)
+        self.cartesianXPushButton.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.cartesianXPushButton.setCheckable(True)
 
-        self.matchYPushButton = QtWidgets.QPushButton('Y')
-        self.matchYPushButton.setMinimumWidth(16.0)
-        self.matchYPushButton.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Preferred)
-        self.matchYPushButton.setCheckable(True)
+        self.cartesianYPushButton = QtWidgets.QPushButton('Y')
+        self.cartesianYPushButton.setObjectName('cartesianYPushButton')
+        self.cartesianYPushButton.setMinimumWidth(16.0)
+        self.cartesianYPushButton.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Preferred)
+        self.cartesianYPushButton.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.cartesianYPushButton.setCheckable(True)
 
-        self.matchZPushButton = QtWidgets.QPushButton('Z')
-        self.matchZPushButton.setMinimumWidth(16.0)
-        self.matchZPushButton.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Preferred)
-        self.matchZPushButton.setCheckable(True)
+        self.cartesianZPushButton = QtWidgets.QPushButton('Z')
+        self.cartesianZPushButton.setObjectName('cartesianZPushButton')
+        self.cartesianZPushButton.setMinimumWidth(16.0)
+        self.cartesianZPushButton.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Preferred)
+        self.cartesianZPushButton.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.cartesianZPushButton.setCheckable(True)
 
-        self.matchButtonGroup = QtWidgets.QButtonGroup(parent=self)
-        self.matchButtonGroup.setExclusive(False)
-        self.matchButtonGroup.addButton(self.matchXPushButton, id=0)
-        self.matchButtonGroup.addButton(self.matchYPushButton, id=1)
-        self.matchButtonGroup.addButton(self.matchZPushButton, id=2)
-        self.matchButtonGroup.buttonToggled.connect(self.on_matchButtonGroup_buttonToggled)
+        self.cartesianButtonGroup = QtWidgets.QButtonGroup(parent=self)
+        self.cartesianButtonGroup.setObjectName('cartesianButtonGroup')
+        self.cartesianButtonGroup.setExclusive(False)
+        self.cartesianButtonGroup.addButton(self.cartesianXPushButton, id=0)
+        self.cartesianButtonGroup.addButton(self.cartesianYPushButton, id=1)
+        self.cartesianButtonGroup.addButton(self.cartesianZPushButton, id=2)
+        self.cartesianButtonGroup.buttonToggled.connect(self.on_cartesianButtonGroup_buttonToggled)
 
-        # Assign horizontal layout
+        # Initialize central layout
         #
-        layout = QtWidgets.QHBoxLayout()
-        layout.setSpacing(1)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(self.matchPushButton)
-        layout.addWidget(self.matchXPushButton)
-        layout.addWidget(self.matchYPushButton)
-        layout.addWidget(self.matchZPushButton)
+        centralLayout = QtWidgets.QHBoxLayout()
+        centralLayout.setObjectName('centralLayout')
+        centralLayout.setSpacing(1)
+        centralLayout.setContentsMargins(0, 0, 0, 0)
+        centralLayout.addWidget(self.cartesianPushButton)
+        centralLayout.addWidget(self.cartesianXPushButton)
+        centralLayout.addWidget(self.cartesianYPushButton)
+        centralLayout.addWidget(self.cartesianZPushButton)
 
-        self.setLayout(layout)
+        self.setLayout(centralLayout)
     # endregion
 
     # region Methods
@@ -79,7 +89,7 @@ class QXyzWidget(QtWidgets.QWidget):
         :rtype: str
         """
 
-        return self.matchPushButton.text()
+        return self.cartesianPushButton.text()
 
     def setText(self, text):
         """
@@ -89,64 +99,84 @@ class QXyzWidget(QtWidgets.QWidget):
         :rtype: None
         """
 
-        self.matchPushButton.setText(text)
+        self.cartesianPushButton.setText(text)
 
-    def matches(self):
+    def checkStates(self, inverse=False):
         """
-        Returns a list of state values for each button.
+        Returns a list of check states from each button.
 
-        :rtype: List[bool, bool, bool]
+        :type inverse: bool
+        :rtype: Tuple[bool, bool, bool]
         """
 
-        return [x.isChecked() for x in self.matchButtonGroup.buttons()]
+        if inverse:
 
-    def setMatches(self, matches):
+            return [not x.isChecked() for x in self.cartesianButtonGroup.buttons()]
+
+        else:
+
+            return [x.isChecked() for x in self.cartesianButtonGroup.buttons()]
+
+    def setCheckStates(self, checkStates):
         """
-        Updates the match state for each button.
+        Updates the check states for each button.
 
-        :type matches: List[bool, bool, bool]
+        :type checkStates: Tuple[bool, bool, bool]
         :rtype: None
         """
 
-        for (index, match) in enumerate(matches):
+        for (index, checkState) in enumerate(checkStates):
 
-            self.matchButtonGroup.button(index).setChecked(match)
+            self.cartesianButtonGroup.button(index).setChecked(checkState)
+
+    def flags(self, prefix='', inverse=False):
+        """
+        Returns the check states but in the form of key-value pairs.
+
+        :type prefix: str
+        :type inverse: bool
+        :rtype: Dict[str, bool]
+        """
+
+        return {f'{prefix}{axis}': checked for (checked, axis) in zip(self.checkStates(inverse=inverse), ('X', 'Y', 'Z'))}
     # endregion
 
     # region Slots
     @QtCore.Slot(bool)
-    def on_matchPushButton_toggled(self, state):
+    def on_cartesianPushButton_toggled(self, state):
         """
-        Toggled slot method responsible for overriding the button group state.
+        Slot method for the `cartesianPushButton` widget's `toggled` signal.
+        This slot is responsible for overriding the button group state.
 
         :type state: bool
         :rtype: None
         """
 
-        for button in self.matchButtonGroup.buttons():
+        for button in self.cartesianButtonGroup.buttons():
 
             button.setChecked(state)
 
     @QtCore.Slot(int)
-    def on_matchButtonGroup_buttonToggled(self, index):
+    def on_cartesianButtonGroup_buttonToggled(self, index):
         """
-        Id toggled slot method responsible for syncing the master button with the button group.
+        Slot method for the `cartesianButtonGroup` widget's `buttonToggled` signal.
+        This slot is responsible for syncing the master button with the button group.
 
         :type index: int
         :rtype: None
         """
 
-        isChecked = self.matchPushButton.isChecked()
-        matches = self.matches()
+        isChecked = self.cartesianPushButton.isChecked()
+        checkStates = self.checkStates()
 
-        if isChecked and not all(matches):
+        if isChecked and not all(checkStates):
 
-            self.matchPushButton.setChecked(False)
-            self.setMatches(matches)
+            self.cartesianPushButton.setChecked(False)
+            self.setCheckStates(checkStates)
 
-        elif not isChecked and all(matches):
+        elif not isChecked and all(checkStates):
 
-            self.matchPushButton.setChecked(True)
+            self.cartesianPushButton.setChecked(True)
 
         else:
 
