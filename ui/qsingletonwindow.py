@@ -62,6 +62,7 @@ class QSingletonWindow(QtWidgets.QMainWindow, metaclass=qsingleton.QSingleton):
         # Initialize main window
         #
         self.setObjectName(self.className)
+        self.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose, True)
 
         # Override default window icon
@@ -129,6 +130,26 @@ class QSingletonWindow(QtWidgets.QMainWindow, metaclass=qsingleton.QSingleton):
     # endregion
 
     # region Events
+    def mousePressEvent(self, event):
+        """
+        Event method called after a mouse press.
+
+        :type event: QtGui.QMouseEvent
+        :rtype: None
+        """
+
+        # Evaluate focused widget
+        #
+        focusedWidget = self.focusWidget()
+
+        if isinstance(focusedWidget, (QtWidgets.QAbstractSpinBox, QtWidgets.QLineEdit)):
+
+            focusedWidget.clearFocus()
+
+        # Call parent method
+        #
+        super(QSingletonWindow, self).mousePressEvent(event)
+
     def showEvent(self, event):
         """
         Event method called after the window has been shown.
