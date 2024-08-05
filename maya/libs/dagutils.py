@@ -1,8 +1,9 @@
+import os
 import re
-import fnmatch
 
 from maya import cmds as mc, OpenMaya as legacy
 from maya.api import OpenMaya as om, OpenMayaAnim as oma
+from Qt import QtGui
 from six import string_types, integer_types
 from collections import deque
 from itertools import chain
@@ -52,6 +53,39 @@ def getNodeName(node, includePath=False, includeNamespace=False):
     else:
 
         return stripAll(om.MFnDependencyNode(node).name())
+
+
+def getNodeIcon(node, forOutliner=False):
+    """
+    Returns the icon for the supplied node.
+
+    :type node: Union[str, om.MObject, om.MDagPath]
+    :type forOutliner: bool
+    :rtype: QtGui.QIcon
+    """
+
+    # Check if this is a plugin
+    #
+    node = getMObject(node)
+    fnDependNode = om.MFnDependencyNode(node)
+    typeName = str(fnDependNode.typeName)
+
+    isPluginNode = not stringutils.isNullOrEmpty(fnDependNode.pluginName)
+
+    if isPluginNode:
+
+        paths = os.environ['XBMLANGPATH'].split(';')
+        prefix = 'out_' if forOutliner else ''
+
+        found = [os.path.join(path, f'{prefix}{typeName}.png') for path in paths if os.path.exists(os.path.join(path, f'{prefix}{typeName}.png'))]
+        exists = len(found) > 0
+
+        return QtGui.QIcon(found[0]) if exists else QtGui.QIcon()
+
+    else:
+
+        iconPath = f':/out_{typeName}.png' if forOutliner else f'{typeName}.png'
+        return QtGui.QIcon(iconPath)
 
 
 def getNodeNamespace(node):
