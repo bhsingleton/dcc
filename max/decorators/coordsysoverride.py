@@ -1,6 +1,5 @@
 import pymxs
 
-from functools import partial
 from dcc.decorators import abstractdecorator
 
 import logging
@@ -104,27 +103,3 @@ class CoordSysOverride(abstractdecorator.AbstractDecorator):
 
         self._previous = previous
     # endregion
-
-
-def coordSysOverride(*args, **kwargs):
-    """
-    Returns a CoordSysOverride wrapper for the supplied function.
-
-    :rtype: method
-    """
-
-    # Check number of arguments
-    #
-    numArgs = len(args)
-
-    if numArgs == 0:
-
-        return partial(coordSysOverride, **kwargs)
-
-    elif numArgs == 1:
-
-        return CoordSysOverride(*args, **kwargs)
-
-    else:
-
-        raise TypeError('coordSysOverride() expects at most 1 argument (%s given)!' % numArgs)

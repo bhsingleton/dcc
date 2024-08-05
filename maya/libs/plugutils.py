@@ -4,7 +4,7 @@ from maya import cmds as mc
 from maya.api import OpenMaya as om, OpenMayaAnim as oma
 from collections import deque
 from . import dagutils, attributeutils
-from ..decorators.undo import commit
+from ..decorators import undo
 from ...python import stringutils
 
 import logging
@@ -324,7 +324,7 @@ def connectPlugs(source, destination, force=False, modifier=None):
     log.debug(f'Connecting "{source.info}" > "{destination.info}"')
     modifier.connect(source, destination)
 
-    commit(modifier.doIt, modifier.undoIt)
+    undo.commit(modifier.doIt, modifier.undoIt)
     modifier.doIt()
 
 
@@ -369,7 +369,7 @@ def disconnectPlugs(source, destination, modifier=None):
     #
     modifier.disconnect(source, destination)
 
-    commit(modifier.doIt, modifier.undoIt)
+    undo.commit(modifier.doIt, modifier.undoIt)
     modifier.doIt()
 
 
@@ -437,7 +437,7 @@ def breakConnections(plug, source=True, destination=True, recursive=False, modif
 
     # Cache and execute modifier
     #
-    commit(modifier.doIt, modifier.undoIt)
+    undo.commit(modifier.doIt, modifier.undoIt)
     modifier.doIt()
 
 

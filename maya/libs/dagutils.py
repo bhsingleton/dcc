@@ -7,7 +7,7 @@ from six import string_types, integer_types
 from collections import deque
 from itertools import chain
 from . import plugutils
-from ..decorators.undo import commit
+from ..decorators import undo
 from ...python import stringutils
 
 import logging
@@ -1519,7 +1519,7 @@ def createNode(typeName, name='', parent=None, skipSelect=True):
 
     # Execute modifier
     #
-    commit(modifier.doIt, modifier.undoIt)
+    undo.commit(modifier.doIt, modifier.undoIt)
     modifier.doIt()
 
     # Check if a name was supplied
@@ -1599,7 +1599,7 @@ def renameNode(node, newName, modifier=None):
     #
     modifier.renameNode(node, newName)
 
-    commit(modifier.doIt, modifier.undoIt)
+    undo.commit(modifier.doIt, modifier.undoIt)
     modifier.doIt()
 
     return newName
@@ -1625,7 +1625,7 @@ def reparentNode(node, otherNode, modifier=None):
     #
     modifier.reparentNode(node, newParent=otherNode)
 
-    commit(modifier.doIt, modifier.undoIt)
+    undo.commit(modifier.doIt, modifier.undoIt)
     modifier.doIt()
 
     return otherNode
@@ -1690,7 +1690,7 @@ def deleteNode(node):
                 log.debug(f'Breaking connection: {plug.info} and {destination.info}')
                 modifier.disconnect(plug, destination)
 
-        commit(modifier.doIt, modifier.undoIt)
+        undo.commit(modifier.doIt, modifier.undoIt)
         modifier.doIt()
 
     # Next, check if children should be re-parented
@@ -1711,7 +1711,7 @@ def deleteNode(node):
                 modifier.setNodeLockState(child, False)
                 modifier.reparentNode(child)
 
-            commit(modifier.doIt, modifier.undoIt)
+            undo.commit(modifier.doIt, modifier.undoIt)
             modifier.doIt()
 
     # Finally, delete node and execute modifier stack
@@ -1720,5 +1720,5 @@ def deleteNode(node):
     modifier.setNodeLockState(node, False)
     modifier.deleteNode(node, includeParents=False)
 
-    commit(modifier.doIt, modifier.undoIt)
+    undo.commit(modifier.doIt, modifier.undoIt)
     modifier.doIt()

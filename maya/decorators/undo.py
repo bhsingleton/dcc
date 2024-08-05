@@ -3,7 +3,6 @@ import sys
 import traceback
 
 from maya import cmds as mc
-from functools import partial
 from ...python import stringutils
 from ...decorators import abstractdecorator
 
@@ -73,27 +72,6 @@ class Undo(abstractdecorator.AbstractDecorator):
             #
             mc.undoInfo(stateWithoutFlush=False)
 
-    def __call__(self, *args, **kwargs):
-        """
-        Private method that is called whenever this instance is evoked.
-
-        :rtype: Any
-        """
-
-        try:
-
-            self.__enter__(*args, **kwargs)
-            results = self.func(*args, **kwargs)
-            self.__exit__(None, None, None)
-
-            return results
-
-        except RuntimeError as exception:
-
-            log.error(exception)
-            print(traceback.format_exc())
-            return None
-
     def __exit__(self, exc_type, exc_val, exc_tb):
         """
         Private method that is called when this instance is exited using a with statement.
@@ -159,6 +137,35 @@ class Undo(abstractdecorator.AbstractDecorator):
     # endregion
 
     # region Methods
+    def wrap(self, func):
+        """
+        Returns a wrapper for the supplied function.
+
+        :type func: FunctionType
+        :rtype: FunctionType
+        """
+
+        def wrapper(*args, **kwargs):
+
+            results = None
+
+            try:
+
+                self.__enter__(*args, **kwargs)
+                results = func(*args, **kwargs)
+                self.__exit__(None, None, None)
+
+            except RuntimeError as exception:
+
+                log.error(exception)
+                print(traceback.format_exc())
+
+            finally:
+
+                return results
+
+        return wrapper
+
     def exists(self):
         """
         Evaluates if the `pyUndo` command plugin exists.
@@ -208,31 +215,6 @@ class Undo(abstractdecorator.AbstractDecorator):
 
             log.debug(f'Unable to locate "{self.__plugin__}" plugin!')
     # endregion
-
-
-def undo(*args, **kwargs):
-    """
-    Returns an undo wrapper for the supplied function.
-
-    :key name: str
-    :rtype: function
-    """
-
-    # Check number of arguments
-    #
-    numArgs = len(args)
-
-    if numArgs == 0:
-
-        return partial(undo, **kwargs)
-
-    elif numArgs == 1:
-
-        return Undo(*args, **kwargs)
-
-    else:
-
-        raise TypeError('undo() expects at most 1 argument (%s given)!' % numArgs)
 
 
 def commit(doIt, undoIt):

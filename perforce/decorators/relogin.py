@@ -131,29 +131,3 @@ class Relogin(abstractdecorator.AbstractDecorator):
             log.info('Operation aborted...')
             return None
     # endregion
-
-
-def relogin(*args, **kwargs):
-    """
-    Returns a function wrapper that evaluates the login expiration time.
-    If the session has expired then a login dialog is displayed.
-
-    :rtype: method
-    """
-
-    # Check number of arguments
-    #
-    numArgs = len(args)
-
-    if numArgs == 0:
-
-        return partial(relogin, **kwargs)
-
-    elif numArgs == 1:
-
-        return Relogin(*args, **kwargs)
-
-    else:
-
-        raise TypeError('relogin() expects at most 1 argument (%s given)!' % numArgs)
-

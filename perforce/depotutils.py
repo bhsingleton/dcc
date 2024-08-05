@@ -254,7 +254,7 @@ class DepotSpecs(collections_abc.MutableMapping):
     # endregion
 
 
-@relogin.relogin
+@relogin.Relogin()
 def initializeDepots():
     """
     Initializes the depot specs for the current session.

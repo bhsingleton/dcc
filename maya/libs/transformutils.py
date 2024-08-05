@@ -3,7 +3,7 @@ import math
 from maya import cmds as mc
 from maya.api import OpenMaya as om
 from six import string_types
-from dcc.maya.decorators.undo import undo
+from dcc.maya.decorators import undo
 from dcc.maya.libs import dagutils, plugutils, plugmutators
 
 import logging
@@ -555,7 +555,7 @@ def scaleTo(node, scale, **kwargs):
     setScale(node, newScale, **kwargs)
 
 
-@undo(name='Freeze Pivots')
+@undo.Undo(name='Freeze Pivots')
 def freezePivots(node, includeTranslate=True, includeRotate=True, includeScale=False):
     """
     Pushes the transform's local matrix into the parent offset matrix.
@@ -684,7 +684,7 @@ def freezePivots(node, includeTranslate=True, includeRotate=True, includeScale=F
         resetScale(dagPath)
 
 
-@undo(name='Un-Freeze Pivots')
+@undo.Undo(name='Un-Freeze Pivots')
 def unfreezePivots(node):
     """
     Pushes the transform's parent offset matrix back into its matrix.
@@ -1003,7 +1003,7 @@ def copyTransform(*args, **kwargs):
     applyTransformMatrix(copyTo, newMatrix, **kwargs)
 
 
-@undo(name='Freeze Transform')
+@undo.Undo(name='Freeze Transform')
 def freezeTransform(node, includeTranslate=True, includeRotate=True, includeScale=False):
     """
     Pushes the transform's matrix into the parent offset matrix.
@@ -1034,7 +1034,7 @@ def freezeTransform(node, includeTranslate=True, includeRotate=True, includeScal
         freezeScale(node)
 
 
-@undo(name='Un-Freeze Transform')
+@undo.Undo(name='Un-Freeze Transform')
 def unfreezeTransform(node):
     """
     Pushes the transform's parent offset matrix back into its matrix.

@@ -414,7 +414,7 @@ class ClientSpecs(collections_abc.MutableMapping):
     # endregion
 
 
-@relogin.relogin
+@relogin.Relogin()
 def initializeClients():
     """
     Initializes the client specs for the current session.

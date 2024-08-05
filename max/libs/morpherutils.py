@@ -1,7 +1,7 @@
 import pymxs
 
 from dcc.generators.inclusiverange import inclusiveRange
-from dcc.max.decorators.commandpaneloverride import commandPanelOverride
+from dcc.max.decorators import commandpaneloverride
 
 import logging
 logging.basicConfig()
@@ -9,7 +9,7 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-@commandPanelOverride(mode='modify', select=0)
+@commandpaneloverride.CommandPanelOverride(mode='modify', select=0)
 def iterTargets(morpher):
     """
     Returns a generator that yields the active vertex selection from the supplied skin.

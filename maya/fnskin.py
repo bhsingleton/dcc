@@ -471,7 +471,7 @@ class FnSkin(fnnode.FnNode, afnskin.AFnSkin):
 
         return skinutils.iterWeightList(self.object(), vertexIndices=args)
 
-    @undo.undo(name='Apply Vertex Weights')
+    @undo.Undo(name='Apply Vertex Weights')
     def applyVertexWeights(self, vertexWeights):
         """
         Assigns the supplied vertex weights to this skin.
@@ -482,7 +482,7 @@ class FnSkin(fnnode.FnNode, afnskin.AFnSkin):
 
         skinutils.setWeightList(self.object(), vertexWeights)
 
-    @undo.undo(name='Reset Pre-Bind Matrices')
+    @undo.Undo(name='Reset Pre-Bind Matrices')
     def resetPreBindMatrices(self):
         """
         Resets the pre-bind matrices on the associated joints.
@@ -492,7 +492,7 @@ class FnSkin(fnnode.FnNode, afnskin.AFnSkin):
 
         skinutils.resetPreBindMatrices(self.object())
 
-    @undo.undo(name='Reset Intermediate Object')
+    @undo.Undo(name='Reset Intermediate Object')
     def resetIntermediateObject(self):
         """
         Resets the control points on the associated intermediate object.

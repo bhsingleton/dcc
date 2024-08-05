@@ -1,8 +1,7 @@
 from maya.api import OpenMaya as om, OpenMayaAnim as oma
 from six.moves import collections_abc
 from . import sceneutils, plugutils, animutils
-from ..decorators.undo import commit
-from ..decorators.locksmith import locksmith
+from ..decorators import locksmith, undo
 from ...python import arrayutils
 
 import logging
@@ -960,7 +959,7 @@ __set_value__ = {
 }
 
 
-@locksmith
+@locksmith.Locksmith
 def setValue(plug, value, modifier=None, **kwargs):
     """
     Updates the value for the supplied plug.
@@ -1056,7 +1055,7 @@ def setValue(plug, value, modifier=None, **kwargs):
 
     # Cache and execute modifier
     #
-    commit(modifier.doIt, modifier.undoIt)
+    undo.commit(modifier.doIt, modifier.undoIt)
     modifier.doIt()
     
 
@@ -1218,5 +1217,5 @@ def keyValue(plug, value, time=None, convertUnits=True, change=None):
 
     # Cache anim-curve changes
     #
-    commit(change.redoIt, change.undoIt)
+    undo.commit(change.redoIt, change.undoIt)
 # endregion

@@ -1,7 +1,7 @@
 import pymxs
 
 from .libs import modifierutils, wrapperutils
-from .decorators.commandpaneloverride import commandPanelOverride
+from .decorators import commandpaneloverride
 from ..fbx.libs import FbxFileVersion
 from ..abstract import afnfbx
 
@@ -84,7 +84,7 @@ class FnFbx(afnfbx.AFnFbx):
         pymxs.runtime.FBXExporterSetParam('FilterKeyReducer', False)
         pymxs.runtime.FBXExporterSetParam('SplitAnimationIntoTakes', False)
 
-    @commandPanelOverride(mode='modify')
+    @commandpaneloverride.CommandPanelOverride(mode='modify')
     def enforceMeshTriangulation(self, nodes):
         """
         Ensures that the supplied meshes are triangulated correctly.

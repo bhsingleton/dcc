@@ -2,7 +2,7 @@ from maya import cmds as mc
 from maya.api import OpenMaya as om, OpenMayaAnim as oma
 from enum import IntEnum
 from . import dagutils, attributeutils, plugutils
-from ..decorators.undo import commit
+from ..decorators import undo
 from ...python import stringutils
 from ...dataclasses.vector import Vector
 from ...dataclasses.keyframe import Keyframe
@@ -336,7 +336,7 @@ def createAnimCurve(plug):
 
     # Cache and execute modifier
     #
-    commit(modifier.doIt, modifier.undoIt)
+    undo.commit(modifier.doIt, modifier.undoIt)
     modifier.doIt()
 
     return animCurve
@@ -534,7 +534,7 @@ def insertKeys(animCurve, keyframes, insertAt, animationRange=None, replace=Fals
 
     # Cache changes
     #
-    commit(change.redoIt, change.undoIt)
+    undo.commit(change.redoIt, change.undoIt)
 
 
 def replaceKeys(animCurve, keyframes, insertAt=None, animationRange=None, change=None):
@@ -657,7 +657,7 @@ def moveKeys(animCurve, startTime, endTime, moveTo, change=None):
 
     # Cache changes
     #
-    commit(change.redoIt, change.undoIt)
+    undo.commit(change.redoIt, change.undoIt)
 
 
 def clearKeys(animCurve, animationRange=None, change=None):
@@ -713,7 +713,7 @@ def clearKeys(animCurve, animationRange=None, change=None):
 
     # Cache change
     #
-    commit(change.redoIt, change.undoIt)
+    undo.commit(change.redoIt, change.undoIt)
 
 
 def synchronizeTangents(plug):

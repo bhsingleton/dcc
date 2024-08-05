@@ -1,6 +1,5 @@
 import pymxs
 
-from functools import partial
 from ...decorators import abstractdecorator
 
 import logging
@@ -110,29 +109,3 @@ class CommandPanelOverride(abstractdecorator.AbstractDecorator):
 
         self._previous = previous
     # endregion
-
-
-def commandPanelOverride(*args, **kwargs):
-    """
-    Returns a CommandPanelOverride wrapper for the supplied function.
-
-    :key mode: str
-    :key revert: bool
-    :rtype: method
-    """
-
-    # Check number of arguments
-    #
-    numArgs = len(args)
-
-    if numArgs == 0:
-
-        return partial(commandPanelOverride, **kwargs)
-
-    elif numArgs == 1:
-
-        return CommandPanelOverride(*args, **kwargs)
-
-    else:
-
-        raise TypeError('commandPanelOverride() expects at most 1 argument (%s given)!' % numArgs)

@@ -4,7 +4,7 @@ import json
 import subprocess
 
 from . import createAdapter, cmds, clientutils, searchutils
-from .decorators.relogin import relogin
+from .decorators import relogin
 from .. import fnscene, fntexture
 from ..python import importutils
 
@@ -198,7 +198,7 @@ def smartCheckout(filePath):
         return False
 
 
-@relogin
+@relogin.Relogin()
 def checkoutScene():
     """
     Checks out the open scene file from perforce.
@@ -220,7 +220,7 @@ def checkoutScene():
         log.warning('Unable to checkout untitled scene file!')
 
 
-@relogin
+@relogin.Relogin()
 def addScene():
     """
     Adds the open scene file to perforce.
@@ -242,7 +242,7 @@ def addScene():
         log.warning('Unable to checkout untitled scene file!')
 
 
-@relogin
+@relogin.Relogin()
 def revertScene():
     """
     Reverts the open scene from perforce.
@@ -406,7 +406,7 @@ def saveChangelist(changelist, filePath, **kwargs):
         return False
 
 
-@relogin
+@relogin.Relogin()
 def findDepotPath(filePath):
     """
     Returns the depot path for this texture from perforce.
@@ -441,7 +441,7 @@ def findDepotPath(filePath):
         return ''
 
 
-@relogin
+@relogin.Relogin()
 def fixBrokenTextures():
     """
     Fixes any broken textures using perforce.
@@ -508,7 +508,7 @@ def fixBrokenTextures():
         texture.next()
 
 
-@relogin
+@relogin.Relogin()
 def syncMissingTextures():
     """
     Syncs any missing textures from perforce.

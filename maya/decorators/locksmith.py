@@ -1,4 +1,3 @@
-from functools import partial
 from ...decorators import abstractdecorator
 
 import logging
@@ -124,29 +123,3 @@ class Locksmith(abstractdecorator.AbstractDecorator):
 
         return self._isLocked
     # endregion
-
-
-def locksmith(*args, **kwargs):
-    """
-    Returns an undo wrapper for the supplied function.
-
-    :key name: str
-    :rtype: Callable
-    """
-
-    # Check number of arguments
-    #
-    numArgs = len(args)
-
-    if numArgs == 0:
-
-        return partial(locksmith, **kwargs)
-
-    elif numArgs == 1:
-
-        return Locksmith(*args, **kwargs)
-
-    else:
-
-        raise TypeError('locksmith() expects at most 1 argument (%s given)!' % numArgs)
-

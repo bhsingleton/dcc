@@ -1,6 +1,5 @@
 import pymxs
 
-from functools import partial
 from six import integer_types
 from . import commandpaneloverride
 
@@ -120,31 +119,3 @@ class ModifyPanelOverride(commandpaneloverride.CommandPanelOverride):
 
         return self._subObjectLevel
     # endregion
-
-
-def modifyPanelOverride(*args, **kwargs):
-    """
-    Returns a CommandPanelOverride wrapper for the supplied function.
-
-    :key revert: bool
-    :key currentObject: int
-    :key subObjectLevel: int
-    :rtype: method
-    """
-
-    # Check number of arguments
-    #
-    numArgs = len(args)
-
-    if numArgs == 0:
-
-        return partial(modifyPanelOverride, **kwargs)
-
-    elif numArgs == 1:
-
-        return ModifyPanelOverride(*args, **kwargs)
-
-    else:
-
-        raise TypeError('modifyPanelOverride() expects at most 1 argument (%s given)!' % numArgs)
-

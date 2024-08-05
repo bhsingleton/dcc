@@ -4,7 +4,7 @@ from collections import defaultdict
 from itertools import chain
 from dcc.python import stringutils
 from dcc.generators.inclusiverange import inclusiveRange
-from dcc.max.decorators.coordsysoverride import coordSysOverride
+from dcc.max.decorators import coordsysoverride
 from . import arrayutils, nodeutils, wrapperutils
 
 import logging
@@ -255,7 +255,7 @@ def getSelectedFaces(mesh):
         return list(arrayutils.iterBitArray(bitArray))
 
 
-@coordSysOverride(mode='local')
+@coordsysoverride.CoordSysOverride(mode='local')
 def iterVertices(mesh, indices=None):
     """
     Returns a generator that yields vertex points.
@@ -287,7 +287,7 @@ def iterVertices(mesh, indices=None):
             yield pymxs.runtime.meshOp.getVert(mesh, index)
 
 
-@coordSysOverride(mode='local')
+@coordsysoverride.CoordSysOverride(mode='local')
 def setVertices(mesh, indices, points):
     """
     Updates the vertex positions for the supplied mesh.
@@ -322,7 +322,7 @@ def setVertices(mesh, indices, points):
             pymxs.runtime.meshOp.setVert(mesh, index, point)
 
 
-@coordSysOverride(mode='local')
+@coordsysoverride.CoordSysOverride(mode='local')
 def iterVertexNormals(mesh, indices=None):
     """
     Returns a generator that yields vertex normals.
@@ -395,7 +395,7 @@ def iterFaceVertexIndices(mesh, indices=None):
             yield int(vertices.x), int(vertices.y), int(vertices.z)  # bruh
 
 
-@coordSysOverride(mode='local')
+@coordsysoverride.CoordSysOverride(mode='local')
 def iterFaceVertexNormals(mesh, indices=None):
     """
     Returns a generator that yield face-vertex normals.
@@ -453,7 +453,7 @@ def iterFaceVertexNormals(mesh, indices=None):
             yield tuple(sum(faceVertexNormals[vertexIndex]) / len(faceVertexNormals[vertexIndex]) for vertexIndex in faceVertexIndices)
 
 
-@coordSysOverride(mode='local')
+@coordsysoverride.CoordSysOverride(mode='local')
 def iterFaceCenters(mesh, indices=None):
     """
     Returns a generator that yields face centers.
@@ -489,7 +489,7 @@ def iterFaceCenters(mesh, indices=None):
             yield pymxs.runtime.meshOp.getFaceCenter(mesh, index)
 
 
-@coordSysOverride(mode='local')
+@coordsysoverride.CoordSysOverride(mode='local')
 def iterFaceNormals(mesh, indices=None):
     """
     Returns a generator that yields face normals.

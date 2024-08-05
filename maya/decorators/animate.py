@@ -1,4 +1,3 @@
-from functools import partial
 from ...maya.libs import sceneutils
 from ...decorators import abstractdecorator
 
@@ -85,28 +84,3 @@ class Animate(abstractdecorator.AbstractDecorator):
 
         return self._previousState
     # endregion
-
-
-def animate(*args, **kwargs):
-    """
-    Returns an auto-key wrapper for the supplied function.
-
-    :rtype: Callable
-    """
-
-    # Check number of arguments
-    #
-    numArgs = len(args)
-
-    if numArgs == 0:
-
-        return partial(animate, **kwargs)
-
-    elif numArgs == 1:
-
-        return Animate(*args, **kwargs)
-
-    else:
-
-        raise TypeError('autokey() expects at most 1 argument (%s given)!' % numArgs)
-

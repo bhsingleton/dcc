@@ -3,7 +3,7 @@ import os
 from maya import cmds as mc, mel as mel
 from itertools import chain
 from . import dagutils
-from ..decorators.undo import undo
+from ..decorators import undo
 
 import logging
 logging.basicConfig()
@@ -377,7 +377,7 @@ def getTime():
     return int(mc.currentTime(query=True))
 
 
-@undo(state=False)
+@undo.Undo(state=False)
 def setTime(time):
     """
     Updates the current time.
@@ -399,7 +399,7 @@ def autoKey():
     return mc.autoKeyframe(query=True, state=True)
 
 
-@undo(state=False)
+@undo.Undo(state=False)
 def setAutoKey(state):
     """
     Updates the auto-key state.

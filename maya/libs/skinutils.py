@@ -2,7 +2,7 @@ from maya import cmds as mc
 from maya.api import OpenMaya as om
 from dcc.python import stringutils
 from dcc.maya.libs import dagutils, plugutils, plugmutators
-from dcc.maya.decorators.undo import undo, commit
+from dcc.maya.decorators import undo
 
 import logging
 logging.basicConfig()
@@ -276,7 +276,7 @@ def getInfluence(skinCluster, influenceId):
         return None
 
 
-@undo(name='Add Influence')
+@undo.Undo(name='Add Influence')
 def addInfluence(skinCluster, influence, index=None):
     """
     Adds the supplied influence object to the specified skin cluster.
@@ -341,7 +341,7 @@ def addInfluence(skinCluster, influence, index=None):
     mc.setAttr(f'{skinClusterName}.bindPreMatrix[{index}]', matrixList, type='matrix')
 
 
-@undo(name='Remove Influence')
+@undo.Undo(name='Remove Influence')
 def removeInfluence(skinCluster, influenceId):
     """
     Removes the specified influence.
@@ -468,11 +468,11 @@ def setWeights(skinCluster, vertexIndex, weights, plug=None, modifier=None):
 
     # Cache and execute modifier
     #
-    commit(modifier.doIt, modifier.undoIt)
+    undo.commit(modifier.doIt, modifier.undoIt)
     modifier.doIt()
 
 
-@undo(name='Set Skin Weights')
+@undo.Undo(name='Set Skin Weights')
 def setWeightList(skinCluster, weightList, modifier=None):
     """
     Updates the weights for all the specified vertices.
@@ -521,7 +521,7 @@ def getPreBindMatrix(skinCluster, influenceId):
     return plugmutators.getValue(element)
 
 
-@undo(name='Reset Pre-Bind Matrices')
+@undo.Undo(name='Reset Pre-Bind Matrices')
 def resetPreBindMatrices(skinCluster, modifier=None):
     """
     Resets the pre-bind matrices on the associated joints.
@@ -567,11 +567,11 @@ def resetPreBindMatrices(skinCluster, modifier=None):
 
     # Cache and execute modifier
     #
-    commit(modifier.doIt, modifier.undoIt)
+    undo.commit(modifier.doIt, modifier.undoIt)
     modifier.doIt()
 
 
-@undo(name='Reset Intermediate Object')
+@undo.Undo(name='Reset Intermediate Object')
 def resetIntermediateObject(skinCluster):
     """
     Resets the control points on the associated intermediate object.

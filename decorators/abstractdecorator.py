@@ -1,3 +1,13 @@
+"""
+Decorators are weird to put it succinctly.
+Here is a brief overview of order of operations:
+
+@AbstractDecorator (no call operator):
+Calls `__init__` with function as argument > Class is invoked via `__call__` with arguments and passes them to bound a method.
+
+@AbstractDecorator(hello='world') (w/ call operator):
+Calls `__init__` with keyword arguments > Next `__call__` with function to be wrapped.
+"""
 from abc import ABCMeta, abstractmethod
 from six import with_metaclass
 
@@ -5,6 +15,16 @@ import logging
 logging.basicConfig()
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
+
+
+def null(*args, **kwargs):
+    """
+    Returns nothing.
+
+    :rtype: None
+    """
+
+    pass
 
 
 class AbstractDecorator(with_metaclass(ABCMeta, object)):
@@ -15,6 +35,7 @@ class AbstractDecorator(with_metaclass(ABCMeta, object)):
 
     # region Dunderscores
     __slots__ = ('_instance', '_owner', '_func')
+    __null_function__ = null
 
     def __init__(self, *args, **kwargs):
         """
@@ -33,13 +54,14 @@ class AbstractDecorator(with_metaclass(ABCMeta, object)):
         self._owner = None
         self._func = None
 
-        # Inspect arguments
+        # Inspect supplied arguments
         #
         numArgs = len(args)
 
         if numArgs == 1:
 
-            self._func = args[0]
+            arg = args[0]
+            self._func = arg if callable(arg) else None
 
     def __get__(self, instance, owner):
         """
@@ -62,13 +84,26 @@ class AbstractDecorator(with_metaclass(ABCMeta, object)):
         :rtype: Any
         """
 
-        # Execute order of operations
+        # Evaluate supplied arguments
         #
-        self.__enter__(*args, **kwargs)
-        results = self.func(*args, **kwargs)
-        self.__exit__(None, None, None)
+        numArgs = len(args)
+        func = args[0] if (numArgs == 1) else None
 
-        return results
+        if callable(func):
+
+            # Return wrapped function
+            #
+            return self.wrap(func)
+
+        else:
+
+            # Execute order of operations
+            #
+            self.__enter__(*args, **kwargs)
+            results = self.func(*args, **kwargs)
+            self.__exit__(None, None, None)
+
+            return results
 
     @abstractmethod
     def __enter__(self, *args, **kwargs):
@@ -119,10 +154,14 @@ class AbstractDecorator(with_metaclass(ABCMeta, object)):
     def func(self):
         """
         Getter method used to return the wrapped function.
-        If this is a descriptor object then the function will be bound to the instance.
+        This only exists when the class is used as a decorator with no call operator.
 
-        :rtype: Callable
+        :rtype: FunctionType
         """
+
+        if not callable(self._func):
+
+            return self.__null_function__
 
         if self._instance is not None:
 
@@ -131,4 +170,24 @@ class AbstractDecorator(with_metaclass(ABCMeta, object)):
         else:
 
             return self._func
+    # endregion
+
+    # region Methods
+    def wrap(self, func):
+        """
+        Returns a wrapper for the supplied function.
+
+        :type func: FunctionType
+        :rtype: FunctionType
+        """
+
+        def wrapper(*args, **kwargs):
+
+            self.__enter__(*args, **kwargs)
+            results = func(*args, **kwargs)
+            self.__exit__(None, None, None)
+
+            return results
+
+        return wrapper
     # endregion

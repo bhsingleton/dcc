@@ -5,7 +5,7 @@ from maya.api import OpenMaya as om
 from six import string_types
 from . import dagutils, iterEnumMembers
 from ..json import mattributeparser
-from ..decorators.undo import commit
+from ..decorators import undo
 from ...generators.inclusiverange import inclusiveRange
 
 import logging
@@ -59,7 +59,7 @@ def addAttribute(node, **kwargs):
 
         # Cache and execute modifier
         #
-        commit(modifier.doIt, modifier.undoIt)
+        undo.commit(modifier.doIt, modifier.undoIt)
         modifier.doIt()
 
         return attribute
@@ -129,7 +129,7 @@ def applyAttributeTemplate(node, filePath, **kwargs):
 
     # Cache and execute modifier
     #
-    commit(modifier.doIt, modifier.undoIt)
+    undo.commit(modifier.doIt, modifier.undoIt)
     modifier.doIt()
 
     return attributes

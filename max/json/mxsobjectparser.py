@@ -666,7 +666,7 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
 
         return obj
 
-    @coordsysoverride.coordSysOverride(mode='local')
+    @coordsysoverride.CoordSysOverride(mode='local')
     def serializeNurbsObject(self, nurbsSet, nurbsIndex=1):
         """
         Returns a serializable object for the specified nurbs curve object.
@@ -712,7 +712,7 @@ class MXSObjectEncoder(mxsvalueparser.MXSValueEncoder):
 
         return obj
 
-    @coordsysoverride.coordSysOverride(mode='world')
+    @coordsysoverride.CoordSysOverride(mode='world')
     def serializeKnots(self, spline, splineIndex=1):
         """
         Serializes the knots for the given spline.
