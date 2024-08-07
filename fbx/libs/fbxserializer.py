@@ -304,7 +304,7 @@ class FbxSerializer(object):
 
             log.debug('No nodes supplied to allocate!')
 
-    def ensureParent(self, copyFrom, copyTo):
+    def ensureParent(self, copyFrom, copyTo, **kwargs):
         """
         Ensures the fbx node has the same equivalent parent node.
 
@@ -390,7 +390,7 @@ class FbxSerializer(object):
             childNode.PostRotation.Set(fbx.FbxDouble3(0.0, 0.0, 0.0))
             childNode.LclScaling.Set(fbx.FbxDouble3(scale.x, scale.y, scale.z))
 
-    def copyTransform(self, copyFrom, copyTo):
+    def copyTransform(self, copyFrom, copyTo, **kwargs):
         """
         Copies the local transform values from the supplied scene node to the specified fbx node.
 
@@ -418,8 +418,9 @@ class FbxSerializer(object):
         # Update local translation
         #
         matrix = copyFrom.matrix()
+        globalScale = kwargs.get('globalScale', 1.0)
+        translation = matrix.translation() * globalScale
 
-        translation = matrix.translation()
         copyTo.LclTranslation.Set(fbx.FbxDouble3(*translation))
 
         # Update local rotation in degrees
@@ -463,9 +464,12 @@ class FbxSerializer(object):
         numControlPoints = copyFrom.numVertices()
         copyTo.InitControlPoints(numControlPoints)
 
+        globalScale = kwargs.get('globalScale', 1.0)
+
         for (index, controlPoint) in enumerate(copyFrom.iterVertices()):
 
-            copyTo.SetControlPointAt(fbx.FbxVector4(*controlPoint), index)
+            scaledControlPoint = controlPoint * globalScale
+            copyTo.SetControlPointAt(fbx.FbxVector4(*scaledControlPoint), index)
 
         # Define face-vertex relationships
         #
@@ -714,7 +718,7 @@ class FbxSerializer(object):
         #
         copyFrom.setObject(original)
 
-    def copyMaterials(self, copyFrom, copyTo):
+    def copyMaterials(self, copyFrom, copyTo, **kwargs):
         """
         Copies the materials from the supplied scene node to the specified fbx node.
 
@@ -744,7 +748,7 @@ class FbxSerializer(object):
                 fbxMaterial = fbx.FbxSurfaceLambert.Create(self.fbxManager, '')
                 copyTo.AddMaterial(fbxMaterial)
 
-    def copyCustomAttributes(self, copyFrom, copyTo):
+    def copyCustomAttributes(self, copyFrom, copyTo, **kwargs):
         """
         Method used to copy any custom attributes between two nodes.
 
@@ -1002,8 +1006,8 @@ class FbxSerializer(object):
         log.info(f'Creating "{name}" joint.')
 
         fbxNode = self.createFbxNode(joint)
-        self.ensureParent(joint, fbxNode)
-        self.copyTransform(joint, fbxNode)
+        self.ensureParent(joint, fbxNode, **kwargs)
+        self.copyTransform(joint, fbxNode, **kwargs)
 
         # Check if custom attributes should be copied
         #
@@ -1061,8 +1065,8 @@ class FbxSerializer(object):
         log.info(f'Creating "{name}" mesh.')
 
         fbxNode = self.createFbxNode(mesh, **kwargs)
-        self.ensureParent(mesh, fbxNode)
-        self.copyMaterials(mesh, fbxNode)
+        self.ensureParent(mesh, fbxNode, **kwargs)
+        self.copyMaterials(mesh, fbxNode, **kwargs)
 
         # Create fbx mesh attribute
         #
@@ -1302,11 +1306,12 @@ class FbxSerializer(object):
 
         return fbxFileTexture
 
-    def serializeSkeleton(self, settings):
+    def serializeSkeleton(self, settings, globalScale=1.0):
         """
         Serializes the joints from the supplied skeleton settings.
 
         :type settings: dcc.fbx.libs.fbxskeleton.FbxSkeleton
+        :type globalScale: float
         :rtype: List[fbx.FbxNode]
         """
 
@@ -1323,18 +1328,19 @@ class FbxSerializer(object):
 
         while not joint.isDone():
 
-            fbxNode = self.createFbxSkeleton(joint)
+            fbxNode = self.createFbxSkeleton(joint, globalScale=globalScale, **settings)
             fbxNodes.append(fbxNode)
 
             joint.next()
 
         return fbxNodes
 
-    def serializeMesh(self, settings):
+    def serializeMesh(self, settings, globalScale=1.0):
         """
         Serializes the geometry from the supplied mesh settings.
 
         :type settings: dcc.fbx.libs.fbxmesh.FbxMesh
+        :type globalScale: float
         :rtype: List[fbx.FbxNode]
         """
 
@@ -1347,18 +1353,19 @@ class FbxSerializer(object):
 
         while not mesh.isDone():
 
-            fbxNode = self.createFbxMesh(mesh, **settings)
+            fbxNode = self.createFbxMesh(mesh, globalScale=globalScale, **settings)
             fbxNodes.append(fbxNode)
 
             mesh.next()
 
         return fbxNodes
 
-    def serializeCameras(self, settings):
+    def serializeCameras(self, settings, globalScale=1.0):
         """
         Serializes the cameras from the supplied camera settings.
 
         :type settings: dcc.fbx.libs.fbxcamera.FbxCamera
+        :type globalScale: float
         :rtype: List[fbx.FbxNode]
         """
 
@@ -1375,9 +1382,11 @@ class FbxSerializer(object):
 
         # Serialize export set components
         #
-        self.serializeSkeleton(exportSet.skeleton)
-        self.serializeCameras(exportSet.camera)
-        self.serializeMesh(exportSet.mesh)
+        globalScale = float(exportSet.scale)
+
+        self.serializeSkeleton(exportSet.skeleton, globalScale=globalScale)
+        self.serializeCameras(exportSet.camera, globalScale=globalScale)
+        self.serializeMesh(exportSet.mesh, globalScale=globalScale)
 
         # Save changes
         #
