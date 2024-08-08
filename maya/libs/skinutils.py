@@ -351,7 +351,7 @@ def removeInfluence(skinCluster, influenceId):
     :rtype: bool
     """
 
-    # Get influence object
+    # Get associated influence object
     #
     influence = getInfluence(skinCluster, influenceId)
 
@@ -359,7 +359,7 @@ def removeInfluence(skinCluster, influenceId):
 
         return False
 
-    # Disconnect joint from skin cluster
+    # Get influence name and instance number
     #
     fnSkinCluster = om.MFnDependencyNode(skinCluster)
     skinClusterName = fnSkinCluster.absoluteName()
@@ -368,10 +368,38 @@ def removeInfluence(skinCluster, influenceId):
     influenceName = influencePath.fullPathName()
     instanceNumber = influencePath.instanceNumber()
 
-    mc.disconnectAttr(f'{influenceName}.worldMatrix[{instanceNumber}]', f'{skinClusterName}.matrix[{influenceId}]')
-    mc.disconnectAttr(f'{influenceName}.objectColorRGB', f'{skinClusterName}.influenceColor[{influenceId}]')
-    mc.disconnectAttr(f'{influenceName}.lockInfluenceWeights', f'{skinClusterName}.lockWeights[{influenceId}]')
-    mc.deleteAttr(f'{influenceName}.lockInfluenceWeights')
+    # Disconnect `matrix` attribute
+    #
+    source = f'{influenceName}.worldMatrix[{instanceNumber}]'
+    destination = f'{skinClusterName}.matrix[{influenceId}]'
+
+    if mc.isConnected(source, destination):
+
+        mc.disconnectAttr(source, destination)
+
+    # Disconnect `influenceColor` attribute
+    #
+    source = f'{influenceName}.objectColorRGB'
+    destination = f'{skinClusterName}.influenceColor[{influenceId}]'
+
+    if mc.isConnected(source, destination):
+
+        mc.disconnectAttr(source, destination)
+
+    # Disconnect `lockWeights` attribute
+    #
+    source = f'{influenceName}.lockInfluenceWeights'
+    destination = f'{skinClusterName}.lockWeights[{influenceId}]'
+
+    if mc.isConnected(source, destination):
+
+        mc.disconnectAttr(source, destination)
+
+    # Delete `lockInfluenceWeights` attribute
+    #
+    if mc.attributeQuery('lockInfluenceWeights', node=influenceName, exists=True):
+
+        mc.deleteAttr(f'{influenceName}.lockInfluenceWeights')
 
     return True
 
