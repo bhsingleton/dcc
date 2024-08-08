@@ -1,8 +1,8 @@
 import pymxs
 
 from six import integer_types, string_types
-from dcc import structuredstorage
-from dcc.abstract import afnreference, ArrayIndexType
+from .libs import structuredstorage
+from ..abstract import afnreference, ArrayIndexType
 
 import logging
 logging.basicConfig()
