@@ -3,7 +3,7 @@ import pymxs
 from ..libs import controllerutils, transformutils, meshutils
 from ..decorators import modifypaneloverride
 from ...python import stringutils
-from ...math import linearalgebra
+from ...math import floatmath
 from ...generators.inclusiverange import inclusiveRange
 
 import logging
@@ -204,7 +204,7 @@ def setVertexWeights(skin, vertexWeights):
         #
         for (vertexIndex, weights) in vertexWeights.items():
 
-            weights = {key: value for (key, value) in weights.items() if not linearalgebra.isClose(0.0, value)}
+            weights = {key: value for (key, value) in weights.items() if not floatmath.isClose(0.0, value)}
 
             pymxs.runtime.skinOps.replaceVertexWeights(
                 skin,

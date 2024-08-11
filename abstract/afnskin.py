@@ -2,13 +2,13 @@ from abc import ABCMeta, abstractmethod
 from six import with_metaclass, integer_types, string_types
 from six.moves import collections_abc
 from copy import deepcopy
-from itertools import chain
-from dcc import fnnode, fntransform, fnmesh
-from dcc.abstract import afnnode
-from dcc.naming import namingutils
-from dcc.python import stringutils
-from dcc.math import linearalgebra
-from dcc.dataclasses.vector import Vector
+from . import afnnode
+from .. import fnnode, fntransform, fnmesh
+from ..naming import namingutils
+from ..python import stringutils
+from ..math import floatmath, skinmath
+from ..dataclasses.vector import Vector
+
 
 import logging
 logging.basicConfig()
@@ -313,19 +313,6 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         """
 
         pass
-
-    @staticmethod
-    def clamp(value, minValue=0.0, maxValue=1.0):
-        """
-        Clamps the supplied value to the specified range.
-
-        :type value: Union[int, float]
-        :type minValue: Union[int, float]
-        :type maxValue: Union[int, float]
-        :rtype: Union[int, float]
-        """
-
-        return linearalgebra.clamp(value, minValue, maxValue)
 
     @abstractmethod
     def iterVertices(self):
@@ -749,435 +736,6 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
 
         return dict(self.iterVertexWeights(*indices))
 
-    def setWeights(self, weights, target, source, amount, falloff=1.0):
-        """
-        Sets the supplied target ID to the specified amount while preserving normalization.
-
-        :type weights: Dict[int, float]
-        :type target: int
-        :type source: List[int]
-        :type amount: float
-        :type falloff: float
-        :rtype: Dict[int, float]
-        """
-
-        # Check weights type
-        #
-        if not isinstance(weights, dict):
-
-            raise TypeError(f'setWeights() expects a dict ({type(weights).__name__} given)!')
-
-        # Check source and target influences
-        #
-        if not isinstance(target, int) or not isinstance(source, list):
-
-            raise TypeError('setWeights() expects a valid target and source influences!')
-
-        # Check amount type
-        #
-        if not isinstance(amount, float):
-
-            raise TypeError(f'setWeights() expects a valid amount ({type(amount).__name__} given)!')
-
-        # Copy weights to manipulate
-        #
-        newWeights = deepcopy(weights)
-
-        softAmount = self.clamp(amount) * self.clamp(falloff)
-        total = sum([weights.get(x, 0.0) for x in source])
-
-        log.debug(f'Weights available to redistribute: {total}')
-
-        # Check if influence exists on vertex
-        #
-        influenceIds = newWeights.keys()
-        numInfluences = len(influenceIds)
-
-        maxInfluences = self.maxInfluences()
-
-        if (target in influenceIds) or (target not in influenceIds and numInfluences < maxInfluences):
-
-            # Determine redistribution method:
-            # If amount is less than current then give those weights back to the source list
-            # If amount is greater than current then take weights from the source list
-            #
-            current = newWeights.get(target, 0.0)
-
-            if softAmount < current and 0.0 < total:
-
-                # Redistribute target weight to source influences
-                #
-                diff = current - softAmount
-
-                for (influenceId, weight) in newWeights.items():
-
-                    # Check if influence is from source
-                    #
-                    if influenceId in source:
-
-                        # Apply percentage of difference to influence
-                        #
-                        percent = weight / total
-                        newWeight = weight + (diff * percent)
-
-                        newWeights[influenceId] = newWeight
-
-                    else:
-
-                        continue
-
-                # Set target to amount
-                #
-                newWeights[target] = current - diff
-
-            elif softAmount > current and 0.0 < total:
-
-                # Make sure amount has not exceeded total
-                #
-                diff = softAmount - current
-
-                if diff >= total:
-
-                    log.debug('Insufficient weights to pull from, clamping amount to: %s' % total)
-                    diff = total
-
-                # Redistribute source weights to target influences
-                #
-                for (influenceId, weight) in newWeights.items():
-
-                    # Check if influence is from source
-                    #
-                    if influenceId in source:
-
-                        # Reduce influence based on percentage of difference
-                        #
-                        percent = weight / total
-                        newWeight = weight - (diff * percent)
-
-                        newWeights[influenceId] = newWeight
-
-                    else:
-
-                        continue
-
-                # Set target to accumulated amount
-                #
-                newWeights[target] = current + diff
-
-            else:
-
-                pass
-
-        elif target not in influenceIds and numInfluences >= maxInfluences:
-
-            # Check if all influences are being replaced
-            #
-            if linearalgebra.isClose(amount, total, abs_tol=1e-06):
-
-                newWeights = {target: 1.0}
-
-            elif amount == 0.0:
-
-                log.debug('No weights available to redistribute!')
-
-            else:
-
-                log.warning('Cannot exceed max influences!')
-
-        else:
-
-            raise TypeError('setWeights() Unable to manipulate vertex weights from supplied arguments!')
-
-        # Return updated vertex weights
-        #
-        return newWeights
-
-    def scaleWeights(self, weights, target, source, percent, falloff=1.0):
-        """
-        Scales the supplied target ID to the specified amount while preserving normalization.
-
-        :type weights: Dict[int, float]
-        :type target: int
-        :type source: List[int]
-        :type percent: float
-        :type falloff: float
-        :rtype: Dict[int, float]
-        """
-
-        # Get amount to redistribute
-        #
-        current = weights.get(target, 0.0)
-        amount = current + sum([(weights.get(influenceId, 0.0) * percent) * falloff for influenceId in source])
-
-        # Set vertex weight
-        #
-        log.debug(f'Changing influence ID: {target}, from {current} to {amount}')
-        return self.setWeights(weights, target, source, amount)
-
-    def incrementWeights(self, weights, target, source, increment, falloff=1.0):
-        """
-        Increments the supplied target ID to the specified amount while preserving normalization.
-
-        :type weights: Dict[int, float]
-        :type target: int
-        :type source: List[int]
-        :type increment: float
-        :type falloff: float
-        :rtype: Dict[int, float]
-        """
-
-        # Get amount to redistribute
-        #
-        current = weights.get(target, 0.0)
-        amount = current + (increment * falloff)
-
-        # Set vertex weight
-        #
-        log.debug(f'Changing influence ID: {target}, from {current} to {amount}')
-        return self.setWeights(weights, target, source, amount)
-
-    def removeZeroWeights(self, weights):
-        """
-        Removes any zeroes from the supplied weights.
-
-        :type weights: Dict[int, float]
-        :rtype: Dict[int, float]
-        """
-
-        return {influenceId: weight for (influenceId, weight) in weights.items() if not linearalgebra.isClose(0.0, weight)}
-
-    def isNormalized(self, weights):
-        """
-        Evaluates if the supplied weights have been normalized.
-
-        :type weights: Dict[int, float]
-        :rtype: bool
-        """
-
-        # Check value type
-        #
-        if not isinstance(weights, dict):
-
-            raise TypeError('isNormalized() expects a dict (%s given)!' % type(weights).__name__)
-
-        # Check influence weight total
-        #
-        total = sum([weight for (influenceId, weight) in weights.items()])
-        log.debug('Supplied influence weights equal %s.' % total)
-
-        return linearalgebra.isClose(1.0, total)
-
-    def normalizeWeights(self, weights, maintainMaxInfluences=True):
-        """
-        Normalizes the supplied vertex weights.
-
-        :type maintainMaxInfluences: bool
-        :type weights: Dict[int, float]
-        :rtype: Dict[int, float]
-        """
-
-        # Check value type
-        #
-        if not isinstance(weights, dict):
-
-            raise TypeError('normalizeWeights() expects a dict (%s given)!' % type(weights).__name__)
-
-        # Check if influences should be pruned
-        #
-        if maintainMaxInfluences:
-
-            weights = self.capWeights(weights)
-
-        # Check if weights have already been normalized
-        #
-        isNormalized = self.isNormalized(weights)
-
-        if isNormalized:
-
-            log.debug('Vertex weights have already been normalized.')
-            return weights
-
-        # Check if weights can be normalized
-        #
-        total = sum(weights.values())
-
-        if total == 0.0:
-
-            raise TypeError('Cannot normalize influences from zero weights!')
-
-        # Scale weights to equal one
-        #
-        scale = 1.0 / total
-
-        for (influenceId, weight) in weights.items():
-
-            normalized = (weight * scale)
-            weights[influenceId] = normalized
-
-            log.debug(
-                'Normalizing influence ID: {index}, from {weight} to {normalized}'.format(
-                    index=influenceId,
-                    weight=weight,
-                    normalized=normalized
-                )
-            )
-
-        return weights
-
-    def pruneWeights(self, weights, tolerance=1e-3):
-        """
-        Caps the supplied vertex weights to meet the maximum number of weighted influences.
-
-        :type weights: Dict[int, float]
-        :type tolerance: float
-        :rtype: Dict[int, float]
-        """
-
-        # Check value type
-        #
-        if not isinstance(weights, dict):
-
-            raise TypeError('pruneWeights() expects a dict (%s given)!' % type(weights).__name__)
-
-        # Prune weights
-        #
-        prunedWeights = {influenceId: influenceWeight for (influenceId, influenceWeight) in weights.items() if influenceWeight >= tolerance}
-        return self.normalizeWeights(prunedWeights)
-
-    def capWeights(self, weights):
-        """
-        Caps the supplied vertex weights to meet the maximum number of weighted influences.
-
-        :type weights: Dict[int, float]
-        :rtype: Dict[int, float]
-        """
-
-        # Check value type
-        #
-        if not isinstance(weights, dict):
-
-            raise TypeError('capWeights() expects a dict (%s given)!' % type(weights).__name__)
-
-        # Check if any influences have dropped below limit
-        #
-        influences = self.influences()
-
-        for (influenceId, weight) in weights.items():
-
-            # Check if influence weight is below threshold
-            #
-            if linearalgebra.isClose(0.0, weight) or influences[influenceId] is None:
-
-                weights[influenceId] = 0.0
-
-            else:
-
-                log.debug('Skipping influence ID: %s' % influenceId)
-
-        # Check if influences have exceeded max allowances
-        #
-        numInfluences = len(weights)
-        maxInfluences = self.maxInfluences()
-
-        if numInfluences > maxInfluences:
-
-            # Order influences from lowest to highest
-            #
-            orderedInfluences = sorted(weights, key=weights.get, reverse=False)
-
-            # Replace surplus influences with zero values
-            #
-            diff = numInfluences - maxInfluences
-
-            for i in range(diff):
-
-                influenceId = orderedInfluences[i]
-                weights[influenceId] = 0.0
-
-        else:
-
-            log.debug('Vertex weights have not exceeded max influences.')
-
-        # Return dictionary changes
-        #
-        return weights
-
-    def averageWeights(self, *args, **kwargs):
-        """
-        Averages the supplied vertex weights.
-        By default, maintain max influences is enabled.
-
-        :key maintainMaxInfluences: bool
-        :rtype: Dict[int, float]
-        """
-
-        # Iterate through vertices
-        #
-        average = {}
-
-        for arg in args:
-
-            # Check argument type
-            #
-            if not isinstance(arg, dict):
-
-                continue
-
-            # Iterate through copied weights
-            #
-            for (influenceId, vertexWeight) in arg.items():
-
-                # Check if influence key already exists
-                #
-                if influenceId not in average:
-
-                    average[influenceId] = arg[influenceId]
-
-                else:
-
-                    average[influenceId] += arg[influenceId]
-
-        # Return normalized result
-        #
-        return self.normalizeWeights(average, **kwargs)
-
-    def weightedAverageWeights(self, startWeights, endWeights, percent=0.5):
-        """
-        Averages supplied vertex weights based on a normalized percentage.
-
-        :type startWeights: dict
-        :type endWeights: dict
-        :type percent: float
-        :rtype: Dict[int, float]
-        """
-
-        # Check percentage type
-        #
-        if not isinstance(percent, (int, float)):
-
-            raise TypeError('weightedAverageWeights() expects a float (%s given)!' % type(percent).__name__)
-
-        # Merge dictionary keys using null values
-        #
-        weights = self.mergeDictionaries(startWeights, endWeights)
-        influenceIds = weights.keys()
-
-        for influenceId in influenceIds:
-
-            # Get weight values
-            #
-            startWeight = startWeights.get(influenceId, 0.0)
-            endWeight = endWeights.get(influenceId, 0.0)
-
-            # Average weights
-            #
-            weight = (startWeight * (1.0 - percent)) + (endWeight * percent)
-            weights[influenceId] = weight
-
-        # Return normalized weights
-        #
-        return self.normalizeWeights(weights)
-
     @abstractmethod
     def applyVertexWeights(self, vertexWeights):
         """
@@ -1188,134 +746,6 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         """
 
         pass
-
-    @staticmethod
-    def mergeDictionaries(*args):
-        """
-        Combines any number of dictionaries together with null values.
-
-        :rtype: dict
-        """
-
-        influenceIds = set(chain(*[arg.keys() for arg in args]))
-        return dict.fromkeys(influenceIds, 0.0)
-
-    def inverseDistanceWeights(self, vertexWeights, distances, power=2.0):
-        """
-        Averages supplied vertex weights based on the inverse distance.
-
-        :type vertexWeights: Dict[int,Dict[int, float]]
-        :type distances: list[float]
-        :type power: float
-        :rtype: Dict[int, float]
-        """
-
-        # Check value types
-        #
-        numVertices = len(vertexWeights)
-        numDistances = len(distances)
-
-        if numVertices != numDistances:
-
-            raise TypeError('inverseDistanceVertexWeights() expects identical length lists!')
-
-        # Merge dictionary keys using null values
-        #
-        inverseWeights = self.mergeDictionaries(*list(vertexWeights.values()))
-        influenceIds = inverseWeights.keys()
-
-        # Iterate through influences
-        #
-        for influenceId in influenceIds:
-
-            # Collect weight values
-            #
-            weights = [x.get(influenceId, 0.0) for x in vertexWeights.values()]
-
-            # Zip list and evaluate in parallel
-            #
-            numerator = 0.0
-            denominator = 0.0
-
-            for (weight, distance) in zip(weights, distances):
-
-                clampedDistance = distance if distance > 0.0 else 1e-3
-                numerator += weight / pow(clampedDistance, power)
-                denominator += 1.0 / pow(clampedDistance, power)
-
-            # Assign average to updates
-            #
-            inverseWeights[influenceId] = float(numerator / denominator)
-
-        # Return normalized weights
-        #
-        log.debug(f'Inverse Distance: {inverseWeights}')
-        return self.normalizeWeights(inverseWeights)
-
-    def barycentricWeights(self, vertexIndices, baryCoords):
-        """
-        Returns the barycentric average for the specified vertices.
-
-        :type vertexIndices: List[int]
-        :type baryCoords list[float, float, float]
-        :rtype: Dict[int, float]
-        """
-
-        # Check if list size mismatch
-        #
-        numVertices = len(vertexIndices)
-        numBary = len(baryCoords)
-
-        if numVertices != numBary:
-
-            raise TypeError('barycentricWeights() list sizes must be identical!')
-
-        # Merge dictionary keys using null values
-        #
-        vertexWeights = self.vertexWeights(*vertexIndices)
-
-        baryWeights = self.mergeDictionaries(*list(vertexWeights.values()))
-        influenceIds = baryWeights.keys()
-
-        # Iterate through influences
-        #
-        for influenceId in influenceIds:
-
-            # Collect weight values
-            #
-            weight = 0.0
-
-            for (vertexIndex, baryCoord) in zip(vertexIndices, baryCoords):
-
-                weight += vertexWeights[vertexIndex].get(influenceId, 0.0) * baryCoord
-
-            # Assign average to updates
-            #
-            baryWeights[influenceId] = weight
-
-        # Return normalized weights
-        #
-        log.debug(f'Barycentric Average: {baryWeights}')
-        return self.normalizeWeights(baryWeights)
-
-    def bilinearWeights(self, vertexIndices, biCoords):
-        """
-        Returns the bilinear average for the specified vertices.
-
-        :type vertexIndices: Tuple[int, int, int, int]
-        :type biCoords: Tuple[int, int]
-        :rtype: Dict[int, float]
-        """
-
-        u, v = biCoords
-        v0, v1, v2, v3 = vertexIndices
-        vertexWeights = self.vertexWeights(*vertexIndices)
-
-        w0 = self.weightedAverageWeights(vertexWeights[v0], vertexWeights[v1], percent=u)
-        w1 = self.weightedAverageWeights(vertexWeights[v3], vertexWeights[v2], percent=u)
-        w2 = self.weightedAverageWeights(w0, w1, percent=v)
-
-        return w2
 
     def copyWeights(self):
         """
@@ -1385,7 +815,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
 
         # Average all weights in clipboard
         #
-        average = self.averageWeights(*list(self._clipboard.values()), maintainMaxInfluences=True)
+        average = skinmath.averageWeights(*list(self._clipboard.values()), maintainMaxInfluences=True)
         updates = {vertexIndex: deepcopy(average) for vertexIndex in selection}
 
         return self.applyVertexWeights(updates)
@@ -1583,6 +1013,8 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         # Iterate through vertices
         #
         mesh = fnmesh.FnMesh(self.shape())
+        maxInfluences = self.maxInfluences()
+
         updates = {}
 
         for vertexIndex in vertexIndices:
@@ -1599,7 +1031,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
             influenceIds = list(self.vertexWeights(vertexIndex)[vertexIndex].keys())
             vertices = {connectedIndex: {influenceId: influenceWeight for (influenceId, influenceWeight) in connectedWeights.items() if influenceId in influenceIds} for (connectedIndex, connectedWeights) in self.iterVertexWeights(*connectedVertices)}
 
-            vertexWeights = self.averageWeights(*list(vertices.values()))
+            vertexWeights = skinmath.averageWeights(*list(vertices.values()), maxInfluences=maxInfluences)
             log.debug(f'Relaxed vertex weights: {vertexWeights}')
 
             updates[vertexIndex] = vertexWeights
@@ -1627,6 +1059,8 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         # Iterate through vertices
         #
         mesh = fnmesh.FnMesh(self.shape())
+        maxInfluences = self.maxInfluences()
+
         updates = {}
 
         for vertexIndex in vertexIndices:
@@ -1640,7 +1074,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
             #
             vertices = self.vertexWeights(*connectedVertices)
 
-            vertexWeights = self.averageWeights(*list(vertices.values()))
+            vertexWeights = skinmath.averageWeights(*list(vertices.values()), maxInfluences=maxInfluences)
             log.debug(f'Blended vertex weights: {vertexWeights}')
 
             updates[vertexIndex] = vertexWeights
@@ -1716,6 +1150,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         fnMesh = fnmesh.FnMesh(self.shape())
         points = fnMesh.getVertices(*path)
 
+        maxInfluences = self.maxInfluences()
         vertexWeights = self.vertexWeights(startVertex, endVertex)
         startWeights, endWeights = vertexWeights[startVertex], vertexWeights[endVertex]
 
@@ -1736,7 +1171,13 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
             # Weighted average start and end weights
             #
             percent = param / maxParam
-            updates[vertexIndex] = self.weightedAverageWeights(startWeights, endWeights, percent=percent)
+
+            updates[vertexIndex] = skinmath.weightedAverageWeights(
+                startWeights,
+                endWeights,
+                percent=percent,
+                maxInfluences=maxInfluences
+            )
 
         # Apply weights
         #
@@ -1752,10 +1193,127 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         """
 
         vertices = self.vertexWeights(*vertexIndices)
-        prunedVertices = {vertexIndex: self.pruneWeights(vertexWeights, tolerance=tolerance) for (vertexIndex, vertexWeights) in vertices.items()}
-
+        prunedVertices = {vertexIndex: skinmath.pruneWeights(vertexWeights, tolerance=tolerance) for (vertexIndex, vertexWeights) in vertices.items()}
         updates = {vertexIndex: prunedVertices[vertexIndex] for vertexIndex in vertexIndices if len(vertices[vertexIndex]) != len(prunedVertices[vertexIndex])}
+
         self.applyVertexWeights(updates)
+
+    def inverseDistanceWeights(self, vertexWeights, distances, power=2.0):
+        """
+        Averages supplied vertex weights based on the inverse distance.
+
+        :type vertexWeights: Dict[int,Dict[int, float]]
+        :type distances: list[float]
+        :type power: float
+        :rtype: Dict[int, float]
+        """
+
+        # Check value types
+        #
+        numVertices = len(vertexWeights)
+        numDistances = len(distances)
+
+        if numVertices != numDistances:
+
+            raise TypeError('inverseDistanceVertexWeights() expects identical length lists!')
+
+        # Merge dictionary keys using null values
+        #
+        inverseWeights = skinmath.mergeWeights(*list(vertexWeights.values()))
+        influenceIds = inverseWeights.keys()
+
+        # Iterate through influences
+        #
+        for influenceId in influenceIds:
+
+            # Collect weight values
+            #
+            weights = [x.get(influenceId, 0.0) for x in vertexWeights.values()]
+
+            # Zip list and evaluate in parallel
+            #
+            numerator = 0.0
+            denominator = 0.0
+
+            for (weight, distance) in zip(weights, distances):
+
+                clampedDistance = distance if distance > 0.0 else 1e-3
+                numerator += weight / pow(clampedDistance, power)
+                denominator += 1.0 / pow(clampedDistance, power)
+
+            # Assign average to updates
+            #
+            inverseWeights[influenceId] = float(numerator / denominator)
+
+        # Return normalized weights
+        #
+        log.debug(f'Inverse Distance: {inverseWeights}')
+        return skinmath.normalizeWeights(inverseWeights)
+
+    def barycentricWeights(self, vertexIndices, baryCoords):
+        """
+        Returns the barycentric average for the specified vertices.
+
+        :type vertexIndices: List[int]
+        :type baryCoords list[float, float, float]
+        :rtype: Dict[int, float]
+        """
+
+        # Check if list size mismatch
+        #
+        numVertices = len(vertexIndices)
+        numBary = len(baryCoords)
+
+        if numVertices != numBary:
+
+            raise TypeError('barycentricWeights() list sizes must be identical!')
+
+        # Merge dictionary keys using null values
+        #
+        vertexWeights = self.vertexWeights(*vertexIndices)
+
+        baryWeights = skinmath.mergeWeights(*list(vertexWeights.values()))
+        influenceIds = baryWeights.keys()
+
+        # Iterate through influences
+        #
+        for influenceId in influenceIds:
+
+            # Collect weight values
+            #
+            weight = 0.0
+
+            for (vertexIndex, baryCoord) in zip(vertexIndices, baryCoords):
+
+                weight += vertexWeights[vertexIndex].get(influenceId, 0.0) * baryCoord
+
+            # Assign average to updates
+            #
+            baryWeights[influenceId] = weight
+
+        # Return normalized weights
+        #
+        log.debug(f'Barycentric Average: {baryWeights}')
+        return skinmath.normalizeWeights(baryWeights)
+
+    def bilinearWeights(self, vertexIndices, biCoords):
+        """
+        Returns the bilinear average for the specified vertices.
+
+        :type vertexIndices: Tuple[int, int, int, int]
+        :type biCoords: Tuple[int, int]
+        :rtype: Dict[int, float]
+        """
+
+        u, v = biCoords
+        v0, v1, v2, v3 = vertexIndices
+        vertexWeights = self.vertexWeights(*vertexIndices)
+
+        w0 = skinmath.weightedAverageWeights(vertexWeights[v0], vertexWeights[v1], percent=u)
+        w1 = skinmath.weightedAverageWeights(vertexWeights[v3], vertexWeights[v2], percent=u)
+        w2 = skinmath.weightedAverageWeights(w0, w1, percent=v)
+
+        return w2
 
     @abstractmethod
     def resetPreBindMatrices(self):

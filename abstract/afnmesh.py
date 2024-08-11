@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from typing import List, Tuple
 from dcc.abstract import afnbase
 from dcc.python import importutils
-from dcc.math import linearalgebra
+from dcc.math import floatmath
 from dcc.dataclasses.vector import Vector
 from dcc.dataclasses.colour import Colour
 from dcc.dataclasses.plane import Plane
@@ -902,22 +902,22 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
                     if d < 0.0:
 
-                        s = linearalgebra.clamp(-d / a, 0.0, 1.0)
+                        s = floatmath.clamp(-d / a, 0.0, 1.0)
                         t = 0.0
 
                     else:
 
                         s = 0.0
-                        t = linearalgebra.clamp(-e / c, 0.0, 1.0)
+                        t = floatmath.clamp(-e / c, 0.0, 1.0)
 
                 else:  # Region 3
 
                     s = 0.0
-                    t = linearalgebra.clamp(-e / c, 0.0, 1.0)
+                    t = floatmath.clamp(-e / c, 0.0, 1.0)
 
             elif t < 0:  # Region 5
 
-                s = linearalgebra.clamp(-d / a, 0.0, 1.0)
+                s = floatmath.clamp(-d / a, 0.0, 1.0)
                 t = 0.0
 
             else:  # Region 0
@@ -937,12 +937,12 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
                     numerator = tmp1 - tmp0
                     denominator = a - 2.0 * b + c
-                    s = linearalgebra.clamp(numerator / denominator, 0.0, 1.0)
+                    s = floatmath.clamp(numerator / denominator, 0.0, 1.0)
                     t = 1.0 - s
 
                 else:  # Minimum on edge: s = 0.0
 
-                    t = linearalgebra.clamp(-e / c, 0.0, 1.0)
+                    t = floatmath.clamp(-e / c, 0.0, 1.0)
                     s = 0.0
 
             elif t < 0.0:  # Region 6
@@ -951,19 +951,19 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
                     numerator = c + e - b - d
                     denominator = a - 2 * b + c
-                    s = linearalgebra.clamp(numerator / denominator, 0.0, 1.0)
+                    s = floatmath.clamp(numerator / denominator, 0.0, 1.0)
                     t = 1.0 - s
 
                 else:
 
-                    s = linearalgebra.clamp(-e / c, 0.0, 1.0)
+                    s = floatmath.clamp(-e / c, 0.0, 1.0)
                     t = 0.0
 
             else:  # Region 1
 
                 numerator = c + e - b - d
                 denominator = a - 2 * b + c
-                s = linearalgebra.clamp(numerator / denominator, 0.0, 1.0)
+                s = floatmath.clamp(numerator / denominator, 0.0, 1.0)
                 t = 1.0 - s
 
         return float(1.0 - s - t), float(s), float(t)
@@ -1094,7 +1094,7 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
             elif numVertices == 4:
 
                 biCoords = self.getBilinearCoordinates(closestPoint, vertexPoints)
-                hitPoint = linearalgebra.lerp(linearalgebra.lerp(vertexPoints[0], vertexPoints[1], biCoords[0]), linearalgebra.lerp(vertexPoints[3], vertexPoints[2], biCoords[0]), biCoords[1])
+                hitPoint = floatmath.lerp(floatmath.lerp(vertexPoints[0], vertexPoints[1], biCoords[0]), floatmath.lerp(vertexPoints[3], vertexPoints[2], biCoords[0]), biCoords[1])
 
             else:
 

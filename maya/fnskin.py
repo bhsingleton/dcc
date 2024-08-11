@@ -223,7 +223,7 @@ class FnSkin(fnnode.FnNode, afnskin.AFnSkin):
             #
             if fnComponent.hasWeights:
 
-                yield fnComponent.element(i), fnComponent.weight(i)
+                yield fnComponent.element(i), fnComponent.weight(i).influence
 
             else:
 
@@ -348,7 +348,7 @@ class FnSkin(fnnode.FnNode, afnskin.AFnSkin):
         #
         if not self.isPluginLoaded():
 
-            log.debug('invalidateColors() requires the TransferPaintWeightsCmd.mll plugin!')
+            log.debug('invalidateColors() requires the "TransferPaintWeightsCmd" plugin!')
             return
 
         # Check if this instance belongs to a mesh
@@ -357,7 +357,7 @@ class FnSkin(fnnode.FnNode, afnskin.AFnSkin):
 
         if not intermediateObject.hasFn(om.MFn.kMesh):
 
-            log.debug('invalidateColors() expects a mesh (%s given)!' % intermediateObject.apiTypeStr)
+            log.debug(f'invalidateColors() expects a mesh ({intermediateObject.apiTypeStr} given)!')
             return
 
         # Check if colour set is active
@@ -370,8 +370,7 @@ class FnSkin(fnnode.FnNode, afnskin.AFnSkin):
 
         if currentColorSet == self.__color_set_name__:
 
-            mc.dgdirty(f'{skinClusterName}.paintTrans')
-            mc.transferPaintWeights(f'{skinClusterName}.paintWeights', meshName, colorRamp=self.__color_ramp__)
+            mc.transferPaintWeights(skinClusterName, meshName, colorRamp=self.__color_ramp__)
 
     def iterInfluences(self):
         """
