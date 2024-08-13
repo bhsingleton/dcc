@@ -231,7 +231,7 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
             userProperties = self.userProperties()
             preBindMatrix = userProperties.get('worldSkinPose', om.MMatrix.kIdentity)
 
-            return transformationmatrix.TransformationMatrix(preBindMatrix)
+            return self.denativizeMatrix(preBindMatrix)
 
     def worldMatrix(self):
         """
