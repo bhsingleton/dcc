@@ -817,7 +817,7 @@ class FbxSerializer(object):
 
         return fbxTime
 
-    def bakeFbxNode(self, fbxNode, time=None, animLayer=None):
+    def bakeFbxNode(self, fbxNode, time=None, animLayer=None, **kwargs):
         """
         Keys the individual translate, rotate and scale components at the specified time.
 
@@ -830,9 +830,10 @@ class FbxSerializer(object):
         # Get local transform matrix
         #
         joint = fntransform.FnTransform(self.getAssociatedNode(fbxNode))
+        globalScale = kwargs.get('globalScale', 1.0)
         matrix = joint.matrix()
 
-        translation = matrix.translation()
+        translation = matrix.translation() * globalScale
         rotationOrder = joint.rotationOrder()
         eulerAngles = list(map(math.degrees, matrix.eulerRotation(order=rotationOrder)))
         scale = matrix.scale()
@@ -889,7 +890,7 @@ class FbxSerializer(object):
             animCurve.KeySet(keyIndex, time, joint.getAttr(attributeName), interpolationType)
             animCurve.KeyModifyEnd()
 
-    def bakeAnimation(self, *fbxNodes, startFrame=0, endFrame=1, step=1):
+    def bakeAnimation(self, *fbxNodes, startFrame=0, endFrame=1, step=1, **kwargs):
         """
         Bakes the transform components on the supplied joints over the specified time.
 
@@ -928,7 +929,7 @@ class FbxSerializer(object):
 
                 for fbxNode in fbxNodes:
 
-                    self.bakeFbxNode(fbxNode, time=time, animLayer=animLayer)
+                    self.bakeFbxNode(fbxNode, time=time, animLayer=animLayer, **kwargs)
 
             else:
 
@@ -1408,14 +1409,23 @@ class FbxSerializer(object):
         # Serialize skeleton from associated export set
         #
         exportSet = exportRange.exportSet()
-        fbxNodes = self.serializeSkeleton(exportSet.skeleton)
+        globalScale = float(exportSet.scale)
+
+        fbxNodes = self.serializeSkeleton(exportSet.skeleton, globalScale=globalScale)
 
         # Bake transform values
         #
         startFrame, endFrame = exportRange.timeRange()
+        step = float(exportRange.step)
 
         self.updateTimeRange(startFrame, endFrame)
-        self.bakeAnimation(*fbxNodes, startFrame=startFrame, endFrame=endFrame)
+        self.bakeAnimation(
+            *fbxNodes,
+            startFrame=startFrame,
+            endFrame=endFrame,
+            step=step,
+            globalScale=globalScale
+        )
 
         # Check if skeleton should be moved to origin
         #
