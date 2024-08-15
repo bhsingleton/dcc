@@ -185,7 +185,7 @@ def scaleWeights(weights, target, source, percent, **kwargs):
     falloff = kwargs.get('falloff', 1.0)
     current = weights.get(target, 0.0)
 
-    amount = current + sum([(weights.get(influenceId, 0.0) * percent) * falloff for influenceId in source])
+    amount = current + sum([(weights.get(influenceId, 0.0) * (percent * falloff)) for influenceId in source])
 
     # Set vertex weight
     #
