@@ -4,7 +4,7 @@ import os
 from Qt import QtWidgets, QtCore, QtGui
 from dcc import fnscene, fnreference, fnnotify
 from dcc.generators.consecutivepairs import consecutivePairs
-from dcc.ui import quicwindow
+from dcc.ui import qsingletonwindow, qrollout, qdivider, qsignalblocker
 from dcc.ui.models import qpsonitemmodel, qpsonstyleditemdelegate
 from dcc.fbx.libs import fbxio, fbxsequencer, fbxexportrange
 from dcc.python import stringutils
@@ -16,9 +16,9 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-class QFbxExportRangeEditor(quicwindow.QUicWindow):
+class QFbxExportRangeEditor(qsingletonwindow.QSingletonWindow):
     """
-    Overload of `QUicWindow` used to edit FBX export-range data.
+    Overload of `QSingletonWindow` that interfaces with FBX export-range data.
     """
 
     # region Dunderscores
@@ -43,51 +43,331 @@ class QFbxExportRangeEditor(quicwindow.QUicWindow):
         self._scene = fnscene.FnScene()
         self._notifies = fnnotify.FnNotify()
 
-        # Declare public variables
+    def __setup_ui__(self, *args, **kwargs):
+        """
+        Private method that initializes the user interface.
+
+        :rtype: None
+        """
+
+        # Call parent method
         #
-        self.mainToolbar = None
-        self.newSequencerAction = None
-        self.saveSequencerAction = None
-        self.importRangesAction = None
-        self.exportRangesAction = None
-        self.addExportRangeAction = None
-        self.removeExportRangeAction = None
-        self.updateStartTimeAction = None
-        self.updateEndTimeAction = None
-        self.updateTimeRangeAction = None
+        super(QFbxExportRangeEditor, self).__setup_ui__(*args, **kwargs)
 
-        self.sequencerRollout = None
-        self.sequencerInteropWidget = None
-        self.deleteSequencerPushButton = None
-        self.sequencerComboBox = None
-        self.sequencerTreeView = None
-        self.sequencerItemModel = None
-        self.sequencerItemDelegate = None
-        self.exportWidget = None
-        self.exportDividerWidget = None
-        self.exportLabel = None
-        self.exportLine = None
-        self.exportPathWidget = None
-        self.exportPathLineEdit = None
-        self.checkoutCheckBox = None
-        self.exportInteropWidget = None
-        self.exportPushButton = None
-        self.exportAllPushButton = None
+        # Initialize main window
+        #
+        self.setWindowTitle("|| Fbx Export Range Editor")
+        self.setMinimumSize(QtCore.QSize(400, 700))
 
-        self.batchRollout = None
-        self.fileDividerWidget = None
-        self.fileDividerLabel = None
-        self.fileDividerLine = None
-        self.fileInteropWidget = None
-        self.addFilesPushButton = None
-        self.removeFilesPushButton = None
-        self.fileListWidget = None
-        self.batchPathWidget = None
-        self.batchPathLabel = None
-        self.batchPathLineEdit = None
-        self.batchPathPushButton = None
-        self.batchProgressBar = None
-        self.batchPushButton = None
+        # Initialize main toolbar
+        #
+        self.mainToolBar = QtWidgets.QToolBar(parent=self)
+        self.mainToolBar.setObjectName('mainToolBar')
+        self.mainToolBar.setAllowedAreas(QtCore.Qt.LeftToolBarArea)
+        self.mainToolBar.setMovable(False)
+        self.mainToolBar.setOrientation(QtCore.Qt.Vertical)
+        self.mainToolBar.setIconSize(QtCore.QSize(20, 20))
+        self.mainToolBar.setToolButtonStyle(QtCore.Qt.ToolButtonIconOnly)
+        self.mainToolBar.setFloatable(True)
+
+        self.newSequencerAction = QtWidgets.QAction(QtGui.QIcon(':/dcc/icons/new_file.svg'), '', parent=self.mainToolBar)
+        self.newSequencerAction.setObjectName('newSequencerAction')
+        self.newSequencerAction.setToolTip('Creates a new sequencer.')
+        self.newSequencerAction.triggered.connect(self.on_newSequencerAction_triggered)
+
+        self.saveSequencerAction = QtWidgets.QAction(QtGui.QIcon(':/dcc/icons/save_file.svg'), '', parent=self.mainToolBar)
+        self.saveSequencerAction.setObjectName('saveSequencerAction')
+        self.saveSequencerAction.setToolTip('Saves any changes made to the active sequencer.')
+        self.saveSequencerAction.triggered.connect(self.on_saveSequencerAction_triggered)
+
+        self.importRangesAction = QtWidgets.QAction(QtGui.QIcon(':/dcc/icons/import_file.svg'), '', parent=self.mainToolBar)
+        self.importRangesAction.setObjectName('importRangesAction')
+        self.importRangesAction.setToolTip('Import ranges into the selected sequencer.')
+        self.importRangesAction.triggered.connect(self.on_importRangesAction_triggered)
+
+        self.exportRangesAction = QtWidgets.QAction(QtGui.QIcon(':/dcc/icons/export_file.svg'), '', parent=self.mainToolBar)
+        self.exportRangesAction.setObjectName('exportRangesAction')
+        self.exportRangesAction.setToolTip('Export ranges from the selected sequencer.')
+        self.exportRangesAction.triggered.connect(self.on_exportRangesAction_triggered)
+
+        self.addExportRangeAction = QtWidgets.QAction(QtGui.QIcon(':/dcc/icons/add.svg'), '', parent=self.mainToolBar)
+        self.addExportRangeAction.setObjectName('addExportRangeAction')
+        self.addExportRangeAction.setToolTip('Adds an export range to the selected sequencer.')
+        self.addExportRangeAction.triggered.connect(self.on_addExportRangeAction_triggered)
+
+        self.removeExportRangeAction = QtWidgets.QAction(QtGui.QIcon(':/dcc/icons/remove.svg'), '', parent=self.mainToolBar)
+        self.removeExportRangeAction.setObjectName('removeExportRangeAction')
+        self.removeExportRangeAction.setToolTip('Remove the selected export ranges.')
+        self.removeExportRangeAction.triggered.connect(self.on_removeExportRangeAction_triggered)
+
+        self.updateStartTimeAction = QtWidgets.QAction(QtGui.QIcon(':/dcc/icons/start_time.svg'), '', parent=self.mainToolBar)
+        self.updateStartTimeAction.setObjectName('updateStartTimeAction')
+        self.updateStartTimeAction.setToolTip('LMB adopts start frame. Shift + LMB copies start frame.')
+        self.updateStartTimeAction.triggered.connect(self.on_updateStartTimeAction_triggered)
+
+        self.updateEndTimeAction = QtWidgets.QAction(QtGui.QIcon(':/dcc/icons/end_time.svg'), '', parent=self.mainToolBar)
+        self.updateEndTimeAction.setObjectName('updateEndTimeAction')
+        self.updateEndTimeAction.setToolTip('LMB adopts end frame. Shift + LMB copies end frame.')
+        self.updateEndTimeAction.triggered.connect(self.on_updateEndTimeAction_triggered)
+
+        self.updateTimeRangeAction = QtWidgets.QAction(QtGui.QIcon(':/dcc/icons/timeline.svg'), '', parent=self.mainToolBar)
+        self.updateTimeRangeAction.setObjectName('updateTimeRangeAction')
+        self.updateTimeRangeAction.setToolTip('LMB adopts timerange. Shift + LMB copies timerange.')
+        self.updateTimeRangeAction.triggered.connect(self.on_updateTimeRangeAction_triggered)
+
+        self.mainToolBar.addAction(self.newSequencerAction)
+        self.mainToolBar.addAction(self.saveSequencerAction)
+        self.mainToolBar.addAction(self.importRangesAction)
+        self.mainToolBar.addAction(self.exportRangesAction)
+        self.mainToolBar.addSeparator()
+        self.mainToolBar.addAction(self.addExportRangeAction)
+        self.mainToolBar.addAction(self.removeExportRangeAction)
+        self.mainToolBar.addSeparator()
+        self.mainToolBar.addAction(self.updateStartTimeAction)
+        self.mainToolBar.addAction(self.updateEndTimeAction)
+        self.mainToolBar.addAction(self.updateTimeRangeAction)
+
+        self.addToolBar(QtCore.Qt.LeftToolBarArea, self.mainToolBar)
+
+        # Initialize central widget
+        #
+        centralLayout = QtWidgets.QVBoxLayout()
+        centralLayout.setObjectName('centralLayout')
+        centralLayout.setAlignment(QtCore.Qt.AlignTop)
+
+        centralWidget = QtWidgets.QWidget()
+        centralWidget.setObjectName('centralWidget')
+        centralWidget.setLayout(centralLayout)
+
+        self.setCentralWidget(centralWidget)
+
+        # Initialize sequencer rollout
+        #
+        self.sequencerLayout = QtWidgets.QVBoxLayout()
+        self.sequencerLayout.setObjectName('sequencerLayout')
+
+        self.sequencerRollout = qrollout.QRollout('Sequencers')
+        self.sequencerRollout.setObjectName('sequencerRollout')
+        self.sequencerRollout.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding))
+        self.sequencerRollout.setExpanded(True)
+        self.sequencerRollout.setLayout(self.sequencerLayout)
+        self.sequencerRollout.expandedChanged.connect(self.on_sequencerRollout_expandedChanged)
+
+        self.sequencerComboBox = QtWidgets.QComboBox()
+        self.sequencerComboBox.setObjectName('sequencerComboBox')
+        self.sequencerComboBox.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed))
+        self.sequencerComboBox.setFixedHeight(24)
+        self.sequencerComboBox.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.sequencerComboBox.currentIndexChanged.connect(self.on_sequencerComboBox_currentIndexChanged)
+
+        self.deleteSequencerPushButton = QtWidgets.QPushButton(QtGui.QIcon(':/dcc/icons/delete.svg'), '')
+        self.deleteSequencerPushButton.setObjectName('deleteSequencerPushButton')
+        self.deleteSequencerPushButton.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed))
+        self.deleteSequencerPushButton.setFixedSize(QtCore.QSize(24, 24))
+        self.deleteSequencerPushButton.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.deleteSequencerPushButton.clicked.connect(self.on_deleteSequencerPushButton_clicked)
+
+        self.sequencerOptionsLayout = QtWidgets.QHBoxLayout()
+        self.sequencerOptionsLayout.setObjectName('sequencerOptionsLayout')
+        self.sequencerOptionsLayout.setContentsMargins(0, 0, 0, 0)
+        self.sequencerOptionsLayout.addWidget(self.sequencerComboBox)
+        self.sequencerOptionsLayout.addWidget(self.deleteSequencerPushButton)
+
+        self.sequencerTreeView = QtWidgets.QTreeView()
+        self.sequencerTreeView.setObjectName('sequencerTreeView')
+        self.sequencerTreeView.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding))
+        self.sequencerTreeView.setFocusPolicy(QtCore.Qt.ClickFocus)
+        self.sequencerTreeView.setStyleSheet('QTreeView::item { height: 24px; }')
+        self.sequencerTreeView.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
+        self.sequencerTreeView.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        self.sequencerTreeView.setEditTriggers(QtWidgets.QAbstractItemView.DoubleClicked | QtWidgets.QAbstractItemView.EditKeyPressed)
+        self.sequencerTreeView.setDropIndicatorShown(True)
+        self.sequencerTreeView.setDragEnabled(True)
+        self.sequencerTreeView.setDragDropOverwriteMode(False)
+        self.sequencerTreeView.setDragDropMode(QtWidgets.QAbstractItemView.InternalMove)
+        self.sequencerTreeView.setDefaultDropAction(QtCore.Qt.MoveAction)
+        self.sequencerTreeView.setAlternatingRowColors(True)
+        self.sequencerTreeView.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
+        self.sequencerTreeView.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
+        self.sequencerTreeView.setUniformRowHeights(True)
+        self.sequencerTreeView.setAnimated(True)
+        self.sequencerTreeView.setExpandsOnDoubleClick(False)
+        self.sequencerTreeView.clicked.connect(self.on_sequencerTreeView_clicked)
+
+        self.sequencerTreeHeader = self.sequencerTreeView.header()
+        self.sequencerTreeHeader.setDefaultSectionSize(200)
+        self.sequencerTreeHeader.setMinimumSectionSize(100)
+        self.sequencerTreeHeader.setStretchLastSection(True)
+        self.sequencerTreeHeader.setVisible(True)
+
+        self.sequencerItemModel = qpsonitemmodel.QPSONItemModel(parent=self.sequencerTreeView)
+        self.sequencerItemModel.setObjectName('sequencerItemModel')
+        self.sequencerItemModel.invisibleRootProperty = 'exportRanges'
+
+        self.sequencerTreeView.setModel(self.sequencerItemModel)
+
+        self.sequencerItemDelegate = qpsonstyleditemdelegate.QPSONStyledItemDelegate(parent=self.sequencerTreeView)
+        self.sequencerItemDelegate.setObjectName('sequencerItemDelegate')
+
+        self.sequencerTreeView.setItemDelegate(self.sequencerItemDelegate)
+
+        self.exportLabel = QtWidgets.QLabel('Export:')
+        self.exportLabel.setObjectName('exportLabel')
+        self.exportLabel.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed))
+
+        self.exportLine = qdivider.QDivider(QtCore.Qt.Horizontal)
+        self.exportLine.setObjectName('exportLine')
+        self.exportLine.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed))
+
+        self.exportDividerLayout = QtWidgets.QHBoxLayout()
+        self.exportDividerLayout.setObjectName('exportDividerLayout')
+        self.exportDividerLayout.setContentsMargins(0, 0, 0, 0)
+        self.exportDividerLayout.addWidget(self.exportLabel)
+        self.exportDividerLayout.addWidget(self.exportLine)
+
+        self.exportPathLineEdit = QtWidgets.QLineEdit('')
+        self.exportPathLineEdit.setObjectName('exportPathLineEdit')
+        self.exportPathLineEdit.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed))
+        self.exportPathLineEdit.setFixedHeight(24)
+        self.exportPathLineEdit.setFocusPolicy(QtCore.Qt.ClickFocus)
+        self.exportPathLineEdit.setReadOnly(True)
+
+        self.checkoutCheckBox = QtWidgets.QCheckBox('Checkout')
+        self.checkoutCheckBox.setObjectName('checkoutCheckBox')
+        self.checkoutCheckBox.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed))
+        self.checkoutCheckBox.setFixedHeight(24)
+        self.checkoutCheckBox.setFocusPolicy(QtCore.Qt.NoFocus)
+
+        self.exportPathLayout = QtWidgets.QHBoxLayout()
+        self.exportPathLayout.setObjectName('exportPathLayout')
+        self.exportPathLayout.setContentsMargins(0, 0, 0, 0)
+        self.exportPathLayout.addWidget(self.exportPathLineEdit)
+        self.exportPathLayout.addWidget(self.checkoutCheckBox)
+
+        self.exportPushButton = QtWidgets.QPushButton('Export')
+        self.exportPushButton.setObjectName('exportPushButton')
+        self.exportPushButton.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed))
+        self.exportPushButton.setFixedHeight(24)
+        self.exportPushButton.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.exportPushButton.clicked.connect(self.on_exportPushButton_clicked)
+
+        self.exportAllPushButton = QtWidgets.QPushButton('Export All')
+        self.exportAllPushButton.setObjectName('exportAllPushButton')
+        self.exportAllPushButton.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed))
+        self.exportAllPushButton.setFixedHeight(24)
+        self.exportAllPushButton.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.exportAllPushButton.clicked.connect(self.on_exportAllPushButton_clicked)
+
+        self.exportButtonsLayout = QtWidgets.QHBoxLayout()
+        self.exportButtonsLayout.setObjectName('exportButtonsLayout')
+        self.exportButtonsLayout.setContentsMargins(0, 0, 0, 0)
+        self.exportButtonsLayout.addWidget(self.exportPushButton)
+        self.exportButtonsLayout.addWidget(self.exportAllPushButton)
+
+        self.sequencerLayout.addLayout(self.sequencerOptionsLayout)
+        self.sequencerLayout.addWidget(self.sequencerTreeView)
+        self.sequencerLayout.addLayout(self.exportDividerLayout)
+        self.sequencerLayout.addLayout(self.exportPathLayout)
+        self.sequencerLayout.addLayout(self.exportButtonsLayout)
+
+        centralLayout.addWidget(self.sequencerRollout)
+
+        # Initialize batch rollout
+        #
+        self.batchLayout = QtWidgets.QVBoxLayout()
+        self.batchLayout.setObjectName('batchLayout')
+
+        self.batchRollout = qrollout.QRollout('Batch')
+        self.batchRollout.setObjectName('batchRollout')
+        self.batchRollout.setExpanded(False)
+        self.batchRollout.setLayout(self.batchLayout)
+        self.batchRollout.expandedChanged.connect(self.on_batchRollout_expandedChanged)
+
+        self.filesLabel = QtWidgets.QLabel('Files:')
+        self.filesLabel.setObjectName('filesLabel')
+        self.filesLabel.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed))
+
+        self.filesLine = qdivider.QDivider(QtCore.Qt.Horizontal)
+        self.filesLine.setObjectName('exportLine')
+        self.filesLine.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed))
+
+        self.addFilesPushButton = QtWidgets.QPushButton(QtGui.QIcon(':/dcc/icons/add.svg'), '')
+        self.addFilesPushButton.setObjectName('addFilesPushButton')
+        self.addFilesPushButton.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed))
+        self.addFilesPushButton.setFixedSize(QtCore.QSize(20, 20))
+        self.addFilesPushButton.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.addFilesPushButton.clicked.connect(self.on_addFilesPushButton_clicked)
+
+        self.removeFilesPushButton = QtWidgets.QPushButton(QtGui.QIcon(':/dcc/icons/remove.svg'), '')
+        self.removeFilesPushButton.setObjectName('removeFilesPushButton')
+        self.removeFilesPushButton.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed))
+        self.removeFilesPushButton.setFixedSize(QtCore.QSize(20, 20))
+        self.removeFilesPushButton.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.removeFilesPushButton.clicked.connect(self.on_removeFilesPushButton_clicked)
+
+        self.filesDividerLayout = QtWidgets.QHBoxLayout()
+        self.filesDividerLayout.setObjectName('exportDividerLayout')
+        self.filesDividerLayout.setContentsMargins(0, 0, 0, 0)
+        self.filesDividerLayout.addWidget(self.filesLabel)
+        self.filesDividerLayout.addWidget(self.filesLine)
+        self.filesDividerLayout.addWidget(self.addFilesPushButton)
+        self.filesDividerLayout.addWidget(self.removeFilesPushButton)
+
+        self.fileListWidget = QtWidgets.QListWidget()
+
+        self.batchPathLabel = QtWidgets.QLabel('Directory:')
+        self.batchPathLabel.setObjectName('batchPathLabel')
+        self.batchPathLabel.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed))
+        self.batchPathLabel.setFixedHeight(24)
+        self.batchPathLabel.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+
+        self.batchPathLineEdit = QtWidgets.QLineEdit('')
+        self.batchPathLineEdit.setObjectName('batchPathLineEdit')
+        self.batchPathLineEdit.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed))
+        self.batchPathLineEdit.setFixedHeight(24)
+        self.batchPathLineEdit.setReadOnly(True)
+
+        self.batchPathPushButton = QtWidgets.QPushButton(QtGui.QIcon(':/dcc/icons/open_folder.svg'), '')
+        self.batchPathPushButton.setObjectName('batchPathPushButton')
+        self.batchPathPushButton.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed))
+        self.batchPathPushButton.setFixedSize(QtCore.QSize(24, 24))
+        self.batchPathPushButton.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.batchPathPushButton.clicked.connect(self.on_batchPathPushButton_clicked)
+
+        self.batchPathLayout = QtWidgets.QHBoxLayout()
+        self.batchPathLayout.setObjectName('batchPathLayout')
+        self.batchPathLayout.setContentsMargins(0, 0, 0, 0)
+        self.batchPathLayout.addWidget(self.batchPathLabel)
+        self.batchPathLayout.addWidget(self.batchPathLineEdit)
+        self.batchPathLayout.addWidget(self.batchPathPushButton)
+
+        self.batchDivider = qdivider.QDivider(QtCore.Qt.Horizontal)
+        self.batchDivider.setObjectName('batchDivider')
+        self.batchDivider.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed))
+
+        self.batchPushButton = QtWidgets.QPushButton('Batch')
+        self.batchPushButton.setObjectName('batchPushButton')
+        self.batchPushButton.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed))
+        self.batchPushButton.setFixedHeight(24)
+        self.batchPushButton.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.batchPushButton.clicked.connect(self.on_batchPushButton_clicked)
+
+        self.batchProgressBar = QtWidgets.QProgressBar()
+        self.batchProgressBar.setObjectName('batchProgressBar')
+        self.batchProgressBar.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed))
+        self.batchProgressBar.setFixedHeight(24)
+        self.batchProgressBar.setMinimum(0)
+        self.batchProgressBar.setMaximum(100)
+        self.batchProgressBar.setValue(0)
+
+        self.batchLayout.addLayout(self.filesDividerLayout)
+        self.batchLayout.addWidget(self.fileListWidget)
+        self.batchLayout.addLayout(self.batchPathLayout)
+        self.batchLayout.addWidget(self.batchDivider)
+        self.batchLayout.addWidget(self.batchPushButton)
+        self.batchLayout.addWidget(self.batchProgressBar)
+
+        centralLayout.addWidget(self.batchRollout)
     # endregion
 
     # region Properties
@@ -156,39 +436,39 @@ class QFbxExportRangeEditor(quicwindow.QUicWindow):
     # endregion
 
     # region Methods
-    def postLoad(self, *args, **kwargs):
+    def addCallbacks(self):
         """
-        Called after the user interface has been loaded.
+        Adds any callbacks required by this window.
 
         :rtype: None
         """
 
-        # Call parent method
+        # Check if notifies already exist
         #
-        super(QFbxExportRangeEditor, self).postLoad()
+        hasNotifies = len(self._notifies) > 0
 
-        # Edit sequencer/batch rollouts
+        if not hasNotifies:
+
+            self._notifies.addPostFileOpenNotify(self.sceneChanged)
+
+        # Invalidate sequencers
         #
-        self.sequencerRollout.setText('Sequencers')
-        self.sequencerRollout.setExpanded(True)
+        self.sceneChanged()
 
-        self.batchRollout.setText('Batch')
-        self.batchRollout.setExpanded(False)
+    def removeCallbacks(self):
+        """
+        Removes any callbacks created by this window.
 
-        self.centralWidget().layout().setAlignment(QtCore.Qt.AlignTop)
+        :rtype: None
+        """
 
-        # Initialize sequencer tree view model
+        # Check if notifies exist
         #
-        self.sequencerItemModel = qpsonitemmodel.QPSONItemModel(parent=self.sequencerTreeView)
-        self.sequencerItemModel.setObjectName('sequencerItemModel')
-        self.sequencerItemModel.invisibleRootProperty = 'exportRanges'
+        hasNotifies = len(self._notifies) > 0
 
-        self.sequencerTreeView.setModel(self.sequencerItemModel)
+        if hasNotifies:
 
-        self.sequencerItemDelegate = qpsonstyleditemdelegate.QPSONStyledItemDelegate(parent=self.sequencerTreeView)
-        self.sequencerItemDelegate.setObjectName('sequencerItemDelegate')
-
-        self.sequencerTreeView.setItemDelegate(self.sequencerItemDelegate)
+            self._notifies.clear()
 
     def saveSettings(self, settings):
         """
@@ -308,46 +588,6 @@ class QFbxExportRangeEditor(quicwindow.QUicWindow):
         self.invalidateSequencers()
     # endregion
 
-    # region Events
-    def showEvent(self, event):
-        """
-        Event method called after the window has been shown.
-
-        :type event: QtGui.QShowEvent
-        :rtype: None
-        """
-
-        # Call parent method
-        #
-        super(QFbxExportRangeEditor, self).showEvent(event)
-
-        # Add notifies
-        #
-        hasNotifies = len(self._notifies) > 0
-
-        if not hasNotifies:
-
-            self._notifies.addPostFileOpenNotify(self.sceneChanged)
-
-        self.sceneChanged()
-
-    def closeEvent(self, event):
-        """
-        Event method called after the window has been closed.
-
-        :type event: QtGui.QCloseEvent
-        :rtype: None
-        """
-
-        # Clear notifies
-        #
-        self._notifies.clear()
-
-        # Call parent method
-        #
-        super(QFbxExportRangeEditor, self).closeEvent(event)
-    # endregion
-
     # region Methods
     def save(self):
         """
@@ -367,46 +607,10 @@ class QFbxExportRangeEditor(quicwindow.QUicWindow):
     # endregion
 
     # region Slots
-    @QtCore.Slot(int)
-    def on_sequencerComboBox_currentIndexChanged(self, index):
-        """
-        Slot method for the sequencerComboBox's `currentIndexChanged` signal.
-
-        :type index: int
-        :rtype: None
-        """
-
-        # Update current sequencer
-        #
-        numSequencers = len(self.sequencers)
-
-        if 0 <= index < numSequencers:
-
-            self._currentSequencer = self.sequencers[index]
-
-        else:
-
-            self._currentSequencer = None
-
-        # Invalidate sequences
-        #
-        self.invalidateExportRanges()
-
-    @QtCore.Slot(QtCore.QModelIndex)
-    def on_sequencerTreeView_clicked(self, index):
-        """
-        Slot method for the sequencerTreeView's `clicked` signal.
-
-        :type index: QtCore.QModelIndex
-        :rtype: None
-        """
-
-        self.invalidateExportPath()
-
     @QtCore.Slot(bool)
     def on_newSequencerAction_triggered(self, checked=False):
         """
-        Slot method for the newSequencerAction's `triggered` signal.
+        Slot method for the `newSequencerAction` widget's `triggered` signal.
 
         :type checked: bool
         :rtype: None
@@ -468,7 +672,7 @@ class QFbxExportRangeEditor(quicwindow.QUicWindow):
     @QtCore.Slot(bool)
     def on_deleteSequencerPushButton_clicked(self, checked=False):
         """
-        Slot method for the deleteSequencerAction's `triggered` signal.
+        Slot method for the `deleteSequencerAction` widget's `triggered` signal.
 
         :type checked: bool
         :rtype: None
@@ -506,7 +710,7 @@ class QFbxExportRangeEditor(quicwindow.QUicWindow):
     @QtCore.Slot(bool)
     def on_saveSequencerAction_triggered(self, checked=False):
         """
-        Slot method for the saveSequencerAction's `triggered` signal.
+        Slot method for the `saveSequencerAction` widget's `triggered` signal.
 
         :type checked: bool
         :rtype: None
@@ -517,7 +721,7 @@ class QFbxExportRangeEditor(quicwindow.QUicWindow):
     @QtCore.Slot(bool)
     def on_addExportRangeAction_triggered(self, checked=False):
         """
-        Slot method for the addExportRangeAction's `triggered` signal.
+        Slot method for the `addExportRangeAction` widget's `triggered` signal.
 
         :type checked: bool
         :rtype: None
@@ -529,7 +733,7 @@ class QFbxExportRangeEditor(quicwindow.QUicWindow):
     @QtCore.Slot(bool)
     def on_removeExportRangeAction_triggered(self, checked=False):
         """
-        Slot method for the removeExportRangeAction's `triggered` signal.
+        Slot method for the `removeExportRangeAction` widget's `triggered` signal.
 
         :type checked: bool
         :rtype: None
@@ -556,7 +760,7 @@ class QFbxExportRangeEditor(quicwindow.QUicWindow):
     @QtCore.Slot(bool)
     def on_importRangesAction_triggered(self, checked=False):
         """
-        Slot method for the importRangesAction's `triggered` signal.
+        Slot method for the `importRangesAction` widget's `triggered` signal.
 
         :type checked: bool
         :rtype: None
@@ -585,7 +789,7 @@ class QFbxExportRangeEditor(quicwindow.QUicWindow):
     @QtCore.Slot(bool)
     def on_exportRangesAction_triggered(self, checked=False):
         """
-        Slot method for the exportRangesAction's `triggered` signal.
+        Slot method for the `exportRangesAction` widget's `triggered` signal.
 
         :type checked: bool
         :rtype: None
@@ -613,7 +817,7 @@ class QFbxExportRangeEditor(quicwindow.QUicWindow):
     @QtCore.Slot(bool)
     def on_updateStartTimeAction_triggered(self, checked=False):
         """
-        Slot method for the updateStartTimeAction's `triggered` signal.
+        Slot method for the `updateStartTimeAction` widget's `triggered` signal.
 
         :type checked: bool
         :rtype: None
@@ -646,7 +850,7 @@ class QFbxExportRangeEditor(quicwindow.QUicWindow):
     @QtCore.Slot(bool)
     def on_updateEndTimeAction_triggered(self, checked=False):
         """
-        Slot method for the updateEndTimeAction's `triggered` signal.
+        Slot method for the `updateEndTimeAction` widget's `triggered` signal.
 
         :type checked: bool
         :rtype: None
@@ -679,7 +883,7 @@ class QFbxExportRangeEditor(quicwindow.QUicWindow):
     @QtCore.Slot(bool)
     def on_updateTimeRangeAction_triggered(self, checked=False):
         """
-        Slot method for the updateTimeRangeAction's `triggered` signal.
+        Slot method for the `updateTimeRangeAction` widget's `triggered` signal.
 
         :type checked: bool
         :rtype: None
@@ -712,11 +916,59 @@ class QFbxExportRangeEditor(quicwindow.QUicWindow):
             self.scene.setEndTime(self.currentSequencer.exportRanges[row].endFrame)
 
     @QtCore.Slot(bool)
-    def on_exportPushButton_clicked(self, checked=False):
+    def on_sequencerRollout_expandedChanged(self, expanded):
         """
-        Slot method for the exportPushButton's `clicked` signal.
+        Slot method for the `sequencerRollout` widget's `expanded` signal.
 
-        :type checked: bool
+        :type expanded: bool
+        :rtype: None
+        """
+
+        with qsignalblocker.QSignalBlocker(self.batchRollout):
+
+            self.batchRollout.setExpanded(not expanded)
+
+    @QtCore.Slot(int)
+    def on_sequencerComboBox_currentIndexChanged(self, index):
+        """
+        Slot method for the `sequencerComboBox` widget's `currentIndexChanged` signal.
+
+        :type index: int
+        :rtype: None
+        """
+
+        # Update current sequencer
+        #
+        numSequencers = len(self.sequencers)
+
+        if 0 <= index < numSequencers:
+
+            self._currentSequencer = self.sequencers[index]
+
+        else:
+
+            self._currentSequencer = None
+
+        # Invalidate sequences
+        #
+        self.invalidateExportRanges()
+
+    @QtCore.Slot(QtCore.QModelIndex)
+    def on_sequencerTreeView_clicked(self, index):
+        """
+        Slot method for the `sequencerTreeView` widget's `clicked` signal.
+
+        :type index: QtCore.QModelIndex
+        :rtype: None
+        """
+
+        self.invalidateExportPath()
+
+    @QtCore.Slot()
+    def on_exportPushButton_clicked(self):
+        """
+        Slot method for the `exportPushButton` widget's `clicked` signal.
+
         :rtype: None
         """
 
@@ -735,12 +987,11 @@ class QFbxExportRangeEditor(quicwindow.QUicWindow):
 
             self.currentSequencer.exportRanges[row].export(checkout=self.checkout)
 
-    @QtCore.Slot(bool)
-    def on_exportAllPushButton_clicked(self, checked=False):
+    @QtCore.Slot()
+    def on_exportAllPushButton_clicked(self):
         """
-        Slot method for the exportAllPushButton's `clicked` signal.
+        Slot method for the `exportAllPushButton` widget's `clicked` signal.
 
-        :type checked: bool
         :rtype: None
         """
 
@@ -760,11 +1011,23 @@ class QFbxExportRangeEditor(quicwindow.QUicWindow):
             exportRange.export(checkout=self.checkout)
 
     @QtCore.Slot(bool)
-    def on_addFilesPushButton_clicked(self, checked=False):
+    def on_batchRollout_expandedChanged(self, expanded):
         """
-        Slot method for the addFilesPushButton's `clicked` signal.
+        Slot method for the `batchRollout` widget's `expanded` signal.
 
-        :type checked: bool
+        :type expanded: bool
+        :rtype: None
+        """
+
+        with qsignalblocker.QSignalBlocker(self.sequencerRollout):
+
+            self.sequencerRollout.setExpanded(not expanded)
+
+    @QtCore.Slot()
+    def on_addFilesPushButton_clicked(self):
+        """
+        Slot method for the `addFilesPushButton` widget's `clicked` signal.
+
         :rtype: None
         """
 
@@ -808,12 +1071,11 @@ class QFbxExportRangeEditor(quicwindow.QUicWindow):
 
                 log.info('Operation aborted...')
 
-    @QtCore.Slot(bool)
-    def on_removeFilesPushButton_clicked(self, checked=False):
+    @QtCore.Slot()
+    def on_removeFilesPushButton_clicked(self):
         """
-        Slot method for the removeFilesPushButton's `clicked` signal.
+        Slot method for the `removeFilesPushButton` widget's `clicked` signal.
 
-        :type checked: bool
         :rtype: None
         """
 
@@ -826,12 +1088,11 @@ class QFbxExportRangeEditor(quicwindow.QUicWindow):
             row = self.fileListWidget.row(selectedItem)
             self.fileListWidget.takeItem(row)
 
-    @QtCore.Slot(bool)
-    def on_batchPathPushButton_clicked(self, checked=False):
+    @QtCore.Slot()
+    def on_batchPathPushButton_clicked(self):
         """
-        Slot method for the batchPathPushButton's `clicked` signal.
+        Slot method for the `batchPathPushButton` widget's `clicked` signal.
 
-        :type checked: bool
         :rtype: None
         """
 
@@ -852,12 +1113,11 @@ class QFbxExportRangeEditor(quicwindow.QUicWindow):
 
             log.info('Operation aborted...')
 
-    @QtCore.Slot(bool)
-    def on_batchPushButton_clicked(self, checked=False):
+    @QtCore.Slot()
+    def on_batchPushButton_clicked(self):
         """
-        Slot method for the batchPushButton's `clicked` signal.
+        Slot method for the `batchPushButton` widget's `clicked` signal.
 
-        :type checked: bool
         :rtype: None
         """
 

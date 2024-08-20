@@ -6,10 +6,10 @@ from copy import copy
 from dcc import fnscene, fnnode, fnskin, fnnotify
 from dcc.python import stringutils
 from dcc.json import jsonutils
-from dcc.ui import quicwindow, qdirectoryedit, qfileedit
+from dcc.ui import qsingletonwindow, qdirectoryedit, qfileedit
 from dcc.ui.dialogs import qlistdialog
 from dcc.ui.models import qpsonitemmodel, qpsonstyleditemdelegate
-from dcc.fbx.libs import fbxio, fbxasset, fbxexportset, fbxscript
+from dcc.fbx.libs import fbxio, fbxasset, fbxexportset, FbxFileType, FbxFileVersion
 
 import logging
 logging.basicConfig()
@@ -17,9 +17,9 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-class QFbxExportSetEditor(quicwindow.QUicWindow):
+class QFbxExportSetEditor(qsingletonwindow.QSingletonWindow):
     """
-    Overload of `QUicWindow` used to edit FBX export-set data.
+    Overload of `QSingletonWindow` that interfaces with FBX export-set data.
     """
 
     # region Dunderscores
@@ -44,61 +44,376 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
         self._scene = fnscene.FnScene()
         self._notifies = fnnotify.FnNotify()
 
-        # Declare public variables
+    def __setup_ui__(self, *args, **kwargs):
+        """
+        Private method that initializes the user interface.
+
+        :rtype: None
+        """
+
+        # Call parent method
         #
-        self.fileMenu = None
-        self.saveAction = None
-        self.saveAsAction = None
-        self.importAction = None
-        self.exportAction = None
+        super(QFbxExportSetEditor, self).__setup_ui__(*args, **kwargs)
 
-        self.settingsMenu = None
-        self.useBuiltinSerializerAction = None
-        self.generateLogsAction = None
+        # Initialize main window
+        #
+        self.setWindowTitle("|| Fbx Export Set Editor")
+        self.setMinimumSize(QtCore.QSize(400, 700))
 
-        self.helpMenu = None
-        self.usingFbxExportSetEditorAction = None
+        # Initialize main menu-bar
+        #
+        mainMenuBar = QtWidgets.QMenuBar()
+        mainMenuBar.setObjectName('mainMenuBar')
 
-        self.assetGroupBox = None
-        self.assetNameWidget = None
-        self.assetNameLabel = None
-        self.assetNameLineEdit = None
-        self.savePushButton = None
-        self.assetDirectoryWidget = None
-        self.assetDirectoryLabel = None
-        self.assetDirectoryLineEdit = None
-        self.assetDirectoryPushButton = None
-        self.fileTypeWidget = None
-        self.fileTypeLabel = None
-        self.fileTypeComboBox = None
-        self.fileVersionWidget = None
-        self.fileVersionLabel = None
-        self.fileVersionComboBox = None
+        self.setMenuBar(mainMenuBar)
 
-        self.exportSetGroupBox = None
-        self.exportSetComboBox = None
-        self.exportSetInteropWidget = None
-        self.newExportSetPushButton = None
-        self.duplicateExportSetPushButton = None
-        self.renameExportSetPushButton = None
-        self.reorderExportSetPushButton = None
-        self.deleteExportSetPushButton = None
-        self.exportSetTreeView = None
-        self.exportSetItemModel = None
-        self.exportSetItemDelegate = None
+        # Initialize file menu
+        #
+        self.fileMenu = mainMenuBar.addMenu('&File')
+        self.fileMenu.setObjectName('fileMenu')
+        self.fileMenu.setTearOffEnabled(True)
 
-        self.exportGroupBox = None
-        self.exportPathWidget = None
-        self.exportPathLineEdit = None
-        self.checkoutCheckBox = None
-        self.exportInteropWidget = None
-        self.exportPushButton = None
-        self.exportAllPushButton = None
+        self.saveAction = QtWidgets.QAction(QtGui.QIcon(':dcc/icons/save_file.svg'), '&Save', parent=self.fileMenu)
+        self.saveAction.setObjectName('saveAction')
+        self.saveAction.triggered.connect(self.on_saveAction_triggered)
 
-        self.customContextMenu = None
-        self.copySelectionAction = None
-        self.copyInfluencesAction = None
-        self.clearItemsAction = None
+        self.importAction = QtWidgets.QAction(QtGui.QIcon(':dcc/icons/import_file.svg'), '&Import', parent=self.fileMenu)
+        self.importAction.setObjectName('importAction')
+        self.importAction.triggered.connect(self.on_importAction_triggered)
+
+        self.exportAction = QtWidgets.QAction(QtGui.QIcon(':dcc/icons/export_file.svg'), '&Export', parent=self.fileMenu)
+        self.exportAction.setObjectName('exportAction')
+        self.exportAction.triggered.connect(self.on_exportAction_triggered)
+
+        self.fileMenu.addAction(self.saveAction)
+        self.fileMenu.addSeparator()
+        self.fileMenu.addActions([self.importAction, self.exportAction])
+
+        # Initialize settings menu
+        #
+        self.settingsMenu = mainMenuBar.addMenu('&Settings')
+        self.settingsMenu.setObjectName('fileMenu')
+        self.settingsMenu.setTearOffEnabled(True)
+
+        self.useBuiltinSerializerAction = QtWidgets.QAction('Use Builtin Serializer', parent=self.settingsMenu)
+        self.useBuiltinSerializerAction.setObjectName('useBuiltinSerializerAction')
+        self.useBuiltinSerializerAction.setCheckable(True)
+        self.useBuiltinSerializerAction.triggered.connect(self.on_useBuiltinSerializerAction_triggered)
+
+        self.generateLogsAction = QtWidgets.QAction('Generate Logs', parent=self.settingsMenu)
+        self.generateLogsAction.setObjectName('generateLogsActions')
+        self.generateLogsAction.setCheckable(True)
+
+        self.settingsMenu.addActions([self.useBuiltinSerializerAction, self.generateLogsAction])
+
+        # Initialize help menu
+        #
+        self.helpMenu = mainMenuBar.addMenu('&Help')
+        self.helpMenu.setObjectName('helpMenu')
+        self.helpMenu.setTearOffEnabled(True)
+
+        self.usingFbxExportSetEditorAction = QtWidgets.QAction('Using Fbx Export Set Editor', parent=self.helpMenu)
+        self.usingFbxExportSetEditorAction.setObjectName('usingFbxExportSetEditorAction')
+        self.usingFbxExportSetEditorAction.triggered.connect(self.on_usingFbxExportSetEditorAction_triggered)
+
+        self.helpMenu.addAction(self.usingFbxExportSetEditorAction)
+
+        # Initialize central widget
+        #
+        centralLayout = QtWidgets.QVBoxLayout()
+        centralLayout.setObjectName('centralLayout')
+
+        centralWidget = QtWidgets.QWidget()
+        centralWidget.setObjectName('centralWidget')
+        centralWidget.setLayout(centralLayout)
+
+        self.setCentralWidget(centralWidget)
+
+        # Initialize asset group-box
+        #
+        self.assetLayout = QtWidgets.QGridLayout()
+        self.assetLayout.setObjectName('assetLayout')
+
+        self.assetGroupBox = QtWidgets.QGroupBox('Asset:')
+        self.assetGroupBox.setObjectName('assetGroupBox')
+        self.assetGroupBox.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed))
+        self.assetGroupBox.setLayout(self.assetLayout)
+
+        self.assetNameLabel = QtWidgets.QLabel('Name:')
+        self.assetNameLabel.setObjectName('assetNameLabel')
+        self.assetNameLabel.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed))
+        self.assetNameLabel.setFixedSize(QtCore.QSize(60, 24))
+        self.assetNameLabel.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+
+        self.assetNameLineEdit = QtWidgets.QLineEdit()
+        self.assetNameLineEdit.setObjectName('assetNameLineEdit')
+        self.assetNameLineEdit.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed))
+        self.assetNameLineEdit.setFixedHeight(24)
+        self.assetNameLineEdit.setFocusPolicy(QtCore.Qt.ClickFocus)
+        self.assetNameLineEdit.setClearButtonEnabled(True)
+        self.assetNameLineEdit.textChanged.connect(self.on_assetNameLineEdit_textChanged)
+
+        self.savePushButton = QtWidgets.QPushButton(QtGui.QIcon(':/dcc/icons/save_file.svg'), '')
+        self.savePushButton.setObjectName('savePushButton')
+        self.savePushButton.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed))
+        self.savePushButton.setFixedSize(QtCore.QSize(24, 24))
+        self.savePushButton.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.savePushButton.clicked.connect(self.on_savePushButton_clicked)
+
+        self.assetDirectoryLabel = QtWidgets.QLabel('Directory:')
+        self.assetDirectoryLabel.setObjectName('assetDirectoryLabel')
+        self.assetDirectoryLabel.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed))
+        self.assetDirectoryLabel.setFixedSize(QtCore.QSize(60, 24))
+        self.assetDirectoryLabel.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+
+        self.assetDirectoryLineEdit = QtWidgets.QLineEdit()
+        self.assetDirectoryLineEdit.setObjectName('assetDirectoryLineEdit')
+        self.assetDirectoryLineEdit.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed))
+        self.assetDirectoryLineEdit.setFixedHeight(24)
+        self.assetDirectoryLineEdit.setFocusPolicy(QtCore.Qt.ClickFocus)
+        self.assetDirectoryLineEdit.setClearButtonEnabled(True)
+        self.assetDirectoryLineEdit.textChanged.connect(self.on_assetDirectoryLineEdit_textChanged)
+
+        self.assetDirectoryPushButton = QtWidgets.QPushButton(QtGui.QIcon(':/dcc/icons/open_folder.svg'), '')
+        self.assetDirectoryPushButton.setObjectName('assetDirectoryPushButton')
+        self.assetDirectoryPushButton.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed))
+        self.assetDirectoryPushButton.setFixedSize(QtCore.QSize(24, 24))
+        self.assetDirectoryPushButton.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.assetDirectoryPushButton.clicked.connect(self.on_assetDirectoryPushButton_clicked)
+
+        self.fileTypeLabel = QtWidgets.QLabel('File Type:')
+        self.fileTypeLabel.setObjectName('fileTypeLabel')
+        self.fileTypeLabel.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed))
+        self.fileTypeLabel.setFixedSize(QtCore.QSize(60, 24))
+        self.fileTypeLabel.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+
+        self.fileTypeComboBox = QtWidgets.QComboBox()
+        self.fileTypeComboBox.setObjectName('fileTypeComboBox')
+        self.fileTypeComboBox.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed))
+        self.fileTypeComboBox.setFixedHeight(24)
+        self.fileTypeComboBox.addItems([str(member.name) for member in FbxFileType])
+        self.fileTypeComboBox.currentIndexChanged.connect(self.on_fileTypeComboBox_currentIndexChanged)
+
+        self.fileVersionLabel = QtWidgets.QLabel('File Version:')
+        self.fileVersionLabel.setObjectName('fileVersionLabel')
+        self.fileVersionLabel.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed))
+        self.fileVersionLabel.setFixedSize(QtCore.QSize(60, 24))
+        self.fileVersionLabel.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+
+        self.fileVersionComboBox = QtWidgets.QComboBox()
+        self.fileVersionComboBox.setObjectName('fileVersionComboBox')
+        self.fileVersionComboBox.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed))
+        self.fileVersionComboBox.setFixedHeight(24)
+        self.fileVersionComboBox.addItems([str(member.name) for member in FbxFileVersion])
+        self.fileVersionComboBox.currentIndexChanged.connect(self.on_fileVersionComboBox_currentIndexChanged)
+
+        self.assetLayout.addWidget(self.assetNameLabel, 0, 0)
+        self.assetLayout.addWidget(self.assetNameLineEdit, 0, 1)
+        self.assetLayout.addWidget(self.savePushButton, 0, 2)
+        self.assetLayout.addWidget(self.assetDirectoryLabel, 1, 0)
+        self.assetLayout.addWidget(self.assetDirectoryLineEdit, 1, 1)
+        self.assetLayout.addWidget(self.assetDirectoryPushButton, 1, 2)
+        self.assetLayout.addWidget(self.fileTypeLabel, 2, 0)
+        self.assetLayout.addWidget(self.fileTypeComboBox, 2, 1, 1, 2)
+        self.assetLayout.addWidget(self.fileVersionLabel, 3, 0)
+        self.assetLayout.addWidget(self.fileVersionComboBox, 3, 1, 1, 2)
+
+        centralLayout.addWidget(self.assetGroupBox)
+
+        # Initialize export-sets group-box
+        #
+        self.exportSetLayout = QtWidgets.QVBoxLayout()
+        self.exportSetLayout.setObjectName('exportSetLayout')
+
+        self.exportSetGroupBox = QtWidgets.QGroupBox('Export Sets:')
+        self.exportSetGroupBox.setObjectName('exportSetGroupBox')
+        self.exportSetGroupBox.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding))
+        self.exportSetGroupBox.setLayout(self.exportSetLayout)
+
+        self.exportSetComboBox = QtWidgets.QComboBox()
+        self.exportSetComboBox.setObjectName('exportSetComboBox')
+        self.exportSetComboBox.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed))
+        self.exportSetComboBox.setFixedHeight(24)
+        self.exportSetComboBox.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.exportSetComboBox.currentIndexChanged.connect(self.on_exportSetComboBox_currentIndexChanged)
+
+        self.newExportSetPushButton = QtWidgets.QPushButton(QtGui.QIcon(':/dcc/icons/new_file.svg'), '')
+        self.newExportSetPushButton.setObjectName('newExportSetPushButton')
+        self.newExportSetPushButton.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed))
+        self.newExportSetPushButton.setFixedSize(QtCore.QSize(24, 24))
+        self.newExportSetPushButton.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.newExportSetPushButton.clicked.connect(self.on_newExportSetPushButton_clicked)
+
+        self.duplicateExportSetPushButton = QtWidgets.QPushButton(QtGui.QIcon(':/dcc/icons/copy_file.svg'), '')
+        self.duplicateExportSetPushButton.setObjectName('duplicateExportSetPushButton')
+        self.duplicateExportSetPushButton.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed))
+        self.duplicateExportSetPushButton.setFixedSize(QtCore.QSize(24, 24))
+        self.duplicateExportSetPushButton.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.duplicateExportSetPushButton.clicked.connect(self.on_duplicateExportSetPushButton_clicked)
+
+        self.renameExportSetPushButton = QtWidgets.QPushButton(QtGui.QIcon(':/dcc/icons/rename.svg'), '')
+        self.renameExportSetPushButton.setObjectName('renameExportSetPushButton')
+        self.renameExportSetPushButton.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed))
+        self.renameExportSetPushButton.setFixedSize(QtCore.QSize(24, 24))
+        self.renameExportSetPushButton.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.renameExportSetPushButton.clicked.connect(self.on_renameExportSetPushButton_clicked)
+
+        self.reorderExportSetPushButton = QtWidgets.QPushButton(QtGui.QIcon(':/dcc/icons/reorder.svg'), '')
+        self.reorderExportSetPushButton.setObjectName('reorderExportSetPushButton')
+        self.reorderExportSetPushButton.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed))
+        self.reorderExportSetPushButton.setFixedSize(QtCore.QSize(24, 24))
+        self.reorderExportSetPushButton.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.reorderExportSetPushButton.clicked.connect(self.on_reorderExportSetPushButton_clicked)
+
+        self.deleteExportSetPushButton = QtWidgets.QPushButton(QtGui.QIcon(':/dcc/icons/delete.svg'), '')
+        self.deleteExportSetPushButton.setObjectName('deleteExportSetPushButton')
+        self.deleteExportSetPushButton.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed))
+        self.deleteExportSetPushButton.setFixedSize(QtCore.QSize(24, 24))
+        self.deleteExportSetPushButton.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.deleteExportSetPushButton.clicked.connect(self.on_deleteExportSetPushButton_clicked)
+
+        self.exportSetButtonsLayout = QtWidgets.QHBoxLayout()
+        self.exportSetButtonsLayout.setObjectName('exportSetButtonsLayout')
+        self.exportSetButtonsLayout.setContentsMargins(0, 0, 0, 0)
+        self.exportSetButtonsLayout.addWidget(self.exportSetComboBox)
+        self.exportSetButtonsLayout.addWidget(self.newExportSetPushButton)
+        self.exportSetButtonsLayout.addWidget(self.duplicateExportSetPushButton)
+        self.exportSetButtonsLayout.addWidget(self.renameExportSetPushButton)
+        self.exportSetButtonsLayout.addWidget(self.reorderExportSetPushButton)
+        self.exportSetButtonsLayout.addWidget(self.deleteExportSetPushButton)
+
+        self.exportSetTreeView = QtWidgets.QTreeView()
+        self.exportSetTreeView.setObjectName('exportSetTreeView')
+        self.exportSetTreeView.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding))
+        self.exportSetTreeView.setFocusPolicy(QtCore.Qt.ClickFocus)
+        self.exportSetTreeView.setMouseTracking(True)
+        self.exportSetTreeView.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.exportSetTreeView.setStyleSheet('QTreeView::item { height: 24px; }')
+        self.exportSetTreeView.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        self.exportSetTreeView.setEditTriggers(QtWidgets.QAbstractItemView.DoubleClicked | QtWidgets.QAbstractItemView.EditKeyPressed)
+        self.exportSetTreeView.setDragEnabled(True)
+        self.exportSetTreeView.setDragDropOverwriteMode(False)
+        self.exportSetTreeView.setDragDropMode(QtWidgets.QAbstractItemView.InternalMove)
+        self.exportSetTreeView.setDefaultDropAction(QtCore.Qt.MoveAction)
+        self.exportSetTreeView.setAlternatingRowColors(True)
+        self.exportSetTreeView.setSelectionMode(QtWidgets.QAbstractItemView.ContiguousSelection)
+        self.exportSetTreeView.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
+        self.exportSetTreeView.setUniformRowHeights(True)
+        self.exportSetTreeView.setAnimated(True)
+        self.exportSetTreeView.setExpandsOnDoubleClick(False)
+        self.exportSetTreeView.customContextMenuRequested.connect(self.on_exportSetTreeView_customContextMenuRequested)
+
+        self.exportSetTreeHeader = self.exportSetTreeView.header()
+        self.exportSetTreeHeader.setDefaultSectionSize(200)
+        self.exportSetTreeHeader.setMinimumSectionSize(100)
+        self.exportSetTreeHeader.setStretchLastSection(True)
+        self.exportSetTreeHeader.setVisible(True)
+
+        self.exportSetItemModel = qpsonitemmodel.QPSONItemModel(parent=self.exportSetTreeView)
+        self.exportSetItemModel.setObjectName('exportSetItemModel')
+
+        self.exportSetTreeView.setModel(self.exportSetItemModel)
+
+        self.exportSetItemDelegate = qpsonstyleditemdelegate.QPSONStyledItemDelegate(parent=self.exportSetTreeView)
+        self.exportSetItemDelegate.setObjectName('exportSetItemDelegate')
+
+        self.exportSetTreeView.setItemDelegate(self.exportSetItemDelegate)
+
+        self.exportSetLayout.addLayout(self.exportSetButtonsLayout)
+        self.exportSetLayout.addWidget(self.exportSetTreeView)
+
+        centralLayout.addWidget(self.exportSetGroupBox)
+
+        # Initialize export group-box
+        #
+        self.exportLayout = QtWidgets.QVBoxLayout()
+        self.exportLayout.setObjectName('exportLayout')
+
+        self.exportGroupBox = QtWidgets.QGroupBox('Export:')
+        self.exportGroupBox.setObjectName('exportGroupBox')
+        self.exportGroupBox.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed))
+        self.exportGroupBox.setLayout(self.exportLayout)
+
+        self.exportPathLineEdit = QtWidgets.QLineEdit()
+        self.exportPathLineEdit.setObjectName('exportPathLineEdit')
+        self.exportPathLineEdit.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed))
+        self.exportPathLineEdit.setFixedHeight(24)
+        self.exportPathLineEdit.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.exportPathLineEdit.setReadOnly(True)
+
+        self.checkoutCheckBox = QtWidgets.QCheckBox('Checkout')
+        self.checkoutCheckBox.setObjectName('checkoutCheckBox')
+        self.checkoutCheckBox.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed))
+        self.checkoutCheckBox.setFixedHeight(24)
+        self.checkoutCheckBox.setFocusPolicy(QtCore.Qt.NoFocus)
+
+        self.exportPathLayout = QtWidgets.QHBoxLayout()
+        self.exportPathLayout.setObjectName('exportPathLayout')
+        self.exportPathLayout.setContentsMargins(0, 0, 0, 0)
+        self.exportPathLayout.addWidget(self.exportPathLineEdit)
+        self.exportPathLayout.addWidget(self.checkoutCheckBox)
+
+        self.exportPushButton = QtWidgets.QPushButton('Export')
+        self.exportPushButton.setObjectName('exportPushButton')
+        self.exportPushButton.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed))
+        self.exportPushButton.setFixedHeight(24)
+        self.exportPushButton.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.exportPushButton.clicked.connect(self.on_exportPushButton_clicked)
+
+        self.exportSelectionPushButton = QtWidgets.QPushButton('Export Selection')
+        self.exportSelectionPushButton.setObjectName('exportSelectionPushButton')
+        self.exportSelectionPushButton.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed))
+        self.exportSelectionPushButton.setFixedHeight(24)
+        self.exportSelectionPushButton.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.exportSelectionPushButton.clicked.connect(self.on_exportSelectionPushButton_clicked)
+
+        self.exportSubsetPushButton = QtWidgets.QPushButton('Export Subset')
+        self.exportSubsetPushButton.setObjectName('exportSubsetPushButton')
+        self.exportSubsetPushButton.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed))
+        self.exportSubsetPushButton.setFixedHeight(24)
+        self.exportSubsetPushButton.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.exportSubsetPushButton.clicked.connect(self.on_exportSubsetPushButton_clicked)
+
+        self.exportAllPushButton = QtWidgets.QPushButton('Export All')
+        self.exportAllPushButton.setObjectName('exportAllPushButton')
+        self.exportAllPushButton.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed))
+        self.exportAllPushButton.setFixedHeight(24)
+        self.exportAllPushButton.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.exportAllPushButton.clicked.connect(self.on_exportAllPushButton_clicked)
+
+        self.exportButtonsLayout = QtWidgets.QGridLayout()
+        self.exportButtonsLayout.setObjectName('exportButtonsLayout')
+        self.exportButtonsLayout.setContentsMargins(0, 0, 0, 0)
+        self.exportButtonsLayout.addWidget(self.exportPushButton, 0, 0)
+        self.exportButtonsLayout.addWidget(self.exportSelectionPushButton, 0, 1)
+        self.exportButtonsLayout.addWidget(self.exportSubsetPushButton, 1, 0)
+        self.exportButtonsLayout.addWidget(self.exportAllPushButton, 1, 1)
+
+        self.exportLayout.addLayout(self.exportPathLayout)
+        self.exportLayout.addLayout(self.exportButtonsLayout)
+
+        centralLayout.addWidget(self.exportGroupBox)
+
+        # Initialize custom context-menu
+        #
+        self.customContextMenu = QtWidgets.QMenu(parent=self.exportSetTreeView)
+        self.customContextMenu.setObjectName('customContextMenu')
+
+        self.copySelectionAction = QtWidgets.QAction('Copy Selection', parent=self.customContextMenu)
+        self.copySelectionAction.setObjectName('copySelectionAction')
+        self.copySelectionAction.triggered.connect(self.on_copySelectionAction_triggered)
+
+        self.copyInfluencesAction = QtWidgets.QAction('Copy Influences', parent=self.customContextMenu)
+        self.copyInfluencesAction.setObjectName('copyInfluencesAction')
+        self.copyInfluencesAction.triggered.connect(self.on_copyInfluencesAction_triggered)
+
+        self.clearItemsAction = QtWidgets.QAction('Clear Items', parent=self.customContextMenu)
+        self.clearItemsAction.setObjectName('clearItemsAction')
+        self.clearItemsAction.triggered.connect(self.on_clearItemsAction_triggered)
+
+        self.customContextMenu.addActions([self.copySelectionAction, self.copyInfluencesAction])
+        self.customContextMenu.addSeparator()
+        self.customContextMenu.addAction(self.clearItemsAction)
     # endregion
 
     # region Properties
@@ -167,86 +482,39 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
     # endregion
 
     # region Methods
-    def postLoad(self, *args, **kwargs):
+    def addCallbacks(self):
         """
-        Called after the user interface has been loaded.
+        Adds any callbacks required by this window.
 
         :rtype: None
         """
 
-        # Call parent method
+        # Check if notifies already exist
         #
-        super(QFbxExportSetEditor, self).postLoad(*args, **kwargs)
+        hasNotifies = len(self._notifies) > 0
 
-        # Initialize tree view model
+        if not hasNotifies:
+
+            self._notifies.addPostFileOpenNotify(self.sceneChanged)
+
+        # Invalidate sequencers
         #
-        self.exportSetItemModel = qpsonitemmodel.QPSONItemModel(parent=self.exportSetTreeView)
-        self.exportSetItemModel.setObjectName('exportSetItemModel')
+        self.sceneChanged()
 
-        self.exportSetTreeView.setModel(self.exportSetItemModel)
+    def removeCallbacks(self):
+        """
+        Removes any callbacks created by this window.
 
-        self.exportSetItemDelegate = qpsonstyleditemdelegate.QPSONStyledItemDelegate(parent=self.exportSetTreeView)
-        self.exportSetItemDelegate.setObjectName('exportSetItemDelegate')
+        :rtype: None
+        """
 
-        self.exportSetTreeView.setItemDelegate(self.exportSetItemDelegate)
-
-        # Initialize file menu
+        # Check if notifies exist
         #
-        self.saveAction = QtWidgets.QAction(QtGui.QIcon(':dcc/icons/save.svg'), '&Save', parent=self.fileMenu)
-        self.saveAction.setObjectName('saveAction')
-        self.saveAction.triggered.connect(self.on_saveAction_triggered)
+        hasNotifies = len(self._notifies) > 0
 
-        self.importAction = QtWidgets.QAction(QtGui.QIcon(':dcc/icons/import.svg'), '&Import', parent=self.fileMenu)
-        self.importAction.setObjectName('importAction')
-        self.importAction.triggered.connect(self.on_importAction_triggered)
+        if hasNotifies:
 
-        self.exportAction = QtWidgets.QAction(QtGui.QIcon(':dcc/icons/export.svg'), '&Export', parent=self.fileMenu)
-        self.exportAction.setObjectName('exportAction')
-        self.exportAction.triggered.connect(self.on_exportAction_triggered)
-
-        self.fileMenu.addAction(self.saveAction)
-        self.fileMenu.addSeparator()
-        self.fileMenu.addActions([self.importAction, self.exportAction])
-
-        # Initialize settings menu
-        #
-        self.useBuiltinSerializerAction = QtWidgets.QAction('Use Builtin Serializer', parent=self.settingsMenu)
-        self.useBuiltinSerializerAction.setObjectName('useBuiltinSerializerAction')
-        self.useBuiltinSerializerAction.setCheckable(True)
-        self.useBuiltinSerializerAction.triggered.connect(self.on_useBuiltinSerializerAction_triggered)
-
-        self.generateLogsAction = QtWidgets.QAction('Generate Logs', parent=self.settingsMenu)
-        self.generateLogsAction.setObjectName('generateLogsActions')
-        self.generateLogsAction.setCheckable(True)
-
-        self.settingsMenu.addActions([self.useBuiltinSerializerAction, self.generateLogsAction])
-
-        # Initialize help menu
-        #
-        self.usingFbxExportSetEditorAction = QtWidgets.QAction('Using Fbx Export Set Editor', parent=self.helpMenu)
-        self.usingFbxExportSetEditorAction.setObjectName('usingFbxExportSetEditorAction')
-        self.usingFbxExportSetEditorAction.triggered.connect(self.on_usingFbxExportSetEditorAction_triggered)
-
-        # Initialize custom context menu
-        #
-        self.customContextMenu = QtWidgets.QMenu(parent=self.exportSetTreeView)
-        self.customContextMenu.setObjectName('customContextMenu')
-
-        self.copySelectionAction = QtWidgets.QAction('Copy Selection', parent=self.customContextMenu)
-        self.copySelectionAction.setObjectName('copySelectionAction')
-        self.copySelectionAction.triggered.connect(self.on_copySelectionAction_triggered)
-
-        self.copyInfluencesAction = QtWidgets.QAction('Copy Influences', parent=self.customContextMenu)
-        self.copyInfluencesAction.setObjectName('copyInfluencesAction')
-        self.copyInfluencesAction.triggered.connect(self.on_copyInfluencesAction_triggered)
-
-        self.clearItemsAction = QtWidgets.QAction('Clear Items', parent=self.customContextMenu)
-        self.clearItemsAction.setObjectName('clearItemsAction')
-        self.clearItemsAction.triggered.connect(self.on_clearItemsAction_triggered)
-
-        self.customContextMenu.addActions([self.copySelectionAction, self.copyInfluencesAction])
-        self.customContextMenu.addSeparator()
-        self.customContextMenu.addAction(self.clearItemsAction)
+            self._notifies.clear()
 
     def saveSettings(self, settings):
         """
@@ -388,46 +656,6 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
         self.reloadAsset()
     # endregion
 
-    # region Events
-    def showEvent(self, event):
-        """
-        Event method called after the window has been shown.
-
-        :type event: QtGui.QShowEvent
-        :rtype: None
-        """
-
-        # Call parent method
-        #
-        super(QFbxExportSetEditor, self).showEvent(event)
-
-        # Add notifies
-        #
-        hasNotifies = len(self._notifies) > 0
-
-        if not hasNotifies:
-
-            self._notifies.addPostFileOpenNotify(self.sceneChanged)
-
-        self.sceneChanged()
-
-    def closeEvent(self, event):
-        """
-        Event method called after the window has been closed.
-
-        :type event: QtGui.QCloseEvent
-        :rtype: None
-        """
-
-        # Remove notifies
-        #
-        self._notifies.clear()
-
-        # Call parent method
-        #
-        super(QFbxExportSetEditor, self).closeEvent(event)
-    # endregion
-
     # region Slots
     @QtCore.Slot()
     def on_saveAction_triggered(self):
@@ -439,36 +667,6 @@ class QFbxExportSetEditor(quicwindow.QUicWindow):
 
         self.manager.saveAsset(self.asset)
         self.scene.save()
-
-    @QtCore.Slot()
-    def on_saveAsAction_triggered(self):
-        """
-        Slot method for the `saveAsAction` widget's `triggered` signal.
-
-        :rtype: None
-        """
-
-        # Prompt user for save path
-        #
-        currentDirectory = os.path.expandvars(self.asset.directory)
-
-        filePath = QtWidgets.QFileDialog.getSaveFileName(
-            parent=self,
-            caption='Save Asset As',
-            dir=currentDirectory,
-            filter='Fbx Assets (*.json)'
-        )
-
-        # Check if path is valid
-        # A null value will be returned if the user exited
-        #
-        if filePath:
-
-            self.manager.saveAssetAs(self.asset, filePath)
-
-        else:
-
-            log.info('Operation aborted...')
 
     @QtCore.Slot()
     def on_importAction_triggered(self):
