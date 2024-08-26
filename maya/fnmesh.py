@@ -139,7 +139,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
         if component.hasFn(om.MFn.kMeshVertComponent):
 
-            return elements
+            return list(elements)
 
         elif component.hasFn(om.MFn.kMeshEdgeComponent):
 
@@ -165,7 +165,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
         if component.hasFn(om.MFn.kMeshEdgeComponent):
 
-            return elements
+            return list(elements)
 
         elif component.hasFn(om.MFn.kMeshVertComponent):
 
@@ -191,7 +191,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
         if component.hasFn(om.MFn.kMeshPolygonComponent):
 
-            return elements
+            return list(elements)
 
         elif component.hasFn(om.MFn.kMeshVertComponent):
 
