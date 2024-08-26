@@ -703,7 +703,7 @@ def getAssociatedReferenceNode(node):
 
             else:
 
-                continue
+                pass
 
     return None
 
