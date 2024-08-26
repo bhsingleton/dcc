@@ -348,9 +348,19 @@ def moveDirectory(fromDir, toDir, search='', replace='', changelist='default'):
 
     # Iterate through files
     #
+    clientSpec = clientutils.getCurrentClient()
+
     for (fromFile, toFile) in zip(fromFiles, toFiles):
 
-        cmds.move(fromFile, toFile, changelist=changelist)
+        # Remap local paths
+        #
+        fromDepotFile = clientSpec.mapToDepot(fromFile)
+        toDepotFile = clientSpec.mapToDepot(toFile)
+
+        # Move depot file
+        #
+        log.info(f'Moving file: {fromDepotFile} > {toDepotFile}')
+        cmds.move(fromDepotFile, toDepotFile, changelist=changelist)
 
 
 def moveFile(fromFile, toDir, search='', replace='', changelist='default'):
@@ -364,11 +374,20 @@ def moveFile(fromFile, toDir, search='', replace='', changelist='default'):
     :type changelist: Union[str, int]
     :rtype: None
     """
-    
+
+    # Remap local paths
+    #
     filename = os.path.basename(fromFile)
     toFile = os.path.join(toDir, filename.replace(search, replace))
 
-    cmds.move(fromFile, toFile, changelist=changelist)
+    clientSpec = clientutils.getCurrentClient()
+    fromDepotFile = clientSpec.mapToDepot(fromFile)
+    toDepotFile = clientSpec.mapToDepot(toFile)
+
+    # Move depot file
+    #
+    log.info(f'Moving file: {fromDepotFile} > {toDepotFile}')
+    cmds.move(fromDepotFile, toDepotFile, changelist=changelist)
 
 
 def saveChangelist(changelist, filePath, **kwargs):

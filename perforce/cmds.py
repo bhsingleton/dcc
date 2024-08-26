@@ -322,7 +322,7 @@ def move(fromFile, toFile, **kwargs):
     try:
 
         p4.connect()
-        specs = p4.run('move', '-c', changelist, fromFile, toFile)
+        specs = p4.run('move', '-r', '-c', changelist, fromFile, toFile)
         logResults(specs, **kwargs)
 
         success = True
