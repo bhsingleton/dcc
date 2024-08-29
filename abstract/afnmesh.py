@@ -646,6 +646,87 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         return list(self.iterConnectedFaces(*indices, **kwargs))
 
+    def getElements(self, *indices, **kwargs):
+        """
+        Converts the supplied component indices into element groups.
+
+        :type indices: Union[int, List[int]]
+        :key componentType: ComponentType
+        :rtype: List[List[int]]
+        """
+
+        # Get functions associated with component type
+        #
+        componentType = kwargs.get('componentType', self.ComponentType.Vertex)
+
+        numComponentFunc = None
+        getConnectComponentFunc = None
+
+        if componentType == self.ComponentType.Vertex:
+
+            numComponentFunc = self.numVertices
+            getConnectComponentFunc = self.getConnectedVertices
+
+        elif componentType == self.ComponentType.Edge:
+
+            numComponentFunc = self.numEdges
+            getConnectComponentFunc = self.getConnectedEdges
+
+        elif componentType == self.ComponentType.Face:
+
+            numComponentFunc = self.numFaces
+            getConnectComponentFunc = self.getConnectedFaces
+
+        else:
+
+            raise TypeError(f'getElements() expects a valid component type ({type(componentType).__name__} given)!')
+
+        # Evaluate supplied indices
+        #
+        numIndices = len(indices)
+
+        if numIndices == 0:
+
+            indices = self.range(numComponentFunc())
+
+        # Iterate through indices
+        #
+        indexTracker = {}
+        elementGroups = []
+
+        for index in indices:
+
+            # Check if index has been processed
+            #
+            exists = indexTracker.get(index, False)
+
+            if exists:
+
+                continue
+
+            # Collect indices from element group
+            #
+            elementIndices = {index}
+
+            previousCount = 1
+            growthCount = 1
+
+            while growthCount >= 1:
+
+                connectedIndices = getConnectComponentFunc(*elementIndices, componentType=componentType)
+                elementIndices = elementIndices.union(connectedIndices)
+
+                newCount = len(elementIndices)
+                growthCount = newCount - previousCount
+                previousCount = int(newCount)
+
+            # Append element group and update tracker
+            #
+            elementGroups.append(elementIndices)
+            indexTracker.update(dict.fromkeys(elementIndices, True))
+
+        return elementGroups
+
     def distanceBetweenVertices(self, *indices):
         """
         Evaluates the distance between the supplied vertices.
