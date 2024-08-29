@@ -116,7 +116,7 @@ class FbxExportSet(fbxbase.FbxBase):
 
         # Check if directory is relative to cwd
         #
-        cwd = self.cwd(expandVars=True)
+        cwd = self.cwd(absolute=True)
 
         if self.scene.isPathAbsolute(directory):
 
@@ -312,11 +312,11 @@ class FbxExportSet(fbxbase.FbxBase):
 
             return super(FbxExportSet, cls).createEditor(name, parent=parent)
 
-    def cwd(self, expandVars=False):
+    def cwd(self, absolute=False):
         """
         Returns the current working directory from the parent asset.
 
-        :type expandVars: bool
+        :type absolute: bool
         :rtype: str
         """
 
@@ -326,11 +326,23 @@ class FbxExportSet(fbxbase.FbxBase):
 
             return ''
 
-        # Check if variables should be expanded
+        # Check if absolute path is required
         #
-        if expandVars:
+        cwd = str(self.asset.directory)
 
-            return os.path.expandvars(self.asset.directory)
+        if not absolute:
+
+            return cwd
+
+        # Evaluate path type to be expanded
+        #
+        if self.scene.isPathVariable(cwd):
+
+            return os.path.expandvars(cwd)
+
+        elif self.scene.isPathRelative(cwd):
+
+            return os.path.join(self.scene.currentProjectDirectory(), cwd)
 
         else:
 
@@ -347,7 +359,7 @@ class FbxExportSet(fbxbase.FbxBase):
         #
         fileName = '{name}.fbx'.format(name=self.name)
         path = os.path.join(self.directory, fileName)
-        cwd = self.cwd(expandVars=True)
+        cwd = self.cwd(absolute=True)
 
         if not self.scene.isNullOrEmpty(cwd) and self.scene.isPathRelative(path):
 
