@@ -1682,7 +1682,8 @@ def deleteNode(node):
 
         return
 
-    # Break any connections to node
+    # Check if node has any connections
+    # If so, then disconnect all source/destination connections
     #
     nodeName = getNodeName(node)
     log.debug(f'Deleting scene node: "{nodeName}"')
@@ -1693,6 +1694,10 @@ def deleteNode(node):
     modifier = om.MDGModifier()
 
     if hasConnections:
+
+        # Unlock node and iterate through connections
+        #
+        modifier.setNodeLockState(node, False)
 
         for plug in plugs:
 
@@ -1705,8 +1710,10 @@ def deleteNode(node):
             # Check if this plug has a source connection
             #
             source = plug.source()
+            hasSource = not source.isNull
+            isSelfConnected = source.node() == node if hasSource else False
 
-            if not source.isNull:
+            if hasSource and not isSelfConnected:
 
                 source.isLocked = False
 
