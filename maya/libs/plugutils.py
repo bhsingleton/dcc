@@ -680,7 +680,7 @@ def removeMultiInstances(plug, indices):
     This method expects the plug to be an array and not an element!
 
     :type plug: om.MPlug
-    :type indices: list[int]
+    :type indices: List[int]
     :rtype: None
     """
 
@@ -688,10 +688,10 @@ def removeMultiInstances(plug, indices):
     #
     plugName = plug.partialName(includeNodeName=True, useFullAttributePath=True, useLongNames=True)
 
-    for index in indices:
+    for index in reversed(sorted(indices)):
 
         elementName = '{plugName}[{index}]'.format(plugName=plugName, index=index)
-        log.info('Removing %s element...' % elementName)
+        log.info(f'Removing {elementName} element...')
 
         mc.removeMultiInstance(elementName)
 
