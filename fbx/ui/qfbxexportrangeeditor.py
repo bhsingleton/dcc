@@ -314,6 +314,21 @@ class QFbxExportRangeEditor(qsingletonwindow.QSingletonWindow):
         self.filesDividerLayout.addWidget(self.removeFilesPushButton)
 
         self.fileListWidget = QtWidgets.QListWidget()
+        self.fileListWidget.setObjectName('fileListWidget')
+        self.fileListWidget.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding))
+        self.fileListWidget.setStyleSheet('QListWidget::item { height: 24px; }')
+        self.fileListWidget.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.fileListWidget.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
+        self.fileListWidget.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+        self.fileListWidget.setDropIndicatorShown(False)
+        self.fileListWidget.setDragEnabled(False)
+        self.fileListWidget.setDragDropOverwriteMode(False)
+        self.fileListWidget.setDragDropMode(QtWidgets.QAbstractItemView.NoDragDrop)
+        self.fileListWidget.setDefaultDropAction(QtCore.Qt.IgnoreAction)
+        self.fileListWidget.setAlternatingRowColors(True)
+        self.fileListWidget.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
+        self.fileListWidget.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
+        self.fileListWidget.setUniformItemSizes(True)
 
         self.batchPathLabel = QtWidgets.QLabel('Directory:')
         self.batchPathLabel.setObjectName('batchPathLabel')
@@ -325,6 +340,7 @@ class QFbxExportRangeEditor(qsingletonwindow.QSingletonWindow):
         self.batchPathLineEdit.setObjectName('batchPathLineEdit')
         self.batchPathLineEdit.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed))
         self.batchPathLineEdit.setFixedHeight(24)
+        self.batchPathLineEdit.setFocusPolicy(QtCore.Qt.ClickFocus)
         self.batchPathLineEdit.setReadOnly(True)
 
         self.batchPathPushButton = QtWidgets.QPushButton(QtGui.QIcon(':/dcc/icons/open_folder.svg'), '')
@@ -435,6 +451,20 @@ class QFbxExportRangeEditor(qsingletonwindow.QSingletonWindow):
             self.checkoutCheckBox.setChecked(checkout)
     # endregion
 
+    # region Callbacks
+    def sceneChanged(self, *args, **kwargs):
+        """
+        Post file-open callback that invalidates the current asset.
+
+        :rtype: None
+        """
+
+        self.sequencers.clear()
+        self.sequencers.extend([sequencer for sequencer in self.manager.loadSequencers() if sequencer.isValid()])
+
+        self.invalidateSequencers()
+    # endregion
+
     # region Methods
     def addCallbacks(self):
         """
@@ -501,6 +531,22 @@ class QFbxExportRangeEditor(qsingletonwindow.QSingletonWindow):
         # Load user settings
         #
         self.checkout = bool(settings.value('editor/checkout', defaultValue=1, type=int))
+
+    def save(self):
+        """
+        Commits any changes to the file properties.
+
+        :rtype: None
+        """
+
+        if not self.scene.isReadOnly():
+
+            self.manager.saveSequencers(self.sequencers)
+            self.scene.save()
+
+        else:
+
+            log.warning('Cannot save changes to read-only scene file!')
 
     def defaultExportRange(self):
         """
@@ -572,38 +618,6 @@ class QFbxExportRangeEditor(qsingletonwindow.QSingletonWindow):
             exportPath = self.currentSequencer.exportRanges[selectedRow].exportPath()
 
             self.exportPathLineEdit.setText(exportPath)
-    # endregion
-
-    # region Callbacks
-    def sceneChanged(self, *args, **kwargs):
-        """
-        Post file-open callback that invalidates the current asset.
-
-        :rtype: None
-        """
-
-        self.sequencers.clear()
-        self.sequencers.extend(self.manager.loadSequencers())
-
-        self.invalidateSequencers()
-    # endregion
-
-    # region Methods
-    def save(self):
-        """
-        Commits any changes to the file properties.
-
-        :rtype: None
-        """
-
-        if not self.scene.isReadOnly():
-
-            self.manager.saveSequencers(self.sequencers)
-            self.scene.save()
-
-        else:
-
-            log.warning('Cannot save changes to read-only scene file!')
     # endregion
 
     # region Slots
