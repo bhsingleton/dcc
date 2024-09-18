@@ -11,7 +11,7 @@ log.setLevel(logging.INFO)
 class QDropDownButton(QtWidgets.QToolButton):
     """
     Overload of `QToolButton` used as a push button with drop-down menu options.
-    The style is also overriden to closer resemble a regular push button.
+    The style has also been overriden to closely resemble the default push button.
     """
 
     # region Dunderscores
