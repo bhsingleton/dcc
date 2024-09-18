@@ -1,6 +1,5 @@
 import os
 import sys
-import traceback
 
 from maya import cmds as mc
 from ...python import stringutils
@@ -18,7 +17,7 @@ class Undo(abstractdecorator.AbstractDecorator):
     """
 
     # region Dunderscores
-    __slots__ = ('_state', '_name',)
+    __slots__ = ('_state', '_name', '_exception')
     __chunk__ = None  # Prevents nested undo chunks from closing prematurely
     __plugin__ = 'pyundocommand.py'
 
@@ -37,8 +36,9 @@ class Undo(abstractdecorator.AbstractDecorator):
 
         # Declare private variables
         #
-        self._state = kwargs.get('state', True)
         self._name = kwargs.get('name', '').replace(' ', '_')
+        self._state = kwargs.get('state', True)
+        self._exception = None
 
     def __enter__(self, *args, **kwargs):
         """
@@ -86,22 +86,28 @@ class Undo(abstractdecorator.AbstractDecorator):
         #
         if self.state:
 
-            # Check if chunk can be closed
+            # Check if active chunk names match
+            # If so, go ahead and close the undo chunk!
             #
-            if self.name != self.chunk:
+            log.debug(f'Open undo chunk: {self.chunk}, current undo chunk: {self.name}')
 
-                return
+            if self.name == self.chunk:
 
-            # Close undo chunk
-            #
-            self.__class__.__chunk__ = None
-            mc.undoInfo(closeChunk=True)
+                self.__class__.__chunk__ = None
+                mc.undoInfo(closeChunk=True)
 
         else:
 
             # Re-enable undo
             #
             mc.undoInfo(stateWithoutFlush=True)
+
+        # Check if any exceptions were raised
+        # If so, go ahead and raise them now that undo has been re-enabled!
+        #
+        if self.exception is not None:
+
+            raise self.exception
     # endregion
 
     # region Properties
@@ -116,6 +122,16 @@ class Undo(abstractdecorator.AbstractDecorator):
         return self.__class__.__chunk__
 
     @property
+    def name(self):
+        """
+        Getter method that returns the name of this undo.
+
+        :rtype: str
+        """
+
+        return self._name
+
+    @property
     def state(self):
         """
         Getter method that returns the undo state.
@@ -126,14 +142,14 @@ class Undo(abstractdecorator.AbstractDecorator):
         return self._state
 
     @property
-    def name(self):
+    def exception(self):
         """
-        Getter method that returns the name of this undo.
+        Getter method that returns any exceptions from this chunk.
 
-        :rtype: str
+        :rtype: Union[Exception, None]
         """
 
-        return self._name
+        return self._exception
     # endregion
 
     # region Methods
@@ -153,15 +169,14 @@ class Undo(abstractdecorator.AbstractDecorator):
 
                 self.__enter__(*args, **kwargs)
                 results = func(*args, **kwargs)
-                self.__exit__(None, None, None)
 
-            except RuntimeError as exception:
+            except Exception as exception:  # This allows us to re-enable undo for any exception!
 
-                log.error(exception)
-                print(traceback.format_exc())
+                self._exception = exception
 
             finally:
 
+                self.__exit__(None, None, None)
                 return results
 
         return wrapper
