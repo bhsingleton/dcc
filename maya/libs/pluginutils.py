@@ -33,6 +33,43 @@ def getPluginExtension():
         raise RuntimeError('Unable to determine operating system!')
 
 
+def tryLoadPlugin(plugin):
+    """
+    Tries to load a plugin with the specified name.
+
+    :type plugin: str
+    :rtype: bool
+    """
+
+    # Check if plugin has been loaded
+    #
+    extension = getPluginExtension()
+    filename = '{plugin}.{extension}'.format(plugin=plugin, extension=extension)
+
+    if mc.pluginInfo(filename, query=True, loaded=True):
+
+        log.info(f'"{filename}" plugin has already been loaded.')
+        return True
+
+    # Try and load plugin
+    #
+    success = True
+
+    try:
+
+        log.info(f'Loading "{filename}" plugin...')
+        mc.loadPlugin(filename)
+
+    except RuntimeError as exception:
+
+        success = False
+        log.error(exception)
+
+    finally:
+
+        return success
+
+
 def removeUnknownNodes(pluginName):
     """
     Removes any unknown nodes from the associated plugin.
