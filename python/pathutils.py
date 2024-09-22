@@ -205,7 +205,7 @@ def makePathRelativeTo(path, directory, force=False):
 
     # Check if path is relative to directory
     #
-    path = os.path.normpath(path)
+    path = os.path.normpath(os.path.expandvars(path))
     directory = os.path.normpath(os.path.expandvars(directory))
 
     if isPathRelativeTo(path, directory) or force:
