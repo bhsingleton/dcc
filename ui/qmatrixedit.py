@@ -52,20 +52,12 @@ class QMatrixEdit(QtWidgets.QWidget):
         self._labels = [None] * self._rowCount
         self._rows = [None] * self._rowCount
 
-        # Initialize widget
-        #
-        self.setContentsMargins(0, 0, 0, 0)
-
         # Initialize central layout
         #
-        gridLayout = QtWidgets.QGridLayout()
-        gridLayout.setSpacing(8)
-        gridLayout.setContentsMargins(0, 0, 0, 0)
+        centralLayout = QtWidgets.QGridLayout()
+        centralLayout.setSpacing(8)
+        centralLayout.setContentsMargins(0, 0, 0, 0)
 
-        self.setLayout(gridLayout)
-
-        # Initialize matrix rows
-        #
         for row in range(self._rowCount):
 
             # Create label
@@ -73,10 +65,11 @@ class QMatrixEdit(QtWidgets.QWidget):
             label = QtWidgets.QLabel(f'Row {row + 1}:')
             label.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
             label.setFixedHeight(24)
+            label.setFocusPolicy(QtCore.Qt.NoFocus)
             label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
             self._labels[row] = label
 
-            gridLayout.addWidget(label, row, 0)
+            centralLayout.addWidget(label, row, 0)
 
             # Create line-edit group
             #
@@ -84,7 +77,9 @@ class QMatrixEdit(QtWidgets.QWidget):
 
             for column in range(self._columnCount):
 
-                gridLayout.addWidget(self._rows[row][column], row, column + 1)
+                centralLayout.addWidget(self._rows[row][column], row, column + 1)
+
+        self.setLayout(centralLayout)
     # endregion
 
     # region Methods
@@ -271,6 +266,7 @@ class QMatrixEdit(QtWidgets.QWidget):
         lineEdit = QtWidgets.QLineEdit('0.0')
         lineEdit.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
         lineEdit.setFixedHeight(24)
+        lineEdit.setFocusPolicy(QtCore.Qt.ClickFocus)
         lineEdit.setAlignment(QtCore.Qt.AlignCenter)
         lineEdit.setValidator(self._validator)
         lineEdit.setReadOnly(self._readOnly)

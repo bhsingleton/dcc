@@ -57,14 +57,14 @@ class QVectorEdit(QtWidgets.QWidget):
 
         # Add widgets to layout
         #
-        boxLayout = QtWidgets.QHBoxLayout()
-        boxLayout.addWidget(self.vectorXLineEdit)
-        boxLayout.addWidget(self.vectorYLineEdit)
-        boxLayout.addWidget(self.vectorZLineEdit)
-        boxLayout.setSpacing(8)
-        boxLayout.setContentsMargins(0, 0, 0, 0)
+        centralLayout = QtWidgets.QHBoxLayout()
+        centralLayout.setContentsMargins(0, 0, 0, 0)
+        centralLayout.setSpacing(8)
+        centralLayout.addWidget(self.vectorXLineEdit)
+        centralLayout.addWidget(self.vectorYLineEdit)
+        centralLayout.addWidget(self.vectorZLineEdit)
 
-        self.setLayout(boxLayout)
+        self.setLayout(centralLayout)
     # endregion
 
     # region Methods
@@ -163,6 +163,7 @@ class QVectorEdit(QtWidgets.QWidget):
         lineEdit = QtWidgets.QLineEdit('0.0')
         lineEdit.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
         lineEdit.setFixedHeight(24)
+        lineEdit.setFocusPolicy(QtCore.Qt.ClickFocus)
         lineEdit.setAlignment(QtCore.Qt.AlignCenter)
         lineEdit.setValidator(self._validator)
         lineEdit.setReadOnly(self._readOnly)
