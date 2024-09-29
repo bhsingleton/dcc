@@ -372,7 +372,7 @@ def setScale(node, scale, **kwargs):
     Updates the scale values for the supplied node.
 
     :type node: pymxs.MXSWrapperBase
-    :type scale: list[float, float, float]
+    :type scale: Tuple[float, float, float]
     :key skipScale: bool
     :key skipScaleX: bool
     :key skipScaleY: bool
