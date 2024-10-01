@@ -59,7 +59,7 @@ def solve2Bone(origin, goal, lengths, poleVector):
     zAxis = (xAxis ^ poleVector).normal()
     yAxis = (zAxis ^ xAxis).normal()
 
-    twistMatrix = transformutils.composeMatrix(xAxis, yAxis, zAxis, origin)
+    twistMatrix = transformutils.createTransformMatrix(xAxis, yAxis, zAxis, origin)
 
     # Compose matrices
     #

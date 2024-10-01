@@ -558,7 +558,7 @@ def scaleTo(node, scale, **kwargs):
 @undo.Undo(name='Freeze Pivots')
 def freezePivots(node, includeTranslate=True, includeRotate=True, includeScale=False):
     """
-    Pushes the transform's local matrix into the parent offset matrix.
+    Pushes the transform's local matrix into the pivot.
 
     :type node: Union[str, om.MObject, om.MDagPath]
     :type includeTranslate: bool
@@ -1051,45 +1051,23 @@ def unfreezeTransform(node):
 
         raise TypeError('unfreezeTransform() expects a valid dag path!')
 
-    # Get the offset parent matrix
+    # Redundancy check
     #
-    fnTransform = om.MFnTransform(dagPath)
-    plug = fnTransform.findPlug('offsetParentMatrix', True)
+    offsetParentMatrix = getOffsetParentMatrix(dagPath)
 
-    offsetParentMatrixData = plug.asMObject()
-    offsetParentMatrix = getMatrixData(offsetParentMatrixData)
+    if offsetParentMatrix.isEquivalent(om.MMatrix.kIdentity, tolerance=1e-3):
 
-    # Check for redundancy
-    #
-    if offsetParentMatrix == om.MMatrix.kIdentity:
-
-        log.debug('Transform has already been unfrozen: %s' % fnTransform.partialPathName())
+        log.debug('Transform has already been unfrozen: %s' % dagPath.partialPathName())
         return
 
-    # Get local matrix
-    # If there is transform data then we need to compound it
+    # Cache world matrix and reset offset parent-matrix
     #
-    matrixData = fnTransform.findPlug('matrix', False).asMObject()
-    matrix = getMatrixData(matrixData)
+    worldMatrix = getWorldMatrix(dagPath)
+    resetOffsetParentMatrix(dagPath)
 
-    if matrix != om.MMatrix.kIdentity:
-
-        offsetParentMatrix *= matrix
-
-    # Decompose offset parent matrix
+    # Update transform matrix
     #
-    rotateOrder = getRotationOrder(dagPath)
-    translate, rotate, scale = decomposeTransformMatrix(offsetParentMatrix, rotateOrder=rotateOrder)
-
-    # Commit transform components to node
-    #
-    setTranslation(dagPath, translate)
-    setEulerRotation(dagPath, rotate)
-    setScale(dagPath, scale)
-
-    # Reset offset parent matrix plug
-    #
-    plug.setMObject(identityMatrixData())
+    applyWorldMatrix(dagPath, worldMatrix, skipScale=True)
 
 
 def freezeTranslation(node):
@@ -1100,24 +1078,23 @@ def freezeTranslation(node):
     :rtype: None
     """
 
-    # Create translation matrix
+    # Get and reset current translation
     #
-    translation = getTranslation(node)
-    translateMatrix = createTranslateMatrix(translation)
+    worldTransformationMatrix = getWorldMatrix(node, asTransformationMatrix=True)
+    currentTranslation = worldTransformationMatrix.translation(om.MSpace.kTransform)
 
     resetTranslation(node)
 
-    # Check if offset requires compounding
+    # Calculate new offset parent-matrix
     #
     offsetParentMatrix = getOffsetParentMatrix(node)
+    translation, eulerRotation, scale = decomposeTransformMatrix(offsetParentMatrix)
 
-    if not offsetParentMatrix.isEquivalent(om.MMatrix.kIdentity):
+    offsetParentMatrix = composeMatrix(currentTranslation, eulerRotation, scale)
 
-        translateMatrix *= offsetParentMatrix
-
-    # Commit offset parent matrix to plug
+    # Push offset parent-matrix to plug
     #
-    setOffsetParentMatrix(node, translateMatrix)
+    setOffsetParentMatrix(node, offsetParentMatrix)
 
 
 def freezeRotation(node):
@@ -1128,24 +1105,23 @@ def freezeRotation(node):
     :rtype: None
     """
 
-    # Create rotation matrix
+    # Get and reset current rotation
     #
-    eulerRotation = getEulerRotation(node)
-    rotateMatrix = createRotationMatrix(eulerRotation)
+    worldTransformationMatrix = getWorldMatrix(node, asTransformationMatrix=True)
+    currentQuat = worldTransformationMatrix.rotation(asQuaternion=True)
 
     resetEulerRotation(node)
 
-    # Check if offset requires compounding
+    # Add rotation onto offset parent-matrix
     #
     offsetParentMatrix = getOffsetParentMatrix(node)
+    translation, eulerRotation, scale = decomposeTransformMatrix(offsetParentMatrix)
 
-    if not offsetParentMatrix.isEquivalent(om.MMatrix.kIdentity):
+    offsetParentMatrix = composeMatrix(translation, currentQuat, scale)
 
-        rotateMatrix *= offsetParentMatrix
-
-    # Commit offset parent matrix to plug
+    # Push offset parent-matrix to plug
     #
-    setOffsetParentMatrix(node, rotateMatrix)
+    setOffsetParentMatrix(node, offsetParentMatrix)
 
 
 def freezeScale(node):
@@ -1410,6 +1386,17 @@ def setOffsetParentMatrix(node, offsetParentMatrix):
 
     plug = plugutils.findPlug(node, 'offsetParentMatrix')
     plugmutators.setValue(plug, offsetParentMatrix)
+
+
+def resetOffsetParentMatrix(node):
+    """
+    Resets the offset parent matrix for the supplied node.
+
+    :type node: Union[str, om.MObject, om.MDagPath]
+    :rtype: None
+    """
+
+    setOffsetParentMatrix(node, om.MMatrix.kIdentity)
 
 
 def getWorldMatrix(node, asTransformationMatrix=False):
@@ -1790,6 +1777,27 @@ def createScaleMatrix(value):
         raise TypeError('createScaleMatrix() expects a list (%s given)!' % type(value).__name__)
 
 
+def createTransformMatrix(xAxis, yAxis, zAxis, position):
+    """
+    Returns a transform matrix using the supplied axis vectors and position.
+
+    :type xAxis: om.MVector
+    :type yAxis: om.MVector
+    :type zAxis: om.MVector
+    :type position: Union[om.MVector, om.MPoint]
+    :rtype: om.MMatrix
+    """
+
+    return om.MMatrix(
+        [
+            (xAxis.x, xAxis.y, xAxis.z, 0.0),
+            (yAxis.x, yAxis.y, yAxis.z, 0.0),
+            (zAxis.x, zAxis.y, zAxis.z, 0.0),
+            (position.x, position.y, position.z, 1.0)
+        ]
+    )
+
+
 def decomposeTransformNode(node, space=om.MSpace.kTransform):
     """
     Breaks apart the supplied node's matrix into translate, rotate and scale components.
@@ -1852,25 +1860,21 @@ def decomposeTransformMatrix(matrix, rotateOrder=om.MEulerRotation.kXYZ):
         raise TypeError('decomposeMatrix() expects an MMatrix (%s given)!' % type(matrix).__name__)
 
 
-def composeMatrix(xAxis, yAxis, zAxis, position):
+def composeMatrix(translation, eulerRotation, scale):
     """
     Returns a transform matrix using the supplied axis vectors and position.
 
-    :type xAxis: om.MVector
-    :type yAxis: om.MVector
-    :type zAxis: om.MVector
-    :type position: Union[om.MVector, om.MPoint]
+    :type translation: om.MVector
+    :type eulerRotation: om.MEulerRotation
+    :type scale: om.MVector
     :rtype: om.MMatrix
     """
 
-    return om.MMatrix(
-        [
-            (xAxis.x, xAxis.y, xAxis.z, 0.0),
-            (yAxis.x, yAxis.y, yAxis.z, 0.0),
-            (zAxis.x, zAxis.y, zAxis.z, 0.0),
-            (position.x, position.y, position.z, 1.0)
-        ]
-    )
+    translateMatrix = createTranslateMatrix(translation)
+    rotateMatrix = createRotationMatrix(eulerRotation)
+    scaleMatrix = createScaleMatrix(scale)
+
+    return scaleMatrix * rotateMatrix * translateMatrix
 
 
 def breakMatrix(matrix, normalize=False):
