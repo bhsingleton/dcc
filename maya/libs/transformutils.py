@@ -1777,7 +1777,7 @@ def createScaleMatrix(value):
         raise TypeError('createScaleMatrix() expects a list (%s given)!' % type(value).__name__)
 
 
-def createTransformMatrix(xAxis, yAxis, zAxis, position):
+def makeMatrix(xAxis, yAxis, zAxis, position):
     """
     Returns a transform matrix using the supplied axis vectors and position.
 
