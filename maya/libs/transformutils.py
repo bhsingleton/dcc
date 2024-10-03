@@ -1302,20 +1302,10 @@ def getMatrix(node, asTransformationMatrix=False):
     :rtype: om.MMatrix
     """
 
-    # Get matrix plug
-    #
     plug = plugutils.findPlug(node, 'matrix')
     matrixData = plug.asMObject()
 
-    # Convert matrix data
-    #
-    if asTransformationMatrix:
-
-        return getTransformData(matrixData)
-
-    else:
-
-        return getMatrixData(matrixData)
+    return getMatrixData(matrixData, asTransformationMatrix=asTransformationMatrix)
 
 
 def getParentMatrix(node, asTransformationMatrix=False):
@@ -1327,25 +1317,12 @@ def getParentMatrix(node, asTransformationMatrix=False):
     :rtype: om.MMatrix
     """
 
-    # Get matrix plug
-    #
     dagPath = dagutils.getMDagPath(node)
-    fnDagNode = om.MFnDagNode(dagPath)
+    instanceNumber = dagPath.instanceNumber()
+    plug = plugutils.findPlug(node, f'parentMatrix[{instanceNumber}]')
+    matrixData = plug.asMObject()
 
-    plug = fnDagNode.findPlug('parentMatrix', True)
-    element = plug.elementByLogicalIndex(dagPath.instanceNumber())
-
-    matrixData = element.asMObject()
-
-    # Convert matrix data
-    #
-    if asTransformationMatrix:
-
-        return getTransformData(matrixData)
-
-    else:
-
-        return getMatrixData(matrixData)
+    return getMatrixData(matrixData, asTransformationMatrix=asTransformationMatrix)
 
 
 def getOffsetParentMatrix(node, asTransformationMatrix=False):
@@ -1357,23 +1334,10 @@ def getOffsetParentMatrix(node, asTransformationMatrix=False):
     :rtype: om.MMatrix
     """
 
-    # Get offset parent matrix plug
-    #
-    dagPath = dagutils.getMDagPath(node)
-    fnTransform = om.MFnTransform(dagPath)
-
-    plug = fnTransform.findPlug('offsetParentMatrix', True)
+    plug = plugutils.findPlug(node, 'offsetParentMatrix')
     offsetParentMatrixData = plug.asMObject()
 
-    # Convert matrix data
-    #
-    if asTransformationMatrix:
-
-        return getTransformData(offsetParentMatrixData)
-
-    else:
-
-        return getMatrixData(offsetParentMatrixData)
+    return getMatrixData(offsetParentMatrixData, asTransformationMatrix=asTransformationMatrix)
 
 
 def setOffsetParentMatrix(node, offsetParentMatrix):
@@ -1409,25 +1373,12 @@ def getWorldMatrix(node, asTransformationMatrix=False):
     :rtype: om.MMatrix
     """
 
-    # Get matrix plug
-    #
     dagPath = dagutils.getMDagPath(node)
-    fnDagNode = om.MFnDagNode(dagPath)
+    instanceNumber = dagPath.instanceNumber()
+    plug = plugutils.findPlug(node, f'worldMatrix[{instanceNumber}]')
+    matrixData = plug.asMObject()
 
-    plug = fnDagNode.findPlug('worldMatrix', True)
-    element = plug.elementByLogicalIndex(dagPath.instanceNumber())
-
-    matrixData = element.asMObject()
-
-    # Convert matrix data
-    #
-    if asTransformationMatrix:
-
-        return getTransformData(matrixData)
-
-    else:
-
-        return getMatrixData(matrixData)
+    return getMatrixData(matrixData, asTransformationMatrix=asTransformationMatrix)
 
 
 def getMatrixData(matrixData, asTransformationMatrix=False):
@@ -1472,33 +1423,6 @@ def getMatrixData(matrixData, asTransformationMatrix=False):
         else:
 
             return matrix
-
-
-def getTransformData(matrixData):
-    """
-    Converts the supplied MObject to an MTransformationMatrix.
-
-    :type matrixData: om.MObject
-    :rtype: om.MTransformationMatrix
-    """
-
-    # Redundancy check
-    #
-    if isinstance(matrixData, om.MTransformationMatrix):
-
-        return matrixData
-
-    # Evaluate matrix data type
-    #
-    fnMatrixData = om.MFnMatrixData(matrixData)
-
-    if fnMatrixData.isTransformation():
-
-        return fnMatrixData.transformation()
-
-    else:
-
-        return om.MTransformationMatrix(fnMatrixData.matrix())
 
 
 def createMatrixData(matrix):
