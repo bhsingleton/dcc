@@ -1080,9 +1080,11 @@ def freezeTranslation(node):
 
     # Get and reset current translation
     #
-    worldTransformationMatrix = getWorldMatrix(node, asTransformationMatrix=True)
-    currentTranslation = worldTransformationMatrix.translation(om.MSpace.kTransform)
+    dagLocalMatrixPlug = plugutils.findPlug(node, 'dagLocalMatrix')
+    dagLocalMatrixData = dagLocalMatrixPlug.asMObject()
+    dagLocalMatrix = getMatrixData(dagLocalMatrixData, asTransformationMatrix=True)
 
+    currentTranslation = dagLocalMatrix.translation(om.MSpace.kTransform)
     resetTranslation(node)
 
     # Calculate new offset parent-matrix
@@ -1107,9 +1109,11 @@ def freezeRotation(node):
 
     # Get and reset current rotation
     #
-    worldTransformationMatrix = getWorldMatrix(node, asTransformationMatrix=True)
-    currentQuat = worldTransformationMatrix.rotation(asQuaternion=True)
+    dagLocalMatrixPlug = plugutils.findPlug(node, 'dagLocalMatrix')
+    dagLocalMatrixData = dagLocalMatrixPlug.asMObject()
+    dagLocalMatrix = getMatrixData(dagLocalMatrixData, asTransformationMatrix=True)
 
+    currentQuat = dagLocalMatrix.rotation(asQuaternion=True)
     resetEulerRotation(node)
 
     # Add rotation onto offset parent-matrix
@@ -1300,10 +1304,7 @@ def getMatrix(node, asTransformationMatrix=False):
 
     # Get matrix plug
     #
-    dagPath = dagutils.getMDagPath(node)
-    fnDagNode = om.MFnDagNode(dagPath)
-
-    plug = fnDagNode.findPlug('matrix', True)
+    plug = plugutils.findPlug(node, 'matrix')
     matrixData = plug.asMObject()
 
     # Convert matrix data
@@ -1429,17 +1430,18 @@ def getWorldMatrix(node, asTransformationMatrix=False):
         return getMatrixData(matrixData)
 
 
-def getMatrixData(matrixData):
+def getMatrixData(matrixData, asTransformationMatrix=False):
     """
     Converts the supplied MObject to an MMatrix.
 
     :type matrixData: om.MObject
+    :type asTransformationMatrix: bool
     :rtype: om.MMatrix
     """
 
     # Redundancy check
     #
-    if isinstance(matrixData, om.MMatrix):
+    if isinstance(matrixData, (om.MMatrix, om.MTransformationMatrix)):
 
         return matrixData
 
@@ -1449,11 +1451,27 @@ def getMatrixData(matrixData):
 
     if fnMatrixData.isTransformation():
 
-        return fnMatrixData.transformation().asMatrix()
+        transformationMatrix = fnMatrixData.transformation()
+
+        if asTransformationMatrix:
+
+            return transformationMatrix
+
+        else:
+
+            return transformationMatrix.asMatrix()
 
     else:
 
-        return fnMatrixData.matrix()
+        matrix = fnMatrixData.matrix()
+
+        if asTransformationMatrix:
+
+            return om.MTransformationMatrix(matrix)
+
+        else:
+
+            return matrix
 
 
 def getTransformData(matrixData):
