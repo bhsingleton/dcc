@@ -1319,7 +1319,7 @@ def getParentMatrix(node, asTransformationMatrix=False):
 
     dagPath = dagutils.getMDagPath(node)
     instanceNumber = dagPath.instanceNumber()
-    plug = plugutils.findPlug(node, f'parentMatrix[{instanceNumber}]')
+    plug = plugutils.findPlug(dagPath, f'parentMatrix[{instanceNumber}]')
     matrixData = plug.asMObject()
 
     return getMatrixData(matrixData, asTransformationMatrix=asTransformationMatrix)
@@ -1375,7 +1375,7 @@ def getWorldMatrix(node, asTransformationMatrix=False):
 
     dagPath = dagutils.getMDagPath(node)
     instanceNumber = dagPath.instanceNumber()
-    plug = plugutils.findPlug(node, f'worldMatrix[{instanceNumber}]')
+    plug = plugutils.findPlug(dagPath, f'worldMatrix[{instanceNumber}]')
     matrixData = plug.asMObject()
 
     return getMatrixData(matrixData, asTransformationMatrix=asTransformationMatrix)
