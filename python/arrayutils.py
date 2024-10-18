@@ -50,3 +50,14 @@ def isIteratorLike(obj):
     """
 
     return (hasattr(obj, '__iter__') and hasattr(obj, '__next__')) and not isinstance(obj, string_types)
+
+
+def isHashMap(obj):
+    """
+    Evaluates if the supplied object is a mapped object.
+
+    :type obj: Any
+    :rtype: bool
+    """
+
+    return isinstance(obj, collections_abc.Mapping)
