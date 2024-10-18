@@ -169,6 +169,24 @@ class ADC(Mapping, metaclass=ABCMeta):
         """
 
         return self.keys()
+
+    def __copy__(self):
+        """
+        Private method that returns a shallow copy of this instance.
+
+        :rtype: ADC
+        """
+
+        return self.copy()
+
+    def __deepcopy__(self, memodict={}):
+        """
+        Private method that returns a deep copy of this instance.
+
+        :rtype: ADC
+        """
+
+        return self.copy()
     # endregion
 
     # region Properties

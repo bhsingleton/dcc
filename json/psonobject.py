@@ -7,7 +7,7 @@ from typing import Any, Union, Tuple, List, Dict
 from copy import copy, deepcopy
 from Qt import QtGui
 from . import pabcmeta
-from ..python import annotationutils, stringutils
+from ..python import annotationutils, stringutils, arrayutils
 from ..decorators.classproperty import classproperty
 
 import logging
@@ -155,37 +155,21 @@ class PSONObject(collections_abc.MutableMapping, metaclass=pabcmeta.PABCMeta):
 
     def __copy__(self):
         """
-        Private method that returns a copy of this instance.
+        Private method that returns a shallow copy of this instance.
 
         :rtype: PSONObject
         """
 
-        # Create new instance
-        # Iterate through writable properties
-        #
-        instance = self.__class__()
+        return self.copy()
 
-        for (name, func) in self.iterProperties():
+    def __deepcopy__(self, memodict={}):
+        """
+        Private method that returns a deep copy of this instance.
 
-            # Inspect property value
-            # Sequences will require a deep copy!
-            #
-            value = func.fget(self)
-            cls = type(value)
+        :rtype: PSONObject
+        """
 
-            if isinstance(value, collections_abc.Sequence) and not isinstance(value, string_types):
-
-                setattr(instance, name, cls(map(copy, value)))
-
-            elif isinstance(value, collections_abc.Mapping):
-
-                setattr(instance, name, cls({key: copy(value) for (key, value) in value.items()}))
-
-            else:
-
-                setattr(instance, name, value)
-
-        return instance
+        return self.copy(deep=True)
     # endregion
 
     # region Properties
@@ -392,6 +376,18 @@ class PSONObject(collections_abc.MutableMapping, metaclass=pabcmeta.PABCMeta):
 
             yield name, obj.fget(self)
 
+    def get(self, key, default=None):
+        """
+        Returns the value from the associated key.
+        If no key exists then the default value is returned instead!
+
+        :type key: str
+        :type default: Any
+        :rtype: Any
+        """
+
+        return getattr(self, key, default)
+
     def update(self, obj):
         """
         Copies any items from the supplied dictionary to this collection.
@@ -420,11 +416,20 @@ class PSONObject(collections_abc.MutableMapping, metaclass=pabcmeta.PABCMeta):
 
                 continue
 
-            # Check if collection has property
+            # Check if key exists
             #
             key, value = pair
 
-            if hasattr(self, key):
+            if not hasattr(self.__class__, key):
+
+                continue
+
+            # Check if key is associated with a property
+            #
+            member = getattr(self.__class__, key)
+            isProperty = isinstance(member, property)
+
+            if isProperty:
 
                 setattr(self, key, value)
 
@@ -432,15 +437,58 @@ class PSONObject(collections_abc.MutableMapping, metaclass=pabcmeta.PABCMeta):
 
                 continue
 
-    def get(self, key, default=None):
+    def copy(self, deep=False):
         """
-        Returns the value from the associated key.
-        If no key exists then the default value is returned instead!
+        Returns a copy of this instance.
 
-        :type key: str
-        :type default: Any
-        :rtype: Any
+        :type deep: bool
+        :rtype: PSONObject
         """
 
-        return getattr(self, key, default)
+        # Create new instance
+        # Iterate through writable properties
+        #
+        instance = self.__class__()
+        func = deepcopy if deep else copy
+
+        for (name, prop) in self.iterProperties():
+
+            # Inspect property value
+            #
+            value = prop.fget(self)
+
+            isArray = arrayutils.isArray(value)
+            isMap = arrayutils.isHashMap(value)
+
+            if isArray:
+
+                # Check if a deep copy is required
+                #
+                if deep:
+
+                    cls = type(value)
+                    setattr(instance, name, cls(map(func, value)))
+
+                else:
+
+                    continue
+
+            elif isMap:
+
+                # Check if a deep copy is required
+                #
+                if deep:
+
+                    cls = type(value)
+                    setattr(instance, name, cls({key: func(value) for (key, value) in value.items()}))
+
+                else:
+
+                    continue
+
+            else:
+
+                setattr(instance, name, value)
+
+        return instance
     # endregion
