@@ -526,6 +526,10 @@ def fixBrokenTextures():
         #
         texture.next()
 
+    # Refresh viewport
+    #
+    scene.refreshTextures()
+
 
 @relogin.Relogin()
 def syncMissingTextures():

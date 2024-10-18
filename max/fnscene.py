@@ -261,6 +261,19 @@ class FnScene(afnscene.AFnScene):
 
         pymxs.runtime.enableSceneRedraw()
 
+    def refreshTextures(self):
+        """
+        Refreshes any texture changes in the active scene.
+
+        :rtype: None
+        """
+
+        bitmaps = pymxs.runtime.getClassInstances(pymxs.runtime.BitmapTexture)
+
+        for bitmap in bitmaps:
+
+            bitmap.reload()
+
     def playblast(self, filePath=None, startFrame=None, endFrame=None):
         """
         Creates a playblast using the supplied path.

@@ -557,6 +557,16 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         pass
 
+    @abstractmethod
+    def refreshTextures(self):
+        """
+        Refreshes any texture changes in the active scene.
+
+        :rtype: None
+        """
+
+        pass
+
     @staticmethod
     def findFFmpeg():
         """

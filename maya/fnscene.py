@@ -232,6 +232,15 @@ class FnScene(afnscene.AFnScene):
 
         sceneutils.resumeViewport()
 
+    def refreshTextures(self):
+        """
+        Refreshes any texture changes in the active scene.
+
+        :rtype: None
+        """
+
+        sceneutils.refreshTextures()
+
     def playblast(self, filePath=None, startFrame=None, endFrame=None):
         """
         Creates a playblast using the supplied path.

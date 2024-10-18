@@ -455,6 +455,16 @@ def resumeViewport():
         mc.ogs(pause=True)
 
 
+def refreshTextures():
+    """
+    Refreshes any texture changes in the active scene.
+
+    :rtype: None
+    """
+
+    mc.ogs(reloadTextures=True)
+
+
 def removeUserAttributes():
     """
     Removes all user attributes from the selected nodes.
