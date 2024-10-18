@@ -19,7 +19,7 @@ class PSONEncoder(json.JSONEncoder):
 
     # region Dunderscores
     __slots__ = ()
-    __builtin_types__ = (bool, int, float, str, collections_abc.MutableSequence, collections_abc.MutableMapping)
+    __builtin_types__ = (bool, int, float, str, collections_abc.Sequence, collections_abc.Mapping)
     # endregion
 
     # region Methods
@@ -44,18 +44,15 @@ class PSONEncoder(json.JSONEncoder):
         # Check if object is mapped
         #
         cls = type(obj)
+        isPickleable = hasattr(cls, '__getstate__')
 
-        if hasattr(cls, '__getstate__'):
-
-            return obj.__getstate__()
-
-        elif issubclass(cls, collections_abc.MutableSequence):
+        if issubclass(cls, collections_abc.Sequence):
 
             return list(iter(obj))
 
-        elif issubclass(cls, collections_abc.MutableMapping):
+        elif issubclass(cls, collections_abc.Mapping):
 
-            return dict(obj.items())
+            return obj.__getstate__() if isPickleable else dict(obj.items())
 
         else:
 
