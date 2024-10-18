@@ -225,6 +225,7 @@ def findAnimatedPlug(plug, animLayer=None):
 
     # Check if plug is animated
     #
+    plug = plug.proxied() if plug.isProxy else plug
     isAnimated = plugutils.isAnimated(plug)
 
     if not isAnimated:
@@ -235,51 +236,49 @@ def findAnimatedPlug(plug, animLayer=None):
     #
     sourceNode = plug.source().node()
 
-    if isAnimBlend(sourceNode):
+    if not isAnimBlend(sourceNode):
 
-        # Get preferred anim-layer
-        #
-        bestLayer = getBestAnimLayer(plug) if (animLayer is None) else animLayer
+        return plug
 
-        if bestLayer.isNull():
+    # Get preferred anim-layer
+    #
+    bestLayer = getBestAnimLayer(plug) if (animLayer is None) else animLayer
 
-            raise TypeError(f'findAnimLayerCurve() "{plug.info}" is not in an anim-layer!')
+    if bestLayer.isNull():
 
-        # Get anim-blend associated with anim-layer
-        #
-        animBlends = getMemberBlends(plug)
-        inputPlug = None
+        raise TypeError(f'findAnimLayerCurve() "{plug.info}" is not in an anim-layer!')
 
-        if isBaseAnimLayer(bestLayer):
+    # Get anim-blend associated with anim-layer
+    #
+    animBlends = getMemberBlends(plug)
+    inputPlug = None
 
-            inputPlug = plugutils.findPlug(animBlends[0], 'inputA')
+    if isBaseAnimLayer(bestLayer):
 
-        else:
-
-            attribute = attributeutils.findAttribute(bestLayer, 'blendNodes')
-            animLayers = [plugutils.findConnectedMessage(blend, attribute=attribute).node() for blend in animBlends]
-
-            index = animLayers.index(bestLayer)
-            inputPlug = plugutils.findPlug(animBlends[index], 'inputB')
-
-        # Check if this is a compound plug
-        # If so, then get the associated indexed child plug
-        #
-        if inputPlug.isCompound:
-
-            inputChildren = list(plugutils.iterChildren(inputPlug))
-            plugChildren = list(plugutils.iterChildren(plug.parent()))
-            index = plugChildren.index(plug)
-
-            return inputChildren[index]
-
-        else:
-
-            return inputPlug
+        inputPlug = plugutils.findPlug(animBlends[0], 'inputA')
 
     else:
 
-        return plug
+        attribute = attributeutils.findAttribute(bestLayer, 'blendNodes')
+        animLayers = [plugutils.findConnectedMessage(blend, attribute=attribute).node() for blend in animBlends]
+
+        index = animLayers.index(bestLayer)
+        inputPlug = plugutils.findPlug(animBlends[index], 'inputB')
+
+    # Check if this is a compound plug
+    # If so, then get the associated indexed child plug
+    #
+    if inputPlug.isCompound:
+
+        inputChildren = list(plugutils.iterChildren(inputPlug))
+        plugChildren = list(plugutils.iterChildren(plug.parent()))
+        index = plugChildren.index(plug)
+
+        return inputChildren[index]
+
+    else:
+
+        return inputPlug
 
 
 def findAnimCurve(plug, animLayer=None, create=False):
