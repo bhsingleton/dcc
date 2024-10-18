@@ -226,6 +226,43 @@ def isAnimatable(plug):
         return True
 
 
+def isWritable(plug):
+    """
+    Evaluates if the supplied plug is writable.
+
+    :type plug: om.MPlug
+    :rtype: bool
+    """
+
+    # Redundancy check
+    #
+    if plug.isNull or plug.isLocked:
+
+        return False
+
+    # Evaluate attribute definition
+    #
+    attribute = plug.attribute()
+    fnAttribute = om.MFnAttribute(attribute)
+
+    if not fnAttribute.writable:
+
+        return False
+
+    # Evaluate plug connections
+    #
+    isConnected = bool(plug.isDestination)
+    hasAnimation = isAnimated(plug)
+
+    if hasAnimation:
+
+        return True
+
+    else:
+
+        return not isConnected
+
+
 def isNumeric(plug):
     """
     Evaluates if the supplied plug is numerical.
@@ -890,6 +927,46 @@ def getNextAvailableConnection(plug, child=om.MObject.kNullObj):
     return indices[-1] + 1 if numIndices > 0 else 0
 
 
+def consolidateConnectedElements(plug):
+    """
+    Ensures all connected elements are ordered with no gaps starting at zero.
+
+    :type plug: om.MPlug
+    :rtype: None
+    """
+
+    # Compare connected elements to physical indices
+    #
+    logicalIndices = plug.getExistingArrayAttributeIndices()
+    elements = [plug.elementByLogicalIndex(logicalIndex) for logicalIndex in logicalIndices]
+
+    connectedElements = [element for element in elements if element.isDestination]
+    numConnectedElements = len(connectedElements)
+
+    for (physicalIndex, destination) in enumerate(connectedElements):
+
+        logicalIndex = destination.logicalIndex()
+
+        if physicalIndex != logicalIndex:
+
+            source = destination.source()
+            disconnectPlugs(source, destination)
+
+            newDestination = plug.elementByLogicalIndex(physicalIndex)
+            log.info(f'Moving {destination.info} to {newDestination.info}')
+            connectPlugs(source, newDestination)
+
+        else:
+
+            continue
+
+    # Remove any unused indices
+    #
+    unusedIndices = [logicalIndex for logicalIndex in logicalIndices if logicalIndex >= numConnectedElements]
+    removeMultiInstances(plug, unusedIndices)
+
+
+
 def moveConnectedElements(plug, index):
     """
     Moves all the connected elements at the specified index down the array.
@@ -910,7 +987,7 @@ def moveConnectedElements(plug, index):
 
     # Iterate through logical indices
     #
-    for logicalIndex in reversed(logicalIndices):
+    for logicalIndex in reversed(sorted(logicalIndices)):
 
         # Check if element is connected
         #
