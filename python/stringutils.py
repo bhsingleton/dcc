@@ -33,6 +33,17 @@ def isNullOrEmpty(value):
         return value is None
 
 
+def isString(value):
+    """
+    Evaluates if the supplied value is a string.
+
+    :type value: Any
+    :rtype: bool
+    """
+
+    return isinstance(value, string_types)
+
+
 def isNumber(text):
     """
     Evaluates if the supplied text represents a number.
