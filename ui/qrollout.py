@@ -280,7 +280,7 @@ class QRollout(QtWidgets.QAbstractButton):
         :rtype: QtCore.QSize
         """
 
-        return QtCore.QSize(self.fontMetrics().width(self.text()), self.thickness())
+        return QtCore.QSize(self.fontMetrics().boundingRect(self.text()).width(), self.thickness())
 
     def isGrippable(self):
         """
@@ -868,7 +868,7 @@ class QRollout(QtWidgets.QAbstractButton):
 
             painter.setPen(pen)
             painter.setBrush(QtCore.Qt.NoBrush)
-            painter.drawText(titleRect, self.alignment(), self.text(), boundingRect=titleRect)
+            painter.drawText(titleRect, self.alignment(), self.text())
 
         # Paint expander
         #
@@ -898,7 +898,7 @@ class QRollout(QtWidgets.QAbstractButton):
 
             painter.setPen(QtCore.Qt.NoPen)
             painter.setBrush(QtCore.Qt.NoBrush)
-            painter.fillPath(path, QtGui.QBrush(QtGui.QColor(73, 73, 73), style=QtCore.Qt.SolidPattern))
+            painter.fillPath(path, QtGui.QBrush(QtGui.QColor(73, 73, 73), QtCore.Qt.SolidPattern))
     # endregion
 
     # region Slots
