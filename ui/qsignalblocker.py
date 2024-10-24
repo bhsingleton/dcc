@@ -1,4 +1,5 @@
 from Qt import QtCompat
+from collections import deque
 
 import logging
 logging.basicConfig()
@@ -11,13 +12,13 @@ class QSignalBlocker(object):
     Base class for Qt signal block contexts.
     """
 
-    __slots__ = ('__widget__',)
+    __slots__ = ('__widgets__',)
 
-    def __init__(self, widget):
+    def __init__(self, *widgets):
         """
         Private method called after a new instance has been created.
 
-        :type widget: QtWidgets.QWidget
+        :type widgets: Union[QtWidgets.QWidget, List[QtWidgets.QWidget]]
         :rtype: None
         """
 
@@ -27,7 +28,7 @@ class QSignalBlocker(object):
 
         # Declare private variables
         #
-        self.__widget__ = widget
+        self.__widgets__ = deque(widgets)
 
     def __enter__(self):
         """
@@ -36,9 +37,15 @@ class QSignalBlocker(object):
         :rtype: None
         """
 
-        if QtCompat.isValid(self.__widget__):
+        for widget in self.__widgets__:
 
-            self.__widget__.blockSignals(True)
+            if QtCompat.isValid(widget):
+
+                widget.blockSignals(True)
+
+            else:
+
+                continue
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """
@@ -50,7 +57,14 @@ class QSignalBlocker(object):
         :rtype: None
         """
 
-        if QtCompat.isValid(self.__widget__):
+        while len(self.__widgets__) > 0:
 
-            self.__widget__.blockSignals(False)
-            self.__widget__ = None
+            widget = self.__widgets__.pop()
+
+            if QtCompat.isValid(widget):
+
+                widget.blockSignals(False)
+
+            else:
+
+                continue
