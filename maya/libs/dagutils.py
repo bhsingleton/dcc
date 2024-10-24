@@ -933,24 +933,22 @@ def getParent(node):
     :rtype: om.MObject
     """
 
-    # Check if node has a parent
+    # Evaluate node type
     #
-    dagPath = getMDagPath(node)
-    fnDagNode = om.MFnDagNode(dagPath)
+    node = getMObject(node)
 
-    parentCount = fnDagNode.parentCount()
-
-    if parentCount == 0:
+    if not node.hasFn(om.MFn.kDagNode):
 
         return om.MObject.kNullObj
 
-    # Make sure parent isn't world
+    # Evaluate dag path
     #
-    parent = fnDagNode.parent(0)
+    dagPath = getMDagPath(node)
+    length = dagPath.length()
 
-    if not parent.hasFn(om.MFn.kWorld):
+    if length > 0:
 
-        return parent
+        return dagPath.pop().node()
 
     else:
 
@@ -966,18 +964,27 @@ def iterAncestors(node, apiType=om.MFn.kTransform):
     :rtype: Iterator[om.MObject]
     """
 
+    # Evaluate node type
+    #
+    node = getMObject(node)
+
+    if not node.hasFn(om.MFn.kDagNode):
+
+        return iter([])
+
     # Iterate through parents
     #
-    ancestor = getParent(node)
+    ancestor = getMDagPath(node)
 
-    while not ancestor.isNull():
+    while ancestor.length() > 0:
 
-        # Evaluate api type
+        # Evaluate ancestor type
         #
+        ancestor = ancestor.pop()
+
         if ancestor.hasFn(apiType):
 
-            yield ancestor
-            ancestor = getParent(ancestor)
+            yield ancestor.node()
 
         else:
 
@@ -1006,7 +1013,7 @@ def iterChildren(node, apiType=om.MFn.kTransform):
     :rtype: Iterator[om.MObject]
     """
 
-    # Verify this is a dag node
+    # Evaluate node type
     #
     node = getMObject(node)
 
@@ -1017,15 +1024,13 @@ def iterChildren(node, apiType=om.MFn.kTransform):
     # Iterate through children
     #
     dagPath = getMDagPath(node)
-    fnDagNode = om.MFnDagNode(dagPath)
-
-    childCount = fnDagNode.childCount()
+    childCount = dagPath.childCount()
 
     for i in range(childCount):
 
         # Evaluate api type
         #
-        child = fnDagNode.child(i)
+        child = dagPath.child(i)
 
         if child.hasFn(apiType):
 
