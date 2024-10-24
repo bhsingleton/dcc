@@ -344,3 +344,54 @@ def createStar(outerRadius, innerRadius, **kwargs):
         fnCurve.create(controlPoints, knots, degree, om.MFnNurbsCurve.kClosed, False, True, parent=curveData)
 
         return curveData
+
+
+def renameShapes(*nodes):
+    """
+    Renames the shapes on the supplied transforms.
+
+    :type nodes: Union[om.MObject, List[om.MObject]]
+    :rtype: None
+    """
+
+    # Iterate through nodes
+    #
+    for node in nodes:
+
+        # Evaluate node type
+        #
+        node = dagutils.getMObject(node)
+
+        if not node.hasFn(om.MFn.kTransform):
+
+            continue
+
+        # Evaluate number of shapes
+        #
+        name = dagutils.getNodeName(node)
+
+        shapes = list(dagutils.iterShapes(node))
+        numShapes = len(shapes)
+
+        if numShapes == 0:
+
+            return
+
+        elif numShapes == 1:
+
+            shape = shapes[0]
+            originalName = dagutils.getNodeName(shape)
+            newName = f'{name}Shape'
+
+            log.debug(f'Renaming {originalName} > {newName}')
+            dagutils.renameNode(shape, newName)
+
+        else:
+
+            for (i, shape) in enumerate(shapes, start=1):
+
+                originalName = dagutils.getNodeName(shape)
+                newName = f'{name}Shape{i}'
+
+                log.debug(f'Renaming {originalName} > {newName}')
+                dagutils.renameNode(shape, newName)
