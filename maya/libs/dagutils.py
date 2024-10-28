@@ -946,7 +946,7 @@ def getParent(node):
     dagPath = getMDagPath(node)
     length = dagPath.length()
 
-    if length > 0:
+    if length >= 2:
 
         return dagPath.pop().node()
 
