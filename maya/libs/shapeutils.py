@@ -330,7 +330,8 @@ def createStar(outerRadius, innerRadius, **kwargs):
         fnCurve = om.MFnNurbsCurve()
         curve = fnCurve.create(controlPoints, knots, degree, form, False, True, parent=parent)
 
-        curveName = f'{dagutils.getNodeName(parent)}Shape'
+        parentName = dagutils.getNodeName(parent)
+        curveName = f'{parentName}Shape'
         fnCurve.setName(curveName)
 
         return curve
