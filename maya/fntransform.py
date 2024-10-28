@@ -174,8 +174,8 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
             ]
         )
 
-    @staticmethod
-    def denativizeMatrix(matrix):
+    @classmethod
+    def denativizeMatrix(cls, matrix):
         """
         Converts a MMatrix class to a DCC agnostic matrix.
 
@@ -183,12 +183,22 @@ class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
         :rtype: transformationmatrix.TransformationMatrix
         """
 
-        return transformationmatrix.TransformationMatrix(
-            (matrix.getElement(0, 0), matrix.getElement(0, 1), matrix.getElement(0, 2)),
-            (matrix.getElement(1, 0), matrix.getElement(1, 1), matrix.getElement(1, 2)),
-            (matrix.getElement(2, 0), matrix.getElement(2, 1), matrix.getElement(2, 2)),
-            (matrix.getElement(3, 0), matrix.getElement(3, 1), matrix.getElement(3, 2))
-        )
+        if isinstance(matrix, om.MMatrix):
+
+            return transformationmatrix.TransformationMatrix(
+                (matrix.getElement(0, 0), matrix.getElement(0, 1), matrix.getElement(0, 2)),
+                (matrix.getElement(1, 0), matrix.getElement(1, 1), matrix.getElement(1, 2)),
+                (matrix.getElement(2, 0), matrix.getElement(2, 1), matrix.getElement(2, 2)),
+                (matrix.getElement(3, 0), matrix.getElement(3, 1), matrix.getElement(3, 2))
+            )
+
+        elif isinstance(matrix, (list, tuple)):
+
+            return cls.denativizeMatrix(transformutils.listToMatrix(matrix))
+
+        else:
+
+            raise TypeError(f'denativizeMatrix() expects an MMatrix ({type(matrix).__name__} given)!')
 
     def matrix(self):
         """
