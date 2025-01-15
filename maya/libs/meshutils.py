@@ -177,54 +177,103 @@ def transferShaders(source, destination):
     fnSource = om.MFnMesh(source)
     shaders, connections = fnSource.getConnectedShaders(instanceNumber)
 
-    # Copy connected shaders
+    # Check if destination is flagged as an intermediate
+    # If so, reset flag to avoid any potential shader assignment interruptions!
+    #
+    fnDestination = om.MFnMesh(destination)
+    isIntermediateObject = bool(fnDestination.isIntermediateObject)
+
+    if isIntermediateObject:
+
+        fnDestination.isIntermediateObject = False
+
+    # Reset shaders on destination mesh
     #
     clearShaders(destination)
 
+    # Copy connected shaders
+    #
     fnSet = om.MFnSet()
     fnComponent = om.MFnSingleIndexedComponent()
 
-    dagPath = dagutils.getMDagPath(destination)
-    component = None
+    dagPath, component = dagutils.getMDagPath(destination), om.MObject.kNullObj
     selection = om.MSelectionList()
 
     for (i, shader) in enumerate(shaders):
 
-        fnSet.setObject(shader)
-        faceIndices = [faceIndex for (faceIndex, shaderIndex) in enumerate(connections) if shaderIndex == i]
-
+        elements = [faceIndex for (faceIndex, shaderIndex) in enumerate(connections) if shaderIndex == i]
         component = fnComponent.create(om.MFn.kMeshPolygonComponent)
-        fnComponent.addElements(faceIndices)
+        fnComponent.addElements(elements)
 
-        selection.add((dagPath, component))
-        fnSet.addMembers(selection)
         selection.clear()
+        selection.add((dagPath, component))
+
+        fnSet.setObject(shader)
+        fnSet.addMembers(selection)
+
+    # Check if intermediate flag requires reassigning
+    #
+    if isIntermediateObject:
+
+        fnDestination.isIntermediateObject = True
 
 
 def isValidIntermediate(intermediate):
     """
-    Evaluates if the supplied intermediate is valid.
+    Evaluates if the supplied intermediate is in use.
 
-    :type intermediate: om.MObject
+    :type intermediate: Union[str, om.MObject, om.MDagPath]
     :rtype: bool
     """
 
-    return om.MFnMesh(intermediate).findPlug('outMesh', True).isSource
+    intermediate = dagutils.getMObject(intermediate)
+
+    if intermediate.hasFn(om.MFn.kMesh):
+
+        return om.MFnMesh(intermediate).findPlug('outMesh', True).isSource
+
+    else:
+
+        return False
 
 
-def triangulate(mesh):
+def triangulate(node, doNotWrite=True):
     """
-    Returns a triangulated mesh that won't be written on file save.
+    Returns a triangulated mesh from the supplied mesh.
 
-    :type mesh: Union[str, om.MObject, om.MDagPath]
+    :type node: Union[str, om.MObject, om.MDagPath]
+    :type doNotWrite: bool
     :rtype: om.MObject
     """
 
-    # Check if intermediate object exists
+    # Decompose supplied node
     #
-    mesh = dagutils.getMObject(mesh)
-    transform = dagutils.getParent(mesh)
+    node = dagutils.getMObject(node)
+    transform, mesh = om.MObject.kNullObj, om.MObject.kNullObj
 
+    if node.hasFn(om.MFn.kMesh):
+
+        mesh = node
+        transform = dagutils.getParent(mesh)
+
+    elif node.hasFn(om.MFn.kTransform):
+
+        transform = node
+        mesh = dagutils.getShapeDirectlyBelow(transform)
+
+    else:
+
+        raise TypeError(f'triangulate() expects a valid node ({node.apiTypeStr} given)!')
+
+    # Check if transform and mesh are valid
+    #
+    if transform.isNull() or mesh.isNull():
+
+        raise TypeError('triangulate() expects a valid mesh!')
+
+    # Check if intermediate object exists
+    # Don't forget to filter out any pre-existing triangulated meshes!
+    #
     intermediates = [intermediate for intermediate in dagutils.iterIntermediateObjects(transform, apiType=om.MFn.kMesh) if isValidIntermediate(intermediate)]
     numIntermediates = len(intermediates)
 
@@ -250,6 +299,7 @@ def triangulate(mesh):
     if exists:
 
         newMesh = dagutils.getMObject(newName)
+
         fnMesh.setObject(newMesh)
         fnMesh.copyInPlace(intermediate)
 
@@ -258,7 +308,7 @@ def triangulate(mesh):
         newMesh = fnMesh.copy(intermediate, parent=transform)
 
     fnMesh.setName(newName)
-    fnMesh.setDoNotWrite(True)
+    fnMesh.setDoNotWrite(doNotWrite)
     fnMesh.isIntermediateObject = True
 
     transferShaders(mesh, newMesh)
