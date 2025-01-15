@@ -1,3 +1,4 @@
+from maya.api import OpenMaya as om
 from ...decorators import abstractdecorator
 
 import logging
@@ -12,7 +13,7 @@ class Locksmith(abstractdecorator.AbstractDecorator):
     """
 
     # region Dunderscores
-    __slots__ = ('_plug', '_value', '_isLocked', '_force')
+    __slots__ = ('_plug', '_isLocked', '_force')
 
     def __init__(self, *args, **kwargs):
         """
@@ -27,8 +28,7 @@ class Locksmith(abstractdecorator.AbstractDecorator):
 
         # Declare private variables
         #
-        self._plug = None
-        self._value = None
+        self._plug = om.MPlug()
         self._isLocked = False
         self._force = False
 
@@ -39,17 +39,18 @@ class Locksmith(abstractdecorator.AbstractDecorator):
         :rtype: None
         """
 
-        # Inspect number of arguments
+        # Search arguments for plug
         #
-        numArgs = len(args)
+        plugs = [arg for arg in args if isinstance(arg, om.MPlug)]
+        numPlugs = len(plugs)
 
-        if numArgs != 2:
+        if numPlugs != 1:
 
-            raise TypeError('__enter__() expects 2 arguments (%s given)!' % numArgs)
+            return
 
         # Check if force was used
         #
-        self._plug, self._value = args
+        self._plug = plugs[0]
         self._isLocked = bool(self.plug.isLocked)
         self._force = kwargs.get('force', False)
 
@@ -77,7 +78,7 @@ class Locksmith(abstractdecorator.AbstractDecorator):
 
         # Check if plug should be relocked
         #
-        if self.force and self.isLocked:
+        if not self.plug.isNull and (self.force and self.isLocked):
 
             self.plug.isLocked = True
     # endregion
@@ -92,16 +93,6 @@ class Locksmith(abstractdecorator.AbstractDecorator):
         """
 
         return self._plug
-
-    @property
-    def value(self):
-        """
-        Getter method that returns the current value.
-
-        :rtype: Any
-        """
-
-        return self._value
 
     @property
     def force(self):
