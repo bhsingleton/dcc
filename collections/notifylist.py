@@ -100,7 +100,77 @@ class NotifyList(collections_abc.MutableSequence):
         return len(self.__items__)
     # endregion
 
+    # region Notifies
+    def itemAdded(self, index, item):
+        """
+        Notifies any functions if an item has been added.
+
+        :type index: int
+        :type item: Any
+        :rtype: None
+        """
+
+        for func in self.__callbacks__['itemAdded']:
+
+            func(index, item)
+
+    def itemRemoved(self, item):
+        """
+        Notifies any functions if an item has been removed.
+
+        :type item: Any
+        :rtype: None
+        """
+
+        for func in self.__callbacks__['itemRemoved']:
+
+            func(item)
+    # endregion
+
     # region Methods
+    def callbackNames(self):
+        """
+        Returns a list of callback names that can be used.
+
+        :rtype: list[str]
+        """
+
+        return list(self.__callbacks__.keys())
+
+    def addCallback(self, name, func):
+        """
+        Appends the supplied function to the specified callback group.
+
+        :type name: str
+        :type func: function
+        :rtype: None
+        """
+
+        # Check if function has already been registered
+        #
+        callbacks = self.__callbacks__[name]
+
+        if func not in callbacks:
+
+            callbacks.append(func)
+
+    def removeCallback(self, name, func):
+        """
+        Removes the supplied ID from the specified callback group.
+
+        :type name: str
+        :type func: function
+        :rtype: None
+        """
+
+        # Check if function was registered
+        #
+        callbacks = self.__callbacks__[name]
+
+        if func in callbacks:
+
+            callbacks.remove(func)
+
     def move(self, index, value):
         """
         Moves an index item to a different index.
@@ -215,74 +285,4 @@ class NotifyList(collections_abc.MutableSequence):
         """
 
         self.pop(slice(0, self.__len__(), 1))
-
-    def callbackNames(self):
-        """
-        Returns a list of callback names that can be used.
-
-        :rtype: list[str]
-        """
-
-        return list(self.__callbacks__.keys())
-
-    def addCallback(self, name, func):
-        """
-        Appends the supplied function to the specified callback group.
-
-        :type name: str
-        :type func: function
-        :rtype: None
-        """
-
-        # Check if function has already been registered
-        #
-        callbacks = self.__callbacks__[name]
-
-        if func not in callbacks:
-
-            callbacks.append(func)
-
-    def removeCallback(self, name, func):
-        """
-        Removes the supplied ID from the specified callback group.
-
-        :type name: str
-        :type func: function
-        :rtype: None
-        """
-
-        # Check if function was registered
-        #
-        callbacks = self.__callbacks__[name]
-
-        if func in callbacks:
-
-            callbacks.remove(func)
-    # endregion
-
-    # region Notifies
-    def itemAdded(self, index, item):
-        """
-        Notifies any functions if an item has been added.
-
-        :type index: int
-        :type item: Any
-        :rtype: None
-        """
-
-        for func in self.__callbacks__['itemAdded']:
-
-            func(index, item)
-
-    def itemRemoved(self, item):
-        """
-        Notifies any functions if an item has been removed.
-
-        :type item: Any
-        :rtype: None
-        """
-
-        for func in self.__callbacks__['itemRemoved']:
-
-            func(item)
     # endregion
