@@ -105,9 +105,10 @@ class Undo(abstractdecorator.AbstractDecorator):
         # Check if any exceptions were raised
         # If so, go ahead and raise them now that undo has been re-enabled!
         #
-        if self.exception is not None:
-
-            raise self.exception
+        if isinstance(self._exception, Exception):
+            
+            exception, self._exception = self._exception, None
+            raise exception
     # endregion
 
     # region Properties
