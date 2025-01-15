@@ -23,21 +23,8 @@ class ADC(Mapping, metaclass=ABCMeta):
         :rtype: dict
         """
 
-        # Iterate through items
-        #
         state = {'__name__': self.className, '__module__': self.moduleName}
-
-        for (key, value) in self.items():
-
-            # Check if value is serializable
-            #
-            if hasattr(value, '__getstate__'):
-
-                state[key] = value.__getstate__()
-
-            else:
-
-                state[key] = value
+        state.update(self.items())
 
         return state
 
