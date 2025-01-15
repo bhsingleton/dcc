@@ -145,30 +145,6 @@ class FnReference(afnreference.AFnReference):
 
         return iter(children)
 
-    def filePath(self):
-        """
-        Returns the source file path for this reference.
-
-        :rtype: str
-        """
-
-        return self.object().srcFileName
-
-    def fileProperties(self):
-        """
-        Returns the file properties from the source file.
-
-        :rtype: dict
-        """
-
-        if self.exists():
-
-            return structuredstorage.getFileProperties(self.filePath())
-
-        else:
-
-            return {}
-
     def handle(self):
         """
         Returns the handle to this reference.
@@ -195,6 +171,66 @@ class FnReference(afnreference.AFnReference):
         else:
 
             return list(self.iterSceneReferences()).index(self)
+
+
+    def filePath(self):
+        """
+        Returns the source file path for this reference.
+
+        :rtype: str
+        """
+
+        return self.object().srcFileName
+
+    def fileProperties(self):
+        """
+        Returns the file properties from the source file.
+
+        :rtype: dict
+        """
+
+        if self.exists():
+
+            return structuredstorage.getFileProperties(self.filePath())
+
+        else:
+
+            return {}
+
+    def isLoaded(self):
+        """
+        Evaluates if this reference is loaded.
+
+        :rtype: bool
+        """
+
+        return self.object().enabled
+
+    def load(self):
+        """
+        Loads the reference.
+
+        :rtype: None
+        """
+
+        record = self.object()
+
+        if not record.enabled:
+
+            record.enabled = True
+
+    def unload(self):
+        """
+        Unloads the reference.
+
+        :rtype: None
+        """
+
+        record = self.object()
+
+        if record.enabled:
+
+            record.enabled = False
 
     def iterReferencedNodes(self):
         """

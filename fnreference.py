@@ -1,25 +1,17 @@
-import inspect
-
-from . import __application__
-from .abstract import afnreference
-
-import logging
-logging.basicConfig()
-log = logging.getLogger(__name__)
-log.setLevel(logging.INFO)
+from . import __executable__, __application__, DCC
 
 
-if __application__ == 'maya':
+if __application__ == DCC.MAYA:
 
     from .maya.fnreference import *
 
-elif __application__ == '3dsmax':
+elif __application__ == DCC.MAX:
 
     from .max.fnreference import *
 
 else:
 
-    raise ImportError('Unable to import dcc reference-helpers for: %s application!' % __application__)
+    raise ModuleNotFoundError(f'Unable to import DCC reference-helpers for: {__executable__}!')
 
 
 def overrideFunctionSet(cls):
@@ -35,7 +27,7 @@ def overrideFunctionSet(cls):
     #
     if not inspect.isclass(cls):
 
-        return overrideFunctionSet(type(cls))
+        cls = type(cls)
 
     # Verify this is a subclass of AFnReference
     #
@@ -45,4 +37,4 @@ def overrideFunctionSet(cls):
 
     else:
 
-        raise TypeError('overrideFunctionSet() expects an AFnReference subclass (%s given)!' % cls.__name__)
+        raise TypeError(f'overrideFunctionSet() expects a AFnReference subclass ({cls.__name__} given)!')

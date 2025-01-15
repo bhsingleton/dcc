@@ -114,6 +114,57 @@ class AFnReference(with_metaclass(ABCMeta, afnobject.AFnObject)):
         return self.getFileProperties().get(key, default)
 
     @abstractmethod
+    def isLoaded(self):
+        """
+        Evaluates if this reference is loaded.
+
+        :rtype: bool
+        """
+
+        pass
+
+    @abstractmethod
+    def load(self):
+        """
+        Loads the reference.
+
+        :rtype: None
+        """
+
+        pass
+
+    def ensureLoaded(self):
+        """
+        Ensures that the reference and child references are loaded.
+
+        :rtype: None
+        """
+
+        # Load reference
+        #
+        self.load()
+
+        # Load child references
+        #
+        child = self.__class__()
+        child.setQueue(self.children())
+
+        while not child.isDone():
+
+            child.load()
+            child.next()
+
+    @abstractmethod
+    def unload(self):
+        """
+        Unloads the reference.
+
+        :rtype: None
+        """
+
+        pass
+
+    @abstractmethod
     def iterReferencedNodes(self):
         """
         Returns a generator that yields all referenced nodes.

@@ -1,6 +1,6 @@
-import maya.cmds as mc
-import maya.api.OpenMaya as om
-
+from maya import cmds as mc
+from maya import OpenMaya as lom
+from maya.api import OpenMaya as om
 from six import integer_types, string_types
 from dcc.abstract import afnreference
 from dcc.maya import fnnode
@@ -18,6 +18,38 @@ class FnReference(fnnode.FnNode, afnreference.AFnReference):
     """
 
     __slots__ = ()
+
+    def parent(self):
+        """
+        Returns the parent of this object.
+
+        :rtype: om.MObject
+        """
+
+        return om.MFnReference(self.object()).parentReference()
+
+    def iterChildren(self):
+        """
+        Returns a generator that yields all the children from this object.
+
+        :rtype: Iterator[om.MObject]
+        """
+
+        reference = om.MFnReference(self.object())
+
+        child = self.__class__()
+        child.setQueue(self.iterSceneReferences(topLevelOnly=False))
+
+        while not child.isDone():
+
+            childNode = child.object()
+            isChild = reference.containsNodeExactly(childNode)
+
+            if isChild:
+
+                yield childNode
+
+            child.next()
 
     def setNamespace(self, namespace):
         """
@@ -37,6 +69,15 @@ class FnReference(fnnode.FnNode, afnreference.AFnReference):
         """
 
         return om.MFnReference(self.object()).associatedNamespace(False)
+
+    def uid(self):
+        """
+        Returns a unique identifier to this reference.
+
+        :rtype: str
+        """
+
+        return om.MFnReference(self.object()).uuid().asString()
 
     def filePath(self):
         """
@@ -61,14 +102,40 @@ class FnReference(fnnode.FnNode, afnreference.AFnReference):
 
         return {properties[i]: properties[i + 1].encode('ascii').decode('unicode-escape') for i in range(0, numProperties, 2)}
 
-    def uid(self):
+    def isLoaded(self):
         """
-        Returns a unique identifier to this reference.
+        Evaluates if this reference is loaded.
 
-        :rtype: str
+        :rtype: bool
         """
 
-        return om.MFnReference(self.object()).uuid().asString()
+        return om.MFnReference(self.object()).isLoaded()
+
+    def load(self):
+        """
+        Loads the reference.
+
+        :rtype: None
+        """
+
+        isLoaded = self.isLoaded()
+
+        if not isLoaded:
+
+            lom.MFileIO.loadReferenceByNode(dagutils.demoteMObject(self.object()))
+
+    def unload(self):
+        """
+        Unloads the reference.
+
+        :rtype: None
+        """
+
+        isLoaded = self.isLoaded()
+
+        if isLoaded:
+
+            lom.MFileIO.unloadReferenceByNode(dagutils.demoteMObject(self.object()))
 
     def iterReferencedNodes(self):
         """
