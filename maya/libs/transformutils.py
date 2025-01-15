@@ -1004,34 +1004,42 @@ def copyTransform(*args, **kwargs):
 
 
 @undo.Undo(name='Freeze Transform')
-def freezeTransform(node, includeTranslate=True, includeRotate=True, includeScale=False):
+def freezeTransform(node, **kwargs):
     """
     Pushes the transform's matrix into the parent offset matrix.
 
     :type node: Union[str, om.MObject, om.MDagPath]
-    :type includeTranslate: bool
-    :type includeRotate: bool
-    :type includeScale: bool
+    :key includeTranslate: bool
+    :key includeRotate: bool
+    :key includeScale: bool
     :rtype: None
     """
 
     # Check if translation should be frozen
     #
+    includeTranslate = kwargs.get('includeTranslate', True)
+
     if includeTranslate:
 
         freezeTranslation(node)
 
     # Check if rotation should be frozen
     #
+    includeRotate = kwargs.get('includeRotate', True)
+
     if includeRotate:
 
         freezeRotation(node)
 
     # Check if scale should be frozen
     #
+    includeScale = kwargs.get('includeScale', False)
+
+
     if includeScale:
 
-        freezeScale(node)
+        bakeScale = kwargs.get('bakeScale', True)
+        freezeScale(node, bake=bakeScale)
 
 
 @undo.Undo(name='Un-Freeze Transform')
@@ -1128,105 +1136,132 @@ def freezeRotation(node):
     setOffsetParentMatrix(node, offsetParentMatrix)
 
 
-def freezeScale(node):
+def freezeScale(node, bake=True):
     """
     Freezes the scale values on the supplied node.
     Unlike translation and rotation, scale cannot be unfrozen.
     Technically we could push the scale into the offsetParentMatrix but scale loves to break shit!
 
     :type node: Union[str, om.MObject, om.MDagPath]
+    :type bake: bool
     :rtype: None
     """
 
-    # Iterate through all descendants
+    # Check if scale should be baked
     #
-    scale = getScale(node)
-    scaleMatrix = createScaleMatrix(scale)
+    if bake:
 
-    for child in dagutils.iterDescendants(node):
-
-        # Check api type
+        # Iterate through descendants
         #
-        if child.hasFn(om.MFn.kTransform):
+        scale = getScale(node)
+        scaleMatrix = createScaleMatrix(scale)
 
-            # Scale node's translation
+        for child in dagutils.iterDescendants(node):
+
+            # Check api type
             #
-            translation = getTranslation(child)
-            translation *= scaleMatrix
+            if child.hasFn(om.MFn.kTransform):
 
-            setTranslation(child, translation)
+                # Scale node's translation
+                #
+                translation = getTranslation(child)
+                translation *= scaleMatrix
 
-        elif child.hasFn(om.MFn.kNurbsCurve):
+                setTranslation(child, translation)
 
-            # Scale control points
-            #
-            fnMesh = om.MFnNurbsCurve(child)
-            controlPoints = fnMesh.cvPositions()
+            elif child.hasFn(om.MFn.kNurbsCurve):
 
-            for i in range(fnMesh.numCVs):
+                # Scale control points
+                #
+                fnMesh = om.MFnNurbsCurve(child)
+                controlPoints = fnMesh.cvPositions()
 
-                controlPoints[i] *= scaleMatrix
+                for i in range(fnMesh.numCVs):
 
-            fnMesh.setCVPositions(controlPoints)
+                    controlPoints[i] *= scaleMatrix
 
-        elif child.hasFn(om.MFn.kNurbsSurface):
+                fnMesh.setCVPositions(controlPoints)
 
-            # Scale control points
-            #
-            fnMesh = om.MFnNurbsCurve(child)
-            controlPoints = fnMesh.cvPositions()
+            elif child.hasFn(om.MFn.kNurbsSurface):
 
-            for i in range(fnMesh.numCVs):
+                # Scale control points
+                #
+                fnMesh = om.MFnNurbsCurve(child)
+                controlPoints = fnMesh.cvPositions()
 
-                controlPoints[i] *= scaleMatrix
+                for i in range(fnMesh.numCVs):
 
-            fnMesh.setCVPositions(controlPoints)
+                    controlPoints[i] *= scaleMatrix
 
-        elif child.hasFn(om.MFn.kLocator):
+                fnMesh.setCVPositions(controlPoints)
 
-            # Initialize function set
-            #
-            fnDagNode = om.MFnDagNode(child)
+            elif child.hasFn(om.MFn.kLocator):
 
-            # Scale local position
-            #
-            plug = fnDagNode.findPlug('localPosition', True)
+                # Initialize function set
+                #
+                fnDagNode = om.MFnDagNode(child)
 
-            localPosition = om.MVector(plugmutators.getValue(plug))
-            localPosition *= scaleMatrix
+                # Scale local position
+                #
+                plug = fnDagNode.findPlug('localPosition', True)
 
-            plugmutators.setValue(plug, localPosition)
+                localPosition = om.MVector(plugmutators.getValue(plug))
+                localPosition *= scaleMatrix
 
-            # Scale local scale
-            #
-            plug = fnDagNode.findPlug('localScale', True)
+                plugmutators.setValue(plug, localPosition)
 
-            localScale = om.MVector(plugmutators.getValue(plug))
-            localScale *= scaleMatrix
+                # Scale local scale
+                #
+                plug = fnDagNode.findPlug('localScale', True)
 
-            plugmutators.setValue(plug, localScale)
+                localScale = om.MVector(plugmutators.getValue(plug))
+                localScale *= scaleMatrix
 
-        elif child.hasFn(om.MFn.kMesh):
+                plugmutators.setValue(plug, localScale)
 
-            # Scale control points
-            #
-            fnMesh = om.MFnMesh(child)
-            controlPoints = fnMesh.getPoints()
+            elif child.hasFn(om.MFn.kMesh):
 
-            for i in range(fnMesh.numVertices):
+                # Scale control points
+                #
+                fnMesh = om.MFnMesh(child)
+                controlPoints = fnMesh.getPoints()
 
-                controlPoints[i] *= scaleMatrix
+                for i in range(fnMesh.numVertices):
 
-            fnMesh.setPoints(controlPoints)
+                    controlPoints[i] *= scaleMatrix
 
-        else:
+                fnMesh.setPoints(controlPoints)
 
-            log.warning('Unable to bake scale into: %s api type!' % child.apiTypStr)
-            continue
+            else:
 
-    # Reset scale on transform
-    #
-    resetScale(node)
+                log.warning(f'Unable to bake scale into: {child.apiTypeStr} api type!')
+                continue
+
+        # Reset scale on transform
+        #
+        resetScale(node)
+
+    else:
+
+        # Get and reset current translation
+        #
+        dagLocalMatrixPlug = plugutils.findPlug(node, 'dagLocalMatrix')
+        dagLocalMatrixData = dagLocalMatrixPlug.asMObject()
+        dagLocalMatrix = getMatrixData(dagLocalMatrixData, asTransformationMatrix=True)
+
+        currentScale = dagLocalMatrix.scale(om.MSpace.kTransform)
+        resetScale(node)
+
+        # Calculate new offset parent-matrix
+        #
+        offsetParentMatrix = getOffsetParentMatrix(node)
+        translation, eulerRotation, scale = decomposeTransformMatrix(offsetParentMatrix)
+
+        offsetParentMatrix = composeMatrix(translation, eulerRotation, currentScale)
+
+        # Push offset parent-matrix to plug
+        #
+        setOffsetParentMatrix(node, offsetParentMatrix)
 
 
 def matrixToList(matrix):
