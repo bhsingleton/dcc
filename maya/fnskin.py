@@ -259,25 +259,26 @@ class FnSkin(fnnode.FnNode, afnskin.AFnSkin):
 
         if not shape.hasFn(om.MFn.kMesh):
 
-            log.debug('showColors() expects a mesh (%s given)!' % shape.apiTypeStr)
+            log.debug(f'showColors() expects a mesh ({shape.apiTypeStr} given)!')
             return
 
-        # Check if intermediate object has colour set
+        # Check if intermediate object has required colour set
+        # If not, then go ahead and create colour set!
         #
         intermediateObject = self.intermediateObject()
 
-        fnMesh = om.MFnMesh(intermediateObject)
-        colorSetNames = fnMesh.getColorSetNames()
+        fnIntermediateObject = om.MFnMesh(intermediateObject)
+        colorSetNames = fnIntermediateObject.getColorSetNames()
 
         if self.__color_set_name__ not in colorSetNames:
 
-            fnMesh.createColorSet(self.__color_set_name__, False)
-            fnMesh.setCurrentColorSetName(self.__color_set_name__)
+            fnIntermediateObject.createColorSet(self.__color_set_name__, False)
+            fnIntermediateObject.setCurrentColorSetName(self.__color_set_name__)
 
         # Set shape attributes
         #
-        fnMesh.setObject(shape)
-        fullPathName = fnMesh.fullPathName()
+        fnShape = om.MFnMesh(shape)
+        fullPathName = fnShape.fullPathName()
 
         mc.setAttr(f'{fullPathName}.displayImmediate', 0)
         mc.setAttr(f'{fullPathName}.displayVertices', 0)
@@ -320,8 +321,8 @@ class FnSkin(fnnode.FnNode, afnskin.AFnSkin):
 
         # Reset shape attributes
         #
-        fnMesh = om.MFnMesh(shape)
-        fullPathName = fnMesh.fullPathName()
+        fnShape = om.MFnMesh(shape)
+        fullPathName = fnShape.fullPathName()
 
         mc.setAttr(f'{fullPathName}.displayColors', 0)
         mc.setAttr(f'{fullPathName}.vertexColorSource', 1)
@@ -329,13 +330,15 @@ class FnSkin(fnnode.FnNode, afnskin.AFnSkin):
         # Delete color set
         #
         intermediateObject = self.intermediateObject()
+        fnIntermediateObject = om.MFnMesh(intermediateObject)
 
-        fnMesh.setObject(intermediateObject)
-        colorSetNames = fnMesh.getColorSetNames()
+        fullPathName = fnShape.fullPathName()
+        colorSetNames = fnIntermediateObject.getColorSetNames()
 
         if self.__color_set_name__ in colorSetNames:
 
-            fnMesh.deleteColorSet(self.__color_set_name__)
+            mc.setAttr(f'{fullPathName}.currentColorSet', '', type='string')
+            fnIntermediateObject.deleteColorSet(self.__color_set_name__)
 
     def refreshColors(self):
         """

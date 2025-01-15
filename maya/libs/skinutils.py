@@ -599,42 +599,44 @@ def resetPreBindMatrices(skinCluster, modifier=None):
     modifier.doIt()
 
 
-@undo.Undo(name='Reset Intermediate Object')
 def resetIntermediateObject(skinCluster):
     """
     Resets the control points on the associated intermediate object.
 
+    :type skinCluster: om.MObject
     :rtype: None
     """
 
-    # Store deformed points
+    # Decompose skin cluster
     #
     transform, shape, intermediateObject = dagutils.decomposeDeformer(skinCluster)
 
-    shape = om.MDagPath.getAPathTo(shape)
-    iterVertex = om.MItMeshVertex(shape)
+    # Cache deformed control-points and normals
+    #
+    shapePath = om.MDagPath.getAPathTo(shape)
+    fnShape = om.MFnMesh(shapePath)
+    points = fnShape.getPoints()
 
-    points = []
+    hasLockedNormals = fnShape.isNormalLocked(0)
+    normals = None
 
-    while not iterVertex.isDone():
+    if hasLockedNormals:
 
-        point = iterVertex.position()
-        points.append([point.x, point.y, point.z])
+        log.debug(f'Pulling normals from: {shapePath.fullPathName()}')
+        normals = fnShape.getNormals()
 
-        iterVertex.next()
-
-    # Reset influences
+    # Reset pre-bind matrices
     #
     resetPreBindMatrices(skinCluster)
 
-    # Apply deformed values to intermediate object
+    # Update intermediate control-points and normals
     #
-    intermediateObject = om.MDagPath.getAPathTo(intermediateObject)
-    iterVertex = om.MItMeshVertex(intermediateObject)
+    intermediatePath = om.MDagPath.getAPathTo(intermediateObject)
+    fnIntermediate = om.MFnMesh(intermediatePath)
+    fnIntermediate.setPoints(points)
 
-    while not iterVertex.isDone():
+    if hasLockedNormals:
 
-        point = points[iterVertex.index()]
-        iterVertex.setPosition(om.MPoint(point))
-
-        iterVertex.next()
+        log.debug(f'Pushing normals to: {intermediatePath.fullPathName()}')
+        fnIntermediate.setNormals(normals)
+        fnIntermediate.updateSurface()
