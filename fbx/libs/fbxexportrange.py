@@ -507,9 +507,11 @@ class FbxExportRange(fbxbase.FbxBase):
             log.error(f'Cannot find asset associated with "{self.name}" range!')
             return False
 
-        # Check if legacy serializer should be used
+        # Check which serializer to use
+        # Don't forget to ensure all child references are loaded before serializing!
         #
         asset = self.asset()
+        self.sequencer.reference.ensureLoaded()
 
         if asset.useBuiltinSerializer:
 
