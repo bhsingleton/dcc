@@ -360,6 +360,7 @@ def bakeBindPose(skin):
     resetBoneBindMatrices(skin)
 
 
+@modifypaneloverride.ModifyPanelOverride(currentObject=0, subObjectLevel=1)
 def showColors(skin):
     """
     Enables the vertex color feedback for the supplied skin.
