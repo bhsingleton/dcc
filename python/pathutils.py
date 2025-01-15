@@ -69,7 +69,7 @@ def isDirectoryLike(string):
 
     :rtype: None
     """
-    
+
     return __directory_regex__.match(string) is not None
 
 
