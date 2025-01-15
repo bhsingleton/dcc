@@ -3,7 +3,8 @@ import math
 from maya import cmds as mc
 from maya.api import OpenMaya as om
 from enum import IntEnum
-from . import dagutils, plugutils
+from . import dagutils, plugutils, plugmutators
+from ..json import mshapeparser
 from ...python import stringutils
 
 import logging
@@ -27,8 +28,20 @@ class ObjectColor(IntEnum):
     PINK = 7
 
 
-COLOR_SIDE_INDEX = {0: ObjectColor.YELLOW, 1: ObjectColor.BLUE, 2: ObjectColor.ORANGE, 3: ObjectColor.YELLOW}
-COLOUR_SIDE_RGB = {0: (1.0, 1.0, 0.0), 1: (0.0, 0.0, 1.0), 2: (1.0, 0.0, 0.0), 3: (1.0, 1.0, 0.0)}
+COLOR_SIDE_INDEX = {
+    0: ObjectColor.YELLOW,
+    1: ObjectColor.BLUE,
+    2: ObjectColor.ORANGE,
+    3: ObjectColor.YELLOW
+}
+
+
+COLOUR_SIDE_RGB = {
+    0: (1.0, 1.0, 0.0),
+    1: (0.0, 0.0, 1.0),
+    2: (1.0, 0.0, 0.0),
+    3: (1.0, 1.0, 0.0)
+}
 
 
 def setObjectColorIndex(shape, colorIndex):
@@ -396,3 +409,114 @@ def renameShapes(*nodes):
 
                 log.debug(f'Renaming {originalName} > {newName}')
                 dagutils.renameNode(shape, newName)
+
+
+def snapshot(node):
+    """
+    Returns a shape snapshot of the supplied transform node.
+
+    :type node: om.MObject
+    :rtype: List[dict]
+    """
+
+    # Evaluate supplied node
+    #
+    node = dagutils.getMObject(node)
+    shapes = None
+
+    if node.hasFn(om.MFn.kTransform):
+
+        shapes = list(dagutils.iterShapes(node))
+
+    else:
+
+        raise TypeError(f'snapshot() expects a transform node ({node.apiTypeStr} given)!')
+
+    # Encode shapes as json objects
+    #
+    stateSize = len(shapes)
+    state = [None] * stateSize
+
+    encoder = mshapeparser.MShapeEncoder()
+
+    for (i, shape) in enumerate(shapes):
+
+        state[i] = encoder.default(shape)
+
+    return state
+
+
+def assumeSnapshot(node, state):
+    """
+    Copies the supplied shape state to the specified transform node.
+
+    :type node: om.MObject
+    :type state: List[dict]
+    :rtype: None
+    """
+
+    # Check if state and shape sizes match
+    #
+    shapes = list(dagutils.iterShapes(node))
+    numShapes = len(shapes)
+    stateSize = len(state)
+
+    if numShapes != stateSize:
+
+        log.warning(f'assumeSnapshot() expects {stateSize} shapes ({numShapes} given)!')
+        return
+
+    # Iterate through state
+    #
+    fnDagNode = om.MFnDagNode()
+    fnNurbsCurve = om.MFnNurbsCurve()
+
+    for (shape, obj) in zip(shapes, state):
+
+        # Check if types are compatible
+        #
+        fnDagNode.setObject(shape)
+        shapeName = fnDagNode.name()
+
+        isCompatible = fnDagNode.typeName == obj['typeName']
+
+        if not isCompatible:
+
+            log.warning(f'Skipping "{shapeName}" shape!')
+            continue
+
+        # Evaluate shape type
+        #
+        if shape.hasFn(om.MFn.kPluginLocatorNode):
+
+            plugmutators.setValue(shape, 'size', obj['size'])
+            plugmutators.setValue(shape, 'localPosition', obj['localPosition'])
+            plugmutators.setValue(shape, 'localRotate', obj['localRotate'])
+            plugmutators.setValue(shape, 'localScale', obj['localScale'])
+
+            for (name, enabled) in obj['drawables'].items():
+
+                plugmutators.setValue(shape, name, enabled)
+
+        elif shape.hasFn(om.MFn.kNurbsCurve):
+
+            fnNurbsCurve.setObject(shape)
+            numCVs = int(fnNurbsCurve.numCVs)
+
+            controlPoints = list(map(om.MPoint, obj['controlPoints']))
+            numControlPoints = len(controlPoints)
+
+            if numCVs == numControlPoints:
+
+                fnNurbsCurve.setCVPositions(controlPoints)
+                fnNurbsCurve.updateCurve()
+
+            else:
+
+                log.warning(f'assumeSnapshot() expects {numCVs} shapes ({numControlPoints} given)!')
+                continue
+
+        else:
+
+            log.warning(f'assumeSnapshot() no support for "{shape.apiTypeStr}" shapes!')
+            continue

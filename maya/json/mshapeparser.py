@@ -4,7 +4,7 @@ import json
 from maya import cmds as mc, OpenMaya as lom
 from maya.api import OpenMaya as om
 from itertools import chain
-from ..libs import dagutils, transformutils, shapeutils
+from ..libs import attributeutils, plugutils, plugmutators, dagutils, shapeutils, transformutils
 from ...python import stringutils
 
 import logging
@@ -22,6 +22,8 @@ class MShapeEncoder(json.JSONEncoder):
     __slots__ = ()
 
     __shape_types__ = {
+        'locator': 'serializeLocator',
+        'pointHelper': 'serializePointHelper',
         'nurbsCurve': 'serializeNurbsCurve',
         'bezierCurve': 'serializeNurbsCurve',
         'nurbsTrimSurface': 'serializeNurbsTrimSurface',
@@ -43,10 +45,23 @@ class MShapeEncoder(json.JSONEncoder):
         #
         if isinstance(obj, om.MObject):
 
-            delegate = self.__shape_types__[om.MFnDependencyNode(obj).typeName]
-            func = getattr(self, delegate)
+            # Check if delegate exists
+            #
+            typeName = str(om.MFnDependencyNode(obj).typeName)
+            delegate = self.__shape_types__.get(typeName, '')
+            func = getattr(self, delegate, None)
 
-            return func(obj)
+            if callable(func):
+
+                return func(obj)
+
+            else:
+
+                raise TypeError(f'default() expects a valid shape type ({typeName} given)!')
+
+        elif isinstance(obj, om.MObjectHandle):
+
+            return self.default(obj.object())
 
         elif isinstance(obj, om.MDagPath):
 
@@ -57,9 +72,59 @@ class MShapeEncoder(json.JSONEncoder):
             return super(MShapeEncoder, self).default(obj)
 
     @classmethod
+    def serializeLocator(cls, obj):
+        """
+        Dumps the supplied locator into a json serializable object.
+
+        :type obj: om.MObject
+        :rtype: dict
+        """
+
+        # Get locator parameters
+        #
+        localPosition = plugmutators.getValue(obj, 'localPosition')
+        localScale = plugmutators.getValue(obj, 'localScale')
+        lineWidth = plugmutators.getValue(obj, 'lineWidth')
+
+        return {
+            'typeName': 'locator',
+            'localPosition': localPosition,
+            'localScale': localScale,
+            'lineWidth': lineWidth
+        }
+
+    @classmethod
+    def serializePointHelper(cls, obj):
+        """
+        Dumps the supplied point-helper into a json serializable object.
+
+        :type obj: om.MObject
+        :rtype: dict
+        """
+
+        # Get point-helper parameters
+        #
+        size = plugmutators.getValue(obj, 'size')
+        localPosition = plugmutators.getValue(obj, 'localPosition')
+        localRotate = plugmutators.getValue(obj, 'localRotate')
+        localScale = plugmutators.getValue(obj, 'localScale')
+        drawables = {attributeutils.getAttributeName(attribute): plugmutators.getValue(obj, attribute) for attribute in attributeutils.iterCategory(obj, 'Drawable')}
+        lineWidth = plugmutators.getValue(obj, 'lineWidth')
+
+        return {
+            'typeName': 'pointHelper',
+            'size': size,
+            'localPosition': localPosition,
+            'localRotate': localRotate,
+            'localScale': localScale,
+            'drawables': drawables,
+            'lineWidth': lineWidth
+        }
+
+    @classmethod
     def serializeNurbsCurve(cls, obj):
         """
-        Dumps the supplied nurbs curve into a json compatible object.
+        Dumps the supplied nurbs curve into a json serializable object.
 
         :type obj: om.MObject
         :rtype: dict
@@ -70,19 +135,25 @@ class MShapeEncoder(json.JSONEncoder):
         dagPath = om.MDagPath.getAPathTo(obj)
         fnNurbsCurve = om.MFnNurbsCurve(dagPath)
 
+        controlPoints = [(point.x, point.y, point.z, point.w) for point in fnNurbsCurve.cvPositions()]
+        knots = [knot for knot in fnNurbsCurve.knots()]
+        degrees = int(fnNurbsCurve.degree)
+        form = int(fnNurbsCurve.form)
+        lineWidth = plugmutators.getValue(obj, 'lineWidth')
+
         return {
-            'typeName': fnNurbsCurve.typeName,
-            'controlPoints': [[point.x, point.y, point.z, point.w] for point in fnNurbsCurve.cvPositions()],
-            'knots': [x for x in fnNurbsCurve.knots()],
-            'degree': fnNurbsCurve.degree,
-            'form': fnNurbsCurve.form,
-            'lineWidth': fnNurbsCurve.findPlug('lineWidth', True).asFloat()
+            'typeName': 'nurbsCurve',
+            'controlPoints': controlPoints,
+            'knots': knots,
+            'degree': degrees,
+            'form': form,
+            'lineWidth': lineWidth
         }
 
     @classmethod
     def serializeNurbsTrimSurface(cls, obj):
         """
-        Dumps the supplied nurb surface's trimmed boundaries into a json compatible object.
+        Dumps the supplied nurbs surface's trimmed boundaries into a json serializable object.
         Please note Autodesk have yet to implement these methods in their newest API!
 
         :type obj: lom.MObject
@@ -90,7 +161,7 @@ class MShapeEncoder(json.JSONEncoder):
         """
 
         # Check number of regions
-        # If zero then this surface has no trimmed surfaces
+        # If there are no regions then this surface has no trims!
         #
         fnNurbsSurface = lom.MFnNurbsSurface(obj)
         numRegions = fnNurbsSurface.numRegions()
@@ -152,7 +223,7 @@ class MShapeEncoder(json.JSONEncoder):
     @classmethod
     def serializeNurbsSurface(cls, obj):
         """
-        Dumps the supplied nurbs surface into a json compatible object.
+        Dumps the supplied nurbs surface into a json serializable object.
 
         :type obj: om.MObject
         :rtype: dict
@@ -163,23 +234,33 @@ class MShapeEncoder(json.JSONEncoder):
         dagPath = om.MDagPath.getAPathTo(obj)
         fnNurbsSurface = om.MFnNurbsSurface(dagPath)
 
+        controlPoints = [(point.x, point.y, point.z, point.w) for point in fnNurbsSurface.cvPositions()]
+        uKnots = [x for x in fnNurbsSurface.knotsInU()]
+        vKnots = [x for x in fnNurbsSurface.knotsInV()]
+        uDegree = int(fnNurbsSurface.degreeInU)
+        vDegree = int(fnNurbsSurface.degreeInV)
+        uForm = int(fnNurbsSurface.formInU)
+        vForm = int(fnNurbsSurface.formInV)
+        boundaries = cls.nurbsTrimSurface(dagutils.demoteMObject(obj))
+        precision = plugmutators.getValue(obj, 'precision')
+
         return {
-            'typeName': fnNurbsSurface.typeName,
-            'controlPoints': [[point.x, point.y, point.z, point.w] for point in fnNurbsSurface.cvPositions()],
-            'uKnots': [x for x in fnNurbsSurface.knotsInU()],
-            'vKnots': [x for x in fnNurbsSurface.knotsInV()],
-            'uDegree': fnNurbsSurface.degreeInU,
-            'vDegree': fnNurbsSurface.degreeInV,
-            'uForm': fnNurbsSurface.formInU,
-            'vForm': fnNurbsSurface.formInV,
-            'boundaries': cls.nurbsTrimSurface(dagutils.demoteMObject(obj)),
-            'precision': fnNurbsSurface.findPlug('curvePrecisionShaded', True).asFloat()
+            'typeName': 'nurbsSurface',
+            'controlPoints': controlPoints,
+            'uKnots': uKnots,
+            'vKnots': vKnots,
+            'uDegree': uDegree,
+            'vDegree': vDegree,
+            'uForm': uForm,
+            'vForm': vForm,
+            'boundaries': boundaries,
+            'precision': precision
         }
 
     @classmethod
     def serializeMesh(cls, obj):
         """
-        Dumps the supplied mesh into a json compatible object.
+        Dumps the supplied mesh into a json serializable object.
 
         :type obj: om.MObject
         :rtype: dict
@@ -190,13 +271,19 @@ class MShapeEncoder(json.JSONEncoder):
         dagPath = om.MDagPath.getAPathTo(obj)
         fnMesh = om.MFnMesh(dagPath)
 
+        controlPoints = [(point.x, point.y, point.z, point.w) for point in fnMesh.getPoints()]
+        polygonConnects = [fnMesh.getPolygonVertices(x) for x in range(fnMesh.numPolygons)]
+        polygonCounts = [fnMesh.polygonVertexCount(x) for x in range(fnMesh.numPolygons)]
+        faceVertexNormals = [[(y.x, y.y, y.z) for y in fnMesh.getFaceVertexNormals(x)] for x in range(fnMesh.numPolygons)]
+        edgeSmoothings = [fnMesh.isEdgeSmooth(x) for x in range(fnMesh.numEdges)]
+
         return {
-            'typeName': fnMesh.typeName,
-            'controlPoints': [[point.x, point.y, point.z, point.w] for point in fnMesh.getPoints()],
-            'polygonConnects': [fnMesh.getPolygonVertices(x) for x in range(fnMesh.numPolygons)],
-            'polygonCounts': [fnMesh.polygonVertexCount(x) for x in range(fnMesh.numPolygons)],
-            'faceVertexNormals': [[[y.x, y.y, y.z] for y in fnMesh.getFaceVertexNormals(x)] for x in range(fnMesh.numPolygons)],
-            'edgeSmoothings': [fnMesh.isEdgeSmooth(x) for x in range(fnMesh.numEdges)]
+            'typeName': 'mesh',
+            'controlPoints': controlPoints,
+            'polygonConnects': polygonConnects,
+            'polygonCounts': polygonCounts,
+            'faceVertexNormals': faceVertexNormals,
+            'edgeSmoothings': edgeSmoothings
         }
     # endregion
 
@@ -220,11 +307,12 @@ class MShapeDecoder(json.JSONDecoder):
     )
 
     __shape_types__ = {
+        'locator': 'deserializeLocator',
+        'pointHelper': 'deserializePointHelper',
         'nurbsCurve': 'deserializeNurbsCurve',
         'bezierCurve': 'deserializeNurbsCurve',
         'nurbsSurface': 'deserializeNurbsSurface',
         'mesh': 'deserializeMesh'
-
     }
 
     def __init__(self, *args, **kwargs):
@@ -306,7 +394,7 @@ class MShapeDecoder(json.JSONDecoder):
     # region Methods
     def default(self, obj):
         """
-        Object hook for this decoder.
+        Returns a json deserialized object from the supplied dictionary.
 
         :type obj: dict
         :rtype: om.MObject
@@ -384,18 +472,87 @@ class MShapeDecoder(json.JSONDecoder):
         return demotedMatrix
 
     @classmethod
-    def deserializeNurbsCurve(cls, obj, **kwargs):
+    def deserializeLocator(cls, obj, **kwargs):
         """
-        Creates a nurbs curve based on the supplied dictionary.
+        Returns a locator using the supplied json object.
 
         :type obj: dict
         :key parent: om.MObject
         :rtype: om.MObject
         """
 
+        # Decompose object
+        #
+        localPosition = om.MVector(obj['localPosition'])
+        localScale = om.MVector(obj['localScale'])
+
         # Check if a parent was supplied
         #
+        parent = kwargs.get('parent', om.MObject.kNullObj)
+        hasParent = not parent.isNull()
+
+        if not hasParent:
+
+            parent = dagutils.createNode('transform')
+
+        locator = dagutils.createNode('locator', parent=parent)
+        plugmutators.setValue(locator, 'localPosition', localPosition)
+        plugmutators.setValue(locator, 'localScale', localScale)
+
+        return locator
+
+    @classmethod
+    def deserializePointHelper(cls, obj, **kwargs):
+        """
+        Returns a point-helper using the supplied json object.
+
+        :type obj: dict
+        :key parent: om.MObject
+        :rtype: om.MObject
+        """
+
+        # Decompose object
+        #
+        size = obj['size']
+        localPosition = om.MVector(obj['localPosition'])
+        localRotate = om.MVector(obj['localRotate'])
+        localScale = om.MVector(obj['localScale'])
+
+        # Check if a parent was supplied
+        #
+        parent = kwargs.get('parent', om.MObject.kNullObj)
+        hasParent = not parent.isNull()
+
+        if not hasParent:
+
+            parent = dagutils.createNode('transform')
+
+        pointHelper = dagutils.createNode('pointHelper', parent=parent)
+        plugmutators.setValue(pointHelper, 'size', size)
+        plugmutators.setValue(pointHelper, 'localPosition', localPosition)
+        plugmutators.setValue(pointHelper, 'localRotate', localRotate)
+        plugmutators.setValue(pointHelper, 'localScale', localScale)
+
+        for (name, enabled) in obj['drawables'].items():
+
+            plugmutators.setValue(pointHelper, name, enabled)
+
+        return pointHelper
+
+    @classmethod
+    def deserializeNurbsCurve(cls, obj, **kwargs):
+        """
+        Returns a nurbs-curve using the supplied json object.
+
+        :type obj: dict
+        :key parent: om.MObject
+        :rtype: om.MObject
+        """
+
+        # Decompose object
+        #
         matrix = cls.composeMatrix(**kwargs)
+
         cvs = om.MPointArray(list(map(lambda point: om.MPoint(point) * matrix, obj['controlPoints'])))
         knots = om.MDoubleArray(obj['knots'])
         degree = obj['degree']
@@ -403,6 +560,8 @@ class MShapeDecoder(json.JSONDecoder):
         is2D = kwargs.get('is2D', False)
         rational = kwargs.get('rational', True)
 
+        # Check if a parent was supplied
+        #
         parent = kwargs.get('parent', om.MObject.kNullObj)
         hasParent = not parent.isNull()
 
@@ -472,16 +631,17 @@ class MShapeDecoder(json.JSONDecoder):
     @classmethod
     def deserializeNurbsSurface(cls, obj, **kwargs):
         """
-        Creates a nurbs surface based on the supplied object.
+        Returns a nurbs-surface using the supplied json object.
 
         :type obj: dict
         :key parent: om.MObject
         :rtype: om.MObject
         """
 
-        # Check if a parent was supplied
+        # Decompose object
         #
         matrix = cls.composeMatrix(**kwargs)
+
         cvs = om.MPointArray(list(map(lambda point: om.MPoint(point) * matrix, obj['controlPoints'])))
         uKnots = om.MDoubleArray(obj['uKnots'])
         vKnots = om.MDoubleArray(obj['vKnots'])
@@ -491,6 +651,8 @@ class MShapeDecoder(json.JSONDecoder):
         vForm = obj['vForm']
         rational = kwargs.get('rational', True)
 
+        # Check if a parent was supplied
+        #
         parent = kwargs.get('parent', om.MObject.kNullObj)
         hasParent = not parent.isNull()
 
@@ -548,20 +710,23 @@ class MShapeDecoder(json.JSONDecoder):
     @classmethod
     def deserializeMesh(cls, obj, **kwargs):
         """
-        Creates a mesh based on the supplied dictionary.
+        Returns a mesh using the supplied json object.
 
         :type obj: dict
         :key parent: om.MObject
         :rtype: om.MObject
         """
 
-        # Check if a parent was supplied
+        # Decompose object
         #
         matrix = cls.composeMatrix(**kwargs)
-        vertices = om.MPointArray(list(map(lambda point: om.MPoint(point) * matrix, obj['controlPoints'])))
-        polygonCounts = obj['polygonCounts']
-        polygonConnects = obj['polygonConnects']
 
+        vertices = om.MPointArray(list(map(lambda point: om.MPoint(point) * matrix, obj['controlPoints'])))
+        polygonCounts = om.MIntArray(obj['polygonCounts'])
+        polygonConnects = om.MIntArray(obj['polygonConnects'])
+
+        # Check if a parent was supplied
+        #
         parent = kwargs.get('parent', om.MObject.kNullObj)
         hasParent = not parent.isNull()
 
