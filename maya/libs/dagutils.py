@@ -215,6 +215,7 @@ def promoteMObject(node):
 def getMObjectByName(name):
     """
     Returns an MObject from the supplied node name.
+    Unlike the API methods, this method will consider both root and child namespaces when using wildcards!
 
     :type name: Union[str, unicode]
     :rtype: om.MObject
@@ -259,6 +260,7 @@ def getMObjectByName(name):
 def getMObjectByPath(path):
     """
     Returns an MObject from the supplied node path.
+    Unlike the API methods, this method will consider both root and child namespaces when using wildcards!
 
     :type path: Union[str, unicode]
     :rtype: om.MObject
