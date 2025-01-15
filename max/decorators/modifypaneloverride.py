@@ -88,7 +88,7 @@ class ModifyPanelOverride(commandpaneloverride.CommandPanelOverride):
 
             # Evaluate available sub-object levels
             #
-            if not (1 <= self.subObjectLevel < pymxs.runtime.numSubObjectLevels):
+            if not (1 <= self.subObjectLevel <= pymxs.runtime.numSubObjectLevels):
 
                 raise TypeError('__enter__() sub-object level is out of range!')
 
