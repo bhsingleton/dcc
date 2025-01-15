@@ -4,7 +4,7 @@ import fbx
 import FbxCommon
 
 from itertools import chain
-from ... import __application__, fnscene, fnnode, fntransform, fnmesh, fnskin
+from ... import __application__, DCC, fnscene, fnnode, fntransform, fnmesh, fnskin
 from ...python import stringutils
 from ...generators.inclusiverange import inclusiveRange
 
@@ -203,13 +203,13 @@ class FbxSerializer(object):
 
         globalSettings = self.fbxScene.GetGlobalSettings()
 
-        if __application__ == 'maya':
+        if __application__ == DCC.MAYA:
 
             upAxis = self.scene.getUpAxis()
             axisSystem = fbx.FbxAxisSystem.MayaYUp if upAxis == 'y' else fbx.FbxAxisSystem.MayaZUp
             globalSettings.SetAxisSystem(axisSystem)
 
-        elif __application__ == '3dsmax':
+        elif __application__ == DCC.MAX:
 
             globalSettings.SetAxisSystem(fbx.FbxAxisSystem.Max)
 

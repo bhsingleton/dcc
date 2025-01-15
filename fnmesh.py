@@ -1,19 +1,14 @@
-from . import __application__
-
-import logging
-logging.basicConfig()
-log = logging.getLogger(__name__)
-log.setLevel(logging.INFO)
+from . import __executable__, __application__, DCC
 
 
-if __application__ == 'maya':
+if __application__ == DCC.MAYA:
 
     from .maya.fnmesh import *
 
-elif __application__ == '3dsmax':
+elif __application__ == DCC.MAX:
 
     from .max.fnmesh import *
 
 else:
 
-    raise ImportError('Unable to import dcc mesh-helpers for: %s application!' % __application__)
+    raise ModuleNotFoundError(f'Unable to import DCC mesh-helpers for: {__executable__}!')
