@@ -93,7 +93,7 @@ class FbxIO(singleton.Singleton):
 
         # Check if file exists
         #
-        if not os.path.exists(filePath):
+        if not os.path.isfile(filePath):
 
             return None
 
@@ -102,7 +102,7 @@ class FbxIO(singleton.Singleton):
         stats = os.stat(filePath)
         fileId = stats.st_ino
 
-        cache = self.assets.get(fileId)
+        cache = self.assets.get(fileId, None)
 
         if cache is None:
 
@@ -257,12 +257,18 @@ class FbxIO(singleton.Singleton):
         :rtype: List[fbxsequencer.FbxSequencer]
         """
 
+        # Check if file exists
+        #
+        if not os.path.isfile(filePath):
+
+            return []
+
         # Check if cache exists
         #
         stats = os.stat(filePath)
         fileId = stats.st_ino
 
-        cache = self.sequencers.get(fileId)
+        cache = self.sequencers.get(fileId, None)
 
         if cache is None:
 
