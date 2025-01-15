@@ -1,6 +1,7 @@
 from maya.api import OpenMaya as om, OpenMayaAnim as oma
+from six import string_types
 from six.moves import collections_abc
-from . import sceneutils, plugutils, animutils
+from . import sceneutils, dagutils, plugutils, animutils
 from ..decorators import locksmith, undo
 from ...python import arrayutils
 
@@ -381,26 +382,31 @@ __get_value__ = {
 }
 
 
-def getValue(plug, convertUnits=True, bestLayer=False):
+def getValue(*args, **kwargs):
     """
-    Gets the value from the supplied plug.
+    Returns the value from the supplied plug.
     Enabling `convertUnits` will convert any internal units to UI values!
-    Whereas `bestLayer` affects whether the value from the active anim-layer is returned instead!
+    Enabling `bestLayer` determines whether the value from the active anim-layer is returned instead!
 
-    :type plug: om.MPlug
-    :type convertUnits: bool
-    :type bestLayer: bool
+    :type args: Union[om.MPlug, Tuple[Union[str, om.MObject, om.MDagPath], Union[str, om.MObject]]]
+    :key convertUnits: bool
+    :key bestLayer: bool
     :rtype: Any
     """
 
-    # Check if this is a null plug
+    # Check if plug is valid
     #
+    plug = plugutils.findAnyPlug(*args)
+
     if plug.isNull:
 
         return None
 
     # Evaluate plug type
     #
+    convertUnits = kwargs.get('convertUnits', True)
+    bestLayer = kwargs.get('bestLayer', False)
+
     if plug.isArray and not plug.isElement:
 
         # Iterate through existing indices
@@ -960,24 +966,27 @@ __set_value__ = {
 
 
 @locksmith.Locksmith
-def setValue(plug, value, modifier=None, **kwargs):
+def setValue(*args, modifier=None, **kwargs):
     """
     Updates the value for the supplied plug.
-    An optional force flag can be supplied to unlock the node before setting.
+    An optional force flag can be supplied to unlock the node before updating plugs.
 
-    :type plug: om.MPlug
-    :type value: Any
-    :type modifier: Union[om.MDGModifier, None]
+    :type args: Union[Tuple[om.MPlug, Any], Tuple[Union[str, om.MObject, om.MDagPath], Union[str, om.MObject], Any]]
+    :type modifier: om.MDGModifier
+    :key force: bool
     :rtype: None
     """
 
-    # Check if this is a null plug
+    # Check if plug is valid
     #
+    *args, value = args
+    plug = plugutils.findAnyPlug(*args)
+
     if plug.isNull:
 
         return None
     
-    # Check if a dag modifier was supplied
+    # Check if a DAG modifier was supplied
     #
     if modifier is None:
         

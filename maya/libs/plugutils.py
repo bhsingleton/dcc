@@ -3,6 +3,7 @@ import re
 from maya import cmds as mc
 from maya.api import OpenMaya as om, OpenMayaAnim as oma
 from collections import deque
+from six import string_types
 from . import dagutils, attributeutils
 from ..decorators import undo
 from ...python import stringutils
@@ -153,6 +154,70 @@ def findPlugIndex(plug, logical=True):
     else:
 
         return list(attributeutils.iterTopLevelAttributes(plug.node())).index(plug.attribute())
+
+
+def findAnyPlug(*args):
+    """
+    Returns a plug from the supplied arguments.
+
+    :type args: Union[Tuple[Union[str, om.MPlug]], Tuple[Union[str, om.MObject, om.MDagPath], Union[str, om.MObject]]]
+    :rtype: om.MPlug
+    """
+
+    # Evaluate argument count
+    #
+    numArgs = len(args)
+
+    if numArgs == 0:
+
+        return om.MPlug()
+
+    elif numArgs == 1:
+
+        # Evaluate argument type
+        #
+        arg = args[0]
+
+        if isinstance(arg, om.MPlug):
+
+            return arg
+
+        elif isinstance(arg, string_types):
+
+            nodeName, attributeName = arg.split('.', maxsplit=1)
+            node = dagutils.getMObject(nodeName)
+
+            return findPlug(node, attributeName)
+
+        else:
+
+            raise TypeError(f'findAnyPlug() expects either a str or MPlug ({type(arg).__name__} given)!')
+
+    else:
+
+        # Evaluate first argument
+        #
+        node = dagutils.getMObject(args[0])
+
+        if node.isNull():
+
+            return om.MPlug()
+
+        # Evaluate second argument
+        #
+        attribute = args[1]
+
+        if isinstance(attribute, string_types):
+
+            return findPlug(node, attribute)
+
+        elif isinstance(attribute, om.MObject):
+
+            return om.MPlug(node, attribute)
+
+        else:
+
+            raise TypeError(f'findAnyPlug() expects a str or MObject ({type(attribute).__name__} given)!')
 
 
 def isConstrained(plug):
@@ -555,19 +620,28 @@ def iterChannelBoxPlugs(node, **kwargs):
     #
     for plug in iterTopLevelPlugs(node, **kwargs):
 
-        # Check if this is a compound plug
+        # Evaluate plug type
         #
-        if plug.isCompound and not plug.isArray:
+        if plug.isArray:
+
+            continue
+
+        elif plug.isCompound:
 
             yield from iterChildren(plug, keyable=True, channelBox=True)
 
-        elif (plug.isKeyable or plug.isChannelBox) and isNumeric(plug):
-
-            yield plug
-
         else:
 
-            continue
+            isChannelBox = (plug.isKeyable or plug.isChannelBox) and isNumeric(plug)
+            isWritable = plug.isFreeToChange() == om.MPlug.kFreeToChange
+
+            if isChannelBox and isWritable:
+
+                yield plug
+
+            else:
+
+                continue
 
 
 def iterElements(plug, **kwargs):
