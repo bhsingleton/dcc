@@ -236,7 +236,7 @@ def iterParents(attribute):
     Returns a generator that yields the parents from the supplied attribute.
 
     :type attribute: om.MObject
-    :rtype: iter
+    :rtype: Iterator[om.MObject]
     """
 
     fnAttribute = om.MFnAttribute(attribute)
@@ -255,7 +255,7 @@ def iterChildren(attribute):
     Returns a generator that yields the children from the supplied attribute.
 
     :type attribute: om.MObject
-    :rtype: iter
+    :rtype: Iterator[om.MObject]
     """
 
     fnAttribute = om.MFnCompoundAttribute(attribute)
@@ -281,18 +281,18 @@ def trace(attribute):
     yield attribute
 
 
-def iterAttributes(dependNode, userDefined=False):
+def iterAttributes(node, userDefined=False):
     """
     Returns a generator that yields attributes.
 
-    :type dependNode: om.MObject
+    :type node: om.MObject
     :type userDefined: bool
     :rtype: Iterator[om.MObject]
     """
 
     # Iterate through attributes
     #
-    fnDependNode = om.MFnDependencyNode(dependNode)
+    fnDependNode = om.MFnDependencyNode(node)
     numAttributes = fnDependNode.attributeCount()
 
     fnAttribute = om.MFnAttribute()
@@ -311,11 +311,11 @@ def iterAttributes(dependNode, userDefined=False):
         yield attribute
 
 
-def iterTopLevelAttributes(dependNode, userDefined=False):
+def iterTopLevelAttributes(node, userDefined=False):
     """
     Returns a generator that yields top-level attributes.
 
-    :type dependNode: om.MObject
+    :type node: om.MObject
     :type userDefined: bool
     :rtype: Iterator[om.MObject]
     """
@@ -324,7 +324,7 @@ def iterTopLevelAttributes(dependNode, userDefined=False):
     #
     fnAttribute = om.MFnAttribute()
 
-    for attribute in iterAttributes(dependNode, userDefined=userDefined):
+    for attribute in iterAttributes(node, userDefined=userDefined):
 
         # Check if attribute has a parent
         #
@@ -340,11 +340,11 @@ def iterTopLevelAttributes(dependNode, userDefined=False):
             continue
 
 
-def iterAttributeNames(dependNode, shortNames=False, topLevel=False, userDefined=False):
+def iterAttributeNames(node, shortNames=False, topLevel=False, userDefined=False):
     """
     Returns a generator that yields attribute names.
 
-    :type dependNode: om.MObject
+    :type node: om.MObject
     :type shortNames: bool
     :type topLevel: bool
     :type userDefined: bool
@@ -353,10 +353,10 @@ def iterAttributeNames(dependNode, shortNames=False, topLevel=False, userDefined
 
     # Iterate through attributes
     #
-    generator = iterTopLevelAttributes if topLevel else iterAttributes
+    iterator = iterTopLevelAttributes if topLevel else iterAttributes
     fnAttribute = om.MFnAttribute()
 
-    for attribute in generator(dependNode, userDefined=userDefined):
+    for attribute in iterator(node, userDefined=userDefined):
 
         # Check if short name should be yielded
         #
@@ -369,6 +369,50 @@ def iterAttributeNames(dependNode, shortNames=False, topLevel=False, userDefined
         else:
 
             yield fnAttribute.name
+
+
+def iterCategory(node, category):
+    """
+    Returns a generator that yields attributes from specified category.
+
+    :type node: om.MObject
+    :type category: str
+    :rtype: Iterator[om.MObject]
+    """
+
+    fnAttribute = om.MFnAttribute()
+
+    for attribute in iterAttributes(node):
+
+        fnAttribute.setObject(attribute)
+
+        if fnAttribute.hasCategory(category):
+
+            yield attribute
+
+        else:
+
+            continue
+
+
+def getAttributeName(attribute, shortName=False):
+    """
+    Returns the name of the supplied attribute.
+
+    :type attribute: om.MObject
+    :type shortName: bool
+    :rtype: str
+    """
+
+    fnAttribute = om.MFnAttribute(attribute)
+
+    if shortName:
+
+        return fnAttribute.shortName
+
+    else:
+
+        return fnAttribute.name
 
 
 def getAttributeTypeName(attribute):

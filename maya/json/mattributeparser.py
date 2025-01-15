@@ -16,16 +16,24 @@ class MAttributeDecoder(json.JSONDecoder):
     """
 
     # region Dunderscores
-    __slots__ = ('_nodeHandle', '_nodeClass')
+    __slots__ = (
+        '_nodeHandle',
+        '_nodeClass',
+        '_attributes'
+    )
 
     __numeric_types__ = {
         'bool': om.MFnNumericData.kBoolean,
+        'boolean': om.MFnNumericData.kBoolean,
         'addr': om.MFnNumericData.kAddr,
+        'address': om.MFnNumericData.kAddr,
         'long': om.MFnNumericData.kLong,
         'short': om.MFnNumericData.kShort,
         'int': om.MFnNumericData.kInt,
+        'integer': om.MFnNumericData.kInt,
         'byte': om.MFnNumericData.kByte,
         'char': om.MFnNumericData.kChar,
+        'character': om.MFnNumericData.kChar,
         'float': om.MFnNumericData.kFloat,
         'double': om.MFnNumericData.kFloat,
         'int2': om.MFnNumericData.k2Int,
@@ -104,6 +112,7 @@ class MAttributeDecoder(json.JSONDecoder):
         #
         self._nodeHandle = om.MObjectHandle(kwargs.pop('node', om.MObject.kNullObj))
         self._nodeClass = kwargs.pop('nodeClass', None)
+        self._attributes = {}
 
         # Call parent method
         #
@@ -134,15 +143,42 @@ class MAttributeDecoder(json.JSONDecoder):
     # endregion
 
     # region Methods
-    def attribute(self, name):
+    def attribute(self, *args):
         """
-        Returns the attribute associated with the given name.
+        Returns the attribute associated with the given name or JSON object.
         If no attribute is found then a null object is returned!
 
-        :type name: str
+        :type args: Tuple[Union[str, dict]]
         :rtype: om.MObject
         """
 
+        # Evaluate supplied arguments
+        #
+        numArgs = len(args)
+
+        if numArgs != 1:
+
+            raise TypeError(f'attribute() expects 1 argument ({numArgs} found)!')
+
+        # Inspect first argument
+        #
+        arg = args[0]
+        name = ''
+
+        if isinstance(arg, dict):
+
+            name = arg.get('shortName', arg.get('longName', ''))
+
+        elif isinstance(arg, str):
+
+            name = arg
+
+        else:
+
+            raise TypeError(f'attribute() expects either a str or dict ({type(arg).__name__} found)!')
+
+        # Evaluate which lookup method
+        #
         if self._nodeHandle.isAlive():
 
             dependNode = self._nodeHandle.object()
@@ -156,7 +192,7 @@ class MAttributeDecoder(json.JSONDecoder):
 
         else:
 
-            return om.MObject.kNullObj
+            return self._attributes.get(name, om.MObject.kNullObj)
 
     def default(self, obj):
         """
@@ -166,51 +202,55 @@ class MAttributeDecoder(json.JSONDecoder):
         :rtype: Any
         """
 
-        # Inspect attribute type
+        # Check if attribute type exists
         #
-        attribute = self.attribute(obj['longName'])
-        attributeType = obj['attributeType']
+        attributeType = obj.get('attributeType', '')
 
+        if stringutils.isNullOrEmpty(attributeType):
+
+            raise TypeError(f'default() expects an attribute type!')
+
+        # Evaluate attribute type
+        #
         if attributeType in self.__numeric_types__:
 
-            return self.deserializeNumericAttribute(obj, attribute=attribute)
+            return self.deserializeNumericAttribute(obj)
 
         elif attributeType in self.__unit_types__:
 
-            return self.deserializeUnitAttribute(obj, attribute=attribute)
+            return self.deserializeUnitAttribute(obj)
 
         elif attributeType in self.__data_types__:
 
-            return self.deserializeTypedAttribute(obj, attribute=attribute)
+            return self.deserializeTypedAttribute(obj)
 
         elif attributeType in self.__matrix_types__:
 
-            return self.deserializeMatrixAttribute(obj, attribute=attribute)
+            return self.deserializeMatrixAttribute(obj)
 
         else:
 
             name = self.__other_types__.get(attributeType, '')
             func = getattr(self, name, None)
 
-            if callable(func):
+            if not callable(func):
 
-                return func(obj, attribute=attribute)
+                raise TypeError(f'default() expects a valid attribute type ({attributeType} given)!')
 
-            else:
+            return func(obj)
 
-                raise TypeError('default() unable to deserialize %s attribute type!' % attributeType)
-
-    def deserializeAttribute(self, obj, attribute=om.MObject.kNullObj):
+    def deserializeAttribute(self, obj):
         """
         Returns a deserialized attribute from the supplied object.
 
         :type obj: dict
-        :type attribute: om.MObject
         :rtype: om.MObject
         """
 
         # Edit properties
         #
+        attribute = self.attribute(obj)
+
         fnAttribute = om.MFnAttribute(attribute)
         fnAttribute.readable = obj.get('readable', True)
         fnAttribute.writable = obj.get('writable', True)
@@ -244,23 +284,23 @@ class MAttributeDecoder(json.JSONDecoder):
         #
         category = obj.get('category', '')
 
-        if len(category) > 0 and not fnAttribute.hasCategory(category):
+        if not stringutils.isNullOrEmpty(category) and not fnAttribute.hasCategory(category):
 
             fnAttribute.addToCategory(category)
 
         return attribute
 
-    def deserializeNumericAttribute(self, obj, attribute=om.MObject.kNullObj):
+    def deserializeNumericAttribute(self, obj):
         """
         Returns a deserialized attribute from the supplied object.
 
         :type obj: dict
-        :type attribute: om.MObject
         :rtype: om.MObject
         """
 
         # Initialize function set
         #
+        attribute = self.attribute(obj)
         fnAttribute = om.MFnNumericAttribute()
 
         if attribute.isNull():
@@ -270,6 +310,7 @@ class MAttributeDecoder(json.JSONDecoder):
             attributeType = obj['attributeType']
 
             attribute = fnAttribute.create(longName, shortName, self.__numeric_types__[attributeType])
+            self._attributes[shortName] = attribute
 
         else:
 
@@ -277,7 +318,7 @@ class MAttributeDecoder(json.JSONDecoder):
 
         # Deserialize base attribute
         #
-        self.deserializeAttribute(obj, attribute=attribute)
+        self.deserializeAttribute(obj)
 
         # Set default value
         #
@@ -321,17 +362,17 @@ class MAttributeDecoder(json.JSONDecoder):
 
         return attribute
 
-    def deserializeUnitAttribute(self, obj, attribute=om.MObject.kNullObj):
+    def deserializeUnitAttribute(self, obj):
         """
         Returns a deserialized attribute from the supplied object.
 
         :type obj: dict
-        :type attribute: om.MObject
         :rtype: om.MObject
         """
 
         # Initialize function set
         #
+        attribute = self.attribute(obj)
         fnAttribute = om.MFnUnitAttribute()
 
         if attribute.isNull():
@@ -341,6 +382,7 @@ class MAttributeDecoder(json.JSONDecoder):
             attributeType = obj['attributeType']
 
             attribute = fnAttribute.create(longName, shortName, self.__unit_types__[attributeType])
+            self._attributes[shortName] = attribute
 
         else:
 
@@ -348,7 +390,7 @@ class MAttributeDecoder(json.JSONDecoder):
 
         # Deserialize base attribute
         #
-        self.deserializeAttribute(obj, attribute=attribute)
+        self.deserializeAttribute(obj)
 
         # Set default value
         #
@@ -401,17 +443,17 @@ class MAttributeDecoder(json.JSONDecoder):
 
         return attribute
 
-    def deserializeTypedAttribute(self, obj, attribute=om.MObject.kNullObj):
+    def deserializeTypedAttribute(self, obj):
         """
         Returns a deserialized attribute from the supplied object.
 
         :type obj: dict
-        :type attribute: om.MObject
         :rtype: om.MObject
         """
 
         # Initialize function set
         #
+        attribute = self.attribute(obj)
         fnAttribute = om.MFnTypedAttribute()
 
         if attribute.isNull():
@@ -421,6 +463,7 @@ class MAttributeDecoder(json.JSONDecoder):
             attributeType = obj['attributeType']
 
             attribute = fnAttribute.create(longName, shortName, self.__data_types__[attributeType])
+            self._attributes[shortName] = attribute
 
         else:
 
@@ -428,7 +471,7 @@ class MAttributeDecoder(json.JSONDecoder):
 
         # Deserialize base attribute
         #
-        return self.deserializeAttribute(obj, attribute=attribute)
+        return self.deserializeAttribute(obj)
 
     def deserializeEnumFields(self, string):
         """
@@ -463,17 +506,17 @@ class MAttributeDecoder(json.JSONDecoder):
 
         return fields
 
-    def deserializeEnumAttribute(self, obj, attribute=om.MObject.kNullObj):
+    def deserializeEnumAttribute(self, obj):
         """
         Returns a deserialized attribute from the supplied object.
 
         :type obj: dict
-        :type attribute: om.MObject
         :rtype: om.MObject
         """
 
         # Initialize function set
         #
+        attribute = self.attribute(obj)
         fnAttribute = om.MFnEnumAttribute()
 
         if attribute.isNull():
@@ -482,6 +525,7 @@ class MAttributeDecoder(json.JSONDecoder):
             shortName = obj.get('shortName', longName)
 
             attribute = fnAttribute.create(longName, shortName)
+            self._attributes[shortName] = attribute
 
         else:
 
@@ -489,7 +533,7 @@ class MAttributeDecoder(json.JSONDecoder):
 
         # Deserialize base attribute
         #
-        self.deserializeAttribute(obj, attribute=attribute)
+        self.deserializeAttribute(obj)
 
         # Get enum fields
         #
@@ -542,17 +586,17 @@ class MAttributeDecoder(json.JSONDecoder):
 
         return attribute
 
-    def deserializeMatrixAttribute(self, obj, attribute=om.MObject.kNullObj):
+    def deserializeMatrixAttribute(self, obj):
         """
         Returns a deserialized attribute from the supplied object.
 
         :type obj: dict
-        :type attribute: om.MObject
         :rtype: om.MObject
         """
 
         # Initialize function set
         #
+        attribute = self.attribute(obj)
         fnAttribute = om.MFnMatrixAttribute()
 
         if attribute.isNull():
@@ -562,6 +606,7 @@ class MAttributeDecoder(json.JSONDecoder):
             attributeType = obj['attributeType']
 
             attribute = fnAttribute.create(longName, shortName, self.__matrix_types__[attributeType])
+            self._attributes[shortName] = attribute
 
         else:
 
@@ -569,19 +614,19 @@ class MAttributeDecoder(json.JSONDecoder):
 
         # Deserialize base attribute
         #
-        return self.deserializeAttribute(obj, attribute=attribute)
+        return self.deserializeAttribute(obj)
 
-    def deserializeMessageAttribute(self, obj, attribute=om.MObject.kNullObj):
+    def deserializeMessageAttribute(self, obj):
         """
         Returns a deserialized attribute from the supplied object.
 
         :type obj: dict
-        :type attribute: om.MObject
         :rtype: om.MObject
         """
 
         # Initialize function set
         #
+        attribute = self.attribute(obj)
         fnAttribute = om.MFnMessageAttribute()
 
         if attribute.isNull():
@@ -590,6 +635,7 @@ class MAttributeDecoder(json.JSONDecoder):
             shortName = obj.get('shortName', longName)
 
             attribute = fnAttribute.create(longName, shortName)
+            self._attributes[shortName] = attribute
 
         else:
 
@@ -597,19 +643,19 @@ class MAttributeDecoder(json.JSONDecoder):
 
         # Deserialize base attribute
         #
-        return self.deserializeAttribute(obj, attribute=attribute)
+        return self.deserializeAttribute(obj)
 
-    def deserializeCompoundAttribute(self, obj, attribute=om.MObject.kNullObj):
+    def deserializeCompoundAttribute(self, obj):
         """
         Returns a deserialized attribute from the supplied object.
 
         :type obj: dict
-        :type attribute: om.MObject
         :rtype: om.MObject
         """
 
         # Initialize function set
         #
+        attribute = self.attribute(obj)
         fnAttribute = om.MFnCompoundAttribute()
 
         if attribute.isNull():
@@ -618,6 +664,7 @@ class MAttributeDecoder(json.JSONDecoder):
             shortName = obj.get('shortName', longName)
 
             attribute = fnAttribute.create(longName, shortName)
+            self._attributes[shortName] = attribute
 
         else:
 
@@ -625,7 +672,7 @@ class MAttributeDecoder(json.JSONDecoder):
 
         # Deserialize base attribute
         #
-        self.deserializeAttribute(obj, attribute=attribute)
+        self.deserializeAttribute(obj)
 
         # Iterate through children
         #
