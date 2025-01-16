@@ -26,7 +26,16 @@ class FnReference(fnnode.FnNode, afnreference.AFnReference):
         :rtype: om.MObject
         """
 
-        return om.MFnReference(self.object()).parentReference()
+        reference = om.MFnReference(self.object())
+        parentReference = reference.parentReference()
+
+        if not parentReference.isNull():
+
+            return parentReference
+
+        else:
+
+            return None
 
     def iterChildren(self):
         """
