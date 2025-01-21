@@ -37,15 +37,7 @@ def dequote(string):
     :rtype: str
     """
 
-    if string.startswith('"'):
-
-        string = string[1:]
-
-    if string.endswith('"'):
-
-        string = string[:-1]
-
-    return string
+    return string.strip('"')
 
 
 def iterMacroscripts():
