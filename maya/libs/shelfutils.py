@@ -1,8 +1,8 @@
 import os
 
 from maya import cmds as mc, mel
-from dcc.python import stringutils
-from dcc.xml import xmlutils
+from ...python import stringutils
+from ...xml import xmlutils
 
 import logging
 logging.basicConfig()
