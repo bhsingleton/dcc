@@ -255,3 +255,16 @@ def commit(doIt, undoIt):
     else:
 
         log.debug('Cannot locate py-undo bridge!')
+
+
+def commitAndDoIt(doIt, undoIt):
+    """
+    Passes the supplied functions to the py-undo bridge and executes them.
+
+    :type doIt: Callable
+    :type undoIt: Callable
+    :rtype: None
+    """
+
+    commit(doIt, undoIt)
+    doIt()

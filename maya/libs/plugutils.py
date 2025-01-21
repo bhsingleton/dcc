@@ -426,8 +426,7 @@ def connectPlugs(source, destination, force=False, modifier=None):
     log.debug(f'Connecting "{source.info}" > "{destination.info}"')
     modifier.connect(source, destination)
 
-    undo.commit(modifier.doIt, modifier.undoIt)
-    modifier.doIt()
+    undo.commitAndDoIt(modifier.doIt, modifier.undoIt)
 
 
 def disconnectPlugs(source, destination, modifier=None):
@@ -467,12 +466,12 @@ def disconnectPlugs(source, destination, modifier=None):
 
         modifier = om.MDGModifier()
 
-    # Cache and execute modifier
+    # Commit and execute modifier
     #
+    log.debug(f'Disconnecting "{source.info}" > "{destination.info}"')
     modifier.disconnect(source, destination)
 
-    undo.commit(modifier.doIt, modifier.undoIt)
-    modifier.doIt()
+    undo.commitAndDoIt(modifier.doIt, modifier.undoIt)
 
 
 def breakConnections(plug, source=True, destination=True, recursive=False, modifier=None):
@@ -537,10 +536,9 @@ def breakConnections(plug, source=True, destination=True, recursive=False, modif
 
                     modifier.disconnect(childPlug, otherPlug)
 
-    # Cache and execute modifier
+    # Commit and execute modifier
     #
-    undo.commit(modifier.doIt, modifier.undoIt)
-    modifier.doIt()
+    undo.commitAndDoIt(modifier.doIt, modifier.undoIt)
 
 
 def iterTopLevelPlugs(node, **kwargs):
