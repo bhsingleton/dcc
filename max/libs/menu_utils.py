@@ -4,9 +4,9 @@ This module provides menu utilities prior to 3dsMax 2025!
 import os
 import pymxs
 
-from xml.etree import ElementTree
 from collections import deque
 from ...python import stringutils
+from ...xml import xmlutils
 from ...generators.inclusiverange import inclusiveRange
 
 import logging
@@ -49,6 +49,38 @@ def iterSubMenus(menu):
             continue
 
 
+def iterInternalMenus():
+    """
+    Returns a generator that yields internal menus from the menu manager.
+
+    :rtype: Iterator[pymxs.MXSWrapperBase]
+    """
+
+    numMenus = pymxs.runtime.MenuMan.numMenus()
+
+    for i in inclusiveRange(1, numMenus, 1):
+
+        yield pymxs.runtime.MenuMan.getMenu(i)
+
+
+def walkMenus(menu):
+    """
+    Returns a generator that yields all sub menus.
+
+    :type menu: pymxs.MXSWrapperBase
+    :rtype: iter
+    """
+
+    queue = deque(iterSubMenus(menu))
+
+    while len(queue):
+
+        subMenu = queue.popleft()
+        yield subMenu
+
+        queue.extend(list(iterSubMenus(subMenu)))
+
+
 def iterTopLevelMenus():
     """
     Returns a generator that yields top-level menus from the main menubar.
@@ -56,8 +88,17 @@ def iterTopLevelMenus():
     :rtype: Iterator[pymxs.MXSWrapperBase]
     """
 
-    menuBar = getMainMenubar()
-    return iterSubMenus(menuBar)
+    return iterSubMenus(getMainMenubar())
+
+
+def topLevelMenus():
+    """
+    Returns a list of top-level menus from the main menubar.
+
+    :rtype: List[pymxs.MXSWrapperBase]
+    """
+
+    return list(iterTopLevelMenus())
 
 
 def topLevelMenuCount():
@@ -67,21 +108,7 @@ def topLevelMenuCount():
     :rtype: int
     """
 
-    return len(list(iterTopLevelMenus()))
-
-
-def iterInternalMenus():
-    """
-    Returns a generator that yields internal menus.
-
-    :rtype: iter
-    """
-
-    numMenus = pymxs.runtime.MenuMan.numMenus()
-
-    for i in inclusiveRange(1, numMenus, 1):
-
-        yield pymxs.runtime.MenuMan.getMenu(i)
+    return len(topLevelMenus())
 
 
 def getMenuTitle(menu, stripAmpersand=False):
@@ -104,24 +131,6 @@ def getMenuTitle(menu, stripAmpersand=False):
         return title
 
 
-def walkSubMenus(menu):
-    """
-    Returns a generator that yields all sub menus.
-
-    :type menu: pymxs.MXSWrapperBase
-    :rtype: iter
-    """
-
-    queue = deque(iterSubMenus(menu))
-
-    while len(queue):
-
-        subMenu = queue.popleft()
-        yield subMenu
-
-        queue.extend(list(iterSubMenus(subMenu)))
-
-
 def removeMenuItems(menu):
     """
     Removes all the items from the given menu.
@@ -130,8 +139,6 @@ def removeMenuItems(menu):
     :rtype: None
     """
 
-    # Remove sub menu items
-    #
     numItems = menu.numItems()
 
     for i in reversed(list(inclusiveRange(1, numItems, 1))):
@@ -139,7 +146,7 @@ def removeMenuItems(menu):
         menu.removeItemByPosition(i)
 
 
-def removeMenu(menu):
+def removeTopLevelMenu(menu):
     """
     Removes the given menu from the menubar.
 
@@ -149,7 +156,7 @@ def removeMenu(menu):
 
     # Iterate through sub-menus
     #
-    subMenus = list(walkSubMenus(menu))
+    subMenus = list(walkMenus(menu))
 
     for subMenu in reversed(subMenus):
 
@@ -163,10 +170,10 @@ def removeMenu(menu):
     pymxs.runtime.MenuMan.updateMenuBar()
 
 
-def removeMenusByTitle(title):
+def removeTopLevelMenusByTitle(title):
     """
-    Removes any menus with the matching title.
-    This overload will also remove internal menus!
+    Removes any top-level menus with the same title.
+    This will also cover all internal menus that might not be in use.
 
     :type title: str
     :rtype: None
@@ -176,7 +183,7 @@ def removeMenusByTitle(title):
 
     for menu in reversed(menus):
 
-        removeMenu(menu)
+        removeTopLevelMenu(menu)
 
 
 def createMenuFromXmlElement(xmlElement, insertAt=-1, parent=None):
@@ -253,7 +260,7 @@ def createMenuFromXmlElement(xmlElement, insertAt=-1, parent=None):
 
     else:
 
-        raise TypeError(f'default() expects a valid xml tag ({xmlElement.tag} given)!')
+        raise TypeError(f'createMenuFromXmlElement() expects a valid XML tag ({xmlElement.tag} given)!')
 
 
 def loadXmlConfiguration(filePath):
@@ -271,13 +278,12 @@ def loadXmlConfiguration(filePath):
         log.warning(f'Cannot locate XML configuration: {filePath}')
         return
 
-    # Initialize element tree
-    #
-    elementTree = ElementTree.parse(filePath)
-
+    # Initialize XML element tree
     # Remove any pre-existing top-level menus
     #
+    elementTree = xmlutils.cParse(filePath)
     root = elementTree.getroot()
+
     title = root.get('title', None)
 
     if not stringutils.isNullOrEmpty(title):
@@ -311,13 +317,12 @@ def unloadXmlConfiguration(filePath):
         log.warning(f'Cannot locate XML configuration: {filePath}')
         return
 
-    # Initialize element tree
+    # Load XML element tree
+    # Remove and pre-existing top-level menus
     #
-    elementTree = ElementTree.parse(filePath)
-
-    # Remove top-level menus
-    #
+    elementTree = xmlutils.cParse(filePath)
     root = elementTree.getroot()
+
     title = root.get('title', None)
 
     if not stringutils.isNullOrEmpty(title):
@@ -336,15 +341,15 @@ def registerTopLevelMenu(creator, deletor):
     """
     Registers a set of create and delete menu functions within 3dsMax's callback system.
 
-    :type creator: Callable[createMenuFromAction]
-    :type deletor: Callable[removeTopLevelMenuByTitle]
+    :type creator: Callable[loadXmlConfiguration]
+    :type deletor: Callable[unloadXmlConfiguration]
     :rtype: None
     """
 
     if callable(creator):
 
         pymxs.runtime.callbacks.addScript(
-            pymxs.runtime.Name('postSystemStartup'),  # TODO: Investigate why this doesn't fire from a startup script!
+            pymxs.runtime.Name('welcomeScreenDone'),
             creator,
             persistent=False
         )

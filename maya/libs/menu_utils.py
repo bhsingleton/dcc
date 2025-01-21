@@ -1,9 +1,9 @@
 import os
 
 from maya import cmds as mc, mel
-from xml.etree import ElementTree
 from functools import partial
-from dcc.python import stringutils
+from ...python import stringutils
+from ...xml import xmlutils
 
 import logging
 logging.basicConfig()
@@ -40,6 +40,16 @@ def iterTopLevelMenus():
         return iter([])
 
 
+def topLevelMenus():
+    """
+    Returns a list of top-level menus from the main menubar.
+
+    :rtype: List[pymxs.MXSWrapperBase]
+    """
+
+    return list(iterTopLevelMenus())
+
+
 def topLevelMenuCount():
     """
     Evaluates the number of top-level menus.
@@ -47,7 +57,7 @@ def topLevelMenuCount():
     :rtype: int
     """
 
-    return len(list(iterTopLevelMenus()))
+    return len(topLevelMenus())
 
 
 def getMenuTitle(menu, stripAmpersand=False):
@@ -78,7 +88,7 @@ def findTopLevelMenusByTitle(title):
     :rtype: List[str]
     """
 
-    return [x for x in iterTopLevelMenus() if getMenuTitle(x, stripAmpersand=True) == title]
+    return [menu for menu in iterTopLevelMenus() if getMenuTitle(menu, stripAmpersand=True) == title]
 
 
 def removeMenu(menu):
@@ -109,12 +119,11 @@ def removeTopLevelMenusByTitle(title):
         removeMenu(menu)
 
 
-def createMenuFromXmlElement(xmlElement, insertAt=-1, parent=None):
+def createMenuFromXmlElement(xmlElement, parent=None):
     """
     Returns a menu item using the supplied xml element.
 
     :type xmlElement: xml.etree.Element
-    :type insertAt: int
     :type parent: str
     :rtype: str
     """
@@ -163,7 +172,7 @@ def createMenuFromXmlElement(xmlElement, insertAt=-1, parent=None):
 
     else:
 
-        raise TypeError(f'default() expects a valid xml tag ({xmlElement.tag} given)!')
+        raise TypeError(f'createMenuFromXmlElement() expects a valid XML tag ({xmlElement.tag} given)!')
 
 
 def loadXmlConfiguration(filePath):
@@ -181,13 +190,12 @@ def loadXmlConfiguration(filePath):
         log.warning(f'Cannot locate XML configuration: {filePath}')
         return
 
-    # Initialize element tree
-    #
-    elementTree = ElementTree.parse(filePath)
-
+    # Load XML element tree
     # Remove any pre-existing top-level menus
     #
+    elementTree = xmlutils.cParse(filePath)
     root = elementTree.getroot()
+
     title = root.get('title', None)
 
     if not stringutils.isNullOrEmpty(title):
@@ -197,6 +205,4 @@ def loadXmlConfiguration(filePath):
     # Create menu layout
     #
     parent = getMainMenubar()
-    insertAt = topLevelMenuCount() - 1
-
-    createMenuFromXmlElement(root, insertAt=insertAt, parent=parent)
+    createMenuFromXmlElement(root, parent=parent)
