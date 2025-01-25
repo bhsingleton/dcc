@@ -288,7 +288,7 @@ def loadXmlConfiguration(filePath):
 
     if not stringutils.isNullOrEmpty(title):
 
-        removeMenusByTitle(title)
+        removeTopLevelMenusByTitle(title)
 
     # Create menu layout
     #
@@ -327,7 +327,7 @@ def unloadXmlConfiguration(filePath):
 
     if not stringutils.isNullOrEmpty(title):
 
-        removeMenusByTitle(title)
+        removeTopLevelMenusByTitle(title)
 
     # Save changes to menubar
     #
