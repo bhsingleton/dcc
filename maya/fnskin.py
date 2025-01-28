@@ -278,23 +278,24 @@ class FnSkin(fnnode.FnNode, afnskin.AFnSkin):
         # Set shape attributes
         #
         fnShape = om.MFnMesh(shape)
-        fullPathName = fnShape.fullPathName()
+        shapePathName = fnShape.fullPathName()
 
-        mc.setAttr(f'{fullPathName}.displayImmediate', 0)
-        mc.setAttr(f'{fullPathName}.displayVertices', 0)
-        mc.setAttr(f'{fullPathName}.displayEdges', 0)
-        mc.setAttr(f'{fullPathName}.displayBorders', 0)
-        mc.setAttr(f'{fullPathName}.displayCenter', 0)
-        mc.setAttr(f'{fullPathName}.displayTriangles', 0)
-        mc.setAttr(f'{fullPathName}.displayUVs', 0)
-        mc.setAttr(f'{fullPathName}.displayNonPlanar', 0)
-        mc.setAttr(f'{fullPathName}.displayInvisibleFaces', 0)
-        mc.setAttr(f'{fullPathName}.displayColors', 1)
-        mc.setAttr(f'{fullPathName}.vertexColorSource', 1)
-        mc.setAttr(f'{fullPathName}.materialBlend', 0)
-        mc.setAttr(f'{fullPathName}.displayNormal', 0)
-        mc.setAttr(f'{fullPathName}.displayTangent', 0)
-        mc.setAttr(f'{fullPathName}.currentColorSet', '', type='string')
+        mc.setAttr(f'{shapePathName}.displayImmediate', 0)
+        mc.setAttr(f'{shapePathName}.displayVertices', 0)
+        mc.setAttr(f'{shapePathName}.displayEdges', 0)
+        mc.setAttr(f'{shapePathName}.displayBorders', 0)
+        mc.setAttr(f'{shapePathName}.displayCenter', 0)
+        mc.setAttr(f'{shapePathName}.displayTriangles', 0)
+        mc.setAttr(f'{shapePathName}.displayUVs', 0)
+        mc.setAttr(f'{shapePathName}.displayNonPlanar', 0)
+        mc.setAttr(f'{shapePathName}.displayInvisibleFaces', 0)
+        mc.setAttr(f'{shapePathName}.displayColors', 1)
+        mc.setAttr(f'{shapePathName}.displayColorChannel', 'None', type='string')
+        mc.setAttr(f'{shapePathName}.vertexColorSource', 1)
+        mc.setAttr(f'{shapePathName}.materialBlend', 0)
+        mc.setAttr(f'{shapePathName}.displayNormal', 0)
+        mc.setAttr(f'{shapePathName}.displayTangent', 0)
+        mc.setAttr(f'{shapePathName}.currentColorSet', '', type='string')
 
     def hideColors(self):
         """
@@ -322,22 +323,23 @@ class FnSkin(fnnode.FnNode, afnskin.AFnSkin):
         # Reset shape attributes
         #
         fnShape = om.MFnMesh(shape)
-        fullPathName = fnShape.fullPathName()
+        shapePathName = fnShape.fullPathName()
 
-        mc.setAttr(f'{fullPathName}.displayColors', 0)
-        mc.setAttr(f'{fullPathName}.vertexColorSource', 1)
+        mc.setAttr(f'{shapePathName}.displayColors', 0)
+        mc.setAttr(f'{shapePathName}.displayColorChannel', 'Ambient+Diffuse', type='string')
+        mc.setAttr(f'{shapePathName}.vertexColorSource', 1)
 
         # Delete color set
         #
         intermediateObject = self.intermediateObject()
         fnIntermediateObject = om.MFnMesh(intermediateObject)
 
-        fullPathName = fnShape.fullPathName()
+        intermediatePathName = fnShape.fullPathName()
         colorSetNames = fnIntermediateObject.getColorSetNames()
 
         if self.__color_set_name__ in colorSetNames:
 
-            mc.setAttr(f'{fullPathName}.currentColorSet', '', type='string')
+            mc.setAttr(f'{intermediatePathName}.currentColorSet', '', type='string')
             fnIntermediateObject.deleteColorSet(self.__color_set_name__)
 
     def refreshColors(self):
