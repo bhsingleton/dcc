@@ -425,6 +425,40 @@ def saveChangelist(changelist, filePath, **kwargs):
         return False
 
 
+def getFilesFromChangelist(changelist, editsOnly=False):
+    """
+    Returns a list of depot files from the supplied changelist.
+
+    :type changelist: int
+    :type editsOnly: bool
+    :rtype: List[str]
+    """
+
+    p4 = createAdapter()
+    specs = []
+
+    try:
+
+        p4.connect()
+        specs = p4.run('files', f'@={changelist}')
+
+    except P4.P4Exception:
+
+        logErrors(p4.errors, **kwargs)
+
+    finally:
+
+        p4.disconnect()
+
+        if editsOnly:
+
+            return [spec['depotFile'] for spec in specs if spec['action'] == 'edit']
+
+        else:
+
+            return [spec['depotFile'] for spec in specs]
+
+
 @relogin.Relogin()
 def findDepotPath(filePath):
     """
