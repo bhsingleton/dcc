@@ -554,7 +554,7 @@ def resetPreBindMatrices(skinCluster, modifier=None):
     """
     Resets the pre-bind matrices on the associated joints.
 
-    :type skinCluster: om.MObject
+    :type skinCluster: [str, om.MObject]
     :type modifier: Union[om.MDGModifier, None]
     :rtype: None
     """
@@ -567,7 +567,9 @@ def resetPreBindMatrices(skinCluster, modifier=None):
 
     # Iterate through matrix elements
     #
+    skinCluster = dagutils.getMObject(skinCluster)
     plug = plugutils.findPlug(skinCluster, 'bindPreMatrix')
+
     numElements = plug.evaluateNumElements()
 
     for i in range(numElements):
@@ -603,12 +605,13 @@ def resetIntermediateObject(skinCluster):
     """
     Resets the control points on the associated intermediate object.
 
-    :type skinCluster: om.MObject
+    :type skinCluster: [str, om.MObject]
     :rtype: None
     """
 
     # Decompose skin cluster
     #
+    skinCluster = dagutils.getMObject(skinCluster)
     transform, shape, intermediateObject = dagutils.decomposeDeformer(skinCluster)
 
     # Cache deformed control-points and normals
