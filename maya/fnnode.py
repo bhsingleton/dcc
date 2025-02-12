@@ -339,7 +339,7 @@ class FnNode(afnnode.AFnNode):
         :rtype: Iterator[str]
         """
 
-        return attributeutils.iterAttributeNames(self.object(), userDefined=userDefined)
+        return attributeutils.iterAttributeNames(self.object(), topLevel=True, userDefined=userDefined)
 
     def isTransform(self):
         """

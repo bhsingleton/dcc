@@ -40,7 +40,7 @@ class FbxSerializer(object):
     Base class used for composing fbx files from DCC scene nodes.
     This exporter was created to ensure that the DCC scene data was as clean as possible for game engines.
     This exporter supports animation baking at a decimal framerate to help reduce euler filter abnormalities.
-    TODO: Implement support for custom attributes and blendshapes!
+    TODO: Implement support for blendshapes!
     """
 
     # region Dunderscores
