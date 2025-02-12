@@ -187,7 +187,7 @@ class TransformationMatrix(matrix.Matrix):
     @classmethod
     def matrixToEulerXYZ(cls, m):
         """
-        Converts the supplied m to euler XYZ angles.
+        Converts the supplied matrix to euler XYZ angles.
 
         :type m: transformationmatrix.TransformationMatrix
         :rtype: EulerAngles
@@ -220,13 +220,13 @@ class TransformationMatrix(matrix.Matrix):
     @classmethod
     def matrixToEulerXZY(cls, m):
         """
-        Converts the supplied m to euler XZY angles.
+        Converts the supplied matrix to euler XZY angles.
 
         :type m: transformationmatrix.TransformationMatrix
         :rtype: EulerAngles
         """
 
-        x, z, y = 0, 0, 0
+        x, y, z = 0, 0, 0
 
         if m[0, 1] < 1.0:
 
@@ -248,18 +248,18 @@ class TransformationMatrix(matrix.Matrix):
             x = math.atan2(-m[2, 0], m[2, 2])
             y = 0.0
 
-        return eulerangles.EulerAngles(-x, -z, -y, order='xzy')
+        return eulerangles.EulerAngles(-x, -y, -z, order='xzy')
 
     @classmethod
     def matrixToEulerYXZ(cls, m):
         """
-        Converts the supplied m to euler YXZ angles.
+        Converts the supplied matrix to euler YXZ angles.
 
         :type m: transformationmatrix.TransformationMatrix
         :rtype: EulerAngles
         """
 
-        y, x, z = 0, 0, 0
+        x, y, z = 0, 0, 0
 
         if m[1, 2] < 1.0:
 
@@ -281,18 +281,18 @@ class TransformationMatrix(matrix.Matrix):
             y = math.atan2(-m[0, 1], m[0, 0])
             z = 0.0
 
-        return eulerangles.EulerAngles(-y, -x, -z, order='yxz')
+        return eulerangles.EulerAngles(-x, -y, -z, order='yxz')
 
     @classmethod
     def matrixToEulerYZX(cls, m):
         """
-        Converts the supplied m to euler YZX angles.
+        Converts the supplied matrix to euler YZX angles.
 
         :type m: transformationmatrix.TransformationMatrix
         :rtype: EulerAngles
         """
 
-        y, z, x = 0, 0, 0
+        x, y, z = 0, 0, 0
 
         if m[1, 0] < 1.0:
 
@@ -314,18 +314,18 @@ class TransformationMatrix(matrix.Matrix):
             y = math.atan2(m[2, 1], m[2, 2])
             x = 0.0
 
-        return eulerangles.EulerAngles(-y, -z, -x, order='yzx')
+        return eulerangles.EulerAngles(-x, -y, -z, order='yzx')
 
     @classmethod
     def matrixToEulerZXY(cls, m):
         """
-        Converts the supplied m to euler ZXY angles.
+        Converts the supplied matrix to euler ZXY angles.
 
         :type m: transformationmatrix.TransformationMatrix
         :rtype: EulerAngles
         """
 
-        z, x, y = 0, 0, 0
+        x, y, z = 0, 0, 0
 
         if m[2, 1] < 1.0:
 
@@ -347,18 +347,18 @@ class TransformationMatrix(matrix.Matrix):
             z = math.atan2(m[0, 2], m[0, 0])
             y = 0.0
 
-        return eulerangles.EulerAngles(-z, -x, -y, order='zxy')
+        return eulerangles.EulerAngles(-x, -y, -z, order='zxy')
 
     @classmethod
     def matrixToEulerZYX(cls, m):
         """
-        Converts the supplied m to euler ZYX angles.
+        Converts the supplied matrix to euler ZYX angles.
 
         :type m: transformationmatrix.TransformationMatrix
         :rtype: EulerAngles
         """
 
-        z, y, x = 0, 0, 0
+        x, y, z = 0, 0, 0
 
         if m[2, 0] < 1.0:
 
@@ -380,7 +380,7 @@ class TransformationMatrix(matrix.Matrix):
             z = math.atan2(-m[1, 2], m[1, 1])
             x = 0.0
 
-        return eulerangles.EulerAngles(-z, -y, -x, order='zyx')
+        return eulerangles.EulerAngles(-x, -y, -z, order='zyx')
 
     def eulerRotation(self, order='xyz'):
         """
