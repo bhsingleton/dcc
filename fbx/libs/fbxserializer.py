@@ -935,21 +935,6 @@ class FbxSerializer(object):
 
                 continue  # This is here to support nodes that utilize internal caching!
 
-        # Apply resample filter
-        #
-        unrollFilter = fbx.FbxAnimCurveFilterUnroll()
-        unrollFilter.SetStartTime(self.convertFrameToTime(startFrame))
-        unrollFilter.SetStopTime(self.convertFrameToTime(endFrame))
-
-        for fbxNode in fbxNodes:
-
-            animCurveNode = fbxNode.LclRotation.GetCurveNode(animLayer, False)
-            success = unrollFilter.Apply(animCurveNode)
-
-            if not success:
-
-                log.warning(f'Unable to apply unroll filter to {fbxNode.GetName()} joint!')
-
         # Enable redraw
         #
         self.scene.resumeViewport()
