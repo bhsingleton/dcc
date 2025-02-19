@@ -31,7 +31,7 @@ class ProxyFactory(singleton.Singleton):
 
         # Declare private variables
         #
-        self.__classes__ = dict(self.iterPackages(*self.packages()))
+        self.__classes__ = dict(self.iterClassesFromPackage(*self.packages()))
 
     def __iter__(self):
         """
@@ -40,7 +40,7 @@ class ProxyFactory(singleton.Singleton):
         :rtype: iter
         """
 
-        return self.iterPackages(*self.packages())
+        return self.iterClassesFromPackage(*self.packages())
 
     def __getitem__(self, key):
         """
@@ -113,14 +113,14 @@ class ProxyFactory(singleton.Singleton):
 
         return self.__classes__.get(key, None)
 
-    def iterModules(self, *args, **kwargs):
+    def iterClassesFromModule(self, *modules, **kwargs):
         """
         Returns a generator that yields the classes from the supplied modules.
         Optional keywords can be used to override the factory defaults.
 
         :key classAttr: str
         :key classFilter: type
-        :rtype: iter
+        :rtype: Iterator[type]
         """
 
         # Iterate through arguments
@@ -128,22 +128,23 @@ class ProxyFactory(singleton.Singleton):
         classAttr = kwargs.get('classAttr', self.classAttr())
         classFilter = kwargs.get('classFilter', self.classFilter())
 
-        for arg in args:
+        for module in modules:
 
             # Check if this is a module
             #
-            if not inspect.ismodule(arg):
+            if not inspect.ismodule(module):
 
                 continue
 
             # Iterate through module items
             #
-            for (name, cls) in importutils.iterModule(arg, classFilter=classFilter):
+            for (name, cls) in importutils.iterClasses(module, classFilter=classFilter):
 
                 # Check if class has required key identifier
                 #
                 if not hasattr(cls, classAttr):
 
+                    log.info(f'Skipping class: {cls}')
                     continue
 
                 # Yield key-value pair
@@ -160,29 +161,29 @@ class ProxyFactory(singleton.Singleton):
 
                     yield key, cls
 
-    def iterPackages(self, *args, **kwargs):
+    def iterClassesFromPackage(self, *packages, **kwargs):
         """
         Returns a generator that yields the classes from the supplied packages.
         Optional keywords can be used to override the factory defaults.
 
-        :rtype: iter
+        :rtype: Iterator[module]
         """
 
         # Iterate through arguments
         #
-        for arg in args:
+        for package in packages:
 
             # Check if this is a package
             #
-            if not inspect.ismodule(arg):
+            if not inspect.ismodule(package):
 
                 continue
 
             # Iterate through modules
             #
-            modules = list(importutils.iterPackage(arg.__file__))
+            modules = list(importutils.iterModules(package))
 
-            for (key, cls) in self.iterModules(*modules, **kwargs):
+            for (key, cls) in self.iterClassesFromModule(*modules, **kwargs):
 
                 yield key, cls
     # endregion

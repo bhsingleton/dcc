@@ -2,7 +2,7 @@ import os
 import sys
 import inspect
 
-from six import iteritems
+from six import string_types
 from six.moves import reload_module
 from . import stringutils
 
@@ -54,30 +54,67 @@ def filePathToModulePath(filePath):
     return '.'.join(relativePath.split(os.sep))
 
 
-def iterPackage(packagePath, forceReload=False):
+def iterModules(package, reload=False, __locals__=None, __globals__=None):
     """
-    Returns a generator that yields all the modules from the given package folder.
-    If the supplied path does not exist then a type error will be raised!
-    The level flag indicates the import operation: -1: best guess, 0: absolute, 1: relative
+    Returns a generator that yields modules from the supplied package.
+    If the supplied package is not valid then a type error will be raised!
 
-    :type packagePath: str
-    :type forceReload: bool
-    :rtype: iter
+    :type package: [str, module]
+    :type reload: bool
+    :type __locals__: dict
+    :type __globals__: dict
+    :rtype: Iterator[module]
     """
 
-    # Verify package exists
+    # Evaluate supplied argument
     #
-    if not os.path.exists(packagePath):
+    packagePath = None
 
-        raise TypeError('iterPackage() cannot locate package: %s' % packagePath)
+    if inspect.ismodule(package):
 
-    # Check if this is a file
+        # Get path from package
+        #
+        packagePath = getattr(package, '__file__', '')
+
+        if os.path.isfile(packagePath):
+
+            packagePath = os.path.dirname(packagePath)
+
+        else:
+
+            raise TypeError(f'iterModules() cannot locate package: {package}')
+
+    elif isinstance(package, string_types):
+
+        # Evaluate path type
+        #
+        if os.path.isfile(package):
+
+            packagePath = os.path.dirname(package)
+
+        elif os.path.isdir(package):
+
+            packagePath = package
+
+        else:
+
+            raise TypeError(f'iterModules() cannot locate package from: {packagePath}')
+
+    else:
+
+        raise TypeError(f'iterModules() expects a str or module ({type(package).__name__} given)!')
+
+    # Evaluate supplied locals and globals
     #
-    if os.path.isfile(packagePath):
+    if __locals__ is None:
 
-        packagePath = os.path.dirname(packagePath)
+        __locals__ = locals()
 
-    # Iterate through module files inside package
+    if __globals__ is None:
+
+        __globals__ = globals()
+
+    # Iterate through files inside package
     #
     for filename in os.listdir(packagePath):
 
@@ -91,20 +128,27 @@ def iterPackage(packagePath, forceReload=False):
 
         # Try and import module
         #
-        filePath = os.path.join(packagePath, '%s.py' % moduleName)
+        filePath = os.path.join(packagePath, f'{moduleName}.py')
 
         modulePath = filePathToModulePath(filePath)
-        log.info('Attempting to import: "%s" module, from: %s' % (modulePath, filePath))
+        log.info(f'Attempting to import: "{modulePath}" module, from: {filePath}')
 
         try:
 
             # Import module and check if it should be reloaded
+            # The level flag indicates the import operation: -1: best guess, 0: absolute, 1: relative
             #
-            module = __import__(modulePath, locals=locals(), globals=globals(), fromlist=[filePath], level=0)
+            module = __import__(
+                modulePath,
+                locals=__locals__,
+                globals=__globals__,
+                fromlist=[filePath],
+                level=0
+            )
 
-            if forceReload:
+            if reload:
 
-                log.info('Reloading module...')
+                log.info(f'Reloading "{moduleName}" module...')
                 reload_module(module)
 
             yield module
@@ -115,20 +159,20 @@ def iterPackage(packagePath, forceReload=False):
             continue
 
 
-def iterModule(module, includeAbstract=False, classFilter=object):
+def iterClasses(module, classFilter=object, includeAbstract=False):
     """
-    Returns a generator that yields all the classes from the given module.
-    An optional subclass filter can be provided to ignore certain types.
+    Returns a generator that yields all the classes from the supplied module.
+    An optional subclass filter can be provided to ignore specific types.
 
     :type module: module
-    :type includeAbstract: bool
     :type classFilter: type
-    :rtype: iter
+    :type includeAbstract: bool
+    :rtype: Iterator[type]
     """
 
     # Iterate through module dictionary
     #
-    for (key, item) in iteritems(module.__dict__):
+    for (key, item) in module.__dict__.items():
 
         # Verify this is a class
         #
@@ -181,8 +225,8 @@ def findClass(className, modulePath, __locals__=None, __globals__=None):
 
 def tryImport(path, default=None, quiet=True, __locals__=None, __globals__=None):
     """
-    Tries to import the given module path.
-    If no module exists then the default value is returned instead.
+    Tries to import a module from the supplied path.
+    If no module exists then the default value is returned instead!
 
     :type path: str
     :type default: Any
@@ -193,13 +237,20 @@ def tryImport(path, default=None, quiet=True, __locals__=None, __globals__=None)
     """
 
     # Try and import module from path
+    # TODO: Replace `__import__` with `importlib` method
     #
     module = None
 
     try:
 
         fromlist = path.split('.', 1)
-        module = __import__(path, locals=__locals__, globals=__globals__, fromlist=fromlist, level=0)  # TODO: Replace with `importlib` method
+        module = __import__(
+            path,
+            locals=__locals__,
+            globals=__globals__,
+            fromlist=fromlist,
+            level=0
+        )
 
     except ImportError as exception:
 
