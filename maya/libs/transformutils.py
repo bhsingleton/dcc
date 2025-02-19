@@ -1970,10 +1970,13 @@ def projectVector(vector, normal):
     """
     Projects the supplied vector onto the specified normal.
 
-    :type vector: om.MVector
-    :type normal: om.MVector
+    :type vector: Union[om.MVector, om.MPoint, Tuple[float, float, float]]
+    :type normal: Union[om.MVector, om.MPoint, Tuple[float, float, float]]
     :rtype: om.MVector
     """
+
+    vector = om.MVector(vector)
+    normal = om.MVector(normal)
 
     return vector - (normal * (vector * normal))
 
