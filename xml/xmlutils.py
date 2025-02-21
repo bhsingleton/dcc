@@ -1,10 +1,9 @@
 import sys
 import os
 
-from six import string_types
-
 from xml.dom import minidom
 from xml.etree import ElementTree, cElementTree
+from ..vendor.six import string_types
 
 import logging
 logging.basicConfig()

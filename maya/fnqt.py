@@ -1,10 +1,9 @@
-import maya.cmds as mc
-import maya.mel as mel
-import maya.OpenMayaUI as omui
-
-from Qt import QtWidgets, QtCompat
+from maya import cmds as mc
+from maya import mel as mel
+from maya import OpenMayaUI as omui
 from functools import partial
-from dcc.abstract import afnqt
+from ..abstract import afnqt
+from ..vendor.Qt import QtWidgets, QtCompat
 
 import logging
 logging.basicConfig()

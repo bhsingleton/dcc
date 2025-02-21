@@ -1,5 +1,5 @@
-from Qt import QtCore
 from . import qabstractfileitemmodel
+from ...vendor.Qt import QtCore
 
 import logging
 logging.basicConfig()

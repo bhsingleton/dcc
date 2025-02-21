@@ -1,10 +1,9 @@
-import maya.cmds as mc
-import maya.api.OpenMaya as om
-
-from dcc.abstract import afnskin
-from dcc.maya import fnnode, fnmesh
-from dcc.maya.libs import dagutils, plugutils, plugmutators, skinutils
-from dcc.maya.decorators import undo
+from maya import cmds as mc
+from maya.api import OpenMaya as om
+from . import fnnode, fnmesh
+from .libs import dagutils, plugutils, plugmutators, skinutils
+from .decorators import undo
+from ..abstract import afnskin
 
 import logging
 logging.basicConfig()

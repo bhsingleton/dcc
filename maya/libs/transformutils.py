@@ -2,9 +2,9 @@ import math
 
 from maya import cmds as mc
 from maya.api import OpenMaya as om
-from six import string_types
-from dcc.maya.decorators import undo
-from dcc.maya.libs import dagutils, plugutils, plugmutators
+from . import dagutils, plugutils, plugmutators
+from ..decorators import undo
+from ...vendor.six import string_types
 
 import logging
 logging.basicConfig()

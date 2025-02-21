@@ -1,5 +1,5 @@
-from Qt import QtCore, QtWidgets, QtGui
 from ...ui.dialogs import qmaindialog
+from ...vendor.Qt import QtCore, QtWidgets, QtGui
 
 import logging
 logging.basicConfig()

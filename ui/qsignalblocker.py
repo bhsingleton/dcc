@@ -1,5 +1,5 @@
-from Qt import QtCompat
 from collections import deque
+from ..vendor.Qt import QtCompat
 
 import logging
 logging.basicConfig()

@@ -1,10 +1,10 @@
 import pymxs
 
 from enum import IntEnum
-from dcc.max import fnnode
-from dcc.max.libs import transformutils, skinutils
-from dcc.abstract import afntransform
-from dcc.dataclasses import vector, eulerangles, transformationmatrix, boundingbox
+from . import fnnode
+from .libs import transformutils, skinutils
+from ..abstract import afntransform
+from ..dataclasses import vector, eulerangles, transformationmatrix, boundingbox
 
 import logging
 logging.basicConfig()

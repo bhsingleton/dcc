@@ -3,13 +3,13 @@ import re
 
 from maya import cmds as mc, OpenMaya as legacy
 from maya.api import OpenMaya as om, OpenMayaAnim as oma
-from Qt import QtGui
-from six import string_types, integer_types
 from collections import deque
 from itertools import chain
 from . import plugutils
 from ..decorators import undo
 from ...python import stringutils
+from ...vendor.six import string_types, integer_types
+from ...vendor.Qt import QtGui
 
 import logging
 logging.basicConfig()

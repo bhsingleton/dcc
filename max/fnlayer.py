@@ -1,8 +1,8 @@
 import pymxs
 
-from six import string_types
-from dcc.abstract import afnlayer
-from dcc.max.libs import layerutils
+from .libs import layerutils
+from ..abstract import afnlayer
+from ...vendor.six import string_types
 
 import logging
 logging.basicConfig()

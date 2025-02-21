@@ -1,10 +1,10 @@
 from maya import cmds as mc
 from maya import OpenMaya as lom
 from maya.api import OpenMaya as om
-from six import integer_types, string_types
-from dcc.abstract import afnreference
-from dcc.maya import fnnode
-from dcc.maya.libs import dagutils
+from . import fnnode
+from .libs import dagutils
+from ..abstract import afnreference
+from ..vendor.six import integer_types, string_types
 
 import logging
 logging.basicConfig()

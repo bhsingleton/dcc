@@ -1,5 +1,5 @@
 from maya.api import OpenMaya as om
-from dcc.abstract.afnnotify import AFnNotify
+from ..abstract.afnnotify import AFnNotify
 
 import logging
 logging.basicConfig()

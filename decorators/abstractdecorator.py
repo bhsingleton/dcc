@@ -9,7 +9,7 @@ Calls `__init__` with function as argument > Class is invoked via `__call__` wit
 Calls `__init__` with keyword arguments > Next `__call__` with function to be wrapped.
 """
 from abc import ABCMeta, abstractmethod
-from six import with_metaclass
+from ..vendor.six import with_metaclass
 
 import logging
 logging.basicConfig()

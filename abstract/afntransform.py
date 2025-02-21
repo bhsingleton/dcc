@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
-from six import with_metaclass
-from dcc.abstract import afnnode
-from dcc.dataclasses import vector, eulerangles, transformationmatrix
+from . import afnnode
+from ..dataclasses import vector, eulerangles, transformationmatrix
+from ..vendor.six import with_metaclass
 
 import logging
 logging.basicConfig()

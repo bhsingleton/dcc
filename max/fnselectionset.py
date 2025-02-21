@@ -1,8 +1,8 @@
 import pymxs
 
-from six import string_types, integer_types
 from . import fnnode
 from ..abstract import afnselectionset
+from ..vendor.six import string_types, integer_types
 
 import logging
 logging.basicConfig()

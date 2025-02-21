@@ -1,8 +1,8 @@
-from Qt import QtCore, QtWidgets, QtGui, QtCompat
 from . import resources  # Imports all DCC resources!
 from .abstract import qsingleton
 from .. import fnqt
 from ..decorators.classproperty import classproperty
+from ..vendor.Qt import QtCore, QtWidgets, QtGui, QtCompat
 
 import logging
 logging.basicConfig()

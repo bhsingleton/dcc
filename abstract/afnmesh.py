@@ -1,17 +1,17 @@
 from abc import ABCMeta, abstractmethod
-from six import with_metaclass
 from enum import IntEnum
 from itertools import chain
 from collections import deque
 from dataclasses import dataclass, field
 from typing import List, Tuple
-from dcc.abstract import afnbase
-from dcc.python import importutils
-from dcc.math import floatmath
-from dcc.dataclasses.vector import Vector
-from dcc.dataclasses.colour import Colour
-from dcc.dataclasses.plane import Plane
-from dcc.dataclasses.transformationmatrix import TransformationMatrix
+from . import afnbase
+from ..python import importutils
+from ..math import floatmath
+from ..dataclasses.vector import Vector
+from ..dataclasses.colour import Colour
+from ..dataclasses.plane import Plane
+from ..dataclasses.transformationmatrix import TransformationMatrix
+from ..vendor.six import with_metaclass
 
 import logging
 logging.basicConfig()

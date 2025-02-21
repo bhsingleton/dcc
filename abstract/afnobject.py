@@ -1,8 +1,8 @@
 from abc import ABCMeta, abstractmethod
-from six import with_metaclass
 from collections import deque
-from dcc.abstract import afnbase
-from dcc.decorators.classproperty import classproperty
+from . import afnbase
+from ..decorators.classproperty import classproperty
+from ..vendor.six import with_metaclass
 
 import logging
 logging.basicConfig()

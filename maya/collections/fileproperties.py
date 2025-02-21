@@ -1,8 +1,8 @@
 import os
 
 from maya import cmds as mc
-from six.moves import collections_abc
-from dcc.maya.libs import sceneutils
+from ..libs import sceneutils
+from ...vendor.six.moves import collections_abc
 
 import logging
 logging.basicConfig()

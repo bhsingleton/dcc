@@ -1,7 +1,7 @@
 import pymxs
 
-from dcc.max import fnnode
-from dcc.abstract import afntexture
+from . import fnnode
+from ..abstract import afntexture
 
 import logging
 logging.basicConfig()

@@ -2,8 +2,8 @@ import re
 import inspect
 
 from typing import Any, Union, List, Tuple, Dict
-from six import string_types, integer_types
-from six.moves import collections_abc
+from ..vendor.six import string_types, integer_types
+from ..vendor.six.moves import collections_abc
 
 import logging
 logging.basicConfig()

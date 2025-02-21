@@ -1,7 +1,7 @@
 import os
 import sys
 
-from six.moves import winreg
+from ..vendor.six.moves import winreg
 
 import logging
 logging.basicConfig()

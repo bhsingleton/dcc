@@ -1,10 +1,9 @@
-import maya.cmds as mc
-import maya.api.OpenMaya as om
-
-from six import integer_types
-from dcc.abstract import afnnode
-from dcc.maya.libs import dagutils, attributeutils, plugutils, plugmutators
-from dcc.maya.collections import userproperties
+from maya import cmds as mc
+from maya.api import OpenMaya as om
+from .libs import dagutils, attributeutils, plugutils, plugmutators
+from .collections import userproperties
+from ..abstract import afnnode
+from ..vendor.six import integer_types
 
 import logging
 logging.basicConfig()

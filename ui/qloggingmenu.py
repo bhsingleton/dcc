@@ -1,6 +1,6 @@
-from Qt import QtWidgets
 from .qmainmenu import QMainMenu
 from .qseparator import QSeparator
+from ..vendor.Qt import QtWidgets
 
 import logging
 logging.basicConfig()

@@ -1,12 +1,12 @@
 import os
 import getpass
 
-from Qt import QtWidgets
-from six.moves import collections_abc
 from collections import namedtuple
 from . import cmds
 from .decorators import relogin
 from .. import fnqt
+from ..vendor.Qt import QtWidgets
+from ..vendor.six.moves import collections_abc
 
 import logging
 logging.basicConfig()

@@ -1,4 +1,4 @@
-from Qt import QtCore, QtWidgets, QtGui
+from ..vendor.Qt import QtCore, QtWidgets, QtGui
 
 import logging
 logging.basicConfig()

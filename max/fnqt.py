@@ -1,8 +1,8 @@
 import pymxs
 
 from functools import partial
-from dcc.abstract import afnqt
-from dcc.python import importutils
+from ..abstract import afnqt
+from ..python import importutils
 
 import logging
 logging.basicConfig()

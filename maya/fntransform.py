@@ -1,10 +1,10 @@
 from maya import cmds as mc
 from maya.api import OpenMaya as om
 from enum import IntEnum
-from dcc.maya import fnnode
-from dcc.maya.libs import dagutils, transformutils, skinutils
-from dcc.dataclasses import vector, eulerangles, transformationmatrix, boundingbox
-from dcc.abstract import afntransform
+from . import fnnode
+from .libs import dagutils, transformutils, skinutils
+from ..abstract import afntransform
+from ..dataclasses import vector, eulerangles, transformationmatrix, boundingbox
 
 import logging
 logging.basicConfig()

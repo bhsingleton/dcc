@@ -1,8 +1,7 @@
-import maya.cmds as mc
-import maya.api.OpenMaya as om
-
-from dcc.maya import fnnode
-from dcc.abstract import afntexture
+from maya import cmds as mc
+from maya.api import OpenMaya as om
+from . import fnnode
+from ..abstract import afntexture
 
 import logging
 logging.basicConfig()

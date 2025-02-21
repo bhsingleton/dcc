@@ -1,10 +1,10 @@
 import json
 import sys
 
-from six.moves import collections_abc
 from . import psonremap
 from ..python import importutils, stringutils
 from ..decorators.staticinitializer import staticInitializer
+from ..vendor.six.moves import collections_abc
 
 import logging
 logging.basicConfig()

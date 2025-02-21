@@ -1,9 +1,9 @@
 from maya.api import OpenMaya as om, OpenMayaAnim as oma
-from six import string_types
-from six.moves import collections_abc
 from . import sceneutils, dagutils, plugutils, animutils
 from ..decorators import locksmith, undo
 from ...python import arrayutils
+from ...vendor.six import string_types
+from ...vendor.six.moves import collections_abc
 
 import logging
 logging.basicConfig()

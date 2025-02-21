@@ -1,7 +1,7 @@
 import pymxs
 
-from six import integer_types
 from . import commandpaneloverride
+from ...vendor.six import integer_types
 
 import logging
 logging.basicConfig()

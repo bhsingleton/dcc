@@ -1,6 +1,6 @@
-from six import string_types
-from six.moves import collections_abc
 from collections import deque
+from ..vendor.six import string_types
+from ..vendor.six.moves import collections_abc
 
 
 def flatten(*args, **kwargs):

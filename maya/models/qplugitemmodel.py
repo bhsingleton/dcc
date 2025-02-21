@@ -1,9 +1,10 @@
 from maya.api import OpenMaya as om
-from Qt import QtCore, QtWidgets, QtGui, QtCompat
 from enum import IntEnum
-from dcc.python import stringutils
-from dcc.maya.libs import dagutils
 from . import qplugpath
+from ..libs import dagutils
+from ...python import stringutils
+from ...vendor.Qt import QtCore, QtWidgets, QtGui, QtCompat
+
 
 import logging
 logging.basicConfig()

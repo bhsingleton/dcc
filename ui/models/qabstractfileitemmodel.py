@@ -2,9 +2,9 @@ import os
 
 from enum import IntEnum
 from datetime import datetime
-from Qt import QtCore, QtWidgets
 from . import qfilepath
 from ...python import stringutils
+from ...vendor.Qt import QtCore, QtWidgets
 
 import logging
 logging.basicConfig()

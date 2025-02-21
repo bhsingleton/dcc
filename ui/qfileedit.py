@@ -1,7 +1,7 @@
 import os
 
-from Qt import QtCore, QtWidgets, QtGui
 from ..python import stringutils
+from ..vendor.Qt import QtCore, QtWidgets, QtGui
 
 import logging
 logging.basicConfig()

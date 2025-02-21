@@ -1,11 +1,11 @@
 import inspect
 import weakref
 
-from Qt import QtGui
-from six import string_types, integer_types
-from six.moves import collections_abc
 from ...python import stringutils, annotationutils, funcutils
 from ...generators.flatten import flatten
+from ...vendor.Qt import QtGui
+from ...vendor.six import string_types, integer_types
+from ...vendor.six.moves import collections_abc
 
 import logging
 logging.basicConfig()

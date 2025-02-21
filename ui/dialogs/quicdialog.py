@@ -1,10 +1,10 @@
 import os
 import sys
 
-from Qt import QtCore, QtWidgets, QtGui, QtCompat
 from .. import resources
 from ..abstract import qabcmeta
 from ...decorators.classproperty import classproperty
+from ...vendor.Qt import QtCore, QtWidgets, QtGui, QtCompat
 
 import logging
 logging.basicConfig()

@@ -3,9 +3,9 @@ import re
 import json
 
 from enum import Enum, IntEnum
-from six import string_types, integer_types
-from six.moves import configparser
 from ..python import stringutils
+from ..vendor.six import string_types, integer_types
+from ..vendor.six.moves import configparser
 
 import logging
 logging.basicConfig()

@@ -1,14 +1,14 @@
 import math
 import os
 
-from Qt import QtWidgets, QtCore, QtGui
-from dcc import fnscene, fnreference, fnnotify
-from dcc.generators.consecutivepairs import consecutivePairs
-from dcc.ui import qsingletonwindow, qrollout, qdivider, qsignalblocker
-from dcc.ui.models import qpsonitemmodel, qpsonstyleditemdelegate
-from dcc.fbx.libs import fbxio, fbxsequencer, fbxexportrange
-from dcc.python import stringutils
-from dcc.json import jsonutils
+from ..libs import fbxio, fbxsequencer, fbxexportrange
+from ... import fnscene, fnreference, fnnotify
+from ...generators.consecutivepairs import consecutivePairs
+from ...python import stringutils
+from ...json import jsonutils
+from ...ui import qsingletonwindow, qrollout, qdivider, qsignalblocker
+from ...ui.models import qpsonitemmodel, qpsonstyleditemdelegate
+from ...vendor.Qt import QtWidgets, QtCore, QtGui
 
 import logging
 logging.basicConfig()

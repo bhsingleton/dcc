@@ -1,9 +1,8 @@
-import maya.cmds as mc
-import maya.api.OpenMaya as om
-
-from dcc.maya import fnnode
-from dcc.abstract import afnlayer
-from dcc.maya.libs import layerutils, plugutils
+from maya import cmds as mc
+from maya.api import OpenMaya as om
+from . import fnnode
+from .libs import layerutils, plugutils
+from ..abstract import afnlayer
 
 import logging
 logging.basicConfig()

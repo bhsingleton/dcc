@@ -1,15 +1,15 @@
 import os
 import webbrowser
 
-from Qt import QtCore, QtWidgets, QtGui
 from copy import copy
-from dcc import fnscene, fnnode, fnskin, fnnotify
-from dcc.python import stringutils
-from dcc.json import jsonutils
-from dcc.ui import qsingletonwindow, qdirectoryedit, qfileedit
-from dcc.ui.dialogs import qlistdialog
-from dcc.ui.models import qpsonitemmodel, qpsonstyleditemdelegate
-from dcc.fbx.libs import fbxio, fbxasset, fbxexportset, FbxFileType, FbxFileVersion
+from ..libs import fbxio, fbxasset, fbxexportset, FbxFileType, FbxFileVersion
+from ... import fnscene, fnnode, fnskin, fnnotify
+from ...python import stringutils
+from ...json import jsonutils
+from ...ui import qsingletonwindow, qdirectoryedit, qfileedit
+from ...ui.dialogs import qlistdialog
+from ...ui.models import qpsonitemmodel, qpsonstyleditemdelegate
+from ...vendor.Qt import QtCore, QtWidgets, QtGui
 
 import logging
 logging.basicConfig()

@@ -1,11 +1,11 @@
 import weakref
 
 from maya.api import OpenMaya as om
-from Qt import QtGui
-from six import string_types, integer_types
-from six.moves import collections_abc
-from dcc.maya.libs import attributeutils, plugutils, plugmutators
-from dcc.generators.flatten import flatten
+from ..libs import attributeutils, plugutils, plugmutators
+from ...generators.flatten import flatten
+from ...vendor.Qt import QtGui
+from ...vendor.six import string_types, integer_types
+from ...vendor.six.moves import collections_abc
 
 import logging
 logging.basicConfig()

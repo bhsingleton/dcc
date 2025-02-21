@@ -1,8 +1,8 @@
 import os
 import sys
 
-from Qt import QtCore, QtWidgets, QtGui, QtCompat
 from . import qsingletonwindow
+from ..vendor.Qt import QtCore, QtWidgets, QtGui, QtCompat
 
 import logging
 logging.basicConfig()

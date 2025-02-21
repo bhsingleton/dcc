@@ -2,10 +2,10 @@ import json
 
 from maya import cmds as mc
 from maya.api import OpenMaya as om
-from six.moves import collections_abc
-from dcc.python import stringutils
-from dcc.maya.libs import dagutils
-from dcc.maya.json import mdataparser
+from ..libs import dagutils
+from ..json import mdataparser
+from ...python import stringutils
+from ...vendor.six.moves import collections_abc
 
 import logging
 logging.basicConfig()

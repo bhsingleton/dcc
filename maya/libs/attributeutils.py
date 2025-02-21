@@ -2,11 +2,11 @@ import os
 import json
 
 from maya.api import OpenMaya as om
-from six import string_types
 from . import dagutils, iterEnumMembers
 from ..json import mattributeparser
 from ..decorators import undo
 from ...generators.inclusiverange import inclusiveRange
+from ...vendor.six import string_types
 
 import logging
 logging.basicConfig()

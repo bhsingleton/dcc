@@ -1,9 +1,9 @@
 import json
 
-from Qt import QtCore, QtWidgets, QtGui
-from six import string_types
 from . import quicdialog
 from ...python import importutils
+from ...vendor.Qt import QtCore, QtWidgets, QtGui
+from ...vendor.six import string_types
 
 import logging
 logging.basicConfig()

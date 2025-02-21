@@ -1,7 +1,7 @@
-from Qt import QtCore
 from itertools import chain
-from dcc.generators.consecutivepairs import consecutivePairs
 from . import qabstractfileitemmodel, qfilepath
+from ...generators.consecutivepairs import consecutivePairs
+from ...vendor.Qt import QtCore
 
 import logging
 logging.basicConfig()

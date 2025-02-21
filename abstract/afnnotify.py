@@ -6,10 +6,10 @@ The approach I've taken is to self contain the callbacks within each function se
 That way it is the responsibility of the function set to clean up callbacks upon garbage collection!
 """
 from abc import ABCMeta, abstractmethod
-from six import with_metaclass
 from enum import IntEnum
-from dcc.abstract import afnbase
-from dcc.collections import notifylist
+from . import afnbase
+from ..collections import notifylist
+from ..vendor.six import with_metaclass
 
 import logging
 logging.basicConfig()

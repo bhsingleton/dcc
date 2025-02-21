@@ -1,10 +1,10 @@
 import inspect
 
-from Qt import QtCore, QtWidgets, QtGui
-from six.moves import collections_abc
 from enum import Enum, IntEnum
 from . import qpsonpath
 from ...python import annotationutils
+from ...vendor.Qt import QtCore, QtWidgets, QtGui
+from ...vendor.six.moves import collections_abc
 
 import logging
 logging.basicConfig()

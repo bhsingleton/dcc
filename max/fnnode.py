@@ -1,8 +1,8 @@
 import pymxs
 
-from six import string_types, integer_types
-from dcc.abstract import afnnode, ArrayIndexType
-from dcc.max.libs import wrapperutils, controllerutils, propertyutils, attributeutils
+from .libs import wrapperutils, controllerutils, propertyutils, attributeutils
+from ..abstract import afnnode, ArrayIndexType
+from ..vendor.six import string_types, integer_types
 
 import logging
 logging.basicConfig()

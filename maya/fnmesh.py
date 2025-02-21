@@ -1,13 +1,12 @@
-import maya.cmds as mc
-import maya.api.OpenMaya as om
-
-from dcc import fnnode
-from dcc.abstract import afnmesh
-from dcc.maya.libs import dagutils, transformutils, meshutils
-from dcc.dataclasses.vector import Vector
-from dcc.dataclasses.colour import Colour
-from dcc.generators.package import package
-from dcc.generators.chunks import chunks
+from maya import cmds as mc
+from maya.api import OpenMaya as om
+from . import fnnode
+from .libs import dagutils, transformutils, meshutils
+from ..abstract import afnmesh
+from ..dataclasses.vector import Vector
+from ..dataclasses.colour import Colour
+from ..generators.package import package
+from ..generators.chunks import chunks
 
 import logging
 logging.basicConfig()

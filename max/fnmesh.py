@@ -1,13 +1,13 @@
 import pymxs
 
 from itertools import chain
-from six import integer_types
-from dcc import fnnode
-from dcc.abstract import afnmesh
-from dcc.python import stringutils
-from dcc.max.libs import wrapperutils, meshutils, arrayutils
-from dcc.dataclasses.vector import Vector
-from dcc.dataclasses.colour import Colour
+from .libs import wrapperutils, meshutils, arrayutils
+from . import fnnode
+from ..abstract import afnmesh
+from ..python import stringutils
+from ..dataclasses.vector import Vector
+from ..dataclasses.colour import Colour
+from ..vendor.six import integer_types
 
 import logging
 logging.basicConfig()

@@ -1,6 +1,6 @@
-from Qt import QtCore, QtWidgets, QtGui
 from enum import IntEnum
-from dcc import fnscene
+from .. import fnscene
+from ..vendor.Qt import QtCore, QtWidgets, QtGui
 
 import logging
 logging.basicConfig()

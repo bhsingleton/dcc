@@ -1,7 +1,7 @@
 import types
 
-from six import integer_types
-from six.moves import collections_abc
+from ..vendor.six import integer_types
+from ..vendor.six.moves import collections_abc
 
 import logging
 logging.basicConfig()

@@ -1,9 +1,9 @@
 import os
 import getpass
 
-from six.moves import collections_abc
 from . import cmds
 from .decorators import relogin
+from ..vendor.six.moves import collections_abc
 
 import logging
 logging.basicConfig()

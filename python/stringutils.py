@@ -2,8 +2,8 @@ import re
 import ast
 import unicodedata
 
-from six import string_types
-from six.moves import collections_abc
+from ..vendor.six import string_types
+from ..vendor.six.moves import collections_abc
 
 import logging
 logging.basicConfig()

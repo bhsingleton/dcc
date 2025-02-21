@@ -2,8 +2,8 @@ import pymxs
 import os
 
 from enum import IntEnum
-from dcc.abstract import afnscene
-from dcc.max.libs import sceneutils
+from .libs import sceneutils
+from ..abstract import afnscene
 
 import logging
 logging.basicConfig()

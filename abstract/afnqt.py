@@ -1,9 +1,9 @@
 from abc import ABCMeta, abstractmethod
-from six import with_metaclass
 from functools import partial
-from Qt import QtCore, QtWidgets, QtCompat
-from dcc.abstract import afnbase
-from dcc.ui import qloggingmenu
+from . import afnbase
+from ..ui import qloggingmenu
+from ..vendor.six import with_metaclass
+from ..vendor.Qt import QtCore, QtWidgets, QtCompat
 
 import logging
 logging.basicConfig()

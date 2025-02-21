@@ -1,6 +1,4 @@
 from abc import ABCMeta, abstractmethod
-from six import with_metaclass, integer_types, string_types
-from six.moves import collections_abc
 from copy import deepcopy
 from . import afnnode
 from .. import fnnode, fntransform, fnmesh
@@ -8,7 +6,8 @@ from ..naming import namingutils
 from ..python import stringutils
 from ..math import floatmath, skinmath
 from ..dataclasses.vector import Vector
-
+from ..vendor.six import with_metaclass, integer_types, string_types
+from ..vendor.six.moves import collections_abc
 
 import logging
 logging.basicConfig()

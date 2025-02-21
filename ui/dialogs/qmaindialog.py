@@ -1,7 +1,7 @@
-from Qt import QtCore, QtWidgets, QtGui
 from ..abstract import qabcmeta
 from ... import fnqt
 from ...decorators.classproperty import classproperty
+from ...vendor.Qt import QtCore, QtWidgets, QtGui
 
 import logging
 logging.basicConfig()

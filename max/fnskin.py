@@ -1,8 +1,8 @@
 import pymxs
 
-from dcc import fnnode
-from dcc.abstract import afnskin
-from dcc.max.libs import modifierutils, skinutils
+from .libs import modifierutils, skinutils
+from . import fnnode
+from ..abstract import afnskin
 
 import logging
 logging.basicConfig()

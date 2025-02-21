@@ -1,7 +1,7 @@
 import inspect
 import weakref
 
-from six.moves import collections_abc
+from ..vendor.six.moves import collections_abc
 
 import logging
 logging.basicConfig()

@@ -1,9 +1,9 @@
 import sys
 
-from Qt import QtCore, QtWidgets, QtGui, QtCompat
-from dcc.ui import qlineeditgroup
-from dcc.dataclasses import matrix
-from dcc.generators.inclusiverange import inclusiveRange
+from . import qlineeditgroup
+from ..dataclasses import matrix
+from ..generators.inclusiverange import inclusiveRange
+from ..vendor.Qt import QtCore, QtWidgets, QtGui, QtCompat
 
 import logging
 logging.basicConfig()

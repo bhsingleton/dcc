@@ -1,9 +1,9 @@
 import json
 import pymxs
 
-from six.moves import collections_abc
 from ..libs import propertyutils, wrapperutils
 from ...python import stringutils
+from ...vendor.six.moves import collections_abc
 
 import logging
 logging.basicConfig()

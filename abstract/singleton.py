@@ -1,7 +1,7 @@
 import weakref
 
 from abc import ABCMeta, abstractmethod
-from dcc.decorators.classproperty import classproperty
+from ..decorators.classproperty import classproperty
 
 import logging
 logging.basicConfig()

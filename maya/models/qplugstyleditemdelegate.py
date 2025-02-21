@@ -1,6 +1,6 @@
-from Qt import QtCore, QtWidgets, QtGui
 from maya.api import OpenMaya as om
-from dcc.maya.libs import attributeutils, plugmutators
+from ..libs import attributeutils, plugmutators
+from ...vendor.Qt import QtCore, QtWidgets, QtGui
 
 import logging
 logging.basicConfig()

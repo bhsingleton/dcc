@@ -2,9 +2,9 @@ import os
 import sys
 import inspect
 
-from six import string_types
-from six.moves import reload_module
 from . import stringutils
+from ..vendor.six import string_types
+from ..vendor.six.moves import reload_module
 
 import logging
 logging.basicConfig()

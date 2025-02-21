@@ -1,8 +1,8 @@
 import os
 
 from abc import ABCMeta, abstractmethod
-from six import with_metaclass
-from dcc.abstract import afnnode
+from . import afnnode
+from ..vendor.six import with_metaclass
 
 import logging
 logging.basicConfig()

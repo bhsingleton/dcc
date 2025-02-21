@@ -1,12 +1,12 @@
 import inspect
 
 from abc import ABCMeta, abstractmethod
-from six import with_metaclass, string_types
-from six.moves import collections_abc
 from collections import deque
-from dcc.abstract import ArrayIndexType
-from dcc.generators.flatten import flatten
-from dcc.decorators.classproperty import classproperty
+from . import ArrayIndexType
+from ..generators.flatten import flatten
+from ..decorators.classproperty import classproperty
+from ..vendor.six import with_metaclass, string_types
+from ..vendor.six.moves import collections_abc
 
 import logging
 logging.basicConfig()

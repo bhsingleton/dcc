@@ -1,8 +1,8 @@
 import json
 
 from maya.api import OpenMaya as om
-from six import string_types
 from ...python import stringutils
+from ...vendor.six import string_types
 
 import logging
 logging.basicConfig()

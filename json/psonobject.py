@@ -1,14 +1,14 @@
 import inspect
 import weakref
 
-from six import with_metaclass, string_types
-from six.moves import collections_abc
 from typing import Any, Union, Tuple, List, Dict
 from copy import copy, deepcopy
-from Qt import QtGui
 from . import pabcmeta
 from ..python import annotationutils, stringutils, arrayutils
 from ..decorators.classproperty import classproperty
+from ..vendor.six import with_metaclass, string_types
+from ..vendor.six.moves import collections_abc
+from ..vendor.Qt import QtGui
 
 import logging
 logging.basicConfig()

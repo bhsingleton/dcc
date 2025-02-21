@@ -1,8 +1,8 @@
 from abc import ABCMeta
-from six import with_metaclass
 from ... import fnnode, fnlayer, fnselectionset
 from ...json import psonobject
 from ...python import stringutils
+from ...vendor.six import with_metaclass
 
 import logging
 logging.basicConfig()

@@ -2,12 +2,12 @@ import os
 import subprocess
 
 from abc import ABCMeta, abstractmethod
-from six import with_metaclass
-from six.moves import collections_abc
-from dcc import fntexture
-from dcc.python import pathutils, stringutils
-from dcc.abstract import afnbase
-from dcc.decorators.classproperty import classproperty
+from . import afnbase
+from .. import fntexture
+from ..python import pathutils, stringutils
+from ..decorators.classproperty import classproperty
+from ..vendor.six import with_metaclass
+from ..vendor.six.moves import collections_abc
 
 import logging
 logging.basicConfig()

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-from Qt import QtCore, QtWidgets, QtGui
-from six import string_types
+from ..vendor.Qt import QtCore, QtWidgets, QtGui
+from ..vendor.six import string_types
 
 import logging
 logging.basicConfig()

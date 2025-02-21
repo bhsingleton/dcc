@@ -1,7 +1,7 @@
-from Qt import QtCore, QtWidgets, QtGui
-from six import string_types
-from dcc import fnqt
-from dcc.ui import qdivider, qseparator
+from . import qdivider, qseparator
+from .. import fnqt
+from ..vendor.Qt import QtCore, QtWidgets, QtGui
+from ..vendor.six import string_types
 
 import logging
 logging.basicConfig()

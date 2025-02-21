@@ -1,7 +1,7 @@
 import pymxs
 
 from uuid import uuid4
-from dcc.abstract.afnnotify import AFnNotify
+from ..abstract.afnnotify import AFnNotify
 
 import logging
 logging.basicConfig()

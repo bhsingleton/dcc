@@ -3,10 +3,10 @@ import re
 from maya import cmds as mc
 from maya.api import OpenMaya as om, OpenMayaAnim as oma
 from collections import deque
-from six import string_types
 from . import dagutils, attributeutils
 from ..decorators import undo
 from ...python import stringutils
+from ...vendor.six import string_types
 
 import logging
 logging.basicConfig()

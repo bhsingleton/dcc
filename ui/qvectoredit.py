@@ -1,8 +1,8 @@
 import sys
 
-from Qt import QtCore, QtWidgets, QtGui
-from dcc.ui import qlineeditgroup
-from dcc.dataclasses import vector
+from . import qlineeditgroup
+from ..dataclasses import vector
+from ..vendor.Qt import QtCore, QtWidgets, QtGui
 
 import logging
 logging.basicConfig()

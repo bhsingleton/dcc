@@ -1,4 +1,4 @@
-from Qt import QtCore, QtCompat
+from ...vendor.Qt import QtCore, QtCompat
 
 import logging
 logging.basicConfig()

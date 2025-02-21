@@ -1,12 +1,12 @@
 import json
 
-from Qt import QtCore, QtWidgets, QtGui, QtCompat
 from enum import IntEnum
-from six import string_types, integer_types
-from six.moves import collections_abc
-from dcc import fnqt
-from dcc.python import stringutils
 from . import qpsonpath
+from ... import fnqt
+from ...python import stringutils
+from ...vendor.Qt import QtCore, QtWidgets, QtGui, QtCompat
+from ...vendor.six import string_types, integer_types
+from ...vendor.six.moves import collections_abc
 
 import logging
 logging.basicConfig()

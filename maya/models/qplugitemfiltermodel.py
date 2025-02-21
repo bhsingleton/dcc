@@ -1,6 +1,6 @@
 from maya.api import OpenMaya as om
-from Qt import QtCore, QtWidgets, QtGui
 from . import qplugitemmodel
+from ...vendor.Qt import QtCore, QtWidgets, QtGui
 
 import logging
 logging.basicConfig()
