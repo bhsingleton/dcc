@@ -1,7 +1,6 @@
 import os
 import webbrowser
 
-from copy import copy
 from ..libs import fbxio, fbxasset, fbxexportset, FbxFileType, FbxFileVersion
 from ... import fnscene, fnnode, fnskin, fnnotify
 from ...python import stringutils
@@ -1062,7 +1061,7 @@ class QFbxExportSetEditor(qsingletonwindow.QSingletonWindow):
 
         # Copy current export set
         #
-        fbxExportSet = copy(self.currentExportSet)
+        fbxExportSet = self.currentExportSet.copy(deep=True)
         fbxExportSet.name = self.uniquify(fbxExportSet.name)
 
         self.asset.exportSets.append(fbxExportSet)
