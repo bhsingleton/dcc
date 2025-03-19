@@ -6,6 +6,29 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
+def sign(value):
+    """
+    Returns the sign of the given value.
+
+    :type value: Union[int, float]
+    :rtype: Union[int, float]
+    """
+
+    cls = type(value)
+
+    if value > 0.0:
+
+        return cls(1)
+
+    elif value < 0.0:
+
+        return cls(-1)
+
+    else:
+
+        return cls(0)
+
+
 def isClose(a, b, rel_tol=1e-03, abs_tol=1e-03):
     """
     Evaluates if the two numbers of relatively close.
