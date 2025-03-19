@@ -256,8 +256,8 @@ class MAttributeDecoder(json.JSONDecoder):
         fnAttribute.writable = obj.get('writable', True)
         fnAttribute.connectable = obj.get('connectable', True)
         fnAttribute.storable = obj.get('storable', True)
-        fnAttribute.cached = obj.get('cached', True)
-        fnAttribute.array = obj.get('array', False)
+        fnAttribute.cached = obj.get('cached', obj.get('cachedInternally', True))
+        fnAttribute.array = obj.get('array', obj.get('multi', False))
         fnAttribute.keyable = obj.get('keyable', False)
         fnAttribute.channelBox = obj.get('channelBox', False)
         fnAttribute.hidden = obj.get('hidden', False)
@@ -537,7 +537,7 @@ class MAttributeDecoder(json.JSONDecoder):
 
         # Get enum fields
         #
-        fields = obj.get('fields', {})
+        fields = obj.get('enumName', obj.get('fields', {}))
 
         if isinstance(fields, string_types):
 
