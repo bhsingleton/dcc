@@ -1,5 +1,8 @@
+import os
+import urllib
+
 from maya import cmds as mc
-from ...python import stringutils
+from ...python import stringutils, pathutils
 
 import logging
 logging.basicConfig()
@@ -33,6 +36,170 @@ def getPluginExtension():
         raise RuntimeError('Unable to determine operating system!')
 
 
+def iterPluginPaths():
+    """
+    Returns a generator that yields absolute plugin paths.
+
+    :rtype: Iterator[str]
+    """
+
+    # Iterate through path substrings
+    #
+    paths = os.getenv('MAYA_PLUG_IN_PATH').split(';')
+
+    for path in paths:
+
+        # Check if path is valid
+        #
+        if stringutils.isNullOrEmpty(path):
+
+            continue
+
+        # Get absolute path and check if path exists
+        #
+        absPath = os.path.abspath(path)
+
+        if os.path.isdir(absPath):
+
+            yield absPath
+
+        else:
+
+            continue
+
+
+def pathToPlugin(plugin):
+    """
+    Returns the absolute path to the specified plugin.
+
+    :type plugin: str
+    :rtype: Union[str, None]
+    """
+
+    # Check if plugin contains file extension
+    #
+    extension = getPluginExtension()
+
+    if not plugin.endswith(extension):
+
+        plugin += f'.{extension}'
+
+    # Redundancy check
+    #
+    isFileLike = pathutils.isFileLike(plugin)
+
+    if isFileLike:
+
+        return plugin
+
+    else:
+
+        # Iterate through plugin paths
+        #
+        for path in iterPluginPaths():
+
+            filePath = os.path.join(path, plugin)
+
+            if os.path.isfile(filePath):
+
+                return filePath
+
+            else:
+
+                continue
+
+        return None
+
+
+def doesPluginExist(plugin):
+    """
+    Evaluates if the supplied plugin exists.
+
+    :type plugin: str
+    :rtype: bool
+    """
+
+    filePath = pathToPlugin(plugin)
+
+    if not stringutils.isNullOrEmpty(filePath):
+
+        return os.path.isfile(filePath)
+
+    else:
+
+        return False
+
+
+def ensurePluginPath(path):
+    """
+    Ensures the supplied path exists within the Maya plug-in paths.
+
+    :type path: str
+    :rtype: bool
+    """
+
+    # Check if supplied path is valid
+    #
+    directories = list(iterPluginPaths())
+    absPath = os.path.abspath(path)
+
+    isDirectory = os.path.isdir(absPath)
+
+    if not isDirectory:
+
+        return False
+
+    # Check if path is missing
+    #
+    isMissing = absPath not in directories
+
+    if isMissing:
+
+        path = os.getenv('MAYA_PLUG_IN_PATH')
+        altPath = absPath.replace(os.sep, os.altsep)
+
+        if path.endswith(';'):
+
+            os.environ['MAYA_PLUG_IN_PATH'] = f'{path}{altPath}'
+
+        else:
+
+            os.environ['MAYA_PLUG_IN_PATH'] = f'{path};{altPath}'
+
+    return True
+
+
+def downloadPlugin(url, filePath):
+    """
+    Downloads a plugin to the specified location.
+
+    :type url: str
+    :type filePath: str
+    :rtype: bool
+    """
+
+    # Ensure directory exists
+    #
+    pathutils.ensureDirectory(filePath)
+
+    # Try and download plugin
+    #
+    log.info(f'Downloading plugin from: {url}')
+    downloadPath, headers = urllib.request.urlretrieve(url, filePath)
+
+    success = os.path.isfile(downloadPath)
+
+    if success:
+
+        log.info(f'Plug-in downloaded to: {downloadPath}')
+        return True
+
+    else:
+
+        log.warning(f'Unable to download plug-in to: {downloadPath}')
+        return False
+
+
 def tryLoadPlugin(plugin):
     """
     Tries to load a plugin with the specified name.
@@ -41,11 +208,17 @@ def tryLoadPlugin(plugin):
     :rtype: bool
     """
 
-    # Check if plugin has been loaded
+    # Derive filename from plugin
     #
     extension = getPluginExtension()
-    filename = '{plugin}.{extension}'.format(plugin=plugin, extension=extension)
+    filename = str(plugin)
 
+    if not filename.endswith(extension):
+
+        filename = '{plugin}.{extension}'.format(plugin=plugin, extension=extension)
+
+    # Check if plugin has already been loaded
+    #
     if mc.pluginInfo(filename, query=True, loaded=True):
 
         log.info(f'"{filename}" plugin has already been loaded.')
