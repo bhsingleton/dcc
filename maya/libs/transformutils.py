@@ -4,6 +4,7 @@ from maya import cmds as mc
 from maya.api import OpenMaya as om
 from . import dagutils, plugutils, plugmutators
 from ..decorators import undo
+from ...math import floatmath
 from ...vendor.six import string_types
 
 import logging
@@ -1573,7 +1574,7 @@ def createRotationMatrix(value):
         raise TypeError('createRotationMatrix() expects an MEulerRotation (%s given)!' % type(value).__name__)
 
 
-def createAimMatrix(forwardAxis, forwardVector, upAxis, upVector, startPoint=om.MPoint.kOrigin, forwardAxisSign=1, upAxisSign=1):
+def createAimMatrix(forwardAxis, forwardVector, upAxis, upVector, **kwargs):
     """
     Creates an aim matrix based on the supplied values.
 
@@ -1581,14 +1582,18 @@ def createAimMatrix(forwardAxis, forwardVector, upAxis, upVector, startPoint=om.
     :type forwardVector: om.MVector
     :type upAxis: int
     :type upVector: om.MVector
-    :type startPoint: Union[om.MVector, om.MPoint]
-    :type forwardAxisSign: int
-    :type upAxisSign: int
+    :key origin: Union[om.MVector, om.MPoint]
+    :key startPoint: Union[om.MVector, om.MPoint]
+    :key forwardAxisSign: int
+    :key upAxisSign: int
     :rtype: om.MMatrix
     """
 
     # Check which forward axis is selected
     #
+    forwardAxisSign = kwargs.get('forwardAxisSign', 1)
+    upAxisSign = kwargs.get('upAxisSign', 1)
+
     xAxis = om.MVector.kXaxisVector  # type: om.MVector
     yAxis = om.MVector.kYaxisVector  # type: om.MVector
     zAxis = om.MVector.kZaxisVector  # type: om.MVector
@@ -1659,12 +1664,14 @@ def createAimMatrix(forwardAxis, forwardVector, upAxis, upVector, startPoint=om.
 
     # Compose aim matrix from axis vectors
     #
+    origin = kwargs.get('origin', kwargs.get('startPoint', om.MVector.kZeroVector))
+
     return om.MMatrix(
         [
             (xAxis.x, xAxis.y, xAxis.z, 0.0),
             (yAxis.x, yAxis.y, yAxis.z, 0.0),
             (zAxis.x, zAxis.y, zAxis.z, 0.0),
-            (startPoint.x, startPoint.y, startPoint.z, 1.0)
+            (origin.x, origin.y, origin.z, 1.0)
         ]
     )
 
@@ -1954,6 +1961,45 @@ def reorientMatrix(forwardAxis, upAxis, matrix, forwardAxisSign=1, upAxisSign=1)
     return rotationMatrix * matrix
 
 
+def findClosestWorldAxis(vector):
+    """
+    Returns the world axis vector closest to the supplied vector.
+
+    :type vector: om.MVector
+    :rtype: om.MVector
+    """
+
+    xDot = om.MVector.kXaxisVector * vector
+    yDot = om.MVector.kYaxisVector * vector
+    zDot = om.MVector.kZaxisVector * vector
+    dots = (xDot, yDot, zDot)
+    absDots = tuple(map(abs, dots))
+
+    preferredAxis = absDots.index(max(absDots))
+    axes = (om.MVector.kXaxisVector, om.MVector.kYaxisVector, om.MVector.kZaxisVector)
+    signs = tuple(map(floatmath.sign, dots))
+
+    return axes[preferredAxis] * signs[preferredAxis]
+
+
+def alignMatrixToNearestWorldAxis(matrix):
+    """
+    Aligns the supplied matrix to the nearest world axis.
+
+    :type matrix: om.MMatrix
+    :rtype: om.MMatrix
+    """
+
+    xAxis, yAxis, zAxis, position = breakMatrix(matrix, normalize=False)
+
+    xWorldAxis = findClosestWorldAxis(xAxis)
+    zWorldAxis = findClosestWorldAxis(zAxis)
+    yWorldAxis = (zWorldAxis ^ xWorldAxis).normal()
+
+    return makeMatrix(xWorldAxis, yWorldAxis, zWorldAxis, position)
+
+
+
 def mirrorVector(vector, normal=om.MVector.kXaxisVector):
     """
     Mirrors the supplied vector across the specified normal.
@@ -1979,6 +2025,24 @@ def projectVector(vector, normal):
     normal = om.MVector(normal)
 
     return vector - (normal * (vector * normal))
+
+
+def projectPoint(point, normal, origin=om.MVector.kZeroVector):
+    """
+    Projects the supplied point onto the specified plane normal.
+
+    :type point: Union[om.MVector, om.MPoint, Tuple[float, float, float]]
+    :type normal: Union[om.MVector, om.MPoint, Tuple[float, float, float]]
+    :type origin: Union[om.MVector, om.MPoint, Tuple[float, float, float]]
+    :rtype: om.MVector
+    """
+
+    point = om.MVector(point)
+    origin = om.MVector(origin)
+    vector = point - origin
+    normal = om.MVector(normal)
+
+    return origin + (vector - (normal * (vector * normal)))
 
 
 def isArray(value):
