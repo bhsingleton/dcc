@@ -781,7 +781,7 @@ def setMessage(plug, value, modifier=None, **kwargs):
     #
     if not value.isNull():
 
-        otherPlug = om.MFnDependencyNode(value).findPlug('message', True)
+        otherPlug = plugutils.findPlug(value, 'message')
         plugutils.connectPlugs(otherPlug, plug, force=True)
 
     else:
