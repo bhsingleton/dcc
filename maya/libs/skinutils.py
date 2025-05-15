@@ -82,11 +82,12 @@ def clearIntermediateObjects(node):
         dagutils.deleteNode(intermediateObject)
 
 
-def iterInfluences(skinCluster):
+def iterInfluences(skinCluster, skipNullInfluences=True):
     """
     Returns a generator that yields all the influence objects from the supplied skin cluster.
 
     :type skinCluster: om.MObject
+    :type skipNullInfluences: bool
     :rtype: iter
     """
 
@@ -106,7 +107,12 @@ def iterInfluences(skinCluster):
 
         if not element.isConnected:
 
-            log.debug('No connected joint found on %s.matrix[%s]!' % (fnDependNode.name(), index))
+            log.debug(f'No connected joint found @ {fnDependNode.name()}.matrix[{index}]!')
+
+            if not skipNullInfluences:
+
+                yield index, om.MObject.kNullObj
+
             continue
 
         # Get connected plug
