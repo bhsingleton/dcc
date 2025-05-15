@@ -274,7 +274,7 @@ class FnScene(afnscene.AFnScene):
 
             bitmap.reload()
 
-    def playblast(self, filePath=None, startFrame=None, endFrame=None):
+    def playblast(self, filePath=None, startFrame=None, endFrame=None, autoplay=True):
         """
         Creates a playblast using the supplied path.
         If no path is supplied then the default project path should be used instead!
@@ -282,6 +282,7 @@ class FnScene(afnscene.AFnScene):
         :type filePath: str
         :type startFrame: int
         :type endFrame: int
+        :type autoplay: bool
         :rtype: None
         """
 
@@ -292,13 +293,11 @@ class FnScene(afnscene.AFnScene):
             projectPath = self.currentProjectDirectory()
             filePath = os.path.join(projectPath, 'previews', '_scene.avi')
 
-        # Check if start and end frame was supplied
-        #
-        startFrame = startFrame if not self.isNullOrEmpty(startFrame) else self.getStartTime()
-        endFrame = endFrame if not self.isNullOrEmpty(endFrame) else self.getEndTime()
-
         # Create playblast
         #
+        startFrame = startFrame if (not self.isNullOrEmpty(startFrame)) else self.getStartTime()
+        endFrame = endFrame if (not self.isNullOrEmpty(endFrame)) else self.getEndTime()
+
         pymxs.runtime.createPreview(
             filename=filePath,
             outputAVI=True,
@@ -306,7 +305,15 @@ class FnScene(afnscene.AFnScene):
             end=endFrame
         )
 
-        self.transcodePlayblast(filePath)
+        # Transcode playblast
+        #
+        filePath = self.transcodePlayblast(filePath, delete=True)
+
+        # Check if autoplay was requested
+        #
+        if autoplay:
+
+            os.startfile(filePath)
 
     def iterFileProperties(self):
         """
@@ -381,7 +388,7 @@ class FnScene(afnscene.AFnScene):
 
         if asPython:
 
-            exec(string)
+            exec(string, globals())
 
         else:
 

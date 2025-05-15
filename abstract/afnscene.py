@@ -3,7 +3,7 @@ import subprocess
 
 from abc import ABCMeta, abstractmethod
 from . import afnbase
-from .. import fntexture
+from .. import fnnode, fntexture
 from ..python import pathutils, stringutils
 from ..decorators.classproperty import classproperty
 from ..vendor.six import with_metaclass
@@ -588,7 +588,7 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         elif numFound == 1:
 
-            return found[0]
+            return os.path.abspath(found[0])
 
         else:
 
@@ -604,7 +604,7 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
         return os.path.exists(self.findFFmpeg())
 
     @abstractmethod
-    def playblast(self, filePath=None, startFrame=None, endFrame=None):
+    def playblast(self, filePath=None, startFrame=None, endFrame=None, autoplay=True):
         """
         Creates a playblast using the supplied path.
         If no path is supplied then the default project path should be used instead!
@@ -612,17 +612,19 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
         :type filePath: str
         :type startFrame: int
         :type endFrame: int
+        :type autoplay: bool
         :rtype: None
         """
 
         pass
 
-    def transcodePlayblast(self, filePath):
+    def transcodePlayblast(self, filePath, delete=True):
         """
         Converts the supplied playblast to an MPEG w/H.264 encoding.
 
         :type filePath: str
-        :rtype: None
+        :type delete: bool
+        :rtype: str
         """
 
         # Check FFmpeg is installed
@@ -630,7 +632,7 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
         if not self.hasFFmpeg():
 
             log.warning('Unable to locate FFmpeg!')
-            return
+            return filePath
 
         # Concatenate save path
         #
@@ -649,6 +651,14 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         log.info('Transcoding playblast to: %s' % savePath)
         subprocess.call(command, shell=True)
+
+        # Check if source file should be deleted
+        #
+        if delete:
+
+            os.remove(filePath)
+
+        return savePath
 
     @abstractmethod
     def iterFileProperties(self):
@@ -786,6 +796,16 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
 
         pass
+
+    def doesNodeExist(self, name):
+        """
+        Evaluates whether a node exists with the given name.
+
+        :type name: str
+        :rtype: bool
+        """
+
+        return fnnode.FnNode.doesNodeExist(name)
 
     @abstractmethod
     def getActiveSelection(self):

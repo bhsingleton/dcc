@@ -241,7 +241,7 @@ class FnScene(afnscene.AFnScene):
 
         sceneutils.refreshTextures()
 
-    def playblast(self, filePath=None, startFrame=None, endFrame=None):
+    def playblast(self, filePath=None, startFrame=None, endFrame=None, autoplay=True):
         """
         Creates a playblast using the supplied path.
         If no path is supplied then the default project path should be used instead!
@@ -249,10 +249,50 @@ class FnScene(afnscene.AFnScene):
         :type filePath: str
         :type startFrame: int
         :type endFrame: int
+        :type autoplay: bool
         :rtype: None
         """
 
-        pass
+        # Check if a file path was supplied
+        #
+        filename = None
+
+        if self.isNullOrEmpty(filePath):
+
+            filename = f'{self.currentName()}.avi'
+
+        else:
+
+            filename = os.path.basename(filePath)
+
+        # Create playblast
+        #
+        relativePath = os.path.join('movies', filename)
+        startFrame = startFrame if (not self.isNullOrEmpty(startFrame)) else self.getStartTime()
+        endFrame = endFrame if (not self.isNullOrEmpty(endFrame)) else self.getEndTime()
+
+        filePath = mc.playblast(
+            format='avi',
+            startTime=startFrame,
+            endTime=endFrame,
+            showOrnaments=True,
+            widthHeight=(2560, 1440),
+            percent=50,
+            quality=100,
+            filename=relativePath,
+            forceOverwrite=True,
+            viewer=False
+        )
+
+        # Transcode playblast
+        #
+        filePath = self.transcodePlayblast(filePath, delete=True)
+
+        # Check if autoplay was requested
+        #
+        if autoplay:
+
+            os.startfile(filePath)
 
     def iterFileProperties(self):
         """
@@ -314,7 +354,7 @@ class FnScene(afnscene.AFnScene):
 
         if asPython:
 
-            exec(string)
+            exec(string, globals())
 
         else:
 
