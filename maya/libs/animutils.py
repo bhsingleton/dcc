@@ -1,6 +1,7 @@
 from maya import cmds as mc
 from maya.api import OpenMaya as om, OpenMayaAnim as oma
 from enum import IntEnum
+from collections import deque
 from . import dagutils, attributeutils, plugutils
 from ..decorators import undo
 from ...python import stringutils
@@ -920,9 +921,19 @@ def isBaseAnimLayer(animLayer):
     return getAnimLayerParent(animLayer).isNull()
 
 
+def hasAnimLayers():
+    """
+    Evaluates if any anim-layers exist.
+
+    :rtype: bool
+    """
+
+    return not getBaseAnimLayer().isNull()
+
+
 def getBestAnimLayer(plug):
     """
-    Returns the active anim-layer.
+    Returns the best anim-layer for the supplied plug.
 
     :type plug: om.MPlug
     :rtype: om.MObject
@@ -939,6 +950,63 @@ def getBestAnimLayer(plug):
     else:
 
         return om.MObject.kNullObj
+
+
+def getSelectedAnimLayer():
+    """
+    Returns the active anim-layer.
+
+    :rtype: om.MObject
+    """
+
+    for animLayer in dagutils.iterNodes(apiType=om.MFn.kAnimLayer):
+
+        animLayerName = dagutils.getNodeName(animLayer, includeNamespace=True)
+        isSelected = mc.animLayer(animLayerName, query=True, selected=True)
+
+        if isSelected:
+
+            return animLayer
+
+        else:
+
+            continue
+
+    return om.MObject.kNullObj
+
+
+def iterAnimLayers(select=False):
+    """
+    Returns a generator that yields anim-layers in hierarchical order.
+    An option `select` keyword argument can be used to select the anim-layer as they are yielded.
+
+    :type select: bool
+    :rtype: Iterator[om.MObject]
+    """
+
+    # Check if base anim layer exists
+    #
+    baseAnimLayer = getBaseAnimLayer()
+
+    if baseAnimLayer is None:
+
+        return iter([])
+
+    # Iterate through layers
+    #
+    queue = deque([baseAnimLayer])
+
+    while len(queue) > 0:
+
+        animLayer = queue.popleft()
+        animLayerName = dagutils.getNodeName(animLayer, includeNamespace=True)
+
+        if select:
+
+            mc.animLayer(animLayerName, edit=True, selected=True)
+
+        yield animLayer
+        queue.extendleft(getAnimLayerChildren(animLayer))
 
 
 def getAssociatedAnimLayers(*nodes):
@@ -1177,8 +1245,18 @@ def getAnimLayerChildren(animLayer):
     :rtype: om.MObjectArray
     """
 
+    # Check if anim layer is valid
+    #
+    if animLayer.isNull():
+
+        return om.MObjectArray()
+
+    # Get connected child layers
+    #
     plug = plugutils.findPlug(animLayer, 'childrenLayers')
-    return plugutils.getConnectedNodes(plug)
+    connectedNodes = plugutils.getConnectedNodes(plug)
+
+    return connectedNodes
 
 
 def getAnimLayerBlends(*animLayers):
@@ -1261,7 +1339,7 @@ def getAnimLayerCurves(animLayer, node=om.MObject.kNullObj, inputA=False, inputB
 
     # Get indices associated with node
     #
-    members = getAnimLayerMembers(animLayer, node=node)
+    members = getAnimLayerMembers(animLayer)
     indices = [index for (index, member) in enumerate(members) if member.node() == node]
 
     if len(animCurves) == len(members):
