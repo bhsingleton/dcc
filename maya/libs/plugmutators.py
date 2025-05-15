@@ -1042,9 +1042,10 @@ def setValue(*args, modifier=None, **kwargs):
 
         # Check if plug is changeable
         #
-        state = plug.isFreeToChange()
+        isWritable = plugutils.isWritable(plug)
+        isMessage = plug.attribute().hasFn(om.MFn.kMessageAttribute)
 
-        if state != om.MPlug.kFreeToChange:
+        if not (isWritable or isMessage):
 
             log.debug(f'Plug is not free-to-change: {plug.info}')
             return
