@@ -383,10 +383,14 @@ class QFilePath(object):
         #
         if self.isDir():
 
-            paths = [os.path.join(self._path, filename) for filename in os.listdir(self._path)]
-            accessible = [path for path in paths if os.access(path, os.R_OK)]
+            children = tuple(map(lambda filename: os.path.join(self._path, filename), os.listdir(self._path)))
+            filteredChildren = tuple(filter(lambda path: os.access(path, os.R_OK), children))
 
-            self._children = list(map(QFilePath, accessible))
+            directories = tuple(filter(lambda path: os.path.isdir(path), filteredChildren))
+            filePaths = tuple(filter(lambda path: os.path.isfile(path), filteredChildren))
+            sortedChildren = directories + filePaths
+
+            self._children = list(map(QFilePath, sortedChildren))
 
         else:
 
