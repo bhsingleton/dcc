@@ -1961,43 +1961,45 @@ def reorientMatrix(forwardAxis, upAxis, matrix, forwardAxisSign=1, upAxisSign=1)
     return rotationMatrix * matrix
 
 
-def findClosestWorldAxis(vector):
+def findClosestAxis(vector, matrix):
     """
-    Returns the world axis vector closest to the supplied vector.
+    Returns the matrix axis that's closest to the supplied vector.
 
     :type vector: om.MVector
+    :type matrix: om.MMatrix
     :rtype: om.MVector
     """
 
-    xDot = om.MVector.kXaxisVector * vector
-    yDot = om.MVector.kYaxisVector * vector
-    zDot = om.MVector.kZaxisVector * vector
+    xAxis, yAxis, zAxis, position = breakMatrix(matrix, normalize=True)
+    xDot = xAxis * vector
+    yDot = yAxis * vector
+    zDot = zAxis * vector
     dots = (xDot, yDot, zDot)
     absDots = tuple(map(abs, dots))
 
     preferredAxis = absDots.index(max(absDots))
-    axes = (om.MVector.kXaxisVector, om.MVector.kYaxisVector, om.MVector.kZaxisVector)
-    signs = tuple(map(floatmath.sign, dots))
+    axisVectors = (xAxis, yAxis, zAxis)
+    axisSigns = tuple(map(floatmath.sign, dots))
 
-    return axes[preferredAxis] * signs[preferredAxis]
+    return axisVectors[preferredAxis] * axisSigns[preferredAxis]
 
 
-def alignMatrixToNearestWorldAxis(matrix):
+def alignMatrixToNearestAxes(matrix, otherMatrix):
     """
-    Aligns the supplied matrix to the nearest world axis.
+    Snaps the first matrix to the nearest axes on the second matrix.
 
     :type matrix: om.MMatrix
+    :type otherMatrix: om.MMatrix
     :rtype: om.MMatrix
     """
 
     xAxis, yAxis, zAxis, position = breakMatrix(matrix, normalize=False)
 
-    xWorldAxis = findClosestWorldAxis(xAxis)
-    zWorldAxis = findClosestWorldAxis(zAxis)
-    yWorldAxis = (zWorldAxis ^ xWorldAxis).normal()
+    preferredXAxis = findClosestAxis(xAxis, otherMatrix)
+    preferredZAxis = findClosestAxis(zAxis, otherMatrix)
+    preferredYAxis = (preferredZAxis ^ preferredXAxis).normal()
 
-    return makeMatrix(xWorldAxis, yWorldAxis, zWorldAxis, position)
-
+    return makeMatrix(preferredXAxis, preferredYAxis, preferredZAxis, position)
 
 
 def mirrorVector(vector, normal=om.MVector.kXaxisVector):
