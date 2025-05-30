@@ -1,6 +1,6 @@
 import json
 
-from enum import IntEnum
+from enum import Enum, IntEnum
 from . import qpsonpath
 from ... import fnqt
 from ...python import stringutils
@@ -679,12 +679,13 @@ class QPSONItemModel(QtCore.QAbstractItemModel):
 
         return False  # Must return false for move actions or else the model will remove rows?
 
-    def details(self, index):
+    def details(self, index, asString=False):
         """
         Evaluates the details for the given index.
         This method is intended to be used with indices derived from the details view mode.
 
         :type index: QtCore.QModelIndex
+        :type asString: bool
         :rtype: Any
         """
 
@@ -698,12 +699,22 @@ class QPSONItemModel(QtCore.QAbstractItemModel):
 
         elif viewDetail == ViewDetails.Type:
 
-            T = path.type()
-            return getattr(T, '__name__', str(T))
+            cls = path.type()
+            className = getattr(cls, '__name__', cls.__str__())
+
+            return className
 
         elif viewDetail == ViewDetails.Value:
 
-            return path.value()
+            value = path.value()
+
+            if asString:
+
+                return value.name if isinstance(value, Enum) else str(value)
+
+            else:
+
+                return value
 
         else:
 
@@ -725,7 +736,7 @@ class QPSONItemModel(QtCore.QAbstractItemModel):
 
         if role == QtCore.Qt.DisplayRole:
 
-            return str(self.details(index))
+            return self.details(index, asString=True)
 
         elif role == QtCore.Qt.EditRole:
 
