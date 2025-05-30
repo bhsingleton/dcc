@@ -7,7 +7,7 @@ For example, all required logic for nodes is outlined in the abstract class: ```
 Next, each DCC defines the logic from its own package: ```dcc.maya.fnnode.FnNode``` and ```dcc.max.fnnode.FnNode```.  
 Finally, the top-level module ```dcc.fnnode``` resolves the import statement by detecting the DCC the user is using and importing accordingly.  
 
-All together, an example of DCC-agnostic can be:  
+All together, an example of DCC-agnostic code can be:  
 ```
 from dcc import fnnode
 
@@ -27,8 +27,8 @@ node = fnnode.FnNode()
 node.setQueue(scene.getActiveSelection())
 
 while not node.isDone():
-  node.next()
   print(node.name())
+  node.next()
 ```
 
 # FBX
