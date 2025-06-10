@@ -1,4 +1,5 @@
 import os
+import re
 import stat
 import json
 import subprocess
@@ -8,13 +9,15 @@ from .decorators import relogin
 from .. import fnscene, fntexture
 from ..python import importutils
 
+P4 = importutils.tryImport('P4', __locals__=locals(), __globals__=globals())
+
 import logging
 logging.basicConfig()
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-P4 = importutils.tryImport('P4', __locals__=locals(), __globals__=globals())
+__file_regex__ = re.compile(r'(?:[\/]){2}(?:[a-zA-Z0-9_\-]+[\\\/])*([a-zA-Z0-9_\-]+\.[a-zA-Z0-9]+)')
 
 
 def isInstalled():
@@ -48,28 +51,85 @@ def isNullOrEmpty(value):
         return False
 
 
-def acceptsCheckout(filePath):
+def isDepotPath(string):
     """
-    Evaluates if the file can be checked out from P4.
+    Evaluates if the supplied string represents a depot path.
+    No validation is done to test whether the file exists or not!
 
-    :type filePath: str
     :rtype: bool
     """
 
-    # Check if path is in client view
-    #
-    client = clientutils.getCurrentClient()
+    return __file_regex__.match(string) is not None
 
-    if not client.hasAbsoluteFile(filePath):
+
+def isUpToDate(path):
+    """
+    Evaluates if the requested file is up to date.
+
+    :type path: str
+    :rtype: bool
+    """
+
+    # Get depot path to file
+    #
+    depotPath = guessDepotPath(path)
+
+    if isNullOrEmpty(depotPath):
 
         return False
 
-    # Evaluate file specs
+    # Check if file exists
     #
-    depotPath = client.mapToDepot(filePath)
-    specs = cmds.files(depotPath, quiet=True)
+    exists = doesFileExist(depotPath)
 
-    return len(specs) == 1
+    if not exists:
+
+        return False
+
+    # Compare have revision to head revision
+    #
+    fileStat = cmds.fstat(depotPath)[0]
+    haveRev = int(fileStat['haveRev'])
+    headRev = int(fileStat['headRev'])
+
+    return haveRev == headRev
+
+
+def acceptsCheckout(path):
+    """
+    Evaluates if the file can be checked out from P4.
+    This function accepts either an absolute path or a depot path!
+
+    :type path: str
+    :rtype: bool
+    """
+
+    # Check if path is valid
+    #
+    if isNullOrEmpty(path):
+
+        return False
+
+    # Check if this is a depot path
+    #
+    if isDepotPath(path):
+
+        return doesFileExist(path)
+
+    else:
+
+        # Check if path is in client view
+        #
+        client = clientutils.getCurrentClient()
+
+        if client.hasAbsoluteFile(path):
+
+            depotPath = client.mapToDepot(path)
+            return doesFileExist(depotPath)
+
+        else:
+
+            return False
 
 
 def tryFlush(filePath):
@@ -131,28 +191,80 @@ def tryCheckout(filePath):
         return False
 
 
-def acceptsAdd(filePath):
+def doesFileExist(path):
     """
-    Evaluates if the file can be added to P4.
+    Evaluates if the supplied file exists on the server.
+    This function accepts either an absolute path or a depot path!
 
-    :type filePath: str
+    :type path: str
     :rtype: bool
     """
 
-    # Check if path is in client view
+    # Check if path is valid
     #
-    client = clientutils.getCurrentClient()
-
-    if not client.hasAbsoluteFile(filePath):
+    if isNullOrEmpty(path):
 
         return False
 
-    # Evaluate file specs
+    # Check if this is a depot path
     #
-    depotPath = client.mapToDepot(filePath)
-    specs = cmds.files(depotPath, quiet=True)
+    if isDepotPath(path):
 
-    return len(specs) == 0
+        specs = cmds.files(path, quiet=True)
+        exists = len(specs) == 1
+
+        return exists
+
+    else:
+
+        # Check if path is in client view
+        #
+        depotPath = guessDepotPath(path)
+
+        if not isNullOrEmpty(depotPath):
+
+            return doesFileExist(depotPath)
+
+        else:
+
+            return False
+
+
+def acceptsAdd(path):
+    """
+    Evaluates if the file can be added to P4.
+    This function accepts either an absolute path or a depot path!
+
+    :type path: str
+    :rtype: bool
+    """
+
+    # Check if path is valid
+    #
+    if isNullOrEmpty(path):
+
+        return False
+
+    # Check if this is a depot path
+    #
+    if isDepotPath(path):
+
+        return not doesFileExist(path)
+
+    else:
+
+        # Check if path is in client view
+        #
+        client = clientutils.getCurrentClient()
+
+        if client.hasAbsoluteFile(path):
+
+            depotPath = client.mapToDepot(path)
+            return acceptsAdd(depotPath)
+
+        else:
+
+            return False
 
 
 def tryAdd(filePath):
@@ -192,6 +304,26 @@ def smartCheckout(filePath):
     elif acceptsCheckout(filePath):
 
         return tryCheckout(filePath)
+
+    else:
+
+        return False
+
+
+def trySync(path):
+    """
+    Attempts to sync the supplied file from perforce.
+
+    :type path: str
+    :rtype: bool
+    """
+
+    exists = doesFileExist(path)
+
+    if exists:
+
+        cmds.sync(path)
+        return True
 
     else:
 
@@ -425,7 +557,7 @@ def saveChangelist(changelist, filePath, **kwargs):
         return False
 
 
-def getFilesFromChangelist(changelist, editsOnly=False):
+def getFilesFromChangelist(changelist, editsOnly=False, **kwargs):
     """
     Returns a list of depot files from the supplied changelist.
 
@@ -444,7 +576,7 @@ def getFilesFromChangelist(changelist, editsOnly=False):
 
     except P4.P4Exception:
 
-        logErrors(p4.errors, **kwargs)
+        cmds.logErrors(p4.errors, **kwargs)
 
     finally:
 
@@ -459,24 +591,58 @@ def getFilesFromChangelist(changelist, editsOnly=False):
             return [spec['depotFile'] for spec in specs]
 
 
-@relogin.Relogin()
-def findDepotPath(filePath):
+def guessDepotPath(path):
     """
-    Returns the depot path for this texture from perforce.
+    Returns a potential depot path for the supplied path from perforce.
+    No error checking is performed to test if the depot path exists!
 
+    :type path: str
     :rtype: str
     """
 
-    # Check for empty string
+    # Redundancy check
+    #
+    if isDepotPath(path):
+
+        return path
+
+    # Check if path is relative to client
+    #
+    client = clientutils.getCurrentClient()
+
+    if client.hasAbsoluteFile(path):
+
+        return client.mapToDepot(path)
+
+    else:
+
+        return ''
+
+
+@relogin.Relogin()
+def findDepotPath(filePath, client=None):
+    """
+    Returns the depot path for the supplied path from perforce.
+
+    :type filePath: str
+    :type client: Union[ClientSpec, None]
+    :rtype: str
+    """
+
+    # Check if path is valid
     #
     if isNullOrEmpty(filePath):
 
         return ''
 
+    # Check if a client was supplied
+    #
+    if client is None:
+
+        client = clientutils.getCurrentClient()
+
     # Search for file in client view
     #
-    client = clientutils.getCurrentClient()
-
     found = searchutils.findFile(filePath, client=client)
     numFound = len(found)
 
