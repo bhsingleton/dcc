@@ -16,6 +16,7 @@ class QMainDialog(QtWidgets.QDialog, metaclass=qabcmeta.QABCMeta):
 
     # region Dunderscores
     __qt__ = fnqt.FnQt()
+    __icon__ = QtGui.QIcon()
 
     def __init__(self, *args, **kwargs):
         """
@@ -52,9 +53,17 @@ class QMainDialog(QtWidgets.QDialog, metaclass=qabcmeta.QABCMeta):
         :rtype: None
         """
 
+        # Initialize main dialog
+        #
         self.setObjectName(self.className)
         self.setModal(kwargs.get('modal', True))
         self.setSizeGripEnabled(kwargs.get('sizeGripEnabled', True))
+
+        # Override default dialog icon
+        #
+        if not self.customIcon.isNull():
+
+            self.setWindowIcon(self.customIcon)
 
     def __setstate__(self, state):
         """
@@ -103,6 +112,27 @@ class QMainDialog(QtWidgets.QDialog, metaclass=qabcmeta.QABCMeta):
         """
 
         return cls.__qt__
+
+    @classproperty
+    def customIcon(cls):
+        """
+        Getter method that returns the custom icon for this class.
+
+        :rtype: QtGui.QIcon
+        """
+
+        return cls.__icon__
+
+    @customIcon.setter
+    def customIcon(cls, customIcon):
+        """
+        Setter method that updates the custom icon for this class.
+
+        :type customIcon: QtGui.QIcon
+        :rtype: None
+        """
+
+        cls.__icon__ = customIcon
     # endregion
 
     # region Methods

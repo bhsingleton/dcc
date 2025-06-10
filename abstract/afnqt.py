@@ -1,7 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from functools import partial
 from . import afnbase
-from ..ui import qloggingmenu
 from ..vendor.six import with_metaclass
 from ..vendor.Qt import QtCore, QtWidgets, QtCompat
 
@@ -136,30 +135,3 @@ class AFnQt(with_metaclass(ABCMeta, afnbase.AFnBase)):
         except Exception as exception:
 
             log.error(exception)
-
-    def createLoggingMenu(self):
-        """
-        Creates a logging menu for modifying logger levels.
-        If the menu already exists the current instance will be refreshed.
-
-        :rtype: None
-        """
-
-        # Check if menu already exists
-        #
-        menuBar = self.getMainMenuBar()
-
-        menus = [menu for menu in self.iterMainMenus() if menu.title() == 'Logging Control']
-        numMenus = len(menus)
-
-        if numMenus == 0:
-
-            menu = qloggingmenu.QLoggingMenu('Logging Control', parent=menuBar)
-            menuBar.insertMenu(menuBar.actions()[-1], menu)
-
-        else:
-
-            menu = menus[0]
-            menu.refresh()
-
-        return menu
