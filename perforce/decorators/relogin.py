@@ -14,13 +14,13 @@ log.setLevel(logging.INFO)
 
 class Relogin(abstractdecorator.AbstractDecorator):
     """
-    Base class used to evaluate the time before the user's perforce session expires.
+    Overload of `AbstractDecorator` that prompts the user to login if their session has expired.
     """
 
     # region Dunderscores
     __slots__ = ()
 
-    def __enter__(self, *args):
+    def __enter__(self, *args, **kwargs):
         """
         Private method that is called when this instance is entered using a with statement.
 
