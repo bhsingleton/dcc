@@ -1,4 +1,5 @@
 import os
+import socket
 import getpass
 
 from collections import namedtuple
@@ -480,15 +481,28 @@ def getClientNames():
     return list(clients.keys())
 
 
-def iterClients():
+def iterClients(filterClientsByHostName=False):
     """
     Returns a generator that yields all client key-value pairs.
 
-    :rtype: iter
+    :type filterClientsByHostName: bool
+    :rtype: Iterator[Tuple[str, ClientSpec]]
     """
 
     clients = getClients()
-    return iter(clients.items())
+    host = os.environ.get('P4HOST', socket.gethostname())
+
+    for (clientName, clientSpec) in clients.items():
+
+        hostOwned = clientSpec.host == host
+
+        if (filterClientsByHostName and hostOwned) or not filterClientsByHostName:
+
+            yield clientName, clientSpec
+
+        else:
+
+            continue
 
 
 def setClient(client):
@@ -510,7 +524,7 @@ def setClient(client):
     clients = getClients()
     clientSpec = clients[client]
 
-    log.info('Switching workspace to: "%s"' % clientSpec.name)
+    log.info(f'Switching workspace to: "{clientSpec.name}"')
     os.environ['P4CLIENT'] = clientSpec.name
     os.environ['P4ROOT'] = clientSpec.root
 
@@ -528,7 +542,7 @@ def changeClient():
     fnQt = fnqt.FnQt()
     parent = fnQt.getMainWindow()
 
-    clients = [x for (x, y) in iterClients() if y.host == os.environ['P4HOST']]
+    clients = [name for (name, client) in iterClients(filterClientsByHostName=True)]
     numClients = len(clients)
 
     if numClients == 0:
