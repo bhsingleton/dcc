@@ -16,8 +16,8 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-__file_regex__ = re.compile(r'(?:[a-zA-Z]:[\\\/])(?:[a-zA-Z0-9_\-]+[\\\/])*([a-zA-Z0-9_\-]+\.[a-zA-Z0-9]+)')
-__directory_regex__ = re.compile(r'(?:[a-zA-Z]:[\\\/])(?:[a-zA-Z0-9_\-]+[\\\/])*')
+__file_regex__ = re.compile(r'(?:[a-zA-Z]:[\\\/]|\$[a-zA-Z0-9]+[\\\/])(?:[a-zA-Z0-9_\-]+[\\\/])*([a-zA-Z0-9_\-]+\.[a-zA-Z0-9]+)')
+__directory_regex__ = re.compile(r'(?:[a-zA-Z]:[\\\/]|\$[a-zA-Z0-9]+[\\\/])(?:[a-zA-Z0-9_\-]+[\\\/])*')
 
 
 def getDriveLetters():
@@ -67,7 +67,7 @@ def isDirectoryLike(string):
     Evaluates if the supplied string represents a directory.
     No validation is done to test whether the directory exists or not!
 
-    :rtype: None
+    :rtype: bool
     """
 
     return __directory_regex__.match(string) is not None
@@ -78,7 +78,7 @@ def isFileLike(string):
     Evaluates if the supplied string represents a file path.
     No validation is done to test whether the file exists or not!
 
-    :rtype: None
+    :rtype: bool
     """
 
     return __file_regex__.match(string) is not None
