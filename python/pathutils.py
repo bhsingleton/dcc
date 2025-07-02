@@ -16,7 +16,7 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-__file_regex__ = re.compile(r'(?:[a-zA-Z]:[\\\/]|\$[a-zA-Z0-9]+[\\\/])(?:[a-zA-Z0-9_\-]+[\\\/])*([a-zA-Z0-9_\-]+\.[a-zA-Z0-9]+)')
+__file_regex__ = re.compile(r'(?:[a-zA-Z]:[\\\/]|\$[a-zA-Z0-9]+[\\\/])(?:[a-zA-Z0-9_\-]+[\\\/])*([a-zA-Z0-9_\-\s]+\.[a-zA-Z0-9]+)')
 __directory_regex__ = re.compile(r'(?:[a-zA-Z]:[\\\/]|\$[a-zA-Z0-9]+[\\\/])(?:[a-zA-Z0-9_\-]+[\\\/])*')
 
 
