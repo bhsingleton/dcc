@@ -2,7 +2,7 @@ import pymxs
 
 from .libs import layerutils
 from ..abstract import afnlayer
-from ...vendor.six import string_types
+from ..vendor.six import string_types
 
 import logging
 logging.basicConfig()
