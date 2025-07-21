@@ -1,8 +1,10 @@
 import os
+import site
 import sys
 import inspect
 
-from . import stringutils
+from collections.abc import Sequence
+from . import stringutils, pathutils
 from ..vendor.six import string_types
 from ..vendor.six.moves import reload_module
 
@@ -263,3 +265,91 @@ def tryImport(path, default=None, quiet=True, __locals__=None, __globals__=None)
     finally:
 
         return module
+
+
+def executeFile(filePath, __locals__=None, __globals__=None):
+    """
+    Executes a python file much like `execfile` in Python2x.
+    See the following for details: https://stackoverflow.com/questions/436198/what-alternative-is-there-to-execfile-in-python-3-how-to-include-a-python-fil
+
+    :type filePath: str
+    :type __locals__: Union[dict, None]
+    :type __globals__: Union[dict, None]
+    :rtype: None
+    """
+
+    # Update globals with main and file
+    #
+    if __globals__ is None:
+
+        __globals__ = {}
+
+    __globals__.update(
+        {
+            "__file__": filePath,
+            "__name__": "__main__",
+        }
+    )
+
+    # Execute python file
+    #
+    with open(filePath, 'rb') as file:
+
+        exec(compile(file.read(), filePath, 'exec'), __globals__, __locals__)
+
+
+def iterPaths(paths):
+    """
+    Returns a generator that yields paths from the supplied object.
+
+    :type paths: Union[str, List[str]]
+    :rtype: Iterator[str]
+    """
+
+    if isinstance(paths, string_types):
+
+        return filter(lambda path: not stringutils.isNullOrEmpty(path), paths.split(';'))
+
+    elif isinstance(paths, Sequence):
+
+        return filter(lambda path: not stringutils.isNullOrEmpty(path), paths)
+
+    else:
+
+        raise TypeError(f'iterPaths() expects a str or sequence ({type(paths).__name__})!')
+
+
+def synchronizeSystemPaths():
+    """
+    Ensures that any paths within the `PYTHONPATH` environment variable have been pushed to system paths.
+    Any userSetup.py files will also be executed!
+
+    :rtype: None
+    """
+
+    # Iterate through python paths
+    #
+    pythonPaths = [pathutils.normalizePath(path, sep='\\') for path in iterPaths(os.environ['PYTHONPATH'])]
+    systemPaths = [pathutils.normalizePath(path, sep='\\') for path in iterPaths(sys.path)]
+
+    for path in pythonPaths:
+
+        # Check if path is already in the system paths
+        #
+        if path in systemPaths:
+
+            continue
+
+        # Add site directory
+        #
+        log.info(f'PYTHONPATH+={path}')
+        site.addsitedir(path)
+
+        # Check if user-setup file exists
+        #
+        userSetupPath = os.path.join(path, 'userSetup.py')
+
+        if os.path.isfile(userSetupPath):
+
+            log.info(f'Executing user-setup: {userSetupPath}')
+            executeFile(userSetupPath)

@@ -136,6 +136,19 @@ def ensureWritable(path):
         os.chmod(path, stat.S_IWRITE)
 
 
+def normalizePath(path, sep='/'):
+    """
+    Normalizes the supplied path using the specified seperator character.
+
+    :type path: str
+    :type sep: str
+    :rtype: str
+    """
+
+    return sep.join(filter(lambda string: len(string) > 0, path.replace(os.sep, sep).replace(os.altsep, sep).split(sep)))
+
+
+
 def isPathRelative(path):
     """
     Evaluates if the supplied path is relative.
