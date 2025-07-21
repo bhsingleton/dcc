@@ -550,3 +550,13 @@ def frameVisible(all=False):
     for camera in cameras:
 
         mc.viewFit(camera, *nodes)
+
+
+def getMayaVersion():
+    """
+    Returns the current Maya version.
+
+    :rtype: int
+    """
+
+    return mc.about(version=True)
