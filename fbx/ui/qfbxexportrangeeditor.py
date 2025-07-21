@@ -572,7 +572,7 @@ class QFbxExportRangeEditor(qsingletonwindow.QSingletonWindow):
     def invalidateSequencers(self):
         """
         Invalidates the sequencers displayed inside the combo box.
-
+        
         :rtype: None
         """
 
@@ -582,13 +582,13 @@ class QFbxExportRangeEditor(qsingletonwindow.QSingletonWindow):
 
         # Re-populate combo box
         #
-        filePaths = [sequencer.reference.filePath() for sequencer in self.sequencers]
-        numFilePaths = len(filePaths)
+        items = [f'{sequencer.reference.associatedNamespace()}:{sequencer.reference.filename()}' for sequencer in self.sequencers]
+        numItems = len(items)
 
         self.sequencerComboBox.clear()
-        self.sequencerComboBox.addItems(filePaths)
+        self.sequencerComboBox.addItems(items)
 
-        if 0 <= index < numFilePaths:
+        if 0 <= index < numItems:
 
             self.sequencerComboBox.setCurrentIndex(index)
 
@@ -632,9 +632,7 @@ class QFbxExportRangeEditor(qsingletonwindow.QSingletonWindow):
 
         # Collect references from scene
         #
-        reference = fnreference.FnReference()
-
-        references = list(reference.iterSceneReferences(topLevelOnly=False))
+        references = list(map(fnreference.FnReference, fnreference.FnReference.iterSceneReferences(topLevelOnly=False)))
         numReferences = len(references)
 
         if numReferences == 0:
@@ -644,13 +642,13 @@ class QFbxExportRangeEditor(qsingletonwindow.QSingletonWindow):
 
         # Collect potential sequencers
         #
-        currentPaths = [self.sequencerComboBox.itemText(i) for i in range(self.sequencerComboBox.count())]
-        referencePaths = [reference(obj).filePath() for obj in references]
+        topLevelItems = [f'{reference.associatedNamespace()}:{reference.filename()}' for reference in references]
+        currentItems = [self.sequencerComboBox.itemText(i) for i in range(self.sequencerComboBox.count())]
 
-        filteredPaths = [path for path in referencePaths if path not in currentPaths]
-        numFilteredPaths = len(filteredPaths)
+        filteredItems = [item for item in topLevelItems if item not in currentItems]
+        numFilteredItems = len(filteredItems)
 
-        if numFilteredPaths == 0:
+        if numFilteredItems == 0:
 
             QtWidgets.QMessageBox.information(self, 'Create Sequencer', 'Scene contains no more references!')
             return
@@ -661,14 +659,14 @@ class QFbxExportRangeEditor(qsingletonwindow.QSingletonWindow):
             self,
             'Create Sequencer',
             'Select a Referenced Asset:',
-            filteredPaths,
+            filteredItems,
             editable=False
         )
 
         if okay:
 
-            index = referencePaths.index(item)
-            guid = reference(references[index]).guid()
+            index = topLevelItems.index(item)
+            guid = references[index].guid()
             exportRange = self.defaultExportRange()
 
             sequencer = fbxsequencer.FbxSequencer(guid=guid, exportRanges=[exportRange])
