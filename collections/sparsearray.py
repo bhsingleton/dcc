@@ -11,12 +11,12 @@ log.setLevel(logging.INFO)
 
 class SparseArray(collections_abc.MutableSequence):
     """
-    Overload of MutableSequence used as a sparse array container.
-    Uses an internal sorted dictionary to track items.
+    Overload of `MutableSequence` that implements sparse array containers.
+    This class uses an internal sorted dictionary to track items!
     """
 
     # region Dunderscores
-    __slots__ = ('__items__',)
+    __slots__ = ('__indices__', '__items__', '__range__')
 
     def __init__(self, *args):
         """
@@ -29,7 +29,9 @@ class SparseArray(collections_abc.MutableSequence):
 
         # Declare class variables
         #
+        self.__indices__ = {}
         self.__items__ = {}
+        self.__range__ = [0, 0]
 
         # Check for any arguments
         #
@@ -41,12 +43,21 @@ class SparseArray(collections_abc.MutableSequence):
 
     def __str__(self):
         """
-        Private method that returns a string representation of this instance.
+        Private method that stringifies this instance.
 
         :rtype: str
         """
 
         return str(self.toList())
+
+    def __repr__(self):
+        """
+        Private method that returns a string representation of this instance.
+
+        :rtype: str
+        """
+
+        return repr(self.__items__)
 
     def __call__(self, index):
         """
@@ -81,20 +92,30 @@ class SparseArray(collections_abc.MutableSequence):
         #
         if not isinstance(index, integer_types):
 
-            raise TypeError('__setitem__() expects an int (%s given)!' % type(index).__name__)
+            raise TypeError(f'__setitem__() expects an int ({type(index).__name__} given)!')
 
         # Assign item to array
         #
+        self.__indices__[index] = True
         self.__items__[index] = item
 
-        # Check if array requires re-sorting
+        # Update internal trackers and sort
         #
-        indices = list(self.__items__.keys())
-        lastIndex = indices[-1]
+        firstIndex, lastIndex = self.__range__
 
-        if 0 <= index < lastIndex:
+        if index < firstIndex:
 
-            self.__items__ = dict(sorted(self.__items__.items()))
+            self.__range__[0] = index
+
+        elif index > lastIndex:
+
+            self.__range__[1] = index
+
+        else:
+
+            pass
+
+        self.sort()
 
     def __delitem__(self, index):
         """
@@ -106,6 +127,7 @@ class SparseArray(collections_abc.MutableSequence):
 
         if self.hasIndex(index):
 
+            self.__indices__[index] = False
             del self.__items__[index]
 
         else:
@@ -126,10 +148,10 @@ class SparseArray(collections_abc.MutableSequence):
         """
         Private method that returns a generator for this array.
 
-        :rtype: iter
+        :rtype: Iterator[Any]
         """
 
-        return self.__items__.values()
+        return iter(self.__items__.values())
 
     def __len__(self):
         """
@@ -141,40 +163,29 @@ class SparseArray(collections_abc.MutableSequence):
         return len(self.__items__)
     # endregion
 
+    # region Properties
+    @property
+    def firstIndex(self):
+        """
+        Returns the first index of this array.
+
+        :rtype: int
+        """
+
+        return self.__range__[0]
+
+    @property
+    def lastIndex(self):
+        """
+        Returns the last index of this array.
+
+        :rtype: int
+        """
+
+        return self.__range__[1]
+    # endregion
+
     # region Methods
-    def insert(self, index, item):
-        """
-        Inserts an item at the specified index.
-
-        :type index: int
-        :type item: object
-        :rtype: None
-        """
-
-        self.__setitem__(index, item)
-
-    def append(self, item):
-        """
-        Appends an item to the end of this array.
-
-        :type item: object
-        :rtype: None
-        """
-
-        self.__setitem__(self.nextIndex(), item)
-
-    def appendIfUnique(self, item):
-        """
-        Appends an items to the end of this array only if it doesn't exist.
-
-        :type item: object
-        :rtype: None
-        """
-
-        if not self.__contains__(item):
-
-            self.append(item)
-
     @staticmethod
     def isKeyValuePair(obj):
         """
@@ -209,6 +220,39 @@ class SparseArray(collections_abc.MutableSequence):
         else:
 
             return False
+
+    def insert(self, index, item):
+        """
+        Inserts an item at the specified index.
+
+        :type index: int
+        :type item: object
+        :rtype: None
+        """
+
+        self.__setitem__(index, item)
+
+    def append(self, item):
+        """
+        Appends an item to the end of this array.
+
+        :type item: object
+        :rtype: None
+        """
+
+        self.__setitem__(self.nextIndex(), item)
+
+    def appendIfUnique(self, item):
+        """
+        Appends an items to the end of this array only if it doesn't exist.
+
+        :type item: object
+        :rtype: None
+        """
+
+        if not self.__contains__(item):
+
+            self.append(item)
 
     def extend(self, items):
         """
@@ -246,7 +290,7 @@ class SparseArray(collections_abc.MutableSequence):
 
         else:
 
-            raise TypeError('extend() expects a sequence (%s given)!' % type(items).__name__)
+            raise TypeError(f'extend() expects a sequence ({type(items).__name__} given)!')
 
     def pop(self, index, default=None):
         """
@@ -297,7 +341,7 @@ class SparseArray(collections_abc.MutableSequence):
         except ValueError as exception:
 
             log.debug(exception)
-            raise ValueError('index() %s is not in array!' % item)
+            raise ValueError(f'index() {item} is not in array!')
 
     def hasIndex(self, index):
         """
@@ -307,46 +351,16 @@ class SparseArray(collections_abc.MutableSequence):
         :rtype: bool
         """
 
-        return index in self.indices()
+        return self.__indices__.get(index, False)
 
     def indices(self):
         """
         Returns a sorted list of indices currently in use.
 
-        :rtype: list[int]
+        :rtype: List[int]
         """
 
         return self.__items__.keys()
-
-    def firstIndex(self):
-        """
-        Returns the first known index currently in use.
-
-        :rtype: int
-        """
-
-        if self.__len__() > 0:
-
-            return list(self.indices())[0]
-
-        else:
-
-            return None
-
-    def lastIndex(self):
-        """
-        Returns the last known index currently in use.
-
-        :rtype: int
-        """
-
-        if self.__len__() > 0:
-
-            return list(self.indices())[-1]
-
-        else:
-
-            return None
 
     def values(self):
         """
@@ -455,16 +469,6 @@ class SparseArray(collections_abc.MutableSequence):
             log.debug(exception)
             return default
 
-    @property
-    def isSequential(self):
-        """
-        Getter method that evaluates whether the indices are consecutive.
-
-        :rtype: bool
-        """
-
-        return list(self.indices()) == list(range(self.__len__()))
-
     def nextIndex(self):
         """
         Returns the next index at the end of this array.
@@ -474,7 +478,7 @@ class SparseArray(collections_abc.MutableSequence):
 
         if self.__len__() > 0:
 
-            return self.lastIndex() + 1
+            return self.lastIndex + 1
 
         else:
 
@@ -499,6 +503,45 @@ class SparseArray(collections_abc.MutableSequence):
         #
         return self.nextIndex()
 
+    def isOrdered(self):
+        """
+        Evaluates whether the internal array is sorted.
+
+        :rtype: bool
+        """
+
+        indices = tuple(self.__items__.keys())
+        numIndices = len(indices)
+
+        if numIndices >= 2:
+
+            firstIndex, *otherIndices, lastIndex = indices
+            return firstIndex == self.firstIndex and lastIndex == self.lastIndex
+
+        else:
+
+            return True
+
+    def isSequential(self):
+        """
+        Evaluates whether the internal array has no gaps.
+
+        :rtype: bool
+        """
+
+        return all(physicalIndex == logicalIndex for (physicalIndex, logicalIndex) in enumerate(self.indices()))
+
+    def sort(self):
+        """
+        Sorts the internal items once they're no longer in order.
+
+        :rtype: None
+        """
+
+        if not self.isOrdered():
+
+            self.__items__ = dict(sorted(self.__items__.items(), key=lambda pair: pair[0]))
+
     def toList(self, **kwargs):
         """
         Converts this sparse array into a list.
@@ -513,7 +556,7 @@ class SparseArray(collections_abc.MutableSequence):
         if 'fill' in kwargs:
 
             fill = kwargs['fill']
-            return [self.tryGetItemByPhysicalIndex(i, default=fill) for i in range(self.lastIndex())]
+            return [self.tryGetItemByPhysicalIndex(i, default=fill) for i in range(self.lastIndex)]
 
         else:
 
