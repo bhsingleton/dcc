@@ -73,6 +73,15 @@ class AFnReference(with_metaclass(ABCMeta, afnobject.AFnObject)):
 
         pass
 
+    def filename(self):
+        """
+        Returns the source filename for this reference.
+
+        :rtype: str
+        """
+
+        return os.path.basename(self.filePath())
+
     def exists(self):
         """
         Evaluates if the source file exists.
