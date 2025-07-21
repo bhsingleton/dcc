@@ -1,8 +1,7 @@
 import os
 import getpass
 
-from functools import partial
-from .. import cmds
+from .. import cmds, isConnected
 from ..dialogs import qlogindialog
 from ...decorators import abstractdecorator
 
@@ -26,6 +25,14 @@ class Relogin(abstractdecorator.AbstractDecorator):
 
         :rtype: None
         """
+
+        # Check if server is available
+        #
+        connected = isConnected()
+
+        if not connected:
+
+            return
 
         # Evaluate expiration time
         #
