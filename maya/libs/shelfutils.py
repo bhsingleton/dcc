@@ -107,16 +107,16 @@ def deleteShelfTab(shelfName, silent=False):
     #
     for i in inclusiveRange(shelfIndex, shelfCount, 1):
 
-        align = 'left'
+        shelfAlign = 'left'
         optionName = f'shelfAlign{(i + 1)}'
 
         if mc.optionVar(exists=optionName):
 
-            align = mc.optionVar(query=optionName)
+            shelfAlign = mc.optionVar(query=optionName)
 
         mc.optionVar(intValue=(f'shelfLoad{i}', mc.optionVar(query=f'shelfLoad{(i + 1)}')))
         mc.optionVar(stringValue=(f'shelfName{i}', mc.optionVar(query=f'shelfName{(i + 1)}')))
-        mc.optionVar(stringValue=(f'shelfAlign{i}', align))
+        mc.optionVar(stringValue=(f'shelfAlign{i}', shelfAlign))
         mc.optionVar(stringValue=(f'shelfFile{i}', mc.optionVar(query=f'shelfFile{(i + 1)}')))
 
     mc.optionVar(remove=f'shelfLoad{shelfCount}')
