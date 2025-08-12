@@ -1,7 +1,8 @@
 import os
 import urllib
 
-from maya import cmds as mc
+from maya import cmds as mc, mel
+from . import shelfutils
 from ...python import stringutils, pathutils
 
 import logging
@@ -363,12 +364,13 @@ def unloadTurtlePlugin():
     :rtype: None
     """
 
-    # Remove shelf from tab bar
+    # Try and remove shelf from tab bar
     #
-    if mc.shelfLayout('TURTLE', query=True, exists=True):
+    success = shelfutils.deleteShelfTab('TURTLE', silent=True)
 
-        log.info('Removing "TURTLE" from the shelf tab!')
-        mc.deleteUI('TURTLE', layout=True)
+    if not success:
+
+        return
 
     # Unload plugin
     #
@@ -384,10 +386,11 @@ def unloadXGenPlugin():
 
     # Remove shelf from tab bar
     #
-    if mc.shelfLayout('XGen', query=True, exists=True):
+    success = shelfutils.deleteShelfTab('XGen', silent=True)
 
-        log.info('Removing "XGen" from the shelf tab!')
-        mc.deleteUI('XGen', layout=True)
+    if not success:
+
+        return
 
     # Unload plugin
     #
@@ -402,23 +405,22 @@ def unloadMASHPlugin():
     :rtype: None
     """
 
-    # Remove shelf from tab bar
+    # Remove mash from tab bar
     #
-    if mc.shelfLayout('MASH', query=True, exists=True):
+    success = shelfutils.deleteShelfTab('MASH', silent=True)
 
-        log.info('Removing "MASH" from the shelf tab!')
-        mc.deleteUI('MASH', layout=True)
+    if success:
 
-    if mc.shelfLayout('MotionGraphics', query=True, exists=True):
+        unloadPlugin('MASH')
 
-        log.info('Removing "Motion Graphics" from the shelf tab!')
-        mc.deleteUI('MotionGraphics', layout=True)
-
-    # Unload plugin
+    # Remove motion graphics from tab bar
     #
-    unloadPlugin('MASH')
-    unloadPlugin('LookdevXMaya')
-    unloadPlugin('lookdevKit')
+    success = shelfutils.deleteShelfTab('MotionGraphics', silent=True)
+
+    if success:
+
+        unloadPlugin('LookdevXMaya')
+        unloadPlugin('lookdevKit')
 
 
 def unloadMentalRayPlugin():

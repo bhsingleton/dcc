@@ -1,8 +1,9 @@
 import os
 
 from maya import cmds as mc, mel
-from ...python import stringutils
+from ...python import stringutils, pathutils
 from ...xml import xmlutils
+from ...generators.inclusiverange import inclusiveRange
 
 import logging
 logging.basicConfig()
@@ -12,12 +13,144 @@ log.setLevel(logging.INFO)
 
 def getTopLevelShelf():
     """
-    Returns the top-level Maya shelf.
+    Returns the top-level Maya shelf name.
 
     :rtype: str
     """
 
-    return mel.eval("$tmp=$gShelfTopLevel")
+    return mel.eval("$tmp = $gShelfTopLevel;")
+
+
+def deleteShelfTab(shelfName, silent=False):
+    """
+    Deletes the shelf with the specified name from the main tab bar.
+    This is a modification of Autodesk's `deleteShelfTab` function located in `deleteShelfTab.mel`!
+
+    :type shelfName: str
+    :type silent: bool
+    :rtype: bool
+    """
+
+    # Bail if there is something really weird going on
+    #
+    topLevelShelf = getTopLevelShelf()
+
+    shelves = mc.tabLayout(topLevelShelf, query=True, childArray=True)
+    numShelves = len(shelves)
+
+    if numShelves <= 0:
+
+        return False
+
+    # Check for the last shelf
+    #
+    if numShelves == 1:
+
+        if not silent:
+
+            ok = mc.uiRes('m_deleteShelfTab.kOK')
+
+            mc.confirmDialog(
+                title=mc.uiRes('m_deleteShelfTab.kAlert'),
+                button=ok,
+                defaultButton=ok,
+                message=mc.uiRes('m_deleteShelfTab.kCannotDelete')
+            )
+
+        return False
+
+    # Confirm the delete
+    #
+    if not silent:
+
+        exists = bool(mel.eval('exists "shelfLabel_melToUI";'))
+
+        if not exists:
+
+            mel.eval('source "shelfLabel.mel";')
+
+        shelfLabel = mel.eval(f'shelfLabel_melToUI "{shelfName}";')
+        initialMessage = mc.uiRes('m_deleteShelfTab.kDeletionConfirmMsg')
+        dialogMessage = mc.format(initialMessage, stringArg=shelfLabel)
+        cancel = mc.uiRes('m_deleteShelfTab.kCancel')
+
+        response = mc.confirmDialog(
+            title=mc.uiRes('m_deleteShelfTab.kAlert'),
+            message=dialogMessage,
+            button=(ok, cancel),
+            defaultButton=ok,
+            cancelButton=cancel,
+            dismissString=cancel
+        )
+
+        if response == cancel:
+
+            return False
+
+    # Okay, now we can try and delete the shelf tab
+    #
+    shelfCount = mc.shelfTabLayout(topLevelShelf, query=True, numberOfChildren=True)
+    shelfNames = [mc.optionVar(query=f'shelfName{i}') for i in inclusiveRange(1, shelfCount, 1)]
+
+    shelfIndex = None
+
+    try:
+
+        shelfIndex = shelfNames.index(shelfName) + 1
+
+    except ValueError:
+
+        log.warning(f'Cannot locate shelf tab: {shelfName}')
+        return False
+
+    # Update the preferences
+    #
+    for i in inclusiveRange(shelfIndex, shelfCount, 1):
+
+        align = 'left'
+        optionName = f'shelfAlign{(i + 1)}'
+
+        if mc.optionVar(exists=optionName):
+
+            align = mc.optionVar(query=optionName)
+
+        mc.optionVar(intValue=(f'shelfLoad{i}', mc.optionVar(query=f'shelfLoad{(i + 1)}')))
+        mc.optionVar(stringValue=(f'shelfName{i}', mc.optionVar(query=f'shelfName{(i + 1)}')))
+        mc.optionVar(stringValue=(f'shelfAlign{i}', align))
+        mc.optionVar(stringValue=(f'shelfFile{i}', mc.optionVar(query=f'shelfFile{(i + 1)}')))
+
+    mc.optionVar(remove=f'shelfLoad{shelfCount}')
+    mc.optionVar(remove=f'shelfName{shelfCount}')
+    mc.optionVar(remove=f'shelfAlign{shelfCount}')
+    mc.optionVar(remove=f'shelfFile{shelfCount}')
+
+    # The optionVars have all been updated, so it's safe to delete and have the shelfTabChange() method triggered
+    # See Maya-3288
+    #
+    mc.deleteUI(f'{topLevelShelf}|{shelfName}', layout=True)
+
+    shelfDirectores = mc.internalVar(userShelfDir=True)
+    pathSeparator = ';' if mc.about(windows=True) else ':'
+    shelfArray = shelfDirectores.split(pathSeparator)
+
+    for (i, shelfDirectory) in enumerate(shelfArray):
+
+        filename = f'{shelfDirectory}shelf_{shelfName}.mel'
+        deletedFilename = f'{filename}.deleted'
+
+        if os.path.isfile(deletedFilename):
+
+            mc.sysFile(deletedFilename, delete=True)
+
+        if mc.file(filename, query=True, exists=True):
+
+            mc.sysFile(filename, rename=deletedFilename)
+
+    # Make sure the new active shelf tab has buttons
+    #
+    mel.eval('shelfTabChange();')
+
+    return True
 
 
 def createShelfTab(xmlElement, parent=None):
