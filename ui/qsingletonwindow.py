@@ -162,15 +162,43 @@ class QSingletonWindow(QtWidgets.QMainWindow, metaclass=qsingleton.QSingleton):
         #
         super(QSingletonWindow, self).showEvent(event)
 
-        # Add callbacks
+        # Execute startup methods
         #
-        self.addCallbacks()
+        self.opening()
 
     def closeEvent(self, event):
         """
         Event method called after the window has been closed.
 
         :type event: QtGui.QCloseEvent
+        :rtype: None
+        """
+
+        # Execute shutdown methods
+        #
+        self.closing()
+
+        # Call parent method
+        #
+        super(QSingletonWindow, self).closeEvent(event)
+    # endregion
+
+    # region Methods
+    def opening(self):
+        """
+        Performs all the necessary actions during startup.
+
+        :rtype: None
+        """
+
+        # Add callbacks
+        #
+        self.addCallbacks()
+
+    def closing(self):
+        """
+        Performs all the necessary actions during shutdown.
+
         :rtype: None
         """
 
@@ -187,12 +215,6 @@ class QSingletonWindow(QtWidgets.QMainWindow, metaclass=qsingleton.QSingleton):
         settings = self.getSettings()
         self.saveSettings(settings)
 
-        # Call parent method
-        #
-        super(QSingletonWindow, self).closeEvent(event)
-    # endregion
-
-    # region Methods
     @classmethod
     def getSettings(cls):
         """
