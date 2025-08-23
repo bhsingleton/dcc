@@ -148,7 +148,6 @@ def normalizePath(path, sep='/'):
     return sep.join(filter(lambda string: len(string) > 0, path.replace(os.sep, sep).replace(os.altsep, sep).split(sep)))
 
 
-
 def isPathRelative(path):
     """
     Evaluates if the supplied path is relative.
