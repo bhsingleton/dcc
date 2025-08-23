@@ -75,10 +75,11 @@ class MAttributeDecoder(json.JSONDecoder):
     }
 
     __matrix_types__ = {
-        'matrix': om.MFnMatrixAttribute.kDouble,
-        'doubleMatrix': om.MFnMatrixAttribute.kDouble,
+        'matrix': om.MFnData.kMatrix,
         'fltMatrix': om.MFnMatrixAttribute.kFloat,
-        'floatMatrix': om.MFnMatrixAttribute.kFloat
+        'floatMatrix': om.MFnMatrixAttribute.kFloat,
+        'dblMatrix': om.MFnMatrixAttribute.kDouble,
+        'doubleMatrix': om.MFnMatrixAttribute.kDouble
     }
 
     __other_types__ = {
@@ -597,20 +598,18 @@ class MAttributeDecoder(json.JSONDecoder):
         # Initialize function set
         #
         attribute = self.attribute(obj)
-        fnAttribute = om.MFnMatrixAttribute()
 
         if attribute.isNull():
 
             longName = obj['longName']
             shortName = obj.get('shortName', longName)
             attributeType = obj['attributeType']
+            isTransformationMatrix = attributeType == 'matrix'
 
+            fnAttribute = om.MFnTypedAttribute() if isTransformationMatrix else om.MFnMatrixAttribute()
             attribute = fnAttribute.create(longName, shortName, self.__matrix_types__[attributeType])
+
             self._attributes[shortName] = attribute
-
-        else:
-
-            fnAttribute.setObject(attribute)
 
         # Deserialize base attribute
         #
