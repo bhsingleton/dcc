@@ -22,6 +22,39 @@ __uuid_regex__ = re.compile(r'^[A-Z0-9]{8}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[
 __path_regex__ = re.compile(r'^(.*\|)([^\|]*)$')
 
 
+def isValidName(name):
+    """
+    Evaluates if the supplied name is valid.
+
+    :type name: str
+    :rtype: bool
+    """
+
+    return __name_regex__.match(name) is not None
+
+
+def isValidUUID(uuid):
+    """
+    Evaluates if the supplied name is valid.
+
+    :type uuid: str
+    :rtype: bool
+    """
+
+    return __uuid_regex__.match(uuid) is not None
+
+
+def isValidPath(path):
+    """
+    Evaluates if the supplied path is valid.
+
+    :type path: str
+    :rtype: bool
+    """
+
+    return __path_regex__.match(path) is not None
+
+
 def getNodeName(node, includePath=False, includeNamespace=False):
     """
     Returns the name of the supplied node.
@@ -336,9 +369,9 @@ def getMObjectByString(string):
 
     # Check if string contains an attribute
     #
-    isName = __name_regex__.match(string)
-    isPath = __path_regex__.match(string)
-    isUUID = __uuid_regex__.match(string)
+    isName = isValidName(string)
+    isPath = isValidPath(string)
+    isUUID = isValidUUID(string)
 
     if isName:
 
