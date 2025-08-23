@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 import subprocess
 
@@ -7,6 +8,7 @@ from xmlrpc.server import SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
 from xmlrpc.client import ServerProxy, Transport
 from http.client import HTTPConnection
 from collections.abc import Sequence
+from time import sleep
 
 import logging
 logging.basicConfig()
@@ -24,6 +26,9 @@ class MRPCServer(SimpleXMLRPCServer):
     """
 
     # region Dunderscores
+    __name_regex__ = re.compile(r'^(?:\:?([a-zA-Z0-9_]))+$')
+    __uuid_regex__ = re.compile(r'^[A-Z0-9]{8}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{12}$')
+
     def __init__(self, *args, **kwargs):
         """
         Private method called after a new instance has been created.
@@ -54,16 +59,21 @@ class MRPCServer(SimpleXMLRPCServer):
         # Register functions
         #
         self.register_function(self.quit, 'quit')
+        self.register_function(self.file, 'file')
         self.register_function(self.open, 'open')
         self.register_function(self.save, 'save')
         self.register_function(self.ls, 'ls')
+        self.register_function(self.listRelatives, 'listRelatives')
+        self.register_function(self.doesNodeExist, 'doesNodeExist')
         self.register_function(self.createNode, 'createNode')
-        self.register_function(self.parent, 'parent')
+        self.register_function(self.renameNode, 'renameNode')
+        self.register_function(self.parentNode, 'parentNode')
+        self.register_function(self.deleteNode, 'deleteNode')
         self.register_function(self.addAttr, 'addAttr')
+        self.register_function(self.getAttr, 'getAttr')
         self.register_function(self.setAttr, 'setAttr')
         self.register_function(self.deleteAttr, 'deleteAttr')
         self.register_function(self.connectAttr, 'connectAttr')
-        self.register_function(self.deleteNode, 'deleteNode')
 
         # Initialize standalone mode
         #
@@ -152,6 +162,28 @@ class MRPCServer(SimpleXMLRPCServer):
 
         return sys.executable.lower().endswith('mayapy.exe')
 
+    @classmethod
+    def isValidName(cls, name):
+        """
+        Evaluates if the supplied name is valid.
+
+        :type name: str
+        :rtype: bool
+        """
+
+        return cls.__name_regex__.match(name) is not None
+
+    @classmethod
+    def isValidUUID(cls, uuid):
+        """
+        Evaluates if the supplied name is valid.
+
+        :type uuid: str
+        :rtype: bool
+        """
+
+        return cls.__uuid_regex__.match(uuid) is not None
+
     def register_function(self, function, name=None):
         """
         Register a function that can respond to XML-RPC requests.
@@ -178,7 +210,24 @@ class MRPCServer(SimpleXMLRPCServer):
         #
         return super(MRPCServer, self).register_function(wrapper, name)
 
+    def file(self, *args, **kwargs):
+        """
+
+
+        :key sceneName: str
+        :rtype: str
+        """
+
+        return mc.file(*args, **kwargs)
+
     def open(self, filePath, force=True):
+        """
+
+
+        :type filePath: str
+        :type force: bool
+        :rtype: bool
+        """
 
         filePath = os.path.abspath(filePath)
         success = True
@@ -202,6 +251,11 @@ class MRPCServer(SimpleXMLRPCServer):
             return success
 
     def save(self):
+        """
+        Saves and changes made to the open scene file.
+
+        :rtype: bool
+        """
 
         if self.isNewScene:
 
@@ -223,6 +277,11 @@ class MRPCServer(SimpleXMLRPCServer):
             return success
 
     def ls(self, *args, **kwargs):
+        """
+
+
+        :rtype: List[str]
+        """
 
         results = []
 
@@ -238,15 +297,52 @@ class MRPCServer(SimpleXMLRPCServer):
 
             return results
 
-    def createNode(self, typeName, name='', parent=None, shared=False, skipSelect=True):
+    def listRelatives(self, *args, **kwargs):
+        """
+
+
+        :rtype: List[str]
+        """
+
+        results = []
+
+        try:
+
+            results = mc.listRelatives(*args, **kwargs)
+
+        except RuntimeError as exception:
+
+            log.error(exception)
+
+        finally:
+
+            return results
+
+    def doesNodeExist(self, name, **kwargs):
+        """
+        Evaluates if a node with the specified name exists.
+
+        :type name: str
+        :rtype: bool
+        """
+
+        if self.isValidUUID(name):
+
+            return not self.isNullOrEmpty(self.ls(name))
+
+        else:
+
+            return mc.objExists(name)
+
+    def createNode(self, typeName, **kwargs):
         """
         Returns a new scene node of the specified type.
 
         :type typeName: str
-        :type name: str
-        :type parent: Union[str, None]
-        :type shared: bool
-        :type skipSelect: bool
+        :key name: str
+        :key parent: Union[str, None]
+        :key shared: bool
+        :key skipSelect: bool
         :rtype: str
         """
 
@@ -254,13 +350,7 @@ class MRPCServer(SimpleXMLRPCServer):
 
         try:
 
-            absoluteName = mc.createNode(
-                typeName,
-                name=name,
-                parent=parent,
-                shared=shared,
-                skipSelect=skipSelect
-            )
+            absoluteName = mc.createNode(typeName, **kwargs)
 
         except RuntimeError as exception:
 
@@ -270,7 +360,32 @@ class MRPCServer(SimpleXMLRPCServer):
 
             return absoluteName
 
-    def parent(self, *nodes, **kwargs):
+    def renameNode(self, oldName, newName, **kwargs):
+        """
+
+
+        :type oldName: str
+        :type newName: str
+        :key ignoreShape: bool
+        :key uuid: bool
+        :rtype: str
+        """
+
+        absoluteName = None
+
+        try:
+
+            absoluteName = mc.rename(oldName, newName, **kwargs)
+
+        except RuntimeError as exception:
+
+            log.error(exception)
+
+        finally:
+
+            return absoluteName
+
+    def parentNode(self, *nodes, **kwargs):
         """
         Parents the first supplied nodes to the last node.
 
@@ -283,6 +398,29 @@ class MRPCServer(SimpleXMLRPCServer):
         """
 
         return mc.parent(*nodes, **kwargs)
+
+    def deleteNode(self, nodes, **kwargs):
+        """
+        Deletes the supplied nodes.
+
+        :type nodes: List[str]
+        :rtype: bool
+        """
+
+        success = True
+
+        try:
+
+            mc.delete(*nodes, **kwargs)
+
+        except RuntimeError as exception:
+
+            log.error(exception)
+            success = False
+
+        finally:
+
+            return success
 
     def addAttr(self, node, **kwargs):
         """
@@ -309,7 +447,36 @@ class MRPCServer(SimpleXMLRPCServer):
 
             return success
 
+    def getAttr(self, attribute, **kwargs):
+        """
+        Returns the attribute value from the specified node.
+
+        :type attribute: str
+        :rtype: Any
+        """
+
+        value = None
+
+        try:
+
+            value = mc.getAttr(attribute, **kwargs)
+
+        except RuntimeError as exception:
+
+            log.error(exception)
+
+        finally:
+
+            return value
+
     def setAttr(self, attribute, value, **kwargs):
+        """
+        Updates the attribute value for the specified node.
+
+        :type attribute: str
+        :type value: Any
+        :rtype: bool
+        """
 
         success = True
 
@@ -375,29 +542,6 @@ class MRPCServer(SimpleXMLRPCServer):
 
             return success
 
-    def deleteNode(self, nodes, **kwargs):
-        """
-        Deletes the supplied nodes.
-
-        :type nodes: List[str]
-        :rtype: bool
-        """
-
-        success = True
-
-        try:
-
-            mc.delete(*nodes, **kwargs)
-
-        except RuntimeError as exception:
-
-            log.error(exception)
-            success = False
-
-        finally:
-
-            return success
-
     def quit(self):
 
         self._BaseServer__shutdown_request = True
@@ -407,6 +551,7 @@ class MRPCServer(SimpleXMLRPCServer):
             standalone.uninitialize()
 
         return 0
+    # endregion
 
 
 class MRPCClient(ServerProxy):
@@ -462,6 +607,26 @@ class TimeoutTransport(Transport):
         return HTTPConnection(host, timeout=self.timeout)
 
 
+def isRemoteStandaloneRunning():
+    """
+    Evaluates if the remote standalone server is still running.
+
+    :rtype: bool
+    """
+
+    global __process__, __client__
+
+    # Evaluate global tracker types
+    #
+    if not (isinstance(__process__, subprocess.Popen) and isinstance(__client__, MRPCClient)):
+
+        return False
+
+    # Evaluate process poll
+    #
+    return __process__.poll() is None
+
+
 def initializeRemoteStandalone(port=8000, timeout=5):
     """
     Opens a headerless Maya process in the background to send commands to.
@@ -473,9 +638,11 @@ def initializeRemoteStandalone(port=8000, timeout=5):
 
     global __process__, __client__
 
-    # Check if process has already been initialized
+    # Check if remote standalone has already been initialized
     #
-    if isinstance(__process__, subprocess.Popen) and isinstance(__client__, MRPCClient):
+    isRunning = isRemoteStandaloneRunning()
+
+    if isRunning:
 
         return __process__, __client__
 
@@ -498,6 +665,8 @@ def initializeRemoteStandalone(port=8000, timeout=5):
         transport=TimeoutTransport(timeout=timeout)
     )
 
+    sleep(timeout)  # TODO: Find a better way to check if process is waiting!
+
     return __process__, __client__
 
 
@@ -510,7 +679,7 @@ def main(port=8000):
     :rtype: None
     """
 
-    with MRPCServer(('localhost', port), requestHandler=SimpleXMLRPCRequestHandler) as server:
+    with MRPCServer(('localhost', port), requestHandler=SimpleXMLRPCRequestHandler, allow_none=True) as server:
 
         log.info('Starting remote server...')
         server.serve_forever()
