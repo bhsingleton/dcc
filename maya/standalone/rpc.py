@@ -4,11 +4,11 @@ import sys
 import subprocess
 
 from maya import cmds as mc, standalone
+from maya.api import OpenMaya as om
 from xmlrpc.server import SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
-from xmlrpc.client import ServerProxy, Transport
+from xmlrpc.client import ServerProxy, Transport, Fault
 from http.client import HTTPConnection
 from collections.abc import Sequence
-from time import sleep
 
 import logging
 logging.basicConfig()
@@ -182,7 +182,15 @@ class MRPCServer(SimpleXMLRPCServer):
         :rtype: bool
         """
 
-        return cls.__uuid_regex__.match(uuid) is not None
+        isUUID = cls.__uuid_regex__.match(uuid) is not None
+
+        if isUUID:
+
+            return om.MUuid(uuid).valid()
+
+        else:
+
+            return False
 
     def register_function(self, function, name=None):
         """
@@ -452,6 +460,18 @@ class MRPCServer(SimpleXMLRPCServer):
         Returns the attribute value from the specified node.
 
         :type attribute: str
+        :key asString: bool
+        :key caching: bool
+        :key channelBox: bool
+        :key expandEnvironmentVariables: bool
+        :key keyable: bool
+        :key lock: bool
+        :key multiIndices: bool
+        :key settable: bool
+        :key silent: bool
+        :key size: bool
+        :key time: Union[int, float]
+        :key type: bool
         :rtype: Any
         """
 
@@ -469,12 +489,19 @@ class MRPCServer(SimpleXMLRPCServer):
 
             return value
 
-    def setAttr(self, attribute, value, **kwargs):
+    def setAttr(self, *args, **kwargs):
         """
         Updates the attribute value for the specified node.
 
-        :type attribute: str
-        :type value: Any
+        :key alteredValue: bool
+        :key caching: bool
+        :key capacityHint: int
+        :key channelBox: bool
+        :key clamp: bool
+        :key keyable: bool
+        :key lock: bool
+        :key size: int
+        :key type: string
         :rtype: bool
         """
 
@@ -482,7 +509,7 @@ class MRPCServer(SimpleXMLRPCServer):
 
         try:
 
-            mc.setAttr(attribute, value, **kwargs)
+            mc.setAttr(*args, **kwargs)
 
         except RuntimeError as exception:
 
@@ -581,7 +608,7 @@ class MRPCClient(ServerProxy):
         return wrapper
 
 
-class TimeoutTransport(Transport):
+class MTimeoutTransport(Transport):
     """
     Overload of `Transport` that adds timeout support.
     """
@@ -590,7 +617,7 @@ class TimeoutTransport(Transport):
 
         # Call parent method
         #
-        super(TimeoutTransport, self).__init__()
+        super(MTimeoutTransport, self).__init__()
 
         # Declare public variables
         #
@@ -627,7 +654,7 @@ def isRemoteStandaloneRunning():
     return __process__.poll() is None
 
 
-def initializeRemoteStandalone(port=8000, timeout=5):
+def initializeRemoteStandalone(port=8000, timeout=3):
     """
     Opens a headerless Maya process in the background to send commands to.
 
@@ -655,19 +682,68 @@ def initializeRemoteStandalone(port=8000, timeout=5):
 
         return None, None
 
+    # Sanitize environment before starting new process
+    #
+    env = dict(os.environ)
+    env['PATH'] = ';'.join(path for path in env['MAYA_MODULE_PATH'].split(';') if path.startswith('C:'))
+    env['PYTHONPATH'] = ';'.join(path for path in env['MAYA_MODULE_PATH'].split(';') if path.startswith('C:'))
+    env['MAYA_MODULE_PATH'] = ';'.join(path for path in env['MAYA_MODULE_PATH'].split(';') if path.startswith('C:'))
+
     # Create new process and client
     #
-    __process__ = subprocess.Popen([executable, __file__, str(port)])
+    __process__ = subprocess.Popen([executable, __file__, str(port)], env=env)
     __client__ = MRPCClient(
         f'http://localhost:{port}',
         allow_none=True,
         use_builtin_types=True,
-        transport=TimeoutTransport(timeout=timeout)
+        transport=MTimeoutTransport(timeout=timeout)
     )
 
-    sleep(timeout)  # TODO: Find a better way to check if process is waiting!
+    success = waitForRemoteStandalone(__client__)
+
+    if not success:
+
+        log.warning('Unable to connect to remote standalone server!')
 
     return __process__, __client__
+
+
+def waitForRemoteStandalone(client, attempts=5):
+    """
+    Waits until the remote standalone server is running.
+
+    :type client: MRPCClient
+    :type attempts: int
+    :rtype: bool
+    """
+
+    # Evaluate supplied arguments
+    #
+    if not (isinstance(client, MRPCClient) and isinstance(attempts, int)):
+
+        return
+
+    # Attempt to contact server
+    #
+    attempt = 0
+
+    while attempt < attempts:
+
+        try:
+
+            nodes = client.ls()
+            isLoaded = len(nodes) > 0  # Once the default scene nodes have load in we're good to go!
+
+            if isLoaded:
+
+                return True
+
+        except (Fault, TimeoutError, ConnectionRefusedError) as exception:
+
+            log.debug(exception)
+            attempt += 1
+
+    return False
 
 
 def main(port=8000):
