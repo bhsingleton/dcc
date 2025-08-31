@@ -41,7 +41,25 @@ def isValidUUID(uuid):
     :rtype: bool
     """
 
-    return __uuid_regex__.match(uuid) is not None
+    if isinstance(uuid, string_types):
+
+        isUUID = __uuid_regex__.match(uuid) is not None
+
+        if isUUID:
+
+            return isValidUUID(om.MUUID(uuid))
+
+        else:
+
+            return False
+
+    elif isinstance(uuid, om.MUuid):
+
+        return uuid.valid()
+
+    else:
+
+        return False
 
 
 def isValidPath(path):
