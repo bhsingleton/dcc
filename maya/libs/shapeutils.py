@@ -411,6 +411,38 @@ def renameShapes(*nodes):
                 dagutils.renameNode(shape, newName)
 
 
+def isSnapshotable(shape):
+    """
+    Evaluates if the supplied shape is a snapshotable.
+
+    :type shape: om.MObject
+    :rtype: bool
+    """
+
+    # Evaluate supplied type
+    #
+    if not isinstance(shape, om.MObject):
+
+        return False
+
+    # Evaluate API type
+    #
+    if shape.hasFn(om.MFn.kNurbsCurve) or shape.hasFn(om.MFn.kBezierCurve):
+
+        plug = plugutils.findPlug(shape, 'create')
+        isConnected = plugutils.hasConnection(plug)
+
+        return not isConnected
+
+    elif shape.hasFn(om.MFn.kShape):
+
+        return True
+
+    else:
+
+        return
+
+
 def snapshot(node):
     """
     Returns a shape snapshot of the supplied transform node.
@@ -426,7 +458,7 @@ def snapshot(node):
 
     if node.hasFn(om.MFn.kTransform):
 
-        shapes = list(dagutils.iterShapes(node))
+        shapes = [shape for shape in dagutils.iterShapes(node) if isSnapshotable(shape)]
 
     else:
 
@@ -457,7 +489,7 @@ def assumeSnapshot(node, state):
 
     # Check if state and shape sizes match
     #
-    shapes = list(dagutils.iterShapes(node))
+    shapes = [shape for shape in dagutils.iterShapes(node) if isSnapshotable(shape)]
     numShapes = len(shapes)
     stateSize = len(state)
 
