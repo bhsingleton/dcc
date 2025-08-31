@@ -654,6 +654,54 @@ def isRemoteStandaloneRunning():
     return __process__.poll() is None
 
 
+def filterPaths(path, directories):
+    """
+    Filters the supplied compound path based on the supplied list of directories.
+
+    :type path: str
+    :type directories: List[str]
+    :rtype: Iterator[str]
+    """
+
+    for subpath in path.split(';'):
+
+        normalizedPath = os.path.normpath(subpath)
+        accepted = any(tuple(normalizedPath.startswith(directory) for directory in directories))
+
+        if accepted:
+
+            yield subpath
+
+        else:
+
+            continue
+
+
+def santizeEnvironment():
+    """
+    Returns a sanitized Maya environment.
+
+    :rtype: Dict[str, str]
+    """
+
+    windows = os.path.normpath(os.environ['WINDIR'])
+    programFiles32Bit = os.path.normpath(os.environ['ProgramFiles(x86)'])
+    programFiles64Bit = os.path.normpath(os.environ['ProgramFiles'])
+    appData = os.path.normpath(os.path.dirname(os.environ['LOCALAPPDATA']))
+    cwd = os.path.normpath(os.getcwd())
+    userDirectory = os.path.normpath(os.environ['MAYA_APP_DIR'])
+    directories = (windows, programFiles32Bit, programFiles64Bit, appData, cwd, userDirectory)
+
+    env = dict(os.environ)
+    env['PATH'] = ';'.join(tuple(filterPaths(os.environ['PATH'], directories)))
+    env['PYTHONPATH'] = ';'.join(tuple(filterPaths(os.environ['PYTHONPATH'], directories)))
+    env['MAYA_SCRIPT_PATH'] = ';'.join(tuple(filterPaths(os.environ['MAYA_SCRIPT_PATH'], directories)))
+    env['MAYA_PLUG_IN_PATH'] = ';'.join(tuple(filterPaths(os.environ['MAYA_PLUG_IN_PATH'], directories)))
+    env['MAYA_MODULE_PATH'] = ';'.join(tuple(filterPaths(os.environ['MAYA_MODULE_PATH'], directories)))
+
+    return env
+
+
 def initializeRemoteStandalone(port=8000, timeout=3):
     """
     Opens a headerless Maya process in the background to send commands to.
@@ -682,16 +730,9 @@ def initializeRemoteStandalone(port=8000, timeout=3):
 
         return None, None
 
-    # Sanitize environment before starting new process
+    # Create new process and client with a sanitized environment
     #
-    env = dict(os.environ)
-    env['PATH'] = ';'.join(path for path in env['MAYA_MODULE_PATH'].split(';') if path.startswith('C:'))
-    env['PYTHONPATH'] = ';'.join(path for path in env['MAYA_MODULE_PATH'].split(';') if path.startswith('C:'))
-    env['MAYA_MODULE_PATH'] = ';'.join(path for path in env['MAYA_MODULE_PATH'].split(';') if path.startswith('C:'))
-
-    # Create new process and client
-    #
-    __process__ = subprocess.Popen([executable, __file__, str(port)], env=env)
+    __process__ = subprocess.Popen([executable, __file__, str(port)], env=santizeEnvironment())
     __client__ = MRPCClient(
         f'http://localhost:{port}',
         allow_none=True,
@@ -701,11 +742,14 @@ def initializeRemoteStandalone(port=8000, timeout=3):
 
     success = waitForRemoteStandalone(__client__)
 
-    if not success:
+    if success:
+
+        return __process__, __client__
+
+    else:
 
         log.warning('Unable to connect to remote standalone server!')
-
-    return __process__, __client__
+        return None, None
 
 
 def waitForRemoteStandalone(client, attempts=5):
