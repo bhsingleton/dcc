@@ -1038,7 +1038,6 @@ def consolidateConnectedElements(plug):
     removeMultiInstances(plug, unusedIndices)
 
 
-
 def moveConnectedElements(plug, index):
     """
     Moves all the connected elements at the specified index down the array.
