@@ -42,21 +42,18 @@ class PSONObject(collections_abc.MutableMapping, metaclass=pabcmeta.PABCMeta):
         :rtype: None
         """
 
-        # Check for any arguments
-        #
-        numArgs = len(args)
-
-        if numArgs == 0:
-
-            return
-
         # Check if argument is valid
         #
-        arg = args[0]
+        numArgs = len(args)
+        arg = args[0] if (numArgs == 1) else None
 
         if isinstance(arg, (collections_abc.MutableSequence, collections_abc.MutableMapping)):
 
             self.update(arg)
+
+        else:
+
+            self.update(kwargs)
 
     def __getitem__(self, key):
         """
@@ -419,8 +416,9 @@ class PSONObject(collections_abc.MutableMapping, metaclass=pabcmeta.PABCMeta):
             # Check if key exists
             #
             key, value = pair
+            hasMember = hasattr(self.__class__, key)
 
-            if not hasattr(self.__class__, key):
+            if not hasMember:
 
                 continue
 
@@ -429,9 +427,17 @@ class PSONObject(collections_abc.MutableMapping, metaclass=pabcmeta.PABCMeta):
             member = getattr(self.__class__, key)
             isProperty = isinstance(member, property)
 
-            if isProperty:
+            if not isProperty:
 
-                setattr(self, key, value)
+                continue
+
+            # Check if property is mutable
+            #
+            isMutable = callable(member.fset)
+
+            if isMutable:
+
+                member.fset(self, value)
 
             else:
 
