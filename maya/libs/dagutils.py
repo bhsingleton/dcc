@@ -37,7 +37,7 @@ def isValidUUID(uuid):
     """
     Evaluates if the supplied name is valid.
 
-    :type uuid: str
+    :type uuid: Union[str, om.MUuid]
     :rtype: bool
     """
 
@@ -66,11 +66,21 @@ def isValidPath(path):
     """
     Evaluates if the supplied path is valid.
 
-    :type path: str
+    :type path: Union[str, om.MDagPath]
     :rtype: bool
     """
 
-    return __path_regex__.match(path) is not None
+    if isinstance(path, string_types):
+
+        return __path_regex__.match(path) is not None
+
+    elif isinstance(path, om.MDagPath):
+
+        return path.isValid()
+
+    else:
+
+        return False
 
 
 def getNodeName(node, includePath=False, includeNamespace=False):
