@@ -220,7 +220,7 @@ class MRPCServer(SimpleXMLRPCServer):
 
     def file(self, *args, **kwargs):
         """
-
+        Opening, importing, exporting, referencing, saving, or renaming a file.
 
         :key sceneName: str
         :rtype: str
@@ -230,7 +230,7 @@ class MRPCServer(SimpleXMLRPCServer):
 
     def open(self, filePath, force=True):
         """
-
+        Opens the supplied file and returns a success boolean.
 
         :type filePath: str
         :type force: bool
@@ -286,7 +286,7 @@ class MRPCServer(SimpleXMLRPCServer):
 
     def ls(self, *args, **kwargs):
         """
-
+        The ls command returns the names (and optionally the type names) of objects in the scene.
 
         :rtype: List[str]
         """
@@ -307,7 +307,9 @@ class MRPCServer(SimpleXMLRPCServer):
 
     def listRelatives(self, *args, **kwargs):
         """
-
+        This command lists parents and children of DAG objects.
+        The flags -c/children, -ad/allDescendents, -s/shapes, -p/parent and -ap/allParents are mutually exclusive.
+        Only one can be used in a command.
 
         :rtype: List[str]
         """
@@ -351,10 +353,13 @@ class MRPCServer(SimpleXMLRPCServer):
         :key parent: Union[str, None]
         :key shared: bool
         :key skipSelect: bool
-        :rtype: str
+        :key asUUID: bool
+        :rtype: Union[str, Tuple[str, str]]
         """
 
         absoluteName = None
+        asUUID = kwargs.pop('asUUID', False)
+        asNameAndUUID = kwargs.pop('asNameAndUUID', False)
 
         try:
 
@@ -366,11 +371,24 @@ class MRPCServer(SimpleXMLRPCServer):
 
         finally:
 
-            return absoluteName
+            if asNameAndUUID:
+
+                return absoluteName, mc.ls(absoluteName, uuid=True)[0]
+
+            elif asUUID:
+
+                return mc.ls(absoluteName, uuid=True)[0]
+
+            else:
+
+                return absoluteName
 
     def renameNode(self, oldName, newName, **kwargs):
         """
-
+        Renames the given object to have the new name.
+        If only one argument is supplied the command will rename the (first) selected object.
+        If the new name conflicts with an existing name, the object will be given a unique name based on the supplied name.
+        It is not legal to rename an object to the empty string.
 
         :type oldName: str
         :type newName: str
@@ -570,12 +588,17 @@ class MRPCServer(SimpleXMLRPCServer):
             return success
 
     def quit(self):
+        """
+        Tells the server to begin shutting down.
 
-        self._BaseServer__shutdown_request = True
+        :rtype: None
+        """
 
         if self.standalone:
 
             standalone.uninitialize()
+
+        self._BaseServer__shutdown_request = True
 
         return 0
     # endregion
@@ -677,7 +700,7 @@ def filterPaths(path, directories):
             continue
 
 
-def santizeEnvironment():
+def sanitizeEnvironment():
     """
     Returns a sanitized Maya environment.
 
@@ -732,7 +755,7 @@ def initializeRemoteStandalone(port=8000, timeout=3):
 
     # Create new process and client with a sanitized environment
     #
-    __process__ = subprocess.Popen([executable, __file__, str(port)], env=santizeEnvironment())
+    __process__ = subprocess.Popen([executable, __file__, str(port)], env=sanitizeEnvironment())
     __client__ = MRPCClient(
         f'http://localhost:{port}',
         allow_none=True,
