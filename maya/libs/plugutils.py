@@ -546,11 +546,12 @@ def iterTopLevelPlugs(node, **kwargs):
     Returns a generator that yields top-level plugs from the supplied node.
 
     :type node: om.MObject
-    :key readable: bool
-    :key writable: bool
-    :key keyable: bool
-    :key affectsWorldSpace: bool
-    :key skipUserAttributes: bool
+    :type readable: bool
+    :type writable: bool
+    :type keyable: bool
+    :type affectsWorldSpace: bool
+    :type skipStaticAttributes: bool
+    :type skipUserAttributes: bool
     :rtype: Iterator[om.MPlug]
     """
 
@@ -562,6 +563,7 @@ def iterTopLevelPlugs(node, **kwargs):
     writable = kwargs.get('writable', False)
     keyable = kwargs.get('keyable', False)
     affectsWorldSpace = kwargs.get('affectsWorldSpace', False)
+    skipStaticAttributes = kwargs.get('skipStaticAttributes', False)
     skipUserAttributes = kwargs.get('skipUserAttributes', False)
 
     for attribute in attributeutils.iterTopLevelAttributes(node):
@@ -589,6 +591,12 @@ def iterTopLevelPlugs(node, **kwargs):
         # Check if attribute affects world-space
         #
         if affectsWorldSpace and not fnAttribute.affectsWorldSpace:
+
+            continue
+
+        # Check if attribute is static
+        #
+        if skipStaticAttributes and not fnAttribute.dynamic:
 
             continue
 
