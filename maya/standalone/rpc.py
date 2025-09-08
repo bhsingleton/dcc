@@ -425,7 +425,7 @@ class MRPCServer(SimpleXMLRPCServer):
 
         return mc.parent(*nodes, **kwargs)
 
-    def deleteNode(self, nodes, **kwargs):
+    def deleteNode(self, *nodes, **kwargs):
         """
         Deletes the supplied nodes.
 
