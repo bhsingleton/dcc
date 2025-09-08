@@ -3,6 +3,7 @@ import math
 from maya import cmds as mc
 from maya.api import OpenMaya as om
 from enum import IntEnum
+from collections.abc import Sequence
 from . import dagutils, plugutils, plugmutators
 from ..json import mshapeparser
 from ...python import stringutils
@@ -243,7 +244,7 @@ def createCurveFromPoints(controlPoints, degree=1, form=om.MFnNurbsCurve.kOpen, 
     """
     Creates a curve data object from the supplied points.
 
-    :type controlPoints: List[om.MVector]
+    :type controlPoints: List[Union[om.MVector, om.MPoint, Tuple[float, float, float]]]
     :type degree: int
     :type form: om.MFnNurbsCurve.Form
     :type is2D: bool
@@ -251,6 +252,14 @@ def createCurveFromPoints(controlPoints, degree=1, form=om.MFnNurbsCurve.kOpen, 
     :type parent: om.MObject
     :rtype: om.MObject
     """
+
+    # Evaluate supplied control points
+    #
+    isValid = all(isinstance(point, (Sequence, om.MVector, om.MPoint)) for point in controlPoints)
+
+    if not isValid:
+
+        raise TypeError(f'createCurveFromPoints() expects a sequence of points!')
 
     # Create knot vector
     #
