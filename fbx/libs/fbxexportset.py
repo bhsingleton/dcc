@@ -53,14 +53,14 @@ class FbxExportSet(fbxbase.FbxBase):
         self._scene = fnscene.FnScene()
         self._fbx = fnfbx.FnFbx()
         self._asset = self.nullWeakReference
-        self._directory = kwargs.get('directory', '')
-        self._scale = kwargs.get('scale', 1.0)
-        self._moveToOrigin = kwargs.get('moveToOrigin', False)
-        self._removeDisplayLayers = kwargs.get('removeDisplayLayers', True)
-        self._removeContainers = kwargs.get('removeContainers', True)
-        self._camera = kwargs.get('camera', fbxcamera.FbxCamera())
-        self._skeleton = kwargs.get('skeleton', fbxskeleton.FbxSkeleton())
-        self._mesh = kwargs.get('mesh', fbxmesh.FbxMesh())
+        self._directory = ''
+        self._scale = 1.0
+        self._moveToOrigin = False
+        self._removeDisplayLayers = True
+        self._removeContainers = True
+        self._camera = fbxcamera.FbxCamera()
+        self._skeleton = fbxskeleton.FbxSkeleton()
+        self._mesh = fbxmesh.FbxMesh()
         self._customScripts = []
     # endregion
 

@@ -33,7 +33,7 @@ class FbxBase(with_metaclass(ABCMeta, psonobject.PSONObject)):
 
         # Declare private variables
         #
-        self._name = kwargs.get('name', '')
+        self._name = ''
     # endregion
 
     # region Properties

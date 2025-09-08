@@ -34,12 +34,12 @@ class FbxMesh(fbxobjectset.FbxObjectSet):
 
         # Declare private variables
         #
-        self._includeNormals = kwargs.get('includeNormals', True)
-        self._includeTangentsAndBinormals = kwargs.get('includeTangentsAndBinormals', True)
-        self._includeSmoothings = kwargs.get('includeSmoothings', True)
-        self._includeColorSets = kwargs.get('includeColorSets', False)
-        self._includeSkins = kwargs.get('includeSkins', False)
-        self._includeBlendshapes = kwargs.get('includeBlendshapes', False)
+        self._includeNormals = True
+        self._includeTangentsAndBinormals = True
+        self._includeSmoothings = True
+        self._includeColorSets = False
+        self._includeSkins = False
+        self._includeBlendshapes = False
     # endregion
 
     # region Properties

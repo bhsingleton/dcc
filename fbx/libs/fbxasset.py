@@ -38,12 +38,12 @@ class FbxAsset(fbxbase.FbxBase):
         # Declare private variables
         #
         self._scene = fnscene.FnScene()
-        self._directory = kwargs.get('directory', '')
-        self._frameRate = kwargs.get('frameRate', 30)
-        self._fileType = kwargs.get('fileType', FbxFileType.Binary)
-        self._fileVersion = kwargs.get('fileVersion', FbxFileVersion.FBX202000)
+        self._directory = ''
+        self._frameRate = 30
+        self._fileType = FbxFileType.Binary
+        self._fileVersion = FbxFileVersion.FBX202000
         self._exportSets = notifylist.NotifyList()
-        self._useBuiltinSerializer = kwargs.get('useBuiltinSerializer', False)
+        self._useBuiltinSerializer = False
 
         # Setup notifies
         #

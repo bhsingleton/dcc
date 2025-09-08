@@ -34,23 +34,15 @@ class FbxSequencer(fbxbase.FbxBase):
         # Declare private variables
         #
         self._manager = fbxio.FbxIO()
-        self._guid = kwargs.get('guid', '')
+        self._guid = ''
         self._reference = fnreference.FnReference()
-        self._asset = kwargs.get('asset', self.nullWeakReference)
+        self._asset = self.nullWeakReference
         self._exportRanges = notifylist.NotifyList()
 
         # Setup notifies
         #
         self._exportRanges.addCallback('itemAdded', self.exportRangeAdded)
         self._exportRanges.addCallback('itemRemoved', self.exportRangeRemoved)
-
-        # Check if any export-ranges were supplied
-        #
-        exportRanges = kwargs.get('exportRanges', None)
-
-        if not stringutils.isNullOrEmpty(exportRanges):
-
-            self._exportRanges.extend(exportRanges)
 
     def __post_init__(self, *args, **kwargs):
         """

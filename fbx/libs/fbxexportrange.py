@@ -49,13 +49,13 @@ class FbxExportRange(fbxbase.FbxBase):
         self._scene = fnscene.FnScene()
         self._fbx = fnfbx.FnFbx()
         self._sequencer = self.nullWeakReference
-        self._directory = kwargs.get('directory', '')
-        self._startFrame = kwargs.get('startFrame', 0)
-        self._endFrame = kwargs.get('endFrame', 1)
-        self._step = kwargs.get('step', 1)
-        self._useTimeline = kwargs.get('useTimeline', True)
-        self._moveToOrigin = kwargs.get('moveToOrigin', False)
-        self._exportSetId = kwargs.get('exportSetId', 0)
+        self._directory = ''
+        self._startFrame = 0
+        self._endFrame = 1
+        self._step = 1
+        self._useTimeline = True
+        self._moveToOrigin = False
+        self._exportSetId = 0
         self._customScripts = []
     # endregion
 

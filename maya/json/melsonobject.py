@@ -9,11 +9,14 @@ log.setLevel(logging.INFO)
 
 class MELSONObject(psonobject.PSONObject):
     """
-    Overload of `PSONObject` that adds support properties that make use of Maya data classes.
+    Overload of `PSONObject` that extends support for Maya dataclasses.
     """
 
+    # region Dunderscores
     __slots__ = ()
+    # endregion
 
+    # region Methods
     @classmethod
     def isJsonCompatible(cls, T):
         """
@@ -32,3 +35,4 @@ class MELSONObject(psonobject.PSONObject):
         else:
 
             return super(MELSONObject, cls).isJsonCompatible(T)
+    # endregion

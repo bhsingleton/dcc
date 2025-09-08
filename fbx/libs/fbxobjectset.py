@@ -50,12 +50,12 @@ class FbxObjectSet(fbxbase.FbxBase):
         # Declare private variables
         #
         self._scene = fnscene.FnScene()
-        self._includeType = kwargs.get('includeType', FbxObjectSetType.Nodes)
-        self._includeObjects = kwargs.get('includeObjects', [])
-        self._includeChildren = kwargs.get('includeChildren', False)
-        self._excludeType = kwargs.get('excludeType', FbxObjectSetType.Nodes)
-        self._excludeObjects = kwargs.get('excludeObjects', [])
-        self._excludeChildren = kwargs.get('excludeChildren', False)
+        self._includeType = FbxObjectSetType.Nodes
+        self._includeObjects = []
+        self._includeChildren = False
+        self._excludeType = FbxObjectSetType.Nodes
+        self._excludeObjects = []
+        self._excludeChildren = False
     # endregion
 
     # region Properties
