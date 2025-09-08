@@ -47,7 +47,7 @@ def isValidUUID(uuid):
 
         if isUUID:
 
-            return isValidUUID(om.MUUID(uuid))
+            return isValidUUID(om.MUuid(uuid))
 
         else:
 
