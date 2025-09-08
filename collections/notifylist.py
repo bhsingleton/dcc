@@ -49,6 +49,24 @@ class NotifyList(collections_abc.MutableSequence):
 
             self.extend(args[0])
 
+    def __repr__(self):
+        """
+        Private method that implements the `repr` method.
+
+        :rtype: str
+        """
+
+        return repr(self.__items__)
+
+    def __str__(self):
+        """
+        Private method that implements the `str` constructor.
+
+        :rtype: str
+        """
+
+        return str(self.__items__)
+    
     def __getitem__(self, index):
         """
         Private method that returns an indexed item.
