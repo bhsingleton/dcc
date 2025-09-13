@@ -813,14 +813,15 @@ def removeMultiInstances(plug, indices):
         mc.removeMultiInstance(elementName)
 
 
-def getConnectedNodes(plug, includeNullObjects=False):
+def getConnectedNodes(plug, source=True, destination=False, includeNullObjects=False):
     """
     Returns the nodes connected to the supplied plug.
-    If the plug is an array or compound then a list of nodes is returned instead!
 
     :type plug: om.MPlug
+    :type source: bool
+    :type destination: bool
     :type includeNullObjects: bool
-    :rtype: Union[om.MObject, om.MObjectArray]
+    :rtype: om.MObjectArray
     """
 
     # Check if plug is array
@@ -845,21 +846,33 @@ def getConnectedNodes(plug, includeNullObjects=False):
 
     else:
 
-        # Get source plug
+        # Get source node
         #
-        otherPlug = plug.source()
+        if source:
 
-        if not otherPlug.isNull:
+            otherPlug = plug.source()
 
-            nodes.append(otherPlug.node())
+            if not otherPlug.isNull:
 
-        elif includeNullObjects:
+                nodes.append(otherPlug.node())
 
-            nodes.append(om.MObject.kNullObj)
+            elif includeNullObjects:
 
-        else:
+                nodes.append(om.MObject.kNullObj)
 
-            pass
+            else:
+
+                pass
+
+        # Get destination nodes
+        #
+        if destination:
+
+            otherPlugs = plug.destinations()
+
+            for otherPlug in otherPlugs:
+
+                nodes.append(otherPlug.node())
 
     return nodes
 
