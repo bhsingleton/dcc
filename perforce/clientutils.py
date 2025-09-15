@@ -534,7 +534,7 @@ def changeClient():
     Prompts the user to changes the current client.
     Right now this method is restricted to listing only clients associated with the host.
 
-    :rtype: None
+    :rtype: bool
     """
 
     # Collect all clients
@@ -548,7 +548,7 @@ def changeClient():
     if numClients == 0:
 
         QtWidgets.QMessageBox.warning(parent, 'Change Client', 'Current host has no perforce workspaces!')
-        return
+        return False
 
     # Get previous client
     #
@@ -570,12 +570,16 @@ def changeClient():
         editable=False
     )
 
-    # Check if user response
+    # Evaluate user response
     #
     if response and newClient != client:
 
         setClient(newClient)
+        return True
 
+    else:
+
+        return False
 
 def detectClient(filePath):
     """

@@ -335,7 +335,7 @@ def checkoutScene():
     """
     Checks out the open scene file from perforce.
 
-    :rtype: None
+    :rtype: bool
     """
 
     # Check if scene exists
@@ -350,6 +350,7 @@ def checkoutScene():
     else:
 
         log.warning('Unable to checkout untitled scene file!')
+        return False
 
 
 @relogin.Relogin()
@@ -379,7 +380,7 @@ def revertScene():
     """
     Reverts the open scene from perforce.
 
-    :rtype: None
+    :rtype: bool
     """
 
     # Check if scene exists
@@ -394,6 +395,7 @@ def revertScene():
     else:
 
         log.warning('Unable to revert untitled scene file!')
+        return False
 
 
 def showInExplorer():
