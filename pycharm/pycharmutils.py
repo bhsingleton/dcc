@@ -20,43 +20,47 @@ def findPycharm():
     :rtype: str
     """
 
-    # Open local machine registry
+    # Iterate through possible registry locations
     #
-    registry = winreg.ConnectRegistry(None, winreg.HKEY_LOCAL_MACHINE)
-    key = winreg.OpenKey(registry, r'SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall')
+    for HKEY in (winreg.HKEY_LOCAL_MACHINE, winreg.HKEY_CURRENT_USER):
 
-    if key is None:
+        # Open local machine registry
+        #
+        registry = winreg.ConnectRegistry(None, HKEY)
+        key = winreg.OpenKey(registry, r'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall')
 
-        return ''
-
-    # Iterate through sub keys
-    #
-    numSubKeys = winreg.QueryInfoKey(key)[0]
-
-    for i in range(numSubKeys):
-
-        try:
-
-            # Open sub key
-            #
-            enumKey = winreg.EnumKey(key, i)
-            subKey = winreg.OpenKey(key, enumKey)
-
-            displayName = winreg.QueryValueEx(subKey, "DisplayName")[0]
-
-            # Check if this is pycharm
-            #
-            if displayName.startswith('JetBrains PyCharm') or displayName.startswith('PyCharm'):
-
-                return winreg.QueryValueEx(subKey, "InstallLocation")[0]
-
-            else:
-
-                continue
-
-        except EnvironmentError:
+        if key is None:
 
             continue
+
+        # Iterate through sub keys
+        #
+        numSubKeys = winreg.QueryInfoKey(key)[0]
+
+        for i in range(numSubKeys):
+
+            try:
+
+                # Open sub key
+                #
+                enumKey = winreg.EnumKey(key, i)
+                subKey = winreg.OpenKey(key, enumKey)
+
+                displayName = winreg.QueryValueEx(subKey, "DisplayName")[0]
+
+                # Check if this is pycharm
+                #
+                if displayName.startswith('JetBrains PyCharm') or displayName.startswith('PyCharm'):
+
+                    return winreg.QueryValueEx(subKey, "InstallLocation")[0]
+
+                else:
+
+                    continue
+
+            except EnvironmentError:
+
+                continue
 
     return ''
 
@@ -80,7 +84,7 @@ def setupDebugger():
 
     # Append helpers to system path
     #
-    debugEgg = os.path.join(pycharmDir, 'plugins', 'python', 'helpers', 'pydev')
+    debugEgg = os.path.join(pycharmDir, 'plugins', 'python-ce', 'helpers', 'pydev')
 
     if debugEgg not in sys.path:
 
