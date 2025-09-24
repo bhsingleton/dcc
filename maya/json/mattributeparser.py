@@ -395,12 +395,14 @@ class MAttributeDecoder(json.JSONDecoder):
 
         # Set default value
         #
+        cls = self.__default_unit_types__[fnAttribute.unitType()]
+        unit = cls.uiUnit()
+
         default = obj.get('default', None)
 
         if isinstance(default, (int, float)):
 
-            cls = self.__default_unit_types__[fnAttribute.unitType()]
-            fnAttribute.default = cls(default, unit=cls.uiUnit())
+            fnAttribute.default = cls(default, unit=unit)
 
         elif isinstance(default, (om.MDistance, om.MAngle, om.MTime)):
 
@@ -416,7 +418,7 @@ class MAttributeDecoder(json.JSONDecoder):
 
         if isinstance(minValue, (int, float)):
 
-            fnAttribute.setMin(minValue)
+            fnAttribute.setMin(cls.uiToInternal(minValue))
 
         # Set max value
         #
@@ -424,7 +426,7 @@ class MAttributeDecoder(json.JSONDecoder):
 
         if isinstance(maxValue, (int, float)):
 
-            fnAttribute.setMax(maxValue)
+            fnAttribute.setMax(cls.uiToInternal(maxValue))
 
         # Set soft min value
         #
@@ -432,7 +434,7 @@ class MAttributeDecoder(json.JSONDecoder):
 
         if isinstance(softMinValue, (int, float)):
 
-            fnAttribute.setSoftMin(softMinValue)
+            fnAttribute.setSoftMin(cls.uiToInternal(softMinValue))
 
         # Set soft max value
         #
@@ -440,7 +442,7 @@ class MAttributeDecoder(json.JSONDecoder):
 
         if isinstance(softMaxValue, (int, float)):
 
-            fnAttribute.setSoftMax(softMaxValue)
+            fnAttribute.setSoftMax(cls.uiToInternal(softMaxValue))
 
         return attribute
 
