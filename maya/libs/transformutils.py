@@ -1961,6 +1961,25 @@ def reorientMatrix(forwardAxis, upAxis, matrix, forwardAxisSign=1, upAxisSign=1)
     return rotationMatrix * matrix
 
 
+def mirrorMatrix(matrix, normal=om.MVector.kXaxisVector):
+    """
+    Mirrors the supplied transform matrix.
+
+    :type matrix: om.MMatrix
+    :type normal: om.MVector
+    :rtype: om.MMatrix
+    """
+
+    xAxis, yAxis, zAxis, pos = breakMatrix(matrix, normalize=True)
+
+    mirrorXAxis = mirrorVector(xAxis, normal=normal).normal()
+    mirrorYAxis = mirrorVector(yAxis, normal=normal).normal()
+    mirrorZAxis = (mirrorXAxis ^ mirrorYAxis).normal()
+    mirrorPos = mirrorVector(om.MVector(pos))
+
+    return makeMatrix(mirrorXAxis, mirrorYAxis, mirrorZAxis, mirrorPos)
+
+
 def findClosestAxis(vector, matrix):
     """
     Returns the matrix axis that's closest to the supplied vector.
