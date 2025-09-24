@@ -6,6 +6,7 @@ import subprocess
 
 from collections import namedtuple
 from importlib import util as importutils
+from . import stringutils
 from .. import DCC, __application__
 
 import logging
@@ -20,21 +21,23 @@ __requirement_regex__ = re.compile(r'^([a-zA-Z0-9\._-]+)(?:\s?)([~>=,<]+)(?:\s?)
 Requirement = namedtuple('Requirement', ('name', 'operator', 'version'))
 
 
-def getPythonInterpreter():
+def getPythonInterpreter(**kwargs):
     """
     Returns the python interpreter for this DCC platform.
 
+    :type executable: str
     :rtype: str
     """
 
     # Evaluate system executable
     #
-    executable = os.path.abspath(sys.executable)
+    executable = os.path.abspath(kwargs.get('executable', sys.executable))
     directory, filename = os.path.split(executable)
 
-    name = os.path.splitext(filename)[0].lower()
+    strings = os.path.splitext(filename)
+    name, extension = strings[0].lower(), strings[1].lower()
 
-    if name == 'python':
+    if name == 'python' and extension == '.exe':
 
         return executable
 
@@ -42,11 +45,11 @@ def getPythonInterpreter():
     #
     if __application__ == DCC.MAX:
 
-        if name in ('3dsmax', '3dsmaxbatch'):
+        if name in ('3dsmax', '3dsmaxbatch') and extension == '.exe':
 
             return os.path.join(directory, 'Python', 'python.exe')
 
-        elif name == '3dsmaxpy':
+        elif name == '3dsmaxpy' and extension == '.exe':
 
             return os.path.join(directory, '3dsmaxpy.exe')
 
@@ -56,7 +59,7 @@ def getPythonInterpreter():
 
     elif __application__ == DCC.MAYA:
 
-        if name in ('maya', 'mayabatch', 'mayapy'):
+        if name in ('maya', 'mayabatch', 'mayapy') and extension == '.exe':
 
             return os.path.join(directory, 'mayapy.exe')
 
@@ -69,34 +72,6 @@ def getPythonInterpreter():
         raise RuntimeError(f'getPythonInterpreter() Unable to locate interpreter relative to: {executable}')
 
 
-def ensurePythonInterpreter(executable):
-    """
-    Ensures that a valid Python interpreter is returned.
-
-    :type executable: Union[str, None]
-    :rtype: str
-    """
-
-    # Evaluate path type
-    #
-    if not isinstance(executable, str):
-
-        return getPythonInterpreter()
-
-    # Check if path is valid
-    #
-    isExecutable = executable.lower().endswith('.exe')
-    exists = os.path.isfile(executable) and isExecutable
-
-    if exists:
-
-        return executable
-
-    else:
-
-        return getPythonInterpreter()
-
-
 def isAdmin():
     """
     Evaluates if the user has administrative privileges.
@@ -107,6 +82,19 @@ def isAdmin():
     return ctypes.windll.shell32.IsUserAnAdmin()
 
 
+def hasPackage(name):
+    """
+    Evaluates if the supplied package name exists.
+
+    :rtype: bool
+    """
+
+    spec = importutils.find_spec(name)
+    exists = spec is not None
+
+    return exists
+
+
 def hasPip():
     """
     Evaluates if PIP exists.
@@ -114,13 +102,10 @@ def hasPip():
     :rtype: bool
     """
 
-    spec = importutils.find_spec('pip')
-    exists = spec is not None
-
-    return exists
+    return hasPackage('pip')
 
 
-def ensurePip(user=False, upgrade=False, executable=None):
+def ensurePip(**kwargs):
     """
     Ensures that PIP is installed.
 
@@ -133,6 +118,7 @@ def ensurePip(user=False, upgrade=False, executable=None):
     # Check if PIP exists
     #
     exists = hasPip()
+    upgrade = kwargs.get('upgrade', False)
 
     if exists and not upgrade:
 
@@ -141,7 +127,9 @@ def ensurePip(user=False, upgrade=False, executable=None):
 
     # Evaluate user's administrative privileges
     #
-    executable = ensurePythonInterpreter(executable)
+    executable = getPythonInterpreter(**kwargs)
+    user = kwargs.get('user', True)
+
     requiresAdmin = not user and not isAdmin()
 
     if requiresAdmin:
@@ -174,6 +162,97 @@ def ensurePip(user=False, upgrade=False, executable=None):
         if user: args.append('--user')
         if upgrade: args.append('--upgrade')
 
+        exitCode = None
+
+        try:
+
+            exitCode = subprocess.check_call(args)
+
+        except subprocess.CalledProcessError as exception:
+
+            log.error(exception.output)
+            exitCode = exception.returncode
+
+        finally:
+
+            return bool(exitCode == 0)
+
+
+def installPackage(name, **kwargs):
+    """
+    Installs the specified python package.
+
+    :type name: str
+    :type upgrade: bool
+    :type user: bool
+    :rtype: bool
+    """
+    
+    # Ensure PIP is installed
+    #
+    executable = getPythonInterpreter(**kwargs)
+    success = ensurePip(executable=executable)
+
+    if not success:
+
+        log.warning('Unable to ensure PIP!')
+        return False
+    
+    # Compose arguments
+    #
+    target = kwargs.get('target', None)
+    hasTarget = not stringutils.isNullOrEmpty(target)
+    user = kwargs.get('user', True)
+    upgrade = kwargs.get('upgrade', False)
+    
+    args = [executable, '-m', 'pip', 'install', name]
+
+    if hasTarget:
+
+        args.extend(('--target', target))
+
+    elif user:
+
+        args.append('--user')
+
+    else:
+
+        pass
+
+    if upgrade:
+
+        args.append('--upgrade')
+    
+    # Evaluate user permissions
+    #
+    requiresAdmin = (not hasTarget and not user) and not isAdmin()
+    
+    if requiresAdmin:
+
+        # Try and install package via shell
+        #
+        args = ['-m', 'pip', 'install', name]
+        parameters = ' '.join(args)
+
+        exitCode = None
+
+        try:
+
+            exitCode = ctypes.windll.shell32.ShellExecuteW(None, 'runas', executable, parameters, None, 1)
+
+        except subprocess.CalledProcessError as exception:
+
+            log.error(exception.output)
+            exitCode = exception.returncode
+
+        finally:
+
+            return bool(exitCode >= 32)
+
+    else:
+
+        # Try and install package via subprocess
+        #
         exitCode = None
 
         try:
@@ -239,7 +318,7 @@ def getRequirements(filePath):
     return requirements
 
 
-def installRequirements(filePath, target=None, upgrade=True, executable=None):
+def installRequirements(filePath, **kwargs):
     """
     Installs the supplied requirements file into the target directory.
     If no target is specified then the requirements directory is used instead.
@@ -253,45 +332,78 @@ def installRequirements(filePath, target=None, upgrade=True, executable=None):
 
     # Ensure PIP is installed
     #
-    executable = ensurePythonInterpreter(executable)
+    executable = getPythonInterpreter(**kwargs)
     success = ensurePip(executable=executable)
 
     if not success:
 
-        log.warning('Unable to install PIP for requirements!')
+        log.warning('Unable to ensure PIP for requirements!')
         return False
 
-    # Check if a target was supplied
+    # Compose arguments
     #
-    args = None
+    target = kwargs.get('target', None)
+    hasTarget = not stringutils.isNullOrEmpty(target)
+    user = kwargs.get('user', True)
+    upgrade = kwargs.get('upgrade', False)
 
-    if target is not None:
+    args = [executable, '-m', 'pip', 'install', '-r', filePath]
 
-        args = [executable, '-m', 'pip', 'install', '-r', filePath, '--target', target]
+    if hasTarget:
+
+        args.extend(('--target', target))
+
+    elif user:
+
+        args.append('--user')
 
     else:
 
-        args = [executable, '-m', 'pip', 'install', '-r', filePath, '--user']
+        pass
 
-    # Check if upgrade is required
-    #
     if upgrade:
 
         args.append('--upgrade')
 
-    # Try and install requirements
+    # Evaluate user permissions
     #
-    exitCode = None
+    requiresAdmin = (not hasTarget and not user) and not isAdmin()
 
-    try:
+    if requiresAdmin:
+        
+        # Try and install requirements via shell
+        #
+        parameters = ' '.join(args)
+        exitCode = None
 
-        exitCode = subprocess.check_call(args)
+        try:
 
-    except subprocess.CalledProcessError as exception:
+            exitCode = ctypes.windll.shell32.ShellExecuteW(None, 'runas', executable, parameters, None, 1)
 
-        log.error(exception.output)
-        exitCode = exception.returncode
+        except subprocess.CalledProcessError as exception:
 
-    finally:
+            log.error(exception.output)
+            exitCode = exception.returncode
 
-        return bool(exitCode == 0)
+        finally:
+
+            return bool(exitCode >= 32)
+
+    else:
+        
+        # Try and install requirements via subprocess
+        #
+        exitCode = None
+
+        try:
+
+            exitCode = subprocess.check_call(args)
+
+        except subprocess.CalledProcessError as exception:
+
+            log.error(exception.output)
+            exitCode = exception.returncode
+
+        finally:
+
+            return bool(exitCode == 0)
