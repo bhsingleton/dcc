@@ -48,6 +48,7 @@ def addAttribute(node, **kwargs):
     node = dagutils.getMObject(node)
     fnDependNode = om.MFnDependencyNode(node)
 
+    nodeName = fnDependNode.name()
     attributeName = kwargs.get('longName', kwargs.get('shortName', ''))
 
     if not fnDependNode.hasAttribute(attributeName):
@@ -55,6 +56,8 @@ def addAttribute(node, **kwargs):
         # Add attribute to node
         #
         attribute = createAttribute(**kwargs)
+
+        log.debug(f'Adding attribute: {nodeName}.{attributeName}')
         modifier.addAttribute(node, attribute)
 
         # Cache and execute modifier
