@@ -1,4 +1,6 @@
 import json
+import inspect
+import weakref
 
 from maya import cmds as mc
 from maya.api import OpenMaya as om
@@ -19,7 +21,12 @@ class UserProperties(collections_abc.MutableMapping):
     """
 
     # region Dunderscores
-    __slots__ = ('__handle__', '__buffer__', '__properties__')
+    __slots__ = (
+        '__handle__',
+        '__buffer__',
+        '__properties__',
+        '__object_init_hook__'
+    )
 
     def __init__(self, obj, **kwargs):
         """
@@ -38,6 +45,7 @@ class UserProperties(collections_abc.MutableMapping):
         self.__handle__ = dagutils.getMObjectHandle(obj)
         self.__buffer__ = ''
         self.__properties__ = {}
+        self.__object_init_hook__ = self.nullWeakReference
 
     def __getitem__(self, key):
         """
@@ -94,6 +102,53 @@ class UserProperties(collections_abc.MutableMapping):
 
         self.pullBuffer()
         return iter(self.__properties__)
+    # endregion
+
+    # region Properties
+    @property
+    def nullWeakReference(self):
+        """
+        Getter method that returns a null weak reference.
+
+        :rtype: weakref.ref
+        """
+
+        return lambda: None
+
+    @property
+    def object_init_hook(self):
+        """
+        Getter method that returns the object initializer hook.
+
+        :rtype: Union[Callable, None]
+        """
+
+        return self.__object_init_hook__()
+
+    @object_init_hook.setter
+    def object_init_hook(self, func):
+        """
+        Setter method that updates the object initializer hook.
+
+        :type func:
+        :rtype: None
+        """
+
+        if func is None:
+
+            self.__object_init_hook__ = lambda: None
+
+        elif inspect.ismethod(func):
+
+            self.__object_init_hook__ = weakref.WeakMethod(func)
+
+        elif inspect.isfunction(func):
+
+            self.__object_init_hook__ = weakref.ref(func)
+
+        else:
+
+            raise TypeError(f'object_init_hook.setter() expects a function ({type(func).__name__} given)!')
     # endregion
 
     # region Methods
@@ -264,8 +319,9 @@ class UserProperties(collections_abc.MutableMapping):
         # Redundancy check
         #
         buffer = self.tryGetBuffer()
+        isBufferEmpty = stringutils.isNullOrEmpty(buffer)
 
-        if buffer == self.__buffer__ or stringutils.isNullOrEmpty(buffer):
+        if buffer == self.__buffer__ or isBufferEmpty:
 
             return
 
@@ -279,7 +335,11 @@ class UserProperties(collections_abc.MutableMapping):
 
         try:
 
-            self.__properties__ = json.loads(buffer, cls=mdataparser.MDataDecoder)
+            self.__properties__ = json.loads(
+                buffer,
+                cls=mdataparser.MDataDecoder,
+                object_init_hook=self.__object_init_hook__()
+            )
 
         except json.JSONDecodeError as error:
 
@@ -307,9 +367,13 @@ class UserProperties(collections_abc.MutableMapping):
         #
         try:
 
-            self.__buffer__ = json.dumps(self.__properties__, indent=4, cls=mdataparser.MDataEncoder)
+            self.__buffer__ = json.dumps(
+                self.__properties__,
+                indent=4,
+                cls=mdataparser.MDataEncoder
+            )
 
-        except TypeError as exception:
+        except (TypeError, json.JSONDecodeError) as exception:
 
             log.error(exception)
             return

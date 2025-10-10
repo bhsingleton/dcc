@@ -67,7 +67,7 @@ class PSONDecoder(json.JSONDecoder):
     """
 
     # region Dunderscores
-    __slots__ = ()
+    __slots__ = ('object_init_hook',)
     __remaps__ = {}
 
     @classmethod
@@ -91,6 +91,7 @@ class PSONDecoder(json.JSONDecoder):
         #
         object_hook = kwargs.pop('object_hook', self.default)
         object_pairs_hook = kwargs.pop('object_pairs_hook', None)
+        object_init_hook = kwargs.pop('object_init_hook', None)
         parse_float = kwargs.pop('parse_float', None)
         parse_int = kwargs.pop('parse_int', None)
         parse_constant = kwargs.pop('parse_constant', None)
@@ -105,9 +106,13 @@ class PSONDecoder(json.JSONDecoder):
             strict=strict,
         )
 
-        # Store the remaining keyword arguments
+        # Update keyword defaults
         #
         self.__kwdefaults__ = kwargs
+
+        # Store reference to object initialize hook
+        #
+        self.object_init_hook = object_init_hook
     # endregion
 
     # region Methods
@@ -185,16 +190,20 @@ class PSONDecoder(json.JSONDecoder):
 
         cls = self.findClass(className, moduleName)
 
-        if callable(cls):
-
-            instance = cls(**self.__kwdefaults__)
-            instance.__setstate__(obj)
-
-            return instance
-
-        else:
+        if not callable(cls):
 
             return obj
+
+        # Create new instance of class
+        #
+        instance = cls(**self.__kwdefaults__)
+        instance.__setstate__(obj)
+
+        if callable(self.object_init_hook):
+
+            self.object_init_hook(instance)
+
+        return instance
 
     @classmethod
     def findClass(cls, className, moduleName):

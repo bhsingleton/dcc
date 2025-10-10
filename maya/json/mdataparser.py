@@ -590,23 +590,21 @@ class MDataDecoder(psonparser.PSONDecoder):
 
         # Check if decoder accepts object
         #
-        if self.acceptsObject(obj):
+        if not self.acceptsObject(obj):
 
-            # Inspect api type
-            #
-            isMObject = obj.get('__api_type__', None) is not None
+            return super(MDataDecoder, self).default(obj)
 
-            if isMObject:
+        # Inspect api type
+        #
+        hasAPIType = obj.get('__api_type__', None) is not None
 
-                return self.deserializeMObject(obj)
+        if hasAPIType:
 
-            else:
-
-                return self.deserializeValue(obj)
+            return self.deserializeMObject(obj)
 
         else:
 
-            return super(MDataDecoder, self).default(obj)
+            return self.deserializeValue(obj)
 
     def deserializeValue(self, obj):
         """
