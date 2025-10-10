@@ -142,7 +142,7 @@ class WeakRefList(collections_abc.MutableSequence):
         :rtype: int
         """
 
-        if not isinstance(value, weakref.ref):
+        if not isinstance(value, weakref.ref) and hasattr(value, '__weakref__'):
 
             value = weakref.ref(value)
 
