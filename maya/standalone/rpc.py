@@ -1,6 +1,7 @@
 import os
 import re
 import sys
+import atexit
 import subprocess
 
 from maya import cmds as mc, standalone
@@ -18,6 +19,7 @@ log.setLevel(logging.INFO)
 
 __process__ = None
 __client__ = None
+__server__ = None
 
 
 class MRPCServer(SimpleXMLRPCServer):
@@ -60,8 +62,10 @@ class MRPCServer(SimpleXMLRPCServer):
         #
         self.register_function(self.quit, 'quit')
         self.register_function(self.file, 'file')
+        self.register_function(self.new, 'new')
         self.register_function(self.open, 'open')
         self.register_function(self.save, 'save')
+        self.register_function(self.saveAs, 'saveAs')
         self.register_function(self.ls, 'ls')
         self.register_function(self.listRelatives, 'listRelatives')
         self.register_function(self.doesNodeExist, 'doesNodeExist')
@@ -228,6 +232,15 @@ class MRPCServer(SimpleXMLRPCServer):
 
         return mc.file(*args, **kwargs)
 
+    def new(self):
+        """
+        Opens a blank scene file.
+
+        :rtype: None
+        """
+
+        mc.file(newFile=True, force=True)
+
     def open(self, filePath, force=True):
         """
         Opens the supplied file and returns a success boolean.
@@ -238,7 +251,9 @@ class MRPCServer(SimpleXMLRPCServer):
         """
 
         filePath = os.path.abspath(filePath)
-        success = True
+        directory, filename = os.path.split(filePath)
+        name, extension = os.path.splitext(filename)
+        fileType = 'mayaAscii' if extension == '.ma' else 'mayaBinary'
 
         try:
 
@@ -247,20 +262,20 @@ class MRPCServer(SimpleXMLRPCServer):
         except RuntimeError as exception:
 
             log.error(exception)
-            success = False
+            return False
 
         finally:
 
             self._currentFilePath = filePath
-            self._currentDirectory, self._currentFilename = os.path.split(self._currentFilePath)
-            self._currentName, self._currentExtension = os.path.splitext(self._currentFilename)
-            self._currentType = 'mayaAscii' if self._currentExtension.lower() == '.ma' else 'mayaBinary'
+            self._currentDirectory, self._currentFilename = directory, filename
+            self._currentName, self._currentExtension = name, extension
+            self._currentType = fileType
 
-            return success
+            return True
 
     def save(self):
         """
-        Saves and changes made to the open scene file.
+        Saves any changes made to the open scene file.
 
         :rtype: bool
         """
@@ -283,6 +298,38 @@ class MRPCServer(SimpleXMLRPCServer):
         finally:
 
             return success
+
+    def saveAs(self, filePath):
+        """
+        Saves the scene to the specified location.
+
+        :type filePath: str
+        :rtype: bool
+        """
+
+        filePath = os.path.abspath(filePath)
+        directory, filename = os.path.split(filePath)
+        name, extension = os.path.splitext(filename)
+        fileType = 'mayaAscii' if extension == '.ma' else 'mayaBinary'
+
+        try:
+
+            mc.file(rename=filePath)
+            mc.file(save=True, prompt=False, type=fileType)
+
+        except RuntimeError as exception:
+
+            log.error(exception)
+            return False
+
+        finally:
+
+            self._currentFilePath = filePath
+            self._currentDirectory, self._currentFilename = directory, filename
+            self._currentName, self._currentExtension = name, extension
+            self._currentType = fileType
+
+            return True
 
     def ls(self, *args, **kwargs):
         """
@@ -597,7 +644,7 @@ class MRPCServer(SimpleXMLRPCServer):
         if self.standalone:
 
             standalone.uninitialize()
-
+        
         self._BaseServer__shutdown_request = True
 
         return 0
@@ -813,6 +860,20 @@ def waitForRemoteStandalone(client, attempts=5):
     return False
 
 
+def onExit(*args, **kwargs):
+    """
+    Exit callback that releases any resources.
+
+    :rtype: None
+    """
+
+    global __server__
+
+    if isinstance(__server__, MRPCServer):
+
+        __server__.quit()
+
+
 def main(port=8000):
     """
     Main entry point for remote servers.
@@ -822,10 +883,18 @@ def main(port=8000):
     :rtype: None
     """
 
-    with MRPCServer(('localhost', port), requestHandler=SimpleXMLRPCRequestHandler, allow_none=True) as server:
+    global __server__
+
+    # Register exit event
+    #
+    atexit.register(onExit)
+
+    # Startup server
+    #
+    with MRPCServer(('localhost', port), requestHandler=SimpleXMLRPCRequestHandler, allow_none=True) as __server__:
 
         log.info('Starting remote server...')
-        server.serve_forever()
+        __server__.serve_forever()
 
     quit(0)
 
