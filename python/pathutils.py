@@ -330,3 +330,40 @@ def makePathVariable(path, variable):
 
         log.warning(f'Unable to make path variable: {path}')
         return path
+
+
+def filterPath(path, directories):
+    """
+    Filters the supplied compound path based on the supplied list of directories.
+
+    :type path: str
+    :type directories: List[str]
+    :rtype: Iterator[str]
+    """
+
+    directories = tuple(map(os.path.normpath, directories))
+
+    for subpath in path.split(';'):
+
+        normalizedPath = os.path.normpath(subpath)
+        accepted = any(tuple(normalizedPath.startswith(directory) for directory in directories))
+
+        if accepted:
+
+            yield subpath
+
+        else:
+
+            continue
+
+
+def filteredPath(path, directories):
+    """
+    Returns a filtered compound path based on the supplied list of directories.
+
+    :type path: str
+    :type directories: List[str]
+    :rtype: str
+    """
+
+    return ';'.join(tuple(filterPath(path, directories)))

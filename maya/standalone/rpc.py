@@ -19,7 +19,6 @@ log.setLevel(logging.INFO)
 
 __process__ = None
 __client__ = None
-__server__ = None
 
 
 class MRPCServer(SimpleXMLRPCServer):
@@ -644,7 +643,7 @@ class MRPCServer(SimpleXMLRPCServer):
         if self.standalone:
 
             standalone.uninitialize()
-        
+
         self._BaseServer__shutdown_request = True
 
         return 0
@@ -724,35 +723,14 @@ def isRemoteStandaloneRunning():
     return __process__.poll() is None
 
 
-def filterPaths(path, directories):
-    """
-    Filters the supplied compound path based on the supplied list of directories.
-
-    :type path: str
-    :type directories: List[str]
-    :rtype: Iterator[str]
-    """
-
-    for subpath in path.split(';'):
-
-        normalizedPath = os.path.normpath(subpath)
-        accepted = any(tuple(normalizedPath.startswith(directory) for directory in directories))
-
-        if accepted:
-
-            yield subpath
-
-        else:
-
-            continue
-
-
 def sanitizeEnvironment():
     """
     Returns a sanitized Maya environment.
 
     :rtype: Dict[str, str]
     """
+
+    from ...python import pathutils  # This is here so the rpc module can still run independently from the server side!
 
     windows = os.path.normpath(os.environ['WINDIR'])
     programFiles32Bit = os.path.normpath(os.environ['ProgramFiles(x86)'])
@@ -763,11 +741,11 @@ def sanitizeEnvironment():
     directories = (windows, programFiles32Bit, programFiles64Bit, appData, cwd, userDirectory)
 
     env = dict(os.environ)
-    env['PATH'] = ';'.join(tuple(filterPaths(os.environ['PATH'], directories)))
-    env['PYTHONPATH'] = ';'.join(tuple(filterPaths(os.environ['PYTHONPATH'], directories)))
-    env['MAYA_SCRIPT_PATH'] = ';'.join(tuple(filterPaths(os.environ['MAYA_SCRIPT_PATH'], directories)))
-    env['MAYA_PLUG_IN_PATH'] = ';'.join(tuple(filterPaths(os.environ['MAYA_PLUG_IN_PATH'], directories)))
-    env['MAYA_MODULE_PATH'] = ';'.join(tuple(filterPaths(os.environ['MAYA_MODULE_PATH'], directories)))
+    env['PATH'] = pathutils.filteredPath(os.environ['PATH'], directories)
+    env['PYTHONPATH'] = pathutils.filteredPath(os.environ['PYTHONPATH'], directories)
+    env['MAYA_SCRIPT_PATH'] = pathutils.filteredPath(os.environ['MAYA_SCRIPT_PATH'], directories)
+    env['MAYA_PLUG_IN_PATH'] = pathutils.filteredPath(os.environ['MAYA_PLUG_IN_PATH'], directories)
+    env['MAYA_MODULE_PATH'] = pathutils.filteredPath(os.environ['MAYA_MODULE_PATH'], directories)
 
     return env
 
@@ -860,20 +838,6 @@ def waitForRemoteStandalone(client, attempts=5):
     return False
 
 
-def onExit(*args, **kwargs):
-    """
-    Exit callback that releases any resources.
-
-    :rtype: None
-    """
-
-    global __server__
-
-    if isinstance(__server__, MRPCServer):
-
-        __server__.quit()
-
-
 def main(port=8000):
     """
     Main entry point for remote servers.
@@ -883,18 +847,13 @@ def main(port=8000):
     :rtype: None
     """
 
-    global __server__
-
-    # Register exit event
-    #
-    atexit.register(onExit)
-
-    # Startup server
-    #
-    with MRPCServer(('localhost', port), requestHandler=SimpleXMLRPCRequestHandler, allow_none=True) as __server__:
+    with MRPCServer(('localhost', port), requestHandler=SimpleXMLRPCRequestHandler, allow_none=True) as server:
 
         log.info('Starting remote server...')
-        __server__.serve_forever()
+
+        atexit.register(server.quit)
+        server.serve_forever()
+        atexit.unregister(server.quit)
 
     quit(0)
 
