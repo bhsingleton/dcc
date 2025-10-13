@@ -30,7 +30,32 @@ while not node.isDone():
   print(node.name())
   node.next()
 ```
+  
+# Perforce
+Perforce integration is important part of any DCC pipeline.  
+In order to begin using it you must make sure several environment variables have been defined: `P4USER`, `P4PORT` and `P4HOST`.  
+  
+> [!TIP]
+> This can be done through the `sys` module via the `environ` dictionary!
 
+Once done client management can be performed through the `dcc.perforce.clientutils` module.  
+The `changeClient` function provides a convenient dialog to quickly swap between clients (otherwise known as workspaces).
+  
+<img width="202" height="128" alt="ChangeClientDialog" src="https://github.com/user-attachments/assets/075a0cd7-de10-4102-b75c-18b41b3ddd39" />
+  
+Most of the core commands can be located inside the `dcc.perforce.cmds` subpackage.  
+Whereas all the convenience functionality can be located inside the `dcc.perforce.p4utils` subpackage.  
+For example, all missing scene textures can be synced via:  
+  
+```
+from dcc.perforce import p4utils
+p4utils.syncMissingTextures()
+```
+  
+> [!IMPORTANT]
+> The perforce API does not come bundled with the dcc package!  
+> However, it can be installed via the `dcc.python.piputils` subpackage using the `installPackage('p4python', user=True)` function.
+  
 # FBX
 Exporting game assets can be a pain, especially across multiple DCCs.  
 To remedy this the dcc package comes with an fbx sub-package to assist in day-to-day exporting tasks.  
@@ -72,6 +97,6 @@ window.show()
 * **Mesh**: Specifies the nodes that should be selected for export and which mesh data components should be included.
 * **Custom Scripts**: Provides developer hooks to inject their own pre/post export code on export.
 
-### Where is my data?
-All data gets serialized to the file properties.  
-This allows your data to be accessed externally by other tools for referencing.
+> [!NOTE]
+> All data gets serialized to the file properties.
+> This allows your data to be accessed externally by other tools for referencing.
