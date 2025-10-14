@@ -6,10 +6,10 @@ import subprocess
 
 from maya import cmds as mc, standalone
 from maya.api import OpenMaya as om
+from collections.abc import Sequence
+from http.client import HTTPConnection
 from xmlrpc.server import SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
 from xmlrpc.client import ServerProxy, Transport, Fault
-from http.client import HTTPConnection
-from collections.abc import Sequence
 
 import logging
 logging.basicConfig()
@@ -77,6 +77,7 @@ class MRPCServer(SimpleXMLRPCServer):
         self.register_function(self.setAttr, 'setAttr')
         self.register_function(self.deleteAttr, 'deleteAttr')
         self.register_function(self.connectAttr, 'connectAttr')
+        self.register_function(self.xform, 'xform')
 
         # Initialize standalone mode
         #
@@ -632,6 +633,29 @@ class MRPCServer(SimpleXMLRPCServer):
         finally:
 
             return success
+
+    def xform(self, *nodes, **kwargs):
+        """
+        This command can be used query/set any element in a transformation node.
+        It can also be used to query some values that cannot be set directly such as the transformation matrix or the bounding box.
+        It can also set both pivot points to convenient values.
+
+        :rtype: Any
+        """
+
+        results = None
+
+        try:
+
+            results = mc.xform(*nodes, **kwargs)
+
+        except RuntimeError as exception:
+
+            log.error(exception)
+
+        finally:
+
+            return results
 
     def quit(self):
         """
