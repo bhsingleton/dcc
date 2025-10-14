@@ -581,6 +581,7 @@ def changeClient():
 
         return False
 
+
 def detectClient(filePath):
     """
     Returns the client associated with the given file path.
