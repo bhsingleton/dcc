@@ -11,7 +11,6 @@ from . import createAdapter
 from ..python import importutils
 
 P4 = importutils.tryImport('P4', __locals__=locals(), __globals__=globals())
-ConnectionStatus = namedtuple('ConnectionStatus', ('connected', 'expiration', 'timestamp'))
 
 import logging
 logging.basicConfig()
@@ -19,6 +18,7 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
+ConnectionStatus = namedtuple('ConnectionStatus', ('connected', 'expiration', 'timestamp'))
 __connections__ = {}  # type: dict[str, ConnectionStatus]
 
 
@@ -599,7 +599,7 @@ def isConnected(*args, **kwargs):
 
     # Check if connection status exists
     #
-    server = os.environ.get('P4PORT', 'localhost:1666')
+    server = kwargs.get('port', os.environ.get('P4PORT', 'localhost:1666'))
     status = __connections__.get(server, None)
 
     if isinstance(status, ConnectionStatus):
@@ -640,7 +640,7 @@ def isConnected(*args, **kwargs):
         try:
 
             p4.connect()
-            specs = p4.run('login', '-s')
+            specs = p4.run('-r', '0', 'login', '-s')
 
             connected, expiration = p4.connected(), int(specs[0]['TicketExpiration'])
             __connections__[p4.port] = ConnectionStatus(connected, expiration, currentTime)
