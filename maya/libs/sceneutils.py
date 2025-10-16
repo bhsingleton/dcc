@@ -618,7 +618,7 @@ def decomposeFlags(args):
     occurrences.append(len(args))
 
     for (startIndex, endIndex) in zip(occurrences[:-1], occurrences[1:]):
-        
+
         flag = args[startIndex]
         numArgs = (endIndex - startIndex) - 1
 
@@ -647,11 +647,14 @@ def getFileHeader(filePath):
 
     # Evaluate file type
     #
-    filename = os.path.basename(filePath)
-    isMayaAscii = filename.endswith('.ma')
+    fullFilePath = os.path.expandvars(filePath)
 
-    if not isMayaAscii:
+    isFile = os.path.isfile(fullFilePath)
+    isMayaAscii = fullFilePath.endswith('.ma')
 
+    if not (isFile and isMayaAscii):
+
+        log.warning(f'Unable to read file header from: {fullFilePath}')
         return None
 
     # Perform a shallow read of the Maya file
@@ -662,10 +665,10 @@ def getFileHeader(filePath):
     units = None
     information = {}
 
-    with open(filePath, 'r') as asciiFile:
+    with open(fullFilePath, 'r') as asciiFile:
 
         line = ''
-        buffer = ''
+        commandline = ''
 
         while True:
 
@@ -766,10 +769,10 @@ def getFileReferences(filePath):
     """
 
     header = getFileHeader(filePath)
-    state = {}
+    references = {}
 
     for reference in header.references:
 
-        state[reference.name] = reference.loaded
+        references[reference.name] = reference.loaded
 
-    return state
+    return references
