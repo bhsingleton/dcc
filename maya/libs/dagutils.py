@@ -1,6 +1,5 @@
 import os
 import re
-import shutil
 
 from maya import cmds as mc, OpenMaya as legacy
 from maya.api import OpenMaya as om, OpenMayaAnim as oma
