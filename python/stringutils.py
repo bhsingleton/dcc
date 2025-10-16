@@ -14,6 +14,7 @@ log.setLevel(logging.INFO)
 __title__ = re.compile(r'([A-Z]?[a-z0-9]*)')
 __number__ = re.compile(r'(?:[+-])?(?:[0-9])+(?:\.{1}[0-9]+)?(?:e{1}\-{1}[0-9]+)?')
 __states__ = ('true', 'on', 'yes')
+__escape_chars__ = ''.join([chr(char) for char in range(1, 32)])
 
 
 def isNullOrEmpty(value):

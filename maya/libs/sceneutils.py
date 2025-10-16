@@ -1,15 +1,47 @@
 import os
+import shlex
 
 from maya import cmds as mc, mel as mel
 from maya.api import OpenMaya as om
+from collections import namedtuple
 from itertools import chain
 from . import dagutils
 from ..decorators import undo
+from ...python import stringutils
 
 import logging
 logging.basicConfig()
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
+
+
+Reference = namedtuple('Reference', ('name', 'namespace', 'filePath', 'loaded'))
+Requirement = namedtuple('Requirement', ('plugin', 'version', 'nodeType', 'dataType'))
+Units = namedtuple('Units', ('linear', 'angle', 'time'))
+FileHeader = namedtuple(
+    'FileHeader',
+    (
+        'name',
+        'version',
+        'lastModified',
+        'codeset',
+        'references',
+        'requirements',
+        'units',
+        'information'
+    )
+)
+
+
+def getFileType(filePath):
+    """
+    Returns the Maya file type from the supplied path.
+
+    :type filePath: str
+    :rtype: str
+    """
+
+    return 'mayaAscii' if filePath.endswith('.ma') else 'mayaBinary' if filePath.endswith('.mb') else ''
 
 
 def isNewScene():
@@ -58,8 +90,8 @@ def saveScene():
     # Get current file type
     # Otherwise, Maya will assume binary for all files!
     #
-    extension = currentExtension()
-    fileType = 'mayaAscii' if extension.lower() == 'ma' else 'mayaBinary'
+    filename = currentFilename()
+    fileType = getFileType(filename)
 
     # Save changes to scene file
     #
@@ -560,3 +592,184 @@ def getMayaVersion():
     """
 
     return mc.about(version=True)
+
+
+def decomposeFlags(args):
+    """
+    Returns an organized collection of flags.
+
+    :type args: List[str]
+    :rtype: dict[str, str]
+    """
+
+    # Evaluate flag positions
+    #
+    occurrences = [i for (i, arg) in enumerate(args) if arg.startswith('-')]
+    numOccurrences = len(occurrences)
+
+    flags = {}
+
+    if numOccurrences == 0:
+
+        return flags
+
+    # Group flags together
+    #
+    occurrences.append(len(args))
+
+    for (startIndex, endIndex) in zip(occurrences[:-1], occurrences[1:]):
+        
+        flag = args[startIndex]
+        numArgs = (endIndex - startIndex) - 1
+
+        if numArgs == 0:
+
+            flags[flag] = True
+
+        elif numArgs == 1:
+
+            flags[flag] = args[startIndex + 1]
+
+        else:
+
+            flags[flag] = args[(startIndex + 1):endIndex]
+
+    return flags
+
+
+def getFileHeader(filePath):
+    """
+    Returns the file header from the supplied Maya ascii file.
+
+    :type filePath: str
+    :rtype: Union[FileHeader, None]
+    """
+
+    # Evaluate file type
+    #
+    filename = os.path.basename(filePath)
+    isMayaAscii = filename.endswith('.ma')
+
+    if not isMayaAscii:
+
+        return None
+
+    # Perform a shallow read of the Maya file
+    #
+    name, version, lastModified, codeset = '', '', '', ''
+    references = []
+    requirements = []
+    units = None
+    information = {}
+
+    with open(filePath, 'r') as asciiFile:
+
+        line = ''
+        buffer = ''
+
+        while True:
+
+            # Check for empty string
+            #
+            line = asciiFile.readline().strip(stringutils.__escape_chars__)
+            numChars = len(line)
+
+            if numChars == 0:
+
+                break
+
+            # Check if this is a comment
+            #
+            if line.startswith('//'):
+
+                comment = line.lstrip('//')
+
+                if comment.startswith('Maya'):
+
+                    version = comment
+
+                elif comment.startswith('Name:'):
+
+                    name = comment.replace('Name: ', '')
+
+                elif comment.startswith('Last modified:'):
+
+                    lastModified = comment.replace('Last modified: ', '')
+
+                elif comment.startswith('Codeset:'):
+
+                    codeset = comment.replace('Codeset: ', '')
+
+                else:
+
+                    pass
+
+                continue
+
+            # Concatenate command-line
+            #
+            commandline = line
+
+            while not commandline.endswith(';'):
+
+                line = asciiFile.readline().strip(stringutils.__escape_chars__)
+                commandline += f' {line}'
+
+            # Evaluate command
+            #
+            command, *args = shlex.split(commandline.rstrip(';'))
+
+            if command == 'file':
+
+                *args, filePath = args
+                flags = decomposeFlags(args)
+                containsPreferences = flags.get('-rdi', False)
+
+                if not containsPreferences:
+
+                    continue
+
+                reference = Reference(flags['-rfn'], flags['-ns'], filePath, not flags.get('-dr', False))
+                references.append(reference)
+
+            elif command == 'requires':
+
+                *args, pluginName, pluginVersion = args
+                flags = decomposeFlags(args)
+
+                requirement = Requirement(pluginName, pluginVersion, flags.get('-nodeType', None), flags.get('-dataType', None))
+                requirements.append(requirement)
+
+            elif command == 'currentUnit':
+
+                flags = decomposeFlags(args)
+                units = Units(flags.get('-l', None), flags.get('-a', None), flags.get('-t', None))
+
+            elif command == 'fileInfo':
+
+                information[args[0]] = args[1]
+
+            else:
+
+                break
+
+    return FileHeader(name, version, lastModified, codeset, references, requirements, units, information)
+
+
+def getFileReferences(filePath):
+    """
+    Returns the references from the supplied file path.
+    This method only works on ascii based Maya files!
+
+    :type filePath: str
+    :rtype: dict[str, bool]
+    """
+
+    header = getFileHeader(filePath)
+    state = {}
+
+    for reference in header.references:
+
+        state[reference.name] = reference.loaded
+
+    return state
