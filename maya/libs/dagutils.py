@@ -1,5 +1,6 @@
 import os
 import re
+import shutil
 
 from maya import cmds as mc, OpenMaya as legacy
 from maya.api import OpenMaya as om, OpenMayaAnim as oma
@@ -1409,6 +1410,68 @@ def iterNodesByPattern(*patterns, apiType=om.MFn.kDependencyNode, exactType=Fals
         else:
 
             continue
+
+
+def iterTopLevelReferences(skipUnloaded=False):
+    """
+    Returns a generator that yields top-level references.
+
+    :type skipUnloaded: bool
+    :rtype: Iterator[om.MObject]
+    """
+
+    # Iterate through reference nodes
+    #
+    fnReference = om.MFnReference()
+
+    for referenceNode in iterNodes(apiType=om.MFn.kReference):
+
+        try:
+
+            # Evaluate parent reference
+            #
+            fnReference.setObject(referenceNode)
+            isTopLevelReference = fnReference.parentReference().isNull()
+
+            if not isTopLevelReference:
+
+                continue
+
+            # Evaluate load state
+            #
+            isUnloaded = not fnReference.isLoaded()
+
+            if skipUnloaded and isUnloaded:
+
+                continue
+
+            yield referenceNode
+
+        except RuntimeError as exception:  # Reserved for corrupted references!
+
+            log.debug(exception)
+            continue
+
+
+def iterChildReferences(referenceNode):
+    """
+    Returns a generator that yields child references from the supplied reference node.
+
+    :type referenceNode: om.MObject
+    :rtype: Iterator[om.MObject]
+    """
+
+    fnReference = om.MFnReference()
+
+    try:
+
+        fnReference.setObject(referenceNode)
+        yield from map(lambda node: node.hasFn(om.MFn.kReference) and fnReference.containsNodeExactly(node), fnReference.nodes())
+
+    except RuntimeError as exception:  # Reserved for corrupted references!
+
+        log.debug(exception)
+        return iter([])
 
 
 def iterDependencies(node, apiType, typeName=None, direction=om.MItDependencyGraph.kDownstream, traversal=om.MItDependencyGraph.kDepthFirst):
