@@ -4,19 +4,12 @@ import getpass
 import socket
 
 from ..python import importutils
+P4 = importutils.tryImport('P4', __locals__=locals(), __globals__=globals())
 
 import logging
 logging.basicConfig()
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
-
-
-OS_NAME = platform.system()
-PING_FLAG = '-n' if OS_NAME.lower() == 'windows' else '-c'
-CREATION_FLAGS = 0x08000000
-
-
-P4 = importutils.tryImport('P4', __locals__=locals(), __globals__=globals())
 
 
 def createAdapter(**kwargs):
@@ -84,35 +77,3 @@ def createAdapter(**kwargs):
     p4.password = str(password)
 
     return p4
-
-
-def isConnected(timeout=1.0):
-    """
-    Evaluates if the perforce server is available.
-
-    :type timeout: Union[int, float]
-    :rtype: bool
-    """
-
-    url = os.environ.get('P4PORT', 'localhost:1666')
-    *prefixes, host, port = url.split(':')
-
-    serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    serverSocket.settimeout(timeout)
-
-    connected = False
-
-    try:
-
-        connected = serverSocket.connect_ex((host, int(port))) == 0
-
-    except Exception as exception:
-
-        log.error(exception)
-
-    finally:
-
-        serverSocket.shutdown(socket.SHUT_RDWR)
-        serverSocket.close()
-
-        return connected

@@ -1,7 +1,7 @@
 import os
 import getpass
 
-from .. import cmds, isConnected
+from .. import cmds
 from ..dialogs import qlogindialog
 from ...decorators import abstractdecorator
 
@@ -28,7 +28,7 @@ class Relogin(abstractdecorator.AbstractDecorator):
 
         # Check if server is available
         #
-        connected = isConnected()
+        connected, expiration = cmds.isConnected()
 
         if not connected:
 
@@ -36,9 +36,7 @@ class Relogin(abstractdecorator.AbstractDecorator):
 
         # Evaluate expiration time
         #
-        loginExpiration = cmds.loginExpiration()
-
-        if loginExpiration > 0:
+        if expiration > 0:
 
             return
 

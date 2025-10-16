@@ -5,8 +5,13 @@ Each command is capable of augmenting the environment settings to support client
 """
 import os
 
+from time import time
+from collections import namedtuple
 from . import createAdapter
 from ..python import importutils
+
+P4 = importutils.tryImport('P4', __locals__=locals(), __globals__=globals())
+ConnectionStatus = namedtuple('ConnectionStatus', ('connected', 'expiration', 'timestamp'))
 
 import logging
 logging.basicConfig()
@@ -14,7 +19,7 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-P4 = importutils.tryImport('P4', __locals__=locals(), __globals__=globals())
+__connections__ = {}  # type: dict[str, ConnectionStatus]
 
 
 def logResults(results, **kwargs):
@@ -580,33 +585,71 @@ def login(password, **kwargs):
         return success
 
 
-def loginExpiration(*args, **kwargs):
+def isConnected(*args, **kwargs):
     """
-    Returns the amount of time left before the specified user's session expires.
-    The time returned is in seconds.
+    Evaluates if the user is connected to P4 and the time left before their session expires.
+    The time is returned in seconds!
 
     :key user: str
     :key port: str
-    :rtype: int
+    :rtype: Tuple[bool, int]
     """
 
-    # Create repository
+    global __connections__
+
+    # Check if connection status exists
     #
-    p4 = createAdapter(**kwargs)
-    expiration = 0
+    server = os.environ.get('P4PORT', 'localhost:1666')
+    status = __connections__.get(server, None)
 
-    try:
+    if isinstance(status, ConnectionStatus):
 
-        p4.connect()
-        specs = p4.run('login', '-s')
+        # Evaluate connection status
+        #
+        if not status.connected:
 
-        expiration = int(specs[0]['TicketExpiration'])
+            del __connections__[server]
+            return isConnected(*args, **kwargs)
 
-    except P4.P4Exception:
+        # Evaluate expiration time
+        # If expired go ahead and repoll the connection
+        #
+        currentTime = time()
+        elapsedTime = currentTime - status.timestamp
 
-        logErrors(p4.errors, **kwargs)
+        expired = elapsedTime > status.expiration
 
-    finally:
+        if expired:
 
-        p4.disconnect()
-        return expiration
+            del __connections__[server]
+            return isConnected(*args, **kwargs)
+
+        else:
+
+            return status.connected, (status.expiration - elapsedTime)
+
+    else:
+
+        # Poll connection status
+        #
+        p4 = createAdapter(**kwargs)
+        currentTime = time()
+
+        connected, expiration = False, 0
+
+        try:
+
+            p4.connect()
+            specs = p4.run('login', '-s')
+
+            connected, expiration = p4.connected(), int(specs[0]['TicketExpiration'])
+            __connections__[p4.port] = ConnectionStatus(connected, expiration, currentTime)
+
+        except P4.P4Exception:
+
+            logErrors(p4.errors, **kwargs)
+
+        finally:
+
+            p4.disconnect()
+            return connected, expiration
