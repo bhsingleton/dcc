@@ -1,3 +1,4 @@
+import os
 import json
 import zlib
 
@@ -54,6 +55,14 @@ def load(filePath, **kwargs):
     :rtype: Any
     """
 
+    # Check if file exists
+    #
+    if not os.path.isfile(filePath):
+
+        return kwargs.get('default', None)
+
+    # Load json string from from file
+    #
     with open(filePath, mode='r') as jsonFile:
 
         return loads(jsonFile.read(), **kwargs)
