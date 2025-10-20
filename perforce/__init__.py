@@ -77,3 +77,37 @@ def createAdapter(**kwargs):
     p4.password = str(password)
 
     return p4
+
+
+def isOnline(url, timeout=1.0):
+    """
+    Evaluates if the supplied perforce server is available.
+
+    :type url: str
+    :type timeout: Union[int, float]
+    :rtype: bool
+    """
+
+    *prefixes, host, port = url.split(':')
+
+    serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    serverSocket.settimeout(timeout)
+
+    connected = False
+
+    try:
+
+        connected = serverSocket.connect_ex((host, int(port))) == 0
+
+        if connected:
+
+            serverSocket.shutdown(socket.SHUT_RDWR)
+            serverSocket.close()
+
+    except Exception as exception:
+
+        log.error(exception)
+
+    finally:
+
+        return connected

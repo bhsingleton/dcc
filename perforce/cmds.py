@@ -7,7 +7,7 @@ import os
 
 from time import time
 from collections import namedtuple
-from . import createAdapter
+from . import createAdapter, isOnline
 from ..python import importutils
 
 P4 = importutils.tryImport('P4', __locals__=locals(), __globals__=globals())
@@ -20,6 +20,7 @@ log.setLevel(logging.INFO)
 
 ConnectionStatus = namedtuple('ConnectionStatus', ('connected', 'expiration', 'timestamp'))
 __connections__ = {}  # type: dict[str, ConnectionStatus]
+__retry_timeout__ = 300.0  # 5 Minutes
 
 
 def logResults(results, **kwargs):
@@ -590,57 +591,86 @@ def isConnected(*args, **kwargs):
     Evaluates if the user is connected to P4 and the time left before their session expires.
     The time is returned in seconds!
 
-    :key user: str
-    :key port: str
+    :type retry: bool
     :rtype: Tuple[bool, int]
     """
 
-    global __connections__
+    global __connections__, __retry_timeout__
 
-    # Check if connection status exists
+    # Check if connection requires retesting
+    # If so, delete cached connection status and try again!
     #
     server = kwargs.get('port', os.environ.get('P4PORT', 'localhost:1666'))
     status = __connections__.get(server, None)
 
-    if isinstance(status, ConnectionStatus):
+    exists = isinstance(status, ConnectionStatus)
+    retry = kwargs.pop('retry', False)
+
+    if exists and retry:
+
+        del __connections__[server]
+        return isConnected(*args, **kwargs)
+
+    # Check if connection status already exists
+    #
+    if exists:
 
         # Evaluate connection status
-        #
-        if not status.connected:
-
-            del __connections__[server]
-            return isConnected(*args, **kwargs)
-
-        # Evaluate expiration time
-        # If expired go ahead and repoll the connection
         #
         currentTime = time()
         elapsedTime = currentTime - status.timestamp
 
-        expired = elapsedTime > status.expiration
+        if status.connected:
 
-        if expired:
+            # Evaluate expiration time
+            # If expired go ahead and repoll the connection
+            #
+            expired = elapsedTime > status.expiration
 
-            del __connections__[server]
-            return isConnected(*args, **kwargs)
+            if expired:
+
+                return isConnected(*args, retry=True, **kwargs)
+
+            else:
+
+                return status.connected, (status.expiration - elapsedTime)
 
         else:
 
-            return status.connected, (status.expiration - elapsedTime)
+            # Check if user can retry
+            #
+            canRetry = elapsedTime >= __retry_timeout__
+
+            if canRetry:
+
+                return isConnected(*args, retry=True, **kwargs)
+
+            else:
+
+                return status.connected, status.expiration
 
     else:
+
+        # Check if perforce server is available
+        #
+        connected, expiration = False, 0
+        currentTime = time()
+
+        if not isOnline(server):
+
+            status = ConnectionStatus(connected, expiration, currentTime)
+            __connections__[server] = status
+
+            return status
 
         # Poll connection status
         #
         p4 = createAdapter(**kwargs)
-        currentTime = time()
-
-        connected, expiration = False, 0
 
         try:
 
             p4.connect()
-            specs = p4.run('-r', '0', 'login', '-s')
+            specs = p4.run('login', '-s')
 
             connected, expiration = p4.connected(), int(specs[0]['TicketExpiration'])
             __connections__[p4.port] = ConnectionStatus(connected, expiration, currentTime)
