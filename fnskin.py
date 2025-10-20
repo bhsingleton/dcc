@@ -9,6 +9,10 @@ elif __application__ == DCC.MAX:
 
     from .max.fnskin import *
 
+elif __application__ == DCC.BLENDER:
+
+    from .blender.fnskin import *
+
 else:
 
     raise ModuleNotFoundError(f'Unable to import DCC skin-helpers for: {__executable__}!')

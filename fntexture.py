@@ -9,6 +9,10 @@ elif __application__ == DCC.MAX:
 
     from .max.fntexture import *
 
+elif __application__ == DCC.BLENDER:
+
+    from .blender.fntexture import *
+
 else:
 
     raise ModuleNotFoundError(f'Unable to import DCC texture-helpers for: {__executable__}!')

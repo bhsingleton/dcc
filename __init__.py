@@ -12,6 +12,7 @@ class DCC(IntEnum):
     UNKNOWN = -1
     MAX = 0
     MAYA = 1
+    BLENDER = 2
 
 
 def detectApplication(executable):
@@ -44,6 +45,10 @@ def detectApplication(executable):
         elif segment.startswith('Maya'):
 
             return DCC.MAYA
+
+        elif segment.startswith('Blender'):
+
+            return DCC.BLENDER
 
         else:
 

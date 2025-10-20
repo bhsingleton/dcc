@@ -9,6 +9,10 @@ elif __application__ == DCC.MAX:
 
     from .max.fnscene import *
 
+elif __application__ == DCC.BLENDER:
+
+    from .blender.fnscene import *
+
 else:
 
     raise ModuleNotFoundError(f'Unable to import DCC scene-helpers for: {__executable__}!')

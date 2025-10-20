@@ -9,6 +9,10 @@ elif __application__ == DCC.MAX:
 
     from .max.fnnode import *
 
+elif __application__ == DCC.BLENDER:
+
+    from .blender.fnnode import *
+
 else:
 
     raise ModuleNotFoundError(f'Unable to import DCC node-helpers for: {__executable__}!')

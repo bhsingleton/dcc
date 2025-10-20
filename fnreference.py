@@ -9,6 +9,10 @@ elif __application__ == DCC.MAX:
 
     from .max.fnreference import *
 
+elif __application__ == DCC.BLENDER:
+
+    from .blender.fnreference import *
+
 else:
 
     raise ModuleNotFoundError(f'Unable to import DCC reference-helpers for: {__executable__}!')
