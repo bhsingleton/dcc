@@ -136,16 +136,17 @@ def createMenuFromXmlElement(xmlElement, parent=None):
         #
         label = xmlElement.get('title', default='')
         objectName = stringutils.slugify(label)
+        tearOff = stringutils.eval(xmlElement.get('tearOff', default='False'))
 
         menu = None
 
         if mc.objectTypeUI(parent, isType='menu'):
 
-            menu = mc.menuItem(objectName, label=label, subMenu=True, parent=parent)
+            menu = mc.menuItem(objectName, label=label, subMenu=True, tearOff=tearOff, parent=parent)
 
         else:
 
-            menu = mc.menu(objectName, label=label, tearOff=True, parent=parent)
+            menu = mc.menu(objectName, label=label, tearOff=tearOff, parent=parent)
 
         # Append child menu items
         #
