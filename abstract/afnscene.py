@@ -4,7 +4,7 @@ import subprocess
 from abc import ABCMeta, abstractmethod
 from . import afnbase
 from .. import fnnode, fntexture
-from ..python import pathutils, stringutils
+from ..python import pathutils, stringutils, ffmpegutils
 from ..decorators.classproperty import classproperty
 from ..vendor.six import with_metaclass
 from ..vendor.six.moves import collections_abc
@@ -572,27 +572,11 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
         """
         Locates the FFmpeg installation from the user's machine.
         If FFmpeg cannot be found then an empty string is returned!
-        If multiple installations are found then a TypeError will be raised!
 
         :rtype: str
         """
 
-        paths = os.environ.get('PATH', '').split(';')
-
-        found = [os.path.join(x, 'ffmpeg.exe') for x in paths if os.path.exists(os.path.join(x, 'ffmpeg.exe'))]
-        numFound = len(found)
-
-        if numFound == 0:
-
-            return ''
-
-        elif numFound == 1:
-
-            return os.path.abspath(found[0])
-
-        else:
-
-            raise TypeError('findFFmpeg() multiple installations found: %s' % found)
+        return ffmpegutils.findFFmpeg()
 
     def hasFFmpeg(self):
         """
@@ -601,7 +585,7 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
         :rtype: bool
         """
 
-        return os.path.exists(self.findFFmpeg())
+        return ffmpegutils.hasFFmpeg()
 
     @abstractmethod
     def playblast(self, filePath=None, startFrame=None, endFrame=None, autoplay=True):
