@@ -79,7 +79,7 @@ def isAdmin():
     :rtype: bool
     """
 
-    return ctypes.windll.shell32.IsUserAnAdmin()
+    return bool(ctypes.windll.shell32.IsUserAnAdmin())
 
 
 def hasPackage(name):
