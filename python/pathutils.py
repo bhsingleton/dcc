@@ -2,13 +2,15 @@ import os
 import re
 import sys
 import stat
+import shutil
+import ctypes
+import subprocess
 import platform
 
 from string import ascii_uppercase
 from ctypes import windll
 from fnmatch import fnmatch
-from typing import List
-from dcc.python import stringutils
+from . import stringutils, piputils
 
 import logging
 logging.basicConfig()
@@ -367,3 +369,56 @@ def filteredPath(path, directories):
     """
 
     return ';'.join(tuple(filterPath(path, directories)))
+
+
+def moveDirectory(source, destination):
+    """
+    Moves the source directory into the destination directory.
+    Unlike the `shutil.move` function this function can handle administrative protected directories.
+    With that said...please use with caution!
+
+    :type source: str
+    :type destination: str
+    :rtype: bool
+    """
+
+    # Check if source directory is valid
+    #
+    if not os.path.isdir(source):
+
+        log.warning(f'Cannot locate source directory: {source}')
+        return False
+
+    # Check if target directory is valid
+    #
+    if not os.path.isdir(destination):
+
+        log.warning(f'Cannot locate target directory: {source}')
+        return False
+
+    # Check if directories requires administrative permission
+    #
+    isAdmin = piputils.isAdmin()
+    requiresAdmin = not (os.access(source, os.W_OK) and os.access(destination, os.W_OK))
+
+    if not isAdmin and requiresAdmin:
+
+        exitCode = None
+
+        try:
+
+            exitCode = ctypes.windll.shell32.ShellExecuteW(None, 'runas', 'cmd', f'/C move "{source}" "{destination}"', None, 1)
+
+        except subprocess.CalledProcessError as exception:
+
+            log.error(exception.output)
+            exitCode = exception.returncode
+
+        finally:
+
+            return bool(exitCode == 42)
+
+    else:
+
+        shutil.move(source, destination)
+        return True
