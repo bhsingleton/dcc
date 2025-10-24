@@ -2,7 +2,8 @@ import os
 import json
 
 from maya import cmds as mc
-from dcc.python import stringutils
+from ...json import jsonutils
+from ...python import stringutils
 
 import logging
 logging.basicConfig()
@@ -46,7 +47,7 @@ def hasCategory(command, category):
         return False
 
 
-def loadUserCommands(filePath):
+def loadRuntimeCommands(filePath):
     """
     Returns the user commands from the supplied file.
 
@@ -81,22 +82,21 @@ def loadUserCommands(filePath):
         return category, commands
 
 
-def installRuntimeCommands(commandSpec):
+def installRuntimeCommands(filePath):
     """
-    Installs runtime-commands using the supplied command spec.
+    Installs runtime-commands from the supplied JSON file.
 
-    :type commandSpec: List[dict]
-    :rtype: None
+    :type commandSpec: str
+    :rtype: bool
     """
 
     # Load user commands
     #
-    category = commandSpec.get('category', '')
-    commands = commandSpec.get('commands', [])
+    category, commands = loadRuntimeCommands(filePath)
 
     if stringutils.isNullOrEmpty(category) or stringutils.isNullOrEmpty(commands):
 
-        return
+        return False
 
     # Remove deprecated commands
     #
@@ -159,27 +159,4 @@ def installRuntimeCommands(commandSpec):
                 showInHotkeyEditor=True
             )
 
-
-def installRuntimeCommandsFromFile(filePath):
-    """
-    Installs runtime-commands using the supplied file path.
-
-    :type filePath: str
-    :rtype: None
-    """
-
-    try:
-
-        commandSpec = {}
-
-        with open(filePath, 'r') as jsonFile:
-
-            commandSpec = json.load(jsonFile)
-
-    except (json.JSONDecodeError, OSError) as exception:
-
-        log.warning(exception)
-
-    finally:
-
-        installRuntimeCommands(commandSpec)
+    return True

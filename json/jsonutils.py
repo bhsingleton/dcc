@@ -55,7 +55,7 @@ def load(filePath, **kwargs):
     :rtype: Any
     """
 
-    # Check if file exists
+    # Check if json file exists
     #
     if not os.path.isfile(filePath):
 
