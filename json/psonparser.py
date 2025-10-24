@@ -1,5 +1,6 @@
-import json
+import os
 import sys
+import json
 
 from . import psonremap
 from ..python import importutils, stringutils
@@ -78,7 +79,8 @@ class PSONDecoder(json.JSONDecoder):
         :rtype: None
         """
 
-        cls.__remaps__.update({remap.name: remap for remap in psonremap.iterRemaps()})
+        directory = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'remaps')
+        cls.registerRemaps(directory)
 
     def __init__(self, *args, **kwargs):
         """
@@ -116,6 +118,47 @@ class PSONDecoder(json.JSONDecoder):
     # endregion
 
     # region Methods
+    @classmethod
+    def registerRemaps(cls, directory):
+        """
+        Loads any PSON remaps from the specified directory.
+
+        :type directory: str
+        :rtype: None
+        """
+
+        remaps = psonremap.loadRemaps(directory)
+        cls.__remaps__.update({remap.name: remap for remap in remaps})
+
+    @classmethod
+    def findClass(cls, className, moduleName):
+        """
+        Returns the class associated with the given name.
+
+        :type className: str
+        :type moduleName: str
+        :rtype: Callable
+        """
+
+        # Redundancy check
+        #
+        if any(map(stringutils.isNullOrEmpty, (className, moduleName))):
+
+            return None
+
+        # Check if module already exists inside `sys` modules
+        # If not, then import associated module
+        #
+        module = sys.modules.get(moduleName, None)
+
+        if module is not None:
+
+            return module.__dict__.get(className, None)
+
+        else:
+
+            return importutils.findClass(className, moduleName)
+
     def acceptsObject(self, obj):
         """
         Evaluates whether this deserializer accepts the supplied object.
@@ -204,33 +247,4 @@ class PSONDecoder(json.JSONDecoder):
             self.object_init_hook(instance)
 
         return instance
-
-    @classmethod
-    def findClass(cls, className, moduleName):
-        """
-        Returns the class associated with the given name.
-
-        :type className: str
-        :type moduleName: str
-        :rtype: Callable
-        """
-
-        # Redundancy check
-        #
-        if any(map(stringutils.isNullOrEmpty, (className, moduleName))):
-
-            return None
-
-        # Check if module already exists inside `sys` modules
-        # If not, then import associated module
-        #
-        module = sys.modules.get(moduleName, None)
-
-        if module is not None:
-
-            return module.__dict__.get(className, None)
-
-        else:
-
-            return importutils.findClass(className, moduleName)
     # endregion

@@ -24,47 +24,65 @@ class PSONRemap(object):
     # endregion
 
 
-def iterRemaps():
+def loadRemaps(*paths):
     """
-    Returns the remap objects from the remap directory.
+    Loads any PSON remaps from the specified directory.
 
-    :rtype: Iterator[Remap]
+    :type paths: Union[str, List[str]]
+    :rtype: List[PSONRemap]
     """
 
-    # Iterate through directory
+    # Iterate through paths
     #
-    directory = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'remaps')
-    filenames = os.listdir(directory)
+    remaps = []
 
-    for filename in filenames:
+    for path in paths:
 
-        # Evaluate file extension
+        # Evaluate path type
         #
-        filePath = os.path.join(directory, filename)
+        if os.path.isdir(path):
 
-        if not filePath.endswith('.json'):
+            # Search directory for remap definitions
+            #
+            filePaths = [os.path.join(path, filename) for filename in os.listdir(path)]
+            filteredPaths = tuple(filter(os.path.isfile, filePaths))
 
+            remaps.extend(loadRemaps(*filteredPaths))
+
+        elif os.path.isfile(path):
+
+            # Check if file is valid
+            #
+            if not path.endswith('.json'):
+
+                log.warning(f'Skipping invalid JSON file: {path}')
+                continue
+
+            # Try and load JSON file
+            #
+            try:
+
+                objs = None
+
+                with open(path, mode='r') as jsonFile:
+
+                    objs = json.load(jsonFile)
+
+                # Yield remap objects
+                #
+                for obj in objs:
+
+                    remap = PSONRemap(**obj)
+                    remaps.append(remap)
+
+            except json.JSONDecodeError as error:
+
+                log.warning(error)
+                continue
+
+        else:
+
+            log.warning(f'Skipping invalid path: {path}')
             continue
 
-        # Try and load file contents
-        #
-        try:
-
-            # Load JSON file
-            #
-            objs = None
-
-            with open(filePath, mode='r') as jsonFile:
-
-                objs = json.load(jsonFile)
-
-            # Yield remap objects
-            #
-            for obj in objs:
-
-                yield PSONRemap(**obj)
-
-        except json.JSONDecodeError as error:
-
-            log.warning(error)
-            continue
+    return remaps
