@@ -1,4 +1,5 @@
 import os
+import sys
 import shlex
 
 from maya import cmds as mc, mel as mel
@@ -127,7 +128,10 @@ def isBatchMode():
     :rtype: bool
     """
 
-    return mc.about(query=True, batch=True)
+    isBatching = mc.about(query=True, batch=True)
+    isStandalone = sys.executable.lower().endswith('mayapy.exe')
+
+    return isBatching or isStandalone
 
 
 def currentFilePath():
