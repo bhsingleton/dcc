@@ -1,8 +1,6 @@
 import os
 import re
 import sys
-import atexit
-import subprocess
 
 from maya import cmds as mc, standalone
 from maya.api import OpenMaya as om
@@ -10,6 +8,14 @@ from collections.abc import Sequence
 from http.client import HTTPConnection
 from xmlrpc.server import SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
 from xmlrpc.client import ServerProxy, Transport, Fault
+
+try:
+
+    from PySide6 import QtCore
+
+except ImportError:
+
+    from PySide2 import QtCore
 
 import logging
 logging.basicConfig()
@@ -738,20 +744,23 @@ def isRemoteStandaloneRunning():
 
     # Evaluate global tracker types
     #
-    if not (isinstance(__process__, subprocess.Popen) and isinstance(__client__, MRPCClient)):
+    if not (isinstance(__process__, QtCore.QProcess) and isinstance(__client__, MRPCClient)):
 
         return False
 
-    # Evaluate process poll
+    # Evaluate process state
     #
-    return __process__.poll() is None
+    state = __process__.state()
+    isRunning = state in (QtCore.QProcess.ProcessState.Starting, QtCore.QProcess.ProcessState.Running)
+
+    return isRunning
 
 
-def sanitizeEnvironment():
+def formatEnvironment():
     """
-    Returns a sanitized Maya environment.
+    Returns a formatted Maya environment for a QProcess environment.
 
-    :rtype: Dict[str, str]
+    :rtype: list[str]
     """
 
     from ...python import pathutils  # This is here so the rpc module can still run independently from the server side!
@@ -771,7 +780,7 @@ def sanitizeEnvironment():
     env['MAYA_PLUG_IN_PATH'] = pathutils.filteredPath(os.environ['MAYA_PLUG_IN_PATH'], directories)
     env['MAYA_MODULE_PATH'] = pathutils.filteredPath(os.environ['MAYA_MODULE_PATH'], directories)
 
-    return env
+    return [f'{key}={value}' for (key, value) in env.items()]
 
 
 def initializeRemoteStandalone(port=8000, timeout=3):
@@ -802,9 +811,15 @@ def initializeRemoteStandalone(port=8000, timeout=3):
 
         return None, None
 
-    # Create new process and client with a sanitized environment
+    # Start new process with a sanitized environment
     #
-    __process__ = subprocess.Popen([executable, __file__, str(port)], env=sanitizeEnvironment())
+    __process__ = QtCore.QProcess()
+    __process__.setEnvironment(formatEnvironment())
+
+    __process__.start(executable, [__file__, str(port)])
+
+    # Start client and await response from server
+    #
     __client__ = MRPCClient(
         f'http://localhost:{port}',
         allow_none=True,
@@ -837,7 +852,7 @@ def waitForRemoteStandalone(client, attempts=5):
     #
     if not (isinstance(client, MRPCClient) and isinstance(attempts, int)):
 
-        return
+        return False
 
     # Attempt to contact server
     #
@@ -874,10 +889,7 @@ def main(port=8000):
     with MRPCServer(('localhost', port), requestHandler=SimpleXMLRPCRequestHandler, allow_none=True) as server:
 
         log.info('Starting remote server...')
-
-        atexit.register(server.quit)
         server.serve_forever()
-        atexit.unregister(server.quit)
 
     quit(0)
 
