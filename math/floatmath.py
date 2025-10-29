@@ -1,4 +1,5 @@
 import math
+import sys
 
 import logging
 logging.basicConfig()
@@ -49,10 +50,13 @@ def clamp(value, minValue, maxValue):
     Clamps the supplied value to the specified range.
 
     :type value: Union[int, float]
-    :type minValue: Union[int, float]
-    :type maxValue: Union[int, float]
+    :type minValue: Union[int, float, None]
+    :type maxValue: Union[int, float, None]
     :rtype: Union[int, float]
     """
+
+    minValue = minValue if isinstance(minValue, (int, float)) else -sys.float_info.max
+    maxValue = maxValue if isinstance(maxValue, (int, float)) else sys.float_info.max
 
     if value < minValue:
 
