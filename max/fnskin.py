@@ -43,7 +43,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         """
         Creates a skin and assigns it to the supplied shape.
 
-        :type mesh: fnmesh.FnMesh
+        :type mesh: pymxs.MXSWrapperBase
         :rtype: FnSkin
         """
 

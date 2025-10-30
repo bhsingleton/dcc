@@ -46,7 +46,7 @@ class FnSkin(fnnode.FnNode, afnskin.AFnSkin):
         """
         Creates a skin and assigns it to the supplied shape.
 
-        :type mesh: Any
+        :type mesh: om.MObject
         :rtype: FnSkin
         """
 
