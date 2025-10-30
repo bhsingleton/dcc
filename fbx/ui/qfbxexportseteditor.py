@@ -869,22 +869,38 @@ class QFbxExportSetEditor(qsingletonwindow.QSingletonWindow):
 
             return
 
-        # Get pre-existing names
+        # Get pre-existing node names
         #
         index = indices[0]
         model = index.model()
 
         currentNames = model.itemFromIndex(index)
 
-        # Extend row using selection
+        # Get selected node names
         #
         node = fnnode.FnNode()
-        selectedNames = [node(obj).name() for obj in self.scene.getActiveSelection()]
 
-        nodeNames = [nodeName for nodeName in selectedNames if nodeName not in currentNames]
+        selection = self.scene.getActiveSelection()
+        selectionCount = len(selection)
 
-        # Extend row from node names
+        selectedNames = [None] * selectionCount
+
+        for (i, obj) in enumerate(selection):
+
+            node.setObject(obj)
+            name, namespace = node.name(), node.namespace()
+
+            if stringutils.isNullOrEmpty(namespace):
+
+                selectedNames[i] = name
+
+            else:
+
+                selectedNames[i] = f'{namespace}:{name}'
+
+        # Filter out unique names and extend row
         #
+        nodeNames = [nodeName for nodeName in selectedNames if nodeName not in currentNames]
         numNodeNames = len(nodeNames)
 
         if numNodeNames > 0:
