@@ -296,7 +296,7 @@ class QPlugPath(collections_abc.Sequence):
         Returns an indexed child path.
 
         :type index: int
-        :rtype: QPlugPath
+        :rtype: Union[QPlugPath, None]
         """
 
         # Check if path is valid
@@ -321,7 +321,7 @@ class QPlugPath(collections_abc.Sequence):
 
             else:
 
-                raise IndexError('child() index out of range!')
+                return None
 
         else:
 
