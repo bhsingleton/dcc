@@ -763,7 +763,7 @@ def formatEnvironment():
     :rtype: list[str]
     """
 
-    from ...python import pathutils  # This is here so the rpc module can still run independently from the server side!
+    from ...python import pathutils  # This is here so the rpc module can still run independently on the server side!
 
     windows = os.path.normpath(os.environ['WINDIR'])
     programFiles32Bit = os.path.normpath(os.environ['ProgramFiles(x86)'])
@@ -821,7 +821,7 @@ def initializeRemoteStandalone(port=8000, timeout=3):
     # Start client and await response from server
     #
     __client__ = MRPCClient(
-        f'http://localhost:{port}',
+        f'http://127.0.0.1:{port}',
         allow_none=True,
         use_builtin_types=True,
         transport=MTimeoutTransport(timeout=timeout)
@@ -886,7 +886,7 @@ def main(port=8000):
     :rtype: None
     """
 
-    with MRPCServer(('localhost', port), requestHandler=SimpleXMLRPCRequestHandler, allow_none=True) as server:
+    with MRPCServer(('127.0.0.1', port), requestHandler=SimpleXMLRPCRequestHandler, allow_none=True) as server:
 
         log.info('Starting remote server...')
         server.serve_forever()
