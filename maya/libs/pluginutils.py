@@ -264,6 +264,16 @@ def removeUnknownNodes(pluginName):
     #
     for nodeName in nodeNames:
 
+        # Check if node still exists
+        #
+        exists = mc.objExists(nodeName)
+
+        if not exists:
+
+            continue
+
+        # Check if node is associated with requested plugin
+        #
         associatedPlugin = mc.unknownNode(nodeName, query=True, plugin=True)
 
         if associatedPlugin == pluginName:
@@ -434,6 +444,28 @@ def unloadMentalRayPlugin():
     # Check if mental-ray is loaded
     #
     pluginName = 'mayatomr'
+    isRegistered = mc.pluginInfo(pluginName, query=True, registered=True)
+
+    if isRegistered:
+
+        unloadPlugin(pluginName)
+
+    else:
+
+        removeUnknownNodes(pluginName)
+
+
+def unloadArnoldPlugin():
+    """
+    Unloads the arnold plugin from the open scene file.
+    If the plugin no longer exists then unknown nodes are removed.
+
+    :rtype: None
+    """
+
+    # Check if arnold is loaded
+    #
+    pluginName = 'mtoa'
     isRegistered = mc.pluginInfo(pluginName, query=True, registered=True)
 
     if isRegistered:
