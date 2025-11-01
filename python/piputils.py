@@ -72,7 +72,7 @@ def getPythonInterpreter(**kwargs):
         raise RuntimeError(f'getPythonInterpreter() Unable to locate interpreter relative to: {executable}')
 
 
-def isAdmin():
+def isAdministrator():
     """
     Evaluates if the user has administrative privileges.
 
@@ -80,6 +80,38 @@ def isAdmin():
     """
 
     return bool(ctypes.windll.shell32.IsUserAnAdmin())
+
+
+def requiresAdministrator(**kwargs):
+    """
+    Evaluates if administrator privileges are required based on the supplied commandline arguments.
+
+    :type executable: str
+    :type user: bool
+    :type target: bool
+    :rtype: bool
+    """
+
+    # Check if user flag exists
+    #
+    user = kwargs.get('user', False)
+
+    if user:
+
+        return False
+
+    # Check if a target path exists
+    #
+    target = kwargs.get('target', None)
+    hasTarget = not stringutils.isNullOrEmpty(target)
+
+    if hasTarget:
+
+        return not os.access(target, os.R_OK | os.W_OK | os.X_OK)
+
+    else:
+
+        return not isAdministrator()  # TODO: Find a better fallback solution!
 
 
 def hasPackage(name):
@@ -125,21 +157,31 @@ def ensurePip(**kwargs):
         log.debug('PIP has already been installed!')
         return True
 
+    # Compose arguments
+    #
+    user = kwargs.get('user', False)
+    args = ['-m', 'ensurepip']
+
+    if user:
+
+        args.append('--user')
+
+    if upgrade:
+
+        args.append('--upgrade')
+
     # Evaluate user's administrative privileges
     #
     executable = getPythonInterpreter(**kwargs)
-    user = kwargs.get('user', True)
+    requiresAdmin = requiresAdministrator(**kwargs)
 
-    requiresAdmin = not user and not isAdmin()
+    exitCode = None
 
     if requiresAdmin:
 
         # Try and install PIP via shell
         #
-        args = ['-m', 'ensurepip', '--upgrade'] if user else ['-m', 'ensurepip']
         parameters = ' '.join(args)
-
-        exitCode = None
 
         try:
 
@@ -158,15 +200,9 @@ def ensurePip(**kwargs):
 
         # Try and install PIP via subprocess
         #
-        args = ['-m', 'ensurepip']
-        if user: args.append('--user')
-        if upgrade: args.append('--upgrade')
-
-        exitCode = None
-
         try:
 
-            exitCode = subprocess.check_call(args)
+            exitCode = subprocess.check_call([executable, *args])
 
         except subprocess.CalledProcessError as exception:
 
@@ -202,10 +238,10 @@ def installPackage(name, **kwargs):
     #
     target = kwargs.get('target', None)
     hasTarget = not stringutils.isNullOrEmpty(target)
-    user = kwargs.get('user', True)
+    user = kwargs.get('user', False)
     upgrade = kwargs.get('upgrade', False)
     
-    args = [executable, '-m', 'pip', 'install', name]
+    args = ['-m', 'pip', 'install', name]
 
     if hasTarget:
 
@@ -225,16 +261,16 @@ def installPackage(name, **kwargs):
     
     # Evaluate user permissions
     #
-    requiresAdmin = (not hasTarget and not user) and not isAdmin()
-    
+    log.info(f'Installing python package: {name}')
+    requiresAdmin = requiresAdministrator(**kwargs)
+
+    exitCode = None
+
     if requiresAdmin:
 
         # Try and install package via shell
         #
-        args = ['-m', 'pip', 'install', name]
         parameters = ' '.join(args)
-
-        exitCode = None
 
         try:
 
@@ -253,11 +289,9 @@ def installPackage(name, **kwargs):
 
         # Try and install package via subprocess
         #
-        exitCode = None
-
         try:
 
-            exitCode = subprocess.check_call(args)
+            exitCode = subprocess.check_call([executable, *args])
 
         except subprocess.CalledProcessError as exception:
 
@@ -344,10 +378,10 @@ def installRequirements(filePath, **kwargs):
     #
     target = kwargs.get('target', None)
     hasTarget = not stringutils.isNullOrEmpty(target)
-    user = kwargs.get('user', True)
+    user = kwargs.get('user', False)
     upgrade = kwargs.get('upgrade', False)
 
-    args = [executable, '-m', 'pip', 'install', '-r', filePath]
+    args = ['-m', 'pip', 'install', '-r', filePath]
 
     if hasTarget:
 
@@ -367,14 +401,16 @@ def installRequirements(filePath, **kwargs):
 
     # Evaluate user permissions
     #
-    requiresAdmin = (not hasTarget and not user) and not isAdmin()
+    log.info(f'Installing python requirements: {filePath}')
+    requiresAdmin = requiresAdministrator(**kwargs)
+
+    exitCode = None
 
     if requiresAdmin:
         
         # Try and install requirements via shell
         #
         parameters = ' '.join(args)
-        exitCode = None
 
         try:
 
@@ -393,11 +429,9 @@ def installRequirements(filePath, **kwargs):
         
         # Try and install requirements via subprocess
         #
-        exitCode = None
-
         try:
 
-            exitCode = subprocess.check_call(args)
+            exitCode = subprocess.check_call([executable, *args])
 
         except subprocess.CalledProcessError as exception:
 

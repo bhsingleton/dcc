@@ -398,7 +398,7 @@ def moveDirectory(source, destination):
 
     # Check if directories requires administrative permission
     #
-    isAdmin = piputils.isAdmin()
+    isAdmin = piputils.isAdministrator()
     requiresAdmin = not (os.access(source, os.W_OK) and os.access(destination, os.W_OK))
 
     if not isAdmin and requiresAdmin:
