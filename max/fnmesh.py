@@ -137,7 +137,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
         :rtype: List[int]
         """
 
-        meshutils.getSelectedFaces(self.object())
+        return meshutils.getSelectedFaces(self.object())
 
     def iterVertices(self, *indices, cls=Vector, worldSpace=False):
         """
