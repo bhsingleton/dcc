@@ -11,7 +11,7 @@ log.setLevel(logging.INFO)
 
 class FnSelectionSet(fnnode.FnNode, afnselectionset.AFnSelectionSet):
     """
-    Overload of AFnSelectionSet that outlines the function set behaviour for selection sets.
+    Overload of `AFnSelectionSet` that implements the selection-set interface for Maya.
     """
 
     __slots__ = ()

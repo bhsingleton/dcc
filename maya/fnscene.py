@@ -14,7 +14,7 @@ log.setLevel(logging.INFO)
 
 class FileExtensions(IntEnum):
     """
-    Overload of IntEnum that contains the file extensions for Maya.
+    Enum class of all the available file extensions for Maya.
     """
 
     mb = 0
@@ -23,7 +23,7 @@ class FileExtensions(IntEnum):
 
 class FnScene(afnscene.AFnScene):
     """
-    Overload of AFnBase used to interface with Maya scenes.
+    Overload of `AFnScene` that implements the scene interface for Maya.
     """
 
     __slots__ = ()

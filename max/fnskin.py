@@ -12,7 +12,7 @@ log.setLevel(logging.INFO)
 
 class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
     """
-    Overload of `AFnSkin` that outlines function set behaviour for skin weighting in 3ds Max.
+    Overload of `AFnSkin` that implements the skin interface for 3ds-Max.
     This class also inherits from FnNode but be aware not all functions will be compatible.
     Because of the UI dependency in 3ds Max we have to actively make sure we're in the modify panel.
     """

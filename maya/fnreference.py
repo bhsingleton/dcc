@@ -14,7 +14,7 @@ log.setLevel(logging.INFO)
 
 class FnReference(fnnode.FnNode, afnreference.AFnReference):
     """
-    Overload of AFnReference that defines the function set behavior for Maya references.
+    Overload of `AFnReference` that implements the reference interface for Maya.
     """
 
     __slots__ = ()

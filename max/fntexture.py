@@ -11,7 +11,7 @@ log.setLevel(logging.INFO)
 
 class FnTexture(fnnode.FnNode, afntexture.AFnTexture):
     """
-    Overload of AFnTexture that defines the function set behaviour for 3ds Max textures.
+    Overload of `AFnTexture` that implements the texture interface for 3ds-Max.
     """
 
     __slots__ = ()

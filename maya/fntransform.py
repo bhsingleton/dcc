@@ -14,7 +14,7 @@ log.setLevel(logging.INFO)
 
 class RotateOrder(IntEnum):
     """
-    Overload if `IntEnum` that lists all available rotation orders.
+    Enum class of all available rotation orders in Maya.
     """
 
     xyz = 0

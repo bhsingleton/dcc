@@ -17,7 +17,7 @@ log.setLevel(logging.INFO)
 
 class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
     """
-    Overload of AFnMesh that outlines the mesh interface for 3ds Max.
+    Overload of `AFnMesh` that implements the mesh interface for 3ds-Max.
     """
 
     __slots__ = ()

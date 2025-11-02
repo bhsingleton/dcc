@@ -12,7 +12,7 @@ log.setLevel(logging.INFO)
 
 class FnLayer(fnnode.FnNode, afnlayer.AFnLayer):
     """
-    Overload of AFnLayer that defines the function set behavior for Maya layers.
+    Overload of `AFnLayer` that implements the layer interface for Maya.
     """
 
     __slots__ = ()

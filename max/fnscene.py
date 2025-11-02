@@ -13,7 +13,7 @@ log.setLevel(logging.INFO)
 
 class FileExtensions(IntEnum):
     """
-    Overload of IntEnum that contains the file extensions for 3ds Max.
+    Enum class of all 3ds-Max file extensions.
     """
 
     max = 0
@@ -21,7 +21,7 @@ class FileExtensions(IntEnum):
 
 class FnScene(afnscene.AFnScene):
     """
-    Overload of AFnBase used to interface with 3ds Max scenes.
+    Overload of `AFnScene` that implements the scene interface for 3ds-Max.
     """
 
     __slots__ = ()

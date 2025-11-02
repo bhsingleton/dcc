@@ -13,6 +13,9 @@ log.setLevel(logging.INFO)
 
 
 class RotateOrder(IntEnum):
+    """
+    Enum class of all available rotation orders in 3ds-Max.
+    """
 
     xyz = 1
     xzy = 2
@@ -27,7 +30,7 @@ class RotateOrder(IntEnum):
 
 class FnTransform(afntransform.AFnTransform, fnnode.FnNode):
     """
-    Overload of AFnTransform that implements the transform interface for 3ds Max.
+    Overload of `AFnTransform` that implements the transform interface for 3ds-Max.
     """
 
     __slots__ = ()

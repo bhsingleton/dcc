@@ -9,14 +9,14 @@ log.setLevel(logging.INFO)
 
 class FnNotify(AFnNotify):
     """
-    Overload of AFnNotify that interfaces with callbacks in Maya.
+    Overload of `AFnNotify` that implements the notify interface for Maya.
     """
 
     __slots__ = ()
 
     def unregisterNotify(self, callbackId):
         """
-        Unregisters the supplied Maya callback ID.
+        Unregisters the supplied callback ID.
 
         :type callbackId: Any
         :rtype: None

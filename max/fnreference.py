@@ -12,9 +12,9 @@ log.setLevel(logging.INFO)
 
 class FnReference(afnreference.AFnReference):
     """
-    Overload of AFnReference that implements the function set behavior for 3ds Max references.
+    Overload of `AFnReference` that implements the reference interface for 3ds-Max.
     Fun fact: 3ds Max has been around for 25+ years now and they still can't get XRefs to work with rigs!
-    Money Saving Tip: You can save money by not using 3ds Max!
+    Money Saving Tip: You can save money by not using 3ds-Max!
     """
 
     __slots__ = ()

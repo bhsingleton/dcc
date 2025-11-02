@@ -13,8 +13,7 @@ log.setLevel(logging.INFO)
 
 class FnSkin(fnnode.FnNode, afnskin.AFnSkin):
     """
-    Overload of `AFnSkin` that outlines function set behaviour for skin weighting in Maya.
-    This class also inherits from FnNode since skin clusters are node objects.
+    Overload of `AFnSkin` that implements the skin interface for Maya.
     """
 
     # region Dunderscores

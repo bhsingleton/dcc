@@ -12,7 +12,7 @@ log.setLevel(logging.INFO)
 
 class FnNode(afnnode.AFnNode):
     """
-    Overload of AFnNode that implements the function set behavior for 3ds Max scene nodes.
+    Overload of `AFnNode` that implements the node interface for 3ds-Max.
     """
 
     __slots__ = ()

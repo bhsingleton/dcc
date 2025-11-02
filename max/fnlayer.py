@@ -12,7 +12,7 @@ log.setLevel(logging.INFO)
 
 class FnLayer(afnlayer.AFnLayer):
     """
-    Overload of AFnLayer that defines the function set behavior for 3ds Max layers.
+    Overload of `AFnLayer` that implements the layer interface for 3ds-Max.
     """
 
     __slots__ = ()

@@ -12,7 +12,7 @@ log.setLevel(logging.INFO)
 
 class FnSelectionSet(afnselectionset.AFnSelectionSet):
     """
-    Overload of AFnBase that outlines the function set behaviour for selection sets.
+    Overload of `AFnSelectionSet` that implements the selection-set interface for 3ds-Max.
     """
 
     __slots__ = ()

@@ -16,7 +16,7 @@ log.setLevel(logging.INFO)
 
 class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
     """
-    Overload of AFnMesh used to interface with meshes in Maya.
+    Overload of `AFnMesh` that implements the mesh interface for Maya.
     """
 
     __slots__ = ()

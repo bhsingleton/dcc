@@ -13,7 +13,7 @@ log.setLevel(logging.INFO)
 
 class FnNode(afnnode.AFnNode):
     """
-    Overload of AFnNode that implements the function set behavior for Maya scene nodes.
+    Overload of `AFnNode` that implements the node interface for Maya.
     """
 
     __slots__ = ()

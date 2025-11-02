@@ -16,7 +16,7 @@ qtmax = importutils.tryImport('qtmax', default=MaxPlus)
 
 class FnQt(afnqt.AFnQt):
     """
-    Overload of AFnQt that interfaces with Qt objects in 3DS Max.
+    Overload of `AFnQt` that implements the Qt interface for 3ds-Max.
     """
 
     __slots__ = ()

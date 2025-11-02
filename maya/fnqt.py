@@ -13,7 +13,7 @@ log.setLevel(logging.INFO)
 
 class FnQt(afnqt.AFnQt):
     """
-    Overload of AFnQt that interfaces with Qt objects in Maya.
+    Overload of `AFnQt` that implements the Qt interface for Maya.
     """
 
     __slots__ = ()

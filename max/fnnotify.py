@@ -11,14 +11,14 @@ log.setLevel(logging.INFO)
 
 class FnNotify(AFnNotify):
     """
-    Overload of AFnCallbacks that interfaces with callbacks in 3DS Max.
+    Overload of `AFnNotify` that implements the notify interface for 3ds-Max.
     """
 
     __slots__ = ()
 
     def unregisterNotify(self, callbackId):
         """
-        Unregisters the supplied Maya callback ID.
+        Unregisters the supplied callback ID.
 
         :type callbackId: Any
         :rtype: None

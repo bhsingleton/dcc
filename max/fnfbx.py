@@ -13,7 +13,7 @@ log.setLevel(logging.INFO)
 
 class FnFbx(afnfbx.AFnFbx):
     """
-    Overload of AFnFbx that defines function set behaviours for fbx in 3DS Max.
+    Overload of `AFnFbx` that implements the FBX interface for 3ds-Max.
     """
 
     __slots__ = ()
