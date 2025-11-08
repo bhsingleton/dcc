@@ -211,28 +211,35 @@ def iterStaticProperties(obj, skipAnimatable=False, skipNonValues=False, skipDef
 
         # Check if animatable properties should be skipped
         #
-        isAnimatable = isPropertyAnimatable(obj, name)
+        if skipAnimatable:
 
-        if skipAnimatable and isAnimatable:
+            isAnimatable = isPropertyAnimatable(obj, name)
 
-            continue
+            if isAnimatable:
+
+                continue
 
         # Check if non-values should be skipped
         #
         value = pymxs.runtime.getProperty(obj, name)
 
-        if skipNonValues and not isValue(value):
+        if skipNonValues:
 
-            continue
+            isNonValue = not isValue(value)
+
+            if isNonValue:
+
+                continue
 
         # Check if non-default values should be skipped
         #
-        default = getDefaultPropertyValue(maxClass, key)
+        if skipDefaultValues:
 
-        if skipDefaultValues and (value == default):
+            default = getDefaultPropertyValue(maxClass, key)
+            isDefault = (value == default)
 
-            continue
+            if isDefault:
 
-        else:
+                continue
 
-            yield key, value
+        yield key, value
