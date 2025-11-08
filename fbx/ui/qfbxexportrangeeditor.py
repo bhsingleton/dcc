@@ -56,7 +56,7 @@ class QFbxExportRangeEditor(qsingletonwindow.QSingletonWindow):
 
         # Initialize main window
         #
-        self.setWindowTitle("|| Fbx Export Range Editor")
+        self.setWindowTitle("|| FBX Export-Range Editor")
         self.setMinimumSize(QtCore.QSize(400, 700))
 
         # Initialize main toolbar
