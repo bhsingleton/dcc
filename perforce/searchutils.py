@@ -20,7 +20,7 @@ class SearchEngine(object):
     History is broken down by client first then search value.
     """
 
-    __slots__ = ('_history',)
+    __slots__ = ('__history__',)
 
     def __init__(self):
         """
@@ -35,7 +35,7 @@ class SearchEngine(object):
 
         # Declare class variables
         #
-        self._history = defaultdict(dict)
+        self.__history__ = defaultdict(dict)
 
     def history(self, client):
         """
@@ -45,7 +45,7 @@ class SearchEngine(object):
         :rtype: dict
         """
 
-        return self._history[client]
+        return self.__history__[client]
 
     def findFile(self, filePath, client=None):
         """
@@ -54,7 +54,7 @@ class SearchEngine(object):
 
         :type filePath: str
         :type client: clientutils.ClientSpec
-        :rtype: list
+        :rtype: list[dict]
         """
 
         # Check if a client was supplied
@@ -63,13 +63,60 @@ class SearchEngine(object):
 
             client = clientutils.getCurrentClient()
 
-        # Concatenate path and search client for file
+        # Iterate through client branches
         #
         filePath = os.path.normpath(filePath)
         segments = filePath.split(os.path.sep)
-        search = '/'.join([client.view[0].clientPath, '...', segments[-1]])
 
-        return self.searchClient(search, client=client)
+        for branch in client.view:
+
+            # Concatenate client path and search client for file
+            # Make sure to leave out the parent directory in case the file has been moved!
+            #
+            filename = segments[-1]
+            search = '/'.join([branch.clientPath, '...', filename])
+
+            results = self.searchClient(search, client=client)
+
+            if stringutils.isNullOrEmpty(results):
+
+                continue
+
+            # Evaluate search results
+            #
+            resultCount = len(results)
+
+            if resultCount == 1:
+
+                return results
+
+            # Filter results based on parent directory
+            #
+            directory = segments[-2]
+
+            filteredResults = [result for result in results if result['depotFile'].endswith(f'{directory}/{filename}')]
+            filteredCount = len(filteredResults)
+
+            if filteredCount == 1:
+
+                return filteredResults
+
+            # Filter results based on drive letter changes
+            #
+            localPath = '/'.join(segments)
+
+            filteredResults = [result for result in results if localPath.endswith(result['depotFile'][2:])]
+            filteredCount = len(filteredResults)
+
+            if filteredCount == 1:
+
+                return filteredResults
+
+            else:
+
+                return results
+
+        return []
 
     def searchClient(self, search, client=None):
         """
@@ -79,7 +126,7 @@ class SearchEngine(object):
 
         :type search: str
         :type client: clientutils.ClientSpec
-        :rtype: list
+        :rtype: list[dict]
         """
 
         # Check if a client was supplied
@@ -153,7 +200,7 @@ class SearchEngine(object):
         """
 
         log.info('Clearing search history...')
-        self._history.clear()
+        self.__history__.clear()
 
 
 def findFile(filePath, client=None):
