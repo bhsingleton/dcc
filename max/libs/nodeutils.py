@@ -218,31 +218,44 @@ def getFullPathTo(node):
         return None
 
 
-def iterParents(node):
+def getParent(node):
+    """
+    Returns the parent from the supplied node.
+
+    :type node: pymxs.MXSWrapperBase
+    :rtype: Union[pymxs.MXSWrapperBase, None]
+    """
+
+    return getattr(node, 'parent', None)
+
+
+def iterParents(node, includeSelf=False):
     """
     Returns a generator that yields all parents from the supplied node.
 
     :type node: pymxs.MXSWrapperBase
-    :rtype: iter
+    :type includeSelf: bool
+    :rtype: Iterator[pymxs.MXSWrapperBase]
     """
 
-    parent = getattr(node, 'parent', None)
+    parent = node if includeSelf else getParent(node)
 
     while parent is not None:
 
         yield parent
-        parent = getattr(parent, 'parent', None)
+        parent = getParent(node)
 
 
-def getParents(node):
+def getParents(node, includeSelf=False):
     """
     Returns a list of parents from the supplied node.
 
     :type node: pymxs.MXSWrapperBase
-    :rtype: iter
+    :type includeSelf: bool
+    :rtype: List[pymxs.MXSWrapperBase]
     """
 
-    return list(iterParents(node))
+    return list(iterParents(node, includeSelf=includeSelf))
 
 
 def iterChildren(node):
@@ -250,7 +263,7 @@ def iterChildren(node):
     Returns a generator that yields all children from the supplied node.
 
     :type node: pymxs.MXSWrapperBase
-    :rtype: iter
+    :rtype: Iterator[pymxs.MXSWrapperBase]
     """
 
     children = getattr(node, 'children', pymxs.runtime.Array())
@@ -265,7 +278,7 @@ def getChildren(node):
     Returns a list of children from the supplied node.
 
     :type node: pymxs.MXSWrapperBase
-    :rtype: iter
+    :rtype: List[pymxs.MXSWrapperBase]
     """
 
     return list(iterChildren(node))
@@ -276,31 +289,28 @@ def trace(node):
     Returns a generator that yields the nodes leading to the supplied node.
 
     :type node: pymxs.MXSWrapperBase
-    :rtype: iter
+    :rtype: Iterator[pymxs.MXSWrapperBase]
     """
 
-    if not pymxs.runtime.isValidNode(node):
+    if pymxs.runtime.isValidNode(node):
+
+        return reversed(getParents(node, includeSelf=True))
+
+    else:
 
         return iter([])
 
-    parents = getParents(node)
 
-    for parent in reversed(parents):
-
-        yield parent
-
-    yield node
-
-
-def iterDescendants(node):
+def iterDescendants(node, includeSelf=False):
     """
     Returns a generator that yields all child descendants from the supplied node.
 
     :type node: pymxs.MXSWrapperBase
-    :rtype: iter
+    :type includeSelf: bool
+    :rtype: Iterator[pymxs.MXSWrapperBase]
     """
 
-    queue = deque(getChildren(node))
+    queue = deque([node]) if includeSelf else deque(getChildren(node))
 
     while len(queue) > 0:
 
@@ -310,12 +320,13 @@ def iterDescendants(node):
         queue.extend(getChildren(child))
 
 
-def descendants(node):
+def descendants(node,  includeSelf=False):
     """
     Returns a list of descendants from the supplied node.
 
     :type node: pymxs.MXSWrapperBase
-    :rtype: iter
+    :type includeSelf: bool
+    :rtype: List[pymxs.MXSWrapperBase]
     """
 
-    return list(iterDescendants(node))
+    return list(iterDescendants(node, includeSelf=includeSelf))
