@@ -1,7 +1,7 @@
 import pymxs
 
 from itertools import chain
-from .libs import wrapperutils, meshutils, arrayutils
+from .libs import wrapperutils, propertyutils, arrayutils, meshutils
 from . import fnnode
 from ..abstract import afnmesh
 from ..python import stringutils
@@ -304,6 +304,45 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
         return meshutils.iterFaceMaterialIndices(self.baseObject(), indices=indices)
 
+    @classmethod
+    def getMapFromMaterial(cls, material):
+        """
+        Returns the texture path associated with the supplied material.
+
+        :type material: pymxs.MXSWrapperBase
+        :rtype: str
+        """
+
+        # Evaluate material type
+        #
+        maps = []
+
+        if wrapperutils.isKindOf(material, pymxs.runtime.Standardmaterial):
+
+            maps = getattr(material, 'maps', [])
+
+
+        elif wrapperutils.isKindOf(material, pymxs.runtime.PhysicalMaterial):
+
+            maps = [value for (key, value) in propertyutils.iterStaticProperties(material) if key.endswith('map')]
+
+        else:
+
+            log.warning(f'Unable to locate maps from: {pymxs.runtime.classOf(material)} class!')
+
+        # Filter invalid maps and return file path
+        #
+        filteredMaps = tuple(filter(lambda obj: wrapperutils.isKindOf(obj, pymxs.runtime.BitmapTexture), maps))
+        numMaps = len(filteredMaps)
+
+        if numMaps > 0:
+
+            return filteredMaps[0].filename
+
+        else:
+
+            return ''
+
     def getAssignedMaterials(self):
         """
         Returns a list of material-texture pairs from this mesh.
@@ -317,7 +356,7 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
         if wrapperutils.isKindOf(material, pymxs.runtime.Multimaterial):
 
-            # Iterate through sub-materials
+            # Iterate through sub-material maps
             #
             subMaterials = list(material.materialList)
             numSubMaterials = len(subMaterials)
@@ -326,33 +365,15 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
             for (i, subMaterial) in enumerate(subMaterials):
 
-                maps = list(filter(None, subMaterial.maps))
-                numMaps = len(maps)
-
-                if numMaps > 0:
-
-                    assignedMaterials[i] = (subMaterial, maps[0].filename)
-
-                else:
-
-                    assignedMaterials[i] = (subMaterial, '')
+                assignedMaterials[i] = (subMaterial, self.getMapFromMaterial(subMaterial))
 
             return assignedMaterials
 
         elif wrapperutils.isKindOf(material, pymxs.runtime.Standardmaterial):
 
-            # Check if material has any valid maps
+            # Return material map
             #
-            maps = list(filter(None, material.maps))
-            numMaps = len(maps)
-
-            if numMaps > 0:
-
-                return [(material, maps[0].filename)]
-
-            else:
-
-                return [(material, '')]
+            return [(material, self.getMapFromMaterial(material))]
 
         else:
 
