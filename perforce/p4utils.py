@@ -343,7 +343,7 @@ def checkoutScene():
     scene = fnscene.FnScene()
     filePath = scene.currentFilePath()
 
-    if os.path.exists(filePath):
+    if os.path.isfile(filePath):
 
         return tryCheckout(filePath)
 
@@ -366,7 +366,7 @@ def addScene():
     scene = fnscene.FnScene()
     filePath = scene.currentFilePath()
 
-    if os.path.exists(filePath):
+    if os.path.isfile(filePath):
 
         return tryAdd(filePath)
 
@@ -388,7 +388,7 @@ def revertScene():
     fnScene = fnscene.FnScene()
     filePath = fnScene.currentFilePath()
 
-    if os.path.exists(filePath):
+    if os.path.isfile(filePath):
 
         return cmds.revert([filePath])
 
@@ -410,7 +410,7 @@ def showInExplorer():
     fnScene = fnscene.FnScene()
     filePath = fnScene.currentFilePath()
 
-    if os.path.exists(filePath):
+    if os.path.isfile(filePath):
 
         subprocess.Popen(r'explorer /select, "{filePath}"'.format(filePath=filePath))
 
