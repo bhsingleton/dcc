@@ -5,7 +5,7 @@ from ..libs import fbxio, fbxasset, fbxexportset, FbxFileType, FbxFileVersion
 from ... import fnscene, fnnode, fnskin, fnnotify
 from ...python import stringutils
 from ...json import jsonutils
-from ...ui import qsingletonwindow, qdirectoryedit, qfileedit
+from ...ui import qsingletonwindow, qdirectoryedit, qfileedit, qsignalblocker
 from ...ui.dialogs import qlistdialog
 from ...ui.models import qpsonitemmodel, qpsonstyleditemdelegate
 from ...vendor.Qt import QtCore, QtWidgets, QtGui
@@ -56,7 +56,7 @@ class QFbxExportSetEditor(qsingletonwindow.QSingletonWindow):
 
         # Initialize main window
         #
-        self.setWindowTitle("|| Fbx Export Set Editor")
+        self.setWindowTitle("|| FBX Export-Set Editor")
         self.setMinimumSize(QtCore.QSize(400, 700))
 
         # Initialize main menu-bar
@@ -99,11 +99,28 @@ class QFbxExportSetEditor(qsingletonwindow.QSingletonWindow):
         self.useBuiltinSerializerAction.setCheckable(True)
         self.useBuiltinSerializerAction.triggered.connect(self.on_useBuiltinSerializerAction_triggered)
 
+        self.removeDisplayLayersAction = QtWidgets.QAction('Remove Display Layers', parent=self.settingsMenu)
+        self.removeDisplayLayersAction.setObjectName('removeDisplayLayersAction')
+        self.removeDisplayLayersAction.setCheckable(True)
+        self.removeDisplayLayersAction.setChecked(True)
+
+        self.removeContainersAction = QtWidgets.QAction('Remove Containers', parent=self.settingsMenu)
+        self.removeContainersAction.setObjectName('removeContainersAction')
+        self.removeContainersAction.setCheckable(True)
+        self.removeContainersAction.setChecked(True)
+
         self.generateLogsAction = QtWidgets.QAction('Generate Logs', parent=self.settingsMenu)
         self.generateLogsAction.setObjectName('generateLogsActions')
         self.generateLogsAction.setCheckable(True)
 
-        self.settingsMenu.addActions([self.useBuiltinSerializerAction, self.generateLogsAction])
+        self.settingsMenu.addActions(
+            [
+                self.useBuiltinSerializerAction,
+                self.removeDisplayLayersAction,
+                self.removeContainersAction,
+                self.generateLogsAction
+            ]
+        )
 
         # Initialize help menu
         #
@@ -604,16 +621,39 @@ class QFbxExportSetEditor(qsingletonwindow.QSingletonWindow):
 
         # Synchronize asset widgets
         #
-        self.assetNameLineEdit.setText(self.asset.name)
-        self.assetDirectoryLineEdit.setText(self.asset.directory)
-        self.fileTypeComboBox.setCurrentIndex(self.asset.fileType)
-        self.fileVersionComboBox.setCurrentIndex(self.asset.fileVersion)
-        self.useBuiltinSerializerAction.setChecked(self.asset.useBuiltinSerializer)
+        with qsignalblocker.QSignalBlocker(self.assetNameLineEdit, self.assetDirectoryLineEdit, self.fileTypeComboBox, self.fileVersionComboBox, self.useBuiltinSerializerAction):
 
-        # Re-populate combo box
+            self.assetNameLineEdit.setText(self.asset.name)
+            self.assetDirectoryLineEdit.setText(self.asset.directory)
+            self.fileTypeComboBox.setCurrentIndex(self.asset.fileType)
+            self.fileVersionComboBox.setCurrentIndex(self.asset.fileVersion)
+            self.useBuiltinSerializerAction.setChecked(self.asset.useBuiltinSerializer)
+
+        # Re-populate combo-box
         #
-        self.exportSetComboBox.clear()
-        self.exportSetComboBox.addItems([x.name for x in self.asset.exportSets])
+        currentIndex = self.exportSetComboBox.currentIndex()
+
+        with qsignalblocker.QSignalBlocker(self.exportSetComboBox):
+
+            self.exportSetComboBox.clear()
+            self.exportSetComboBox.addItems([x.name for x in self.asset.exportSets])
+            self.exportSetComboBox.setCurrentIndex(-1)
+
+        # Recreate combo-box selection
+        #
+        count = self.exportSetComboBox.count()
+
+        if 0 <= currentIndex < count:
+
+            self.exportSetComboBox.setCurrentIndex(currentIndex)
+
+        elif count > 0:
+
+            self.exportSetComboBox.setCurrentIndex(0)
+
+        else:
+
+            pass
 
     def invalidateExportSet(self):
         """
@@ -1000,8 +1040,9 @@ class QFbxExportSetEditor(qsingletonwindow.QSingletonWindow):
         """
 
         sender = self.sender()
+        count = sender.count()
 
-        if 0 <= index < sender.count():
+        if 0 <= index < count:
 
             self._currentExportSet = self.asset.exportSets[index]
             self.invalidateExportSet()

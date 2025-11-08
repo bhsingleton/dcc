@@ -26,8 +26,6 @@ class FbxExportSet(fbxbase.FbxBase):
         '_directory',
         '_scale',
         '_moveToOrigin',
-        '_removeDisplayLayers',
-        '_removeContainers',
         '_skeleton',
         '_mesh',
         '_camera',
@@ -56,8 +54,6 @@ class FbxExportSet(fbxbase.FbxBase):
         self._directory = ''
         self._scale = 1.0
         self._moveToOrigin = False
-        self._removeDisplayLayers = True
-        self._removeContainers = True
         self._camera = fbxcamera.FbxCamera()
         self._skeleton = fbxskeleton.FbxSkeleton()
         self._mesh = fbxmesh.FbxMesh()
@@ -165,48 +161,6 @@ class FbxExportSet(fbxbase.FbxBase):
         """
 
         self._moveToOrigin = moveToOrigin
-
-    @property
-    def removeDisplayLayers(self):
-        """
-        Getter method that returns the remove display layers flag for this export set.
-
-        :rtype: bool
-        """
-
-        return self._removeDisplayLayers
-
-    @removeDisplayLayers.setter
-    def removeDisplayLayers(self, removeDisplayLayers):
-        """
-        Setter method that updates the remove display layers flag for this export set.
-
-        :type removeDisplayLayers: bool
-        :rtype: None
-        """
-
-        self._removeDisplayLayers = removeDisplayLayers
-
-    @property
-    def removeContainers(self):
-        """
-        Getter method that returns the remove containers flag for this export set.
-
-        :rtype: bool
-        """
-
-        return self._removeContainers
-
-    @removeContainers.setter
-    def removeContainers(self, removeContainers):
-        """
-        Setter method that updates the remove containers flag for this export set.
-
-        :type removeContainers: bool
-        :rtype: None
-        """
-
-        self._removeContainers = removeContainers
 
     @property
     def camera(self):
@@ -393,44 +347,56 @@ class FbxExportSet(fbxbase.FbxBase):
         #
         self.camera.select(namespace=namespace)
 
-    def editExportFile(self, filePath):
+    def editExportFile(self, filePath, **kwargs):
         """
         Performs any edits to the associated export file.
 
+        :type removeDisplayLayers: bool
+        :type removeContainers: bool
         :rtype: None
         """
 
         # Check if any edits are required
         #
-        requiresEdits = any([self.moveToOrigin, self.removeDisplayLayers, self.removeContainers])
+        exists = os.path.isfile(filePath)
 
-        if not requiresEdits or not os.path.exists(filePath):
+        if not exists:
 
             return
 
         # Check if root nodes should be moved to origin
         #
         fbxFile = fbxfile.FbxFile(filePath)
+        edited = False
 
         if self.moveToOrigin:
 
             fbxFile.moveToOrigin()
+            edited = True
 
-        # Check if display layers should be removed
+        # Check if display-layers should be removed
         #
-        if self.removeDisplayLayers:
+        removeDisplayLayers = kwargs.get('removeDisplayLayers', False)
+
+        if removeDisplayLayers:
 
             fbxFile.removeDisplayLayers()
+            edited = True
 
         # Check if containers should be removed
         #
-        if self.removeContainers:
+        removeContainers = kwargs.get('removeContainers', False)
+
+        if removeContainers:
 
             fbxFile.removeContainers()
+            edited = True
 
         # Commit changes to file
         #
-        fbxFile.save()
+        if edited:
+
+            fbxFile.save()
 
     def preExport(self):
         """
@@ -449,7 +415,7 @@ class FbxExportSet(fbxbase.FbxBase):
 
             customScript.preExport()
 
-    def builtinExport(self, namespace=''):
+    def builtinExport(self, namespace='', **kwargs):
         """
         Exports this set to the user defined path using the builtin serializer.
 
@@ -488,12 +454,12 @@ class FbxExportSet(fbxbase.FbxBase):
 
         # Execute post-scripts
         #
-        self.editExportFile(exportPath)
+        self.editExportFile(exportPath, **kwargs)
         self.postExport()
 
         return exportPath
 
-    def customExport(self, namespace=''):
+    def customExport(self, namespace='', **kwargs):
         """
         Exports this set to the user defined path using the custom serializer.
 
@@ -506,7 +472,7 @@ class FbxExportSet(fbxbase.FbxBase):
 
         return serializer.serializeExportSet(self, asAscii=asAscii)
 
-    def export(self, namespace='', checkout=False):
+    def export(self, namespace='', checkout=False, **kwargs):
         """
         Exports this set to the user defined path.
 
@@ -521,11 +487,11 @@ class FbxExportSet(fbxbase.FbxBase):
 
         if self.asset.useBuiltinSerializer:
 
-            exportPath = self.builtinExport(namespace=namespace)
+            exportPath = self.builtinExport(namespace=namespace, **kwargs)
 
         else:
 
-            exportPath = self.customExport(namespace=namespace)
+            exportPath = self.customExport(namespace=namespace, **kwargs)
 
         # Check if file requires checking-out
         #
