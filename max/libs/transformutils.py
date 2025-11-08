@@ -558,8 +558,15 @@ def getWorldMatrix(node):
     :rtype: pymxs.runtime.Matrix3
     """
 
-    matrix = getattr(node, 'transform', pymxs.runtime.Matrix3(1))
-    return pymxs.runtime.copy(matrix)
+    matrix = getattr(node, 'transform', None)
+
+    if wrapperutils.isKindOf(matrix, pymxs.runtime.Matrix3):
+
+        return pymxs.runtime.copy(matrix)
+
+    else:
+
+        return pymxs.runtime.Matrix3(1)
 
 
 def getWorldInverseMatrix(node):
