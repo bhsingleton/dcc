@@ -110,8 +110,8 @@ def iterInfluences(skin):
 
         else:
 
-            dependencies = pymxs.runtime.dependsOn(skin)
-            bone = [x for x in nodes if x in dependencies][0]
+            dependencies = pymxs.runtime.refs.dependsOn(skin)
+            bone = [node for node in nodes if node in dependencies][0]
 
         yield boneId, bone
 
