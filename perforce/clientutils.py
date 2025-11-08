@@ -4,8 +4,9 @@ import getpass
 
 from collections import namedtuple
 from . import cmds
-from .decorators import relogin
 from .. import fnqt
+from .decorators import relogin
+from ..python import stringutils
 from ..vendor.Qt import QtWidgets
 from ..vendor.six.moves import collections_abc
 
@@ -148,7 +149,13 @@ class ClientSpec(object):
         :rtype: str
         """
 
-        return os.path.join(self.view[0].depotPath, self.mapToRoot(filePath)).replace(os.sep, os.altsep)
+        if self.hasStream():
+
+            return os.path.join(self.view[0].depotPath, self.mapToRoot(filePath)).replace(os.sep, os.altsep)
+
+        else:
+
+            return f'//{self.mapToRoot(filePath).replace(os.sep, os.altsep)}'
 
     def hasStream(self):
         """
@@ -157,7 +164,7 @@ class ClientSpec(object):
         :rtype: bool
         """
 
-        return not self.stream
+        return not stringutils.isNullOrEmpty(self.stream)
 
     def hasAbsoluteFile(self, filePath):
         """
@@ -182,7 +189,7 @@ class ClientSpec(object):
         :rtype: bool
         """
 
-        return depotPath.lower().startswith(self.view[0].depotPath.lower())
+        return any(depotPath.lower().startswith(branch.depotPath.lower()) for branch in self.view)
 
     def getChangelists(self):
         """
