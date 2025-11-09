@@ -1,4 +1,5 @@
 from ..abstract import afnqt
+from ..python import piputils
 from ..vendor.Qt import QtWidgets
 
 import logging
@@ -14,19 +15,33 @@ class FnQt(afnqt.AFnQt):
 
     __slots__ = ()
 
+    def isEnabled(self):
+        """
+        Checks if the `bqt` addon exists.
+
+        :rtype: bool
+        """
+
+        return piputils.hasPackage('bqt')
+
     def getMainWindow(self):
         """
         Returns the main window.
 
-        :rtype: PySide2.QtWidgets.QMainWindow
+        :rtype: Union[QtWidgets.QMainWindow, None]
         """
 
-        return QtWidgets.QApplication.instance().blender_widget  # This only works so long as the `bqt` addon is installed!
+        if self.isEnabled():
+
+            return QtWidgets.QApplication.instance().blender_widget
+
+        else:
+
+            return None
 
     def nativizeWindow(self, window):
         """
         Performs any DCC required operations to the supplied window.
-        For instance, 3ds Max requires you disable accelerators in order to receive key press events.
 
         :type window: QtWidgets.QMainWindow
         :rtype: None
