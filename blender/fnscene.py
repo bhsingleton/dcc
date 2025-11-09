@@ -283,10 +283,19 @@ class FnScene(afnscene.AFnScene):
     def setFileProperty(self, key, value):
         """
         Updates a file property value.
-        If the item does not exist it will be automatically added.
 
         :type key: str
         :type value: str
+        :rtype: None
+        """
+
+        pass
+
+    def deleteFileProperty(self, key):
+        """
+        Removes a file property value.
+
+        :type key: str
         :rtype: None
         """
 

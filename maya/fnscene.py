@@ -306,7 +306,6 @@ class FnScene(afnscene.AFnScene):
     def setFileProperty(self, key, value):
         """
         Updates a file property value.
-        If the item does not exist it will be automatically added.
 
         :type key: str
         :type value: str
@@ -314,6 +313,16 @@ class FnScene(afnscene.AFnScene):
         """
 
         mc.fileInfo(key, value)
+
+    def deleteFileProperty(self, key):
+        """
+        Removes a file property value.
+
+        :type key: str
+        :rtype: None
+        """
+
+        mc.fileInfo(remove=key)
 
     def getUpAxis(self):
         """

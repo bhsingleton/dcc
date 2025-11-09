@@ -4,7 +4,7 @@ import subprocess
 from abc import ABCMeta, abstractmethod
 from . import afnbase
 from .. import fnnode, fntexture
-from ..python import pathutils, stringutils, ffmpegutils
+from ..python import stringutils, pathutils, importutils, ffmpegutils
 from ..decorators.classproperty import classproperty
 from ..vendor.six import with_metaclass
 from ..vendor.six.moves import collections_abc
@@ -679,10 +679,20 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
     def setFileProperty(self, key, value):
         """
         Updates a file property value.
-        If the item does not exist it will be automatically added.
 
         :type key: str
         :type value: str
+        :rtype: None
+        """
+
+        pass
+
+    @abstractmethod
+    def deleteFileProperty(self, key):
+        """
+        Removes a file property value.
+
+        :type key: str
         :rtype: None
         """
 
@@ -767,9 +777,15 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
 
         # Execute file
         #
-        with open(filePath, 'r') as file:
+        if asPython:
 
-            self.execute(file.read(), asPython=asPython)
+            importutils.executeFile(filePath)
+
+        else:
+
+            with open(filePath, 'r') as file:
+
+                self.execute(file.read(), asPython=asPython)
 
     @abstractmethod
     def iterNodes(self):
