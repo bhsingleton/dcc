@@ -1,4 +1,5 @@
 import pymxs
+import inspect
 
 from ...generators.inclusiverange import inclusiveRange
 
@@ -6,6 +7,36 @@ import logging
 logging.basicConfig()
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
+
+
+def isWrapper(obj):
+    """
+    Evaluates if the supplied object is a `pymxs` wrapper.
+
+    :rtype: bool
+    """
+
+    return isinstance(obj, pymxs.MXSWrapperBase)
+
+
+def isValidWrapper(obj):
+    """
+    Evaluates if the supplied object is a valid `pymxs` object wrapper.
+
+    :type obj: Any
+    :rtype: bool
+    """
+
+    if isWrapper(obj):
+
+        isValidObject =  pymxs.runtime.isValidObj(obj)
+        hasWrapperBase = pymxs.runtime.MAXWrapper in bases(obj)
+
+        return isValidObject and hasWrapperBase
+
+    else:
+
+        return False
 
 
 def iterBases(cls):
@@ -18,7 +49,7 @@ def iterBases(cls):
 
     # Check if this is a valid class
     #
-    if not isinstance(cls, pymxs.MXSWrapperBase):
+    if not isWrapper(cls):
 
         return iter([])
 
@@ -35,7 +66,7 @@ def bases(cls):
     Returns a list of base classes from the supplied Max class.
 
     :type cls: pymxs.MXSWrapperBase
-    :rtype: iter
+    :rtype: Iterator[pymxs.MXSWrapperBase]
     """
 
     return list(iterBases(cls))
@@ -44,7 +75,7 @@ def bases(cls):
 def isKindOf(obj, cls):
     """
     Evaluates if the supplied object is derived from the given Max class.
-    There are several improvements made to this method vs the builtin pymxs function:
+    There are several improvements made to this method vs the builtin `pymxs` function:
         1. Support for tuples of Max classes.
         3. Support for python types.
         2. Literal Sub-Anim comparison rather than an implied value comparison.
@@ -58,42 +89,44 @@ def isKindOf(obj, cls):
     #
     if isinstance(cls, (tuple, list)):
 
-        # Evaluate all items
-        #
         return any([isKindOf(obj, x) for x in cls])
 
-    else:
+    # Evaluate if this is a maxscript type
+    # Otherwise, `isKindOf(1, int) == False` can happen in python!
+    #
+    if isWrapper(cls):
 
-        # Evaluate if this is a maxscript type
-        # Otherwise, `isKindOf(1, int) == False` can happen in python!
+        # Check if this is a sub-anim
+        # Otherwise, MXS will evaluate the sub-anim value rather than the object itself!
         #
-        if isinstance(cls, pymxs.MXSWrapperBase):
+        if pymxs.runtime.isKindOf(obj, pymxs.runtime.SubAnim):
 
-            # Check if this is a sub-anim
-            # Otherwise, MXS will evaluate the sub-anim value rather than the object itself!
-            #
-            if pymxs.runtime.isKindOf(obj, pymxs.runtime.SubAnim):
-
-                return pymxs.runtime.classOf(obj) == cls
-
-            else:
-
-                return pymxs.runtime.isKindOf(obj, cls)
+            return pymxs.runtime.classOf(obj) == cls
 
         else:
 
-            return isinstance(obj, cls)
+            return pymxs.runtime.isKindOf(obj, cls)
+
+    else:
+
+        return isinstance(obj, cls)
 
 
-def isValidWrapper(obj):
+def isClass(obj):
     """
-    Evaluates if the supplied object is a valid Max wrapper.
+    Evaluates if the supplied object is derived from a Max class.
 
     :type obj: Any
     :rtype: bool
     """
 
-    return pymxs.runtime.isValidObj(obj) and pymxs.runtime.MAXWrapper in bases(obj)
+    if isWrapper(obj):
+
+        return pymxs.runtime.isKindOf(obj, pymxs.runtime.MAXClass)
+
+    else:
+
+        return inspect.isclass(obj)
 
 
 def isParamBlock2Based(obj):
@@ -104,8 +137,16 @@ def isParamBlock2Based(obj):
     :rtype: bool
     """
 
-    cls = pymxs.runtime.classOf(obj)
-    return getattr(cls, 'ispb2based', False)
+    if isWrapper(obj):
+
+        cls = obj if isClass(obj) else pymxs.runtime.classOf(obj)
+        ispb2based = getattr(cls, 'ispb2based', False)
+
+        return ispb2based
+
+    else:
+
+        return False
 
 
 def iterSubAnims(obj):
