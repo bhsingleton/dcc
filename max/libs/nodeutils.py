@@ -25,7 +25,10 @@ def isValidNode(obj):
     :rtype: bool
     """
 
-    return pymxs.runtime.isValidNode(obj) and not pymxs.runtime.isDeleted(obj)
+    isValid = pymxs.runtime.isValidNode(obj)
+    isAlive = not pymxs.runtime.isDeleted(obj)
+
+    return isValid and isAlive
 
 
 def doesNodeExist(*names, ignoreCase=False):
@@ -89,6 +92,10 @@ def iterNodesByPattern(*patterns, ignoreCase=False):
         if any([pymxs.runtime.matchPattern(obj.name, pattern=pattern, ignoreCase=ignoreCase) for pattern in patterns]):
 
             yield obj
+
+        else:
+
+            continue
 
 
 def getNodesByPattern(pattern, ignoreCase=False):
