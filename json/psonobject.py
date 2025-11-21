@@ -395,15 +395,18 @@ class PSONObject(collections_abc.MutableMapping, metaclass=pabcmeta.PABCMeta):
 
         # Evaluate supplied object
         #
-        if not isinstance(obj, (collections_abc.MutableSequence, collections_abc.MutableMapping)):
+        isSequence = isinstance(obj, collections_abc.Sequence)
+        isMapping = isinstance(obj, collections_abc.Mapping)
 
-            raise TypeError(f'update() expects a dict ({type(obj).__name__} given)!')
+        if not (isSequence or isMapping):
+
+            raise TypeError(f'update() expects key-value pairs ({type(obj).__name__} given)!')
 
         # Iterate through key-value pairs
         #
-        iterator = obj.items() if isinstance(obj, collections_abc.MutableMapping) else iter(obj)
+        iterator = obj.items() if isMapping else iter(obj)
 
-        for pair in iterator:
+        for (i, pair) in enumerate(iterator):
 
             # Evaluate key-value pair
             #
@@ -411,6 +414,7 @@ class PSONObject(collections_abc.MutableMapping, metaclass=pabcmeta.PABCMeta):
 
             if numItems != 2:
 
+                log.debug(f'Skipping invalid "{type(pair).__name__}" key-value pair @ index: {i}')
                 continue
 
             # Check if key exists
@@ -420,6 +424,7 @@ class PSONObject(collections_abc.MutableMapping, metaclass=pabcmeta.PABCMeta):
 
             if not hasMember:
 
+                log.debug(f'Skipping missing "{key}" member @ index: {i}')
                 continue
 
             # Check if key is associated with a property
@@ -429,6 +434,7 @@ class PSONObject(collections_abc.MutableMapping, metaclass=pabcmeta.PABCMeta):
 
             if not isProperty:
 
+                log.debug(f'Skipping missing "{key}" property @ index: {i}')
                 continue
 
             # Check if property is mutable
@@ -441,6 +447,7 @@ class PSONObject(collections_abc.MutableMapping, metaclass=pabcmeta.PABCMeta):
 
             else:
 
+                log.debug(f'Skipping immutable "{key}" property @ index: {i}')
                 continue
 
     def copy(self, deep=False):
