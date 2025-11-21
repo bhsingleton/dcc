@@ -1,6 +1,7 @@
 import pymxs
 
 from collections import defaultdict
+from collections.abc import Sequence
 from itertools import chain
 from dcc.python import stringutils
 from dcc.generators.inclusiverange import inclusiveRange
@@ -263,7 +264,7 @@ def iterVertices(mesh, indices=None):
 
     :type mesh: pymxs.MXSWrapperBase
     :type indices: List[int]
-    :rtype: iter
+    :rtype: Iterator[pymxs.runtime.Point3]
     """
 
     # Check if any indices were supplied
@@ -288,38 +289,108 @@ def iterVertices(mesh, indices=None):
 
 
 @coordsysoverride.CoordSysOverride(mode='local')
-def setVertices(mesh, indices, points):
+def setVertices(*args):
     """
     Updates the vertex positions for the supplied mesh.
 
-    :type mesh: pymxs.MXSWrapperBase
-    :type indices: List[int]
-    :type points: List[pymxs.runtime.Point3]
+    :type args: Union[Tuple[pymxs.MXSWrapperBase, List[Vector]], Tuple[pymxs.MXSWrapperBase, int, Vector], Tuple[pymxs.MXSWrapperBase, List[int], List[Vector]]]
     :rtype: None
     """
 
     # Evaluate supplied arguments
     #
-    numIndices = len(indices)
-    numPoints = len(points)
+    numArgs = len(args)
 
-    if not pymxs.runtime.isValidObj(mesh) or numIndices != numPoints:
+    if numArgs == 2:
 
-        raise TypeError('setVertices() expects a valid mesh and matching index-point pairs!')
+        # Evaluate supplied mesh
+        #
+        mesh, points = args
 
-    # Check if this is an editable poly
-    #
-    if isEditablePoly(mesh):
+        if not pymxs.runtime.isValidObj(mesh):
 
-        for (index, point) in zip(indices, points):
+            raise TypeError('setVertices() expects a valid mesh!')
 
-            pymxs.runtime.polyOp.setVert(mesh, index, point)
+        # Evaluate supplied points
+        #
+        numPoints = len(points)
+        numVertices = vertexCount(mesh)
+
+        if numPoints != numVertices:
+
+            raise TypeError(f'setVertices() expects {numVertices} vertices ({numPoints} given)!')
+
+        # Update vertex points
+        #
+        indices = pymxs.runtime.Array(*tuple(inclusiveRange(1, numVertices, 1)))
+        points = arrayutils.convert3DArray(points)
+
+        if isEditablePoly(mesh):
+
+            pymxs.runtime.polyOp.setVert(mesh, indices, points)
+
+        else:
+
+            pymxs.runtime.meshOp.setVert(mesh, indices, points)
+
+    elif numArgs == 3:
+
+        # Evaluate supplied mesh
+        #
+        mesh, indices, points = args
+
+        if not pymxs.runtime.isValidObj(mesh):
+
+            raise TypeError('setVertices() expects a valid mesh!')
+
+        # Evaluate supplied indices
+        #
+        isIndex = isinstance(indices, int)
+        isSequence = isinstance(indices, Sequence)
+
+        if isIndex:
+
+            # Update vertex point
+            #
+            if isEditablePoly(mesh):
+
+                pymxs.runtime.polyOp.setVert(mesh, [indices], [points])
+
+            else:
+
+                pymxs.runtime.meshOp.setVert(mesh, [indices], [points])
+
+        elif isSequence:
+
+            # Evaluate index-point pairs
+            #
+            numIndices = len(indices)
+            numPoints = len(points)
+
+            if numIndices != numPoints:
+
+                raise TypeError('setVertices() expects matching index-point pairs!')
+
+            # Update vertex points
+            #
+            indices = pymxs.runtime.Array(*indices)
+            points = arrayutils.convert3DArray(points)
+
+            if isEditablePoly(mesh):
+
+                pymxs.runtime.polyOp.setVert(mesh, indices, points)
+
+            else:
+
+                pymxs.runtime.meshOp.setVert(mesh, indices, points)
+
+        else:
+
+            raise TypeError(f'setVertices() expects an index or list of indices ({type(indices).__name__} given)!')
 
     else:
 
-        for (index, point) in zip(indices, points):
-
-            pymxs.runtime.meshOp.setVert(mesh, index, point)
+        raise TypeError(f'setVertices() expects 2 or 3 arguments ({numArgs} given)!')
 
 
 @coordsysoverride.CoordSysOverride(mode='local')
@@ -619,7 +690,7 @@ def getConnectedVerts(mesh, vertices):
     for edge in arrayutils.iterBitArray(edges):
 
         edgeVerts = pymxs.runtime.polyOp.getEdgeVerts(mesh, edge)
-        connectedVerts = connectedVerts.union(set(arrayutils.iterBitArray(edgeVerts)))
+        connectedVerts = connectedVerts.union(set(edgeVerts))
 
     return list(connectedVerts.difference(set(vertices)))
 

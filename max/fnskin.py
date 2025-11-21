@@ -1,7 +1,7 @@
 import pymxs
 
-from .libs import modifierutils, skinutils
 from . import fnnode
+from .libs import modifierutils, skinutils, meshutils
 from ..abstract import afnskin
 
 import logging
@@ -79,7 +79,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         """
         Returns the transform node associated with the skin.
 
-        :rtype: Any
+        :rtype: pymxs.MXSWrapperBase
         """
 
         return pymxs.runtime.getAnimByHandle(self._node)
@@ -88,7 +88,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         """
         Returns the shape node associated with the skin.
 
-        :rtype: Any
+        :rtype: pymxs.MXSWrapperBase
         """
 
         return self.transform()  # They're the same thing in 3ds Max
@@ -97,7 +97,7 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         """
         Returns the intermediate object associated with the skin.
 
-        :rtype: Any
+        :rtype: pymxs.MXSWrapperBase
         """
 
         return pymxs.runtime.getAnimByHandle(self._baseObject)
@@ -338,29 +338,19 @@ class FnSkin(afnskin.AFnSkin, fnnode.FnNode):
         :rtype: None
         """
 
-        # Store deformed points
+        # Store modified points
         #
         shape = self.shape()
+        vertices = tuple(meshutils.iterVertices(shape))
 
-        numPoints = pymxs.runtime.polyOp.getNumVerts(shape)
-        points = [None] * numPoints
-
-        for i in range(numPoints):
-
-            point = pymxs.runtime.polyOp.getVert(shape, i + 1)
-            points[i] = point.x, point.y, point.z
-
-        # Reset influences
+        # Reset pre-bind matrices
         #
         self.resetPreBindMatrices()
 
-        # Apply deformed values to intermediate object
+        # Push modified points to intermediate object
         #
         intermediateObject = self.intermediateObject()
-
-        for i in range(numPoints):
-
-            pymxs.runtime.polyOp.setVert(intermediateObject, i + 1, points[i])
+        meshutils.setVertices(intermediateObject, vertices)
 
     @classmethod
     def iterInstances(cls):
