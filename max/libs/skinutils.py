@@ -12,7 +12,7 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-@modifypaneloverride.ModifyPanelOverride(currentObject=0)
+@modifypaneloverride.ModifyPanelOverride(objectLevel=0)
 def iterSelection(skin):
     """
     Returns a generator that yields the active vertex selection from the supplied skin.
@@ -49,7 +49,7 @@ def getSelection(skin):
     return list(iterSelection(skin))
 
 
-@modifypaneloverride.ModifyPanelOverride(currentObject=0)
+@modifypaneloverride.ModifyPanelOverride(objectLevel=0)
 def setSelection(skin, vertexIndices):
     """
     Updates the active vertex selection for the specified skin.
@@ -62,7 +62,7 @@ def setSelection(skin, vertexIndices):
     pymxs.runtime.skinOps.selectVertices(skin, vertexIndices)
 
 
-@modifypaneloverride.ModifyPanelOverride(currentObject=0)
+@modifypaneloverride.ModifyPanelOverride(objectLevel=0)
 def influenceCount(skin):
     """
     Evaluates the number of influences currently in use by the supplied skin.
@@ -74,7 +74,7 @@ def influenceCount(skin):
     return pymxs.runtime.skinOps.getNumberBones(skin)
 
 
-@modifypaneloverride.ModifyPanelOverride(currentObject=0)
+@modifypaneloverride.ModifyPanelOverride(objectLevel=0)
 def iterInfluences(skin):
     """
     Returns a generator that yields the influence objects from the supplied skin.
@@ -116,7 +116,7 @@ def iterInfluences(skin):
         yield boneId, bone
 
 
-@modifypaneloverride.ModifyPanelOverride(currentObject=0)
+@modifypaneloverride.ModifyPanelOverride(objectLevel=0)
 def selectInfluence(skin, influenceId):
     """
     Updates the active influence selection inside the skin modifier's list box.
@@ -129,7 +129,7 @@ def selectInfluence(skin, influenceId):
     pymxs.runtime.skinOps.selectBone(skin, influenceId)
 
 
-@modifypaneloverride.ModifyPanelOverride(currentObject=0)
+@modifypaneloverride.ModifyPanelOverride(objectLevel=0)
 def iterVertexWeights(skin, vertexIndices=None):
     """
     Returns a generator that yields vertex weights from the specified vertex indices.
@@ -181,7 +181,7 @@ def getVertexWeights(skin, vertexIndices=None):
     return dict(iterVertexWeights(skin, vertexIndices=vertexIndices))
 
 
-@modifypaneloverride.ModifyPanelOverride(currentObject=0)
+@modifypaneloverride.ModifyPanelOverride(objectLevel=0)
 def setVertexWeights(skin, vertexWeights):
     """
     Updates the vertex weights for the specified skin.
@@ -219,7 +219,7 @@ def setVertexWeights(skin, vertexWeights):
     pymxs.runtime.completeRedraw()
 
 
-@modifypaneloverride.ModifyPanelOverride(currentObject=0)
+@modifypaneloverride.ModifyPanelOverride(objectLevel=0)
 def addInfluence(skin, influence):
     """
     Adds an influence to the specified skin.
@@ -232,7 +232,7 @@ def addInfluence(skin, influence):
     pymxs.runtime.skinOps.addBone(skin, influence, 0)
 
 
-@modifypaneloverride.ModifyPanelOverride(currentObject=0)
+@modifypaneloverride.ModifyPanelOverride(objectLevel=0)
 def removeInfluence(skin, influenceId):
     """
     Adds an influence to the specified skin.
@@ -360,7 +360,7 @@ def bakeBindPose(skin):
     resetBoneBindMatrices(skin)
 
 
-@modifypaneloverride.ModifyPanelOverride(currentObject=0, subObjectLevel=1)
+@modifypaneloverride.ModifyPanelOverride(objectLevel=0, subObjectLevel=1)
 def showColors(skin):
     """
     Enables the vertex color feedback for the supplied skin.
