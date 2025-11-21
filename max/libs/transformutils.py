@@ -1004,7 +1004,7 @@ def freezeScale(node, **kwargs):
 
         # Add zero scale sub-controller
         #
-        zeroController = pymxs.runtime.Scale_XYZ()
+        zeroController = pymxs.runtime.ScaleXYZ()
         zeroController.value = pymxs.runtime.Point3(1.0, 1.0, 1.0)
 
         pymxs.runtime.setPropertyController(scaleController, 'Available', zeroController)
