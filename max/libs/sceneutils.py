@@ -2,10 +2,137 @@ import os
 import sys
 import pymxs
 
+from ...python import stringutils
+
 import logging
 logging.basicConfig()
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
+
+
+def isNewScene():
+    """
+    Evaluates whether this is an untitled scene file.
+
+    :rtype: bool
+    """
+
+    return stringutils.isNullOrEmpty(pymxs.runtime.maxFileName)
+
+
+def newScene():
+    """
+    Creates a new scene file.
+
+    :rtype: None
+    """
+
+    pymxs.runtime.resetMaxFile(pymxs.runtime.Name('noPrompt'))
+
+
+def isSaveRequired():
+    """
+    Evaluates whether the open scene file has changes that need to be saved.
+
+    :rtype: bool
+    """
+
+    return pymxs.runtime.getSaveRequired()
+
+
+def saveScene(version=None):
+    """
+    Saves any changes made to the open scene file.
+
+    :rtype: None
+    """
+
+    # Check if this is a new scene file
+    #
+    if isNewScene():
+
+        return
+
+    # Save changes to current scene file
+    #
+    filePath = currentFilePath()
+    saveSceneAs(filePath, version=version)
+
+
+def saveSceneAs(filePath, version=None):
+    """
+    Saves the open scene file in a difference location.
+
+    :type filePath: str
+    :type version: Union[int, None]
+    :rtype: None
+    """
+
+    if isinstance(version, int):
+
+        pymxs.runtime.saveMaxFile(filePath, version=version, quiet=True)
+
+    else:
+
+        pymxs.runtime.saveMaxFile(filePath, quiet=True)
+
+
+def openScene(filePath):
+    """
+    Opens the supplied scene file.
+
+    :rtype: bool
+    """
+
+    return pymxs.runtime.loadMaxFile(filePath, useFileUnits=True, quiet=True)
+
+
+def currentFilename():
+    """
+    Returns the name of the open scene file.
+
+    :rtype: str
+    """
+
+    if not isNewScene():
+
+        return os.path.normpath(pymxs.runtime.maxFileName)
+
+    else:
+
+        return ''
+
+
+def currentDirectory():
+    """
+    Returns the directory of the open scene file.
+
+    :rtype: str
+    """
+
+    if not isNewScene():
+
+        return os.path.normpath(pymxs.runtime.maxFilePath)
+
+    else:
+
+        return ''
+
+
+def currentFilePath():
+    """
+    Returns the path of the open scene file.
+
+    :rtype: str
+    """
+
+    if not isNewScene():
+
+        return os.path.join(currentDirectory(), currentFilename())
+
+    else:
+
+        return ''
 
 
 def isBatchMode():

@@ -34,7 +34,7 @@ class FnScene(afnscene.AFnScene):
         :rtype: bool
         """
 
-        return len(pymxs.runtime.maxFileName) == 0
+        return sceneutils.isNewScene()
 
     def isSaveRequired(self):
         """
@@ -43,7 +43,7 @@ class FnScene(afnscene.AFnScene):
         :rtype: bool
         """
 
-        return pymxs.runtime.getSaveRequired()
+        return sceneutils.isSaveRequired()
 
     def new(self):
         """
@@ -52,7 +52,7 @@ class FnScene(afnscene.AFnScene):
         :rtype: None
         """
 
-        pymxs.runtime.resetMaxFile(pymxs.runtime.Name('noPrompt'))
+        sceneutils.newScene()
 
     def save(self):
         """
@@ -71,7 +71,7 @@ class FnScene(afnscene.AFnScene):
         :rtype: None
         """
 
-        pymxs.runtime.saveMaxFile(filePath, quiet=True)
+        sceneutils.saveSceneAs(filePath)
 
     def open(self, filePath):
         """
@@ -81,7 +81,7 @@ class FnScene(afnscene.AFnScene):
         :rtype: bool
         """
 
-        return pymxs.runtime.loadMaxFile(filePath, useFileUnits=True, quiet=True)
+        return sceneutils.openScene(filePath)
 
     def extensions(self):
         """
@@ -94,7 +94,7 @@ class FnScene(afnscene.AFnScene):
 
     def isBatchMode(self):
         """
-        Evaluates if the the scene is running in batch mode.
+        Evaluates if the scene is running in batch mode.
 
         :rtype: bool
         """
@@ -108,13 +108,7 @@ class FnScene(afnscene.AFnScene):
         :rtype: str
         """
 
-        if not self.isNewScene():
-
-            return os.path.normpath(pymxs.runtime.maxFileName)
-
-        else:
-
-            return ''
+        return sceneutils.currentFilename()
 
     def currentFilePath(self):
         """
@@ -123,7 +117,7 @@ class FnScene(afnscene.AFnScene):
         :rtype: str
         """
 
-        return os.path.join(self.currentDirectory(), self.currentFilename())
+        return sceneutils.currentFilePath()
 
     def currentDirectory(self):
         """
@@ -132,13 +126,7 @@ class FnScene(afnscene.AFnScene):
         :rtype: str
         """
 
-        if not self.isNewScene():
-
-            return os.path.normpath(pymxs.runtime.maxFilePath)
-
-        else:
-
-            return ''
+        return sceneutils.currentDirectory()
 
     def currentProjectDirectory(self):
         """
@@ -147,7 +135,7 @@ class FnScene(afnscene.AFnScene):
         :rtype: str
         """
 
-        return os.path.normpath(pymxs.runtime.pathConfig.getCurrentProjectFolder())
+        return sceneutils.projectPath()
 
     def paths(self):
         """
@@ -185,7 +173,7 @@ class FnScene(afnscene.AFnScene):
         :rtype: None
         """
 
-        pymxs.runtime.animationRange.start = startTime
+        pymxs.runtime.animationRange = pymxs.runtime.Interval(startTime, pymxs.runtime.animationRange.end)
 
     def getEndTime(self):
         """
@@ -204,7 +192,7 @@ class FnScene(afnscene.AFnScene):
         :rtype: None
         """
 
-        pymxs.runtime.animationRange.end = endTime
+        pymxs.runtime.animationRange = pymxs.runtime.Interval(pymxs.runtime.animationRange.start, endTime)
 
     def getTime(self):
         """
