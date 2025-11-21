@@ -1,5 +1,6 @@
 import pymxs
 
+from . import wrapperutils, nodeutils
 from ...vendor.six import string_types
 
 import logging
@@ -38,7 +39,7 @@ def getModifierByClass(node, modifierClass, all=False):
 
     # Check if node is valid
     #
-    if pymxs.runtime.isValidNode(node):
+    if nodeutils.isValidNode(node):
 
         # Collect all modifiers by type
         #
@@ -48,25 +49,23 @@ def getModifierByClass(node, modifierClass, all=False):
 
             return modifiers
 
+        # Evaluate collected modifiers
+        #
+        numModifiers = len(modifiers)
+
+        if numModifiers == 0:
+
+            return None
+
+        elif numModifiers == 1:
+
+            return modifiers[0]
+
         else:
 
-            # Evaluate collected modifiers
-            #
-            numModifiers = len(modifiers)
+            raise TypeError(f'getModifierByClass() expects a unique modifier ({numModifiers} found)!')
 
-            if numModifiers == 0:
-
-                return None
-
-            elif numModifiers == 1:
-
-                return modifiers[0]
-
-            else:
-
-                raise TypeError('getModifierByClass() expects a unique modifier (%s found)!' % numModifiers)
-
-    elif pymxs.runtime.isKindOf(node, modifierClass):  # Redundancy check
+    elif isValidModifier(node):  # Redundancy check
 
         return node
 
@@ -78,12 +77,35 @@ def getModifierByClass(node, modifierClass, all=False):
 def isValidModifier(modifier):
     """
     Evaluates if the supplied object is a valid modifier.
+    Not to be confused with `validModifier` from `pymxs` which tests if a node accepts a specific modifier!
 
     :type modifier: pymxs.MXSWrapperBase
     :rtype: bool
     """
 
-    return (pymxs.runtime.isKindOf(modifier, pymxs.runtime.Modifier) and pymxs.runtime.isValidObj(modifier)) and not pymxs.runtime.isDeleted(modifier)
+    isModifier = pymxs.runtime.isKindOf(modifier, pymxs.runtime.Modifier)
+    isValid = pymxs.runtime.isValidObj(modifier)
+    isAlive = not pymxs.runtime.isDeleted(modifier)
+
+    return isModifier and isValid and isAlive
+
+
+def acceptsModifier(node, modifierClass):
+    """
+    Evaluates if the supplied node accepts the specified modifier class.
+
+    :type node: pymxs.MXSWrapperBase
+    :type modifierClass: pymxs.MAXClass
+    :rtype: bool
+    """
+
+    if nodeutils.isValidNode(node) and wrapperutils.isClass(modifierClass):
+
+        return pymxs.runtime.validModifier(node, modifierClass)
+
+    else:
+
+        return False
 
 
 def getNodeFromModifier(modifier):
@@ -94,4 +116,14 @@ def getNodeFromModifier(modifier):
     :rtype: pymxs.MXSWrapperBase
     """
 
-    return pymxs.runtime.refs.dependentNodes(modifier, firstOnly=True)
+    if isValidModifier(modifier):
+
+        return pymxs.runtime.refs.dependentNodes(modifier, firstOnly=True)
+
+    elif nodeutils.isValidNode(modifier):  # Redundancy check
+
+        return modifier
+
+    else:
+
+        return None
