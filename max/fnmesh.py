@@ -4,6 +4,7 @@ from itertools import chain
 from .libs import wrapperutils, propertyutils, arrayutils, meshutils
 from . import fnnode
 from ..abstract import afnmesh
+from ..generators.inclusiverange import inclusiveRange
 from ..python import stringutils
 from ..dataclasses.vector import Vector
 from ..dataclasses.colour import Colour
@@ -160,6 +161,27 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
                 point = point * objectTransform
 
             yield cls(point.x, point.y, point.z)
+
+    def setVertex(self, index, point):
+        """
+        Updates the vertex position at the specified zero-based index.
+
+        :type index: int
+        :type point: Union[Vector, Tuple[float, float, float]]
+        :rtype: None
+        """
+
+        meshutils.setVertices(self.baseObject(), index + self.__array_index_type__, point)
+
+    def setVertices(self, points):
+        """
+        Updates the vertex positions.
+
+        :type points: Union[List[Vector], List[Tuple[float, float, float]]]
+        :rtype: None
+        """
+
+        meshutils.setVertices(self.baseObject(), points)
 
     def iterVertexNormals(self, *indices, cls=Vector):
         """

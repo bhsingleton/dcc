@@ -215,6 +215,30 @@ class AFnMesh(with_metaclass(ABCMeta, afnbase.AFnBase)):
         return list(self.iterVertices(*indices, cls=cls, worldSpace=worldSpace))
 
     @abstractmethod
+    def setVertex(self, index, point):
+        """
+        Updates the vertex position at the specified zero-based index.
+
+        :type index: int
+        :type point: Union[Vector, Tuple[float, float, float]]
+        :rtype: None
+        """
+
+        pass
+
+    def setVertices(self, points):
+        """
+        Updates the vertex positions.
+
+        :type points: Union[List[Vector], List[Tuple[float, float, float]]]
+        :rtype: None
+        """
+
+        for (i, point) in enumerate(points):
+
+            self.setVertex(i, point)
+
+    @abstractmethod
     def iterVertexNormals(self, *indices, cls=Vector):
         """
         Returns a generator that yields vertex normals.

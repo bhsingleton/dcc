@@ -91,6 +91,17 @@ class FnMesh(fnnode.FnNode, afnmesh.AFnMesh):
 
         return iter([])
 
+    def setVertex(self, index, point):
+        """
+        Updates the vertex position at the specified zero-based index.
+
+        :type index: int
+        :type point: Union[Vector, Tuple[float, float, float]]
+        :rtype: None
+        """
+
+        pass
+
     def iterVertexNormals(self, *indices, cls=Vector):
         """
         Returns a generator that yields vertex normals.
