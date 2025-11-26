@@ -190,7 +190,7 @@ def requiresExplicitNormals(mesh):
 
         if numNormals == 1:
 
-            normal = modifier.getNormal(normalIndices[0], node=mesh)
+            normal = modifier.getNormal(tuple(normalIndices)[0], node=mesh)
             vertexNormals[normalizedVertexIndex] = Vector(normal.x, normal.y, normal.z)
 
             continue
@@ -252,51 +252,6 @@ def resetExplicitNormals(mesh, tolerance=0.15):
     modifier.setSelection(selection, node=mesh)
 
     success = modifier.unify(node=mesh)
-
-    if not success:
-
-        log.warning(f'Unable to unify normals on {mesh.name} mesh via edit-normals modifier!')
-        return True
-
-    # Evaluate unify results
-    #
-    faceVertexIndices = list(meshutils.iterFaceVertexIndices(mesh))
-    success = True
-
-    for (faceIndex, vertexIndices) in enumerate(faceVertexIndices, start=1):
-
-        # Compare new normals to original normals
-        #
-        numCorners = modifier.getFaceDegree(faceIndex, node=mesh)
-        normalIndices = [modifier.getNormalID(faceIndex, corner, node=mesh) for corner in inclusiveRange(1, numCorners, 1)]
-
-        areEquivalent = [None] * numCorners
-
-        for (i, (vertexIndex, normalIndex)) in enumerate(zip(vertexIndices, normalIndices)):
-
-            normal = modifier.getNormal(normalIndex, node=mesh)
-            vector = Vector(normal.x, normal.y, normal.z)
-
-            normalizedVertexIndex = vertexIndex - 1
-            originalVector = vertexExplicitNormals[normalizedVertexIndex]
-
-            isEquivalent = vector.isEquivalent(originalVector, tolerance=tolerance)
-            areEquivalent[i] = isEquivalent
-
-            if not isEquivalent:
-
-                log.warning(f'Unified normal mismatch found @ {mesh.name}.vtxFace[{faceIndex}][{vertexIndex}]: {vector} != {originalVector}!')
-
-        # Evaluate normal equivalencies
-        #
-        if all(areEquivalent):
-
-            continue
-
-        else:
-
-            success = False
-            break
 
     # Cleanup modifier stack
     #
