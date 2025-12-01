@@ -772,9 +772,17 @@ def getFileReferences(filePath):
     :rtype: dict[str, bool]
     """
 
+    # Check if file header exists
+    #
     header = getFileHeader(filePath)
     references = {}
 
+    if not isinstance(header, FileHeader):
+
+        return references
+
+    # Iterate through file references
+    #
     for reference in header.references:
 
         references[reference.name] = reference.loaded
