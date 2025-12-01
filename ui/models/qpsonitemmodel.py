@@ -820,7 +820,7 @@ class QPSONItemModel(QtCore.QAbstractItemModel):
 
         elif role == QtCore.Qt.CheckStateRole:
 
-            boolean = True if value == QtCore.Qt.Checked else False
+            boolean = True if (QtCore.Qt.CheckState(value) == QtCore.Qt.Checked) else False
             internalId.setValue(boolean)
 
             return True
