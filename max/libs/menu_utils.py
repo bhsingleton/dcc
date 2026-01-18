@@ -193,7 +193,7 @@ def createMenuFromXmlElement(xmlElement, insertAt=-1, parent=None):
     :type xmlElement: xml.etree.Element
     :type insertAt: int
     :type parent: pymxs.MXSWrapperBase
-    :rtype: pymxs.MXSWrapperBase
+    :rtype: Union[pymxs.MXSWrapperBase, None]
     """
 
     # Evaluate xml element tag
@@ -231,6 +231,11 @@ def createMenuFromXmlElement(xmlElement, insertAt=-1, parent=None):
 
         log.info(f'Creating action item: {macro}')
         actionItem = pymxs.runtime.MenuMan.createActionItem(macro, category)
+
+        if actionItem is None:
+
+            log.warning(f'Unable to create action item from: {category}`{macro}')
+            return actionItem
 
         # Assign custom title
         #
