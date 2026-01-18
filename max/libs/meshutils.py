@@ -3,10 +3,12 @@ import pymxs
 from collections import defaultdict
 from collections.abc import Sequence
 from itertools import chain
-from dcc.python import stringutils
-from dcc.generators.inclusiverange import inclusiveRange
-from dcc.max.decorators import coordsysoverride
 from . import arrayutils, nodeutils, wrapperutils
+from ..decorators import coordsysoverride, modifypaneloverride
+from ...python import stringutils, importutils
+from ...generators.inclusiverange import inclusiveRange
+
+spatial = importutils.tryImport('scipy.spatial')
 
 import logging
 logging.basicConfig()
@@ -1032,3 +1034,142 @@ def iterFaceVertexColorIndices(mesh, indices=None):
                 faceVertexColorIndices[i] = triangleVertexColorIndices[position]
 
             yield faceVertexColorIndices
+
+
+def iterNamedSelectionSets(node, componentName):
+    """
+    Returns a generator that yields mesh component selection sets as name-list pairs.
+
+    :type node: pymxs.runtime.Node
+    :type componentName: pymxs.runtime.Name
+    :rtype: Iterator[Tuple[str, List[int]]]
+    """
+
+    # Get mesh component
+    #
+    mesh = nodeutils.baseObject(node)
+
+    with modifypaneloverride.ModifyPanelOverride(mesh):
+
+        component = None
+
+        if componentName == pymxs.runtime.Name('Vertex'):
+
+            component = getattr(node, 'verts', None)
+
+        elif componentName == pymxs.runtime.Name('Edge'):
+
+            component = getattr(node, 'edges', None)
+
+        elif componentName == pymxs.runtime.Name('Face'):
+
+            component = getattr(node, 'faces', None)
+
+        else:
+
+            pass
+
+        # Iterate through selection-sets
+        #
+        try:
+
+            selSetNames = getattr(component, 'selSetNames', [])
+
+            for selSetName in selSetNames:
+
+                selSet = component[selSetName]
+                yield selSetName, [selSet[i].index for i in range(selSet.count)]
+
+        except RuntimeError as exception:
+
+            log.error(exception)
+            return iter([])
+
+
+def separateFaces(mesh, faceIndices, capHoles=True):
+    """
+    Separates the supplied mesh into two groups based on the specified face indices.
+    An option cap flag can be supplied to determine whether the holes are filled.
+
+    :type mesh: pymxs.MXSWrapperBase
+    :type faceIndices: List[int]
+    :type capHoles: bool
+    :rtype: Tuple[bool, pymxs.runtime.Node, pymxs.runtime.Node]
+    """
+
+    # Get other face indices
+    #
+    mesh = nodeutils.baseObject(mesh)
+    node = pymxs.runtime.refs.dependentNodes(mesh, firstOnly=True)
+
+    faceBits = dict.fromkeys(faceIndices, True)
+    numFaces = faceCount(mesh)
+
+    otherFaceIndices = [i for i in inclusiveRange(1, numFaces, 1) if not faceBits.get(i, False)]
+
+    # Get intersecting vertices
+    #
+    edgeIndices = set(chain(*[pymxs.runtime.polyOp.getFaceEdges(mesh, faceIndex) for faceIndex in faceIndices]))
+    otherEdgeIndices = set(chain(*[pymxs.runtime.polyOp.getFaceEdges(mesh, faceIndex) for faceIndex in otherFaceIndices]))
+    intersectingEdgeIndices = tuple(edgeIndices.intersection(otherEdgeIndices))
+
+    intersectingVertexIndices = tuple(set(chain(*[pymxs.runtime.polyOp.getEdgeVerts(mesh, edgeIndex) for edgeIndex in intersectingEdgeIndices])))
+    intersectingVertexPoints = tuple(iterVertices(mesh, intersectingVertexIndices))
+
+    # Split mesh into face groups
+    #
+    splitName = str(pymxs.runtime.timestamp())
+
+    success = pymxs.runtime.polyOp.detachFaces(
+        mesh,
+        faceIndices,
+        delete=False,
+        asNode=True,
+        name=splitName,
+        node=node
+    )
+
+    otherSplitName = str(pymxs.runtime.timestamp())
+
+    otherSuccess = pymxs.runtime.polyOp.detachFaces(
+        mesh,
+        otherFaceIndices,
+        delete=False,
+        asNode=True,
+        name=otherSplitName,
+        node=node
+    )
+
+    if not (success and otherSuccess):
+
+        log.warning(f'Unable to separate mesh: ${node.name}')
+        return False, None, None
+
+    # Check if holes require capping
+    #
+    splitNode = pymxs.runtime.getNodeByName(splitName)
+    otherSplitNode = pymxs.runtime.getNodeByName(otherSplitName)
+
+    hasScipy = spatial is not None
+
+    if capHoles and hasScipy:
+
+        vertexPoints = tuple(iterVertices(splitNode))
+        pointTree = spatial.cKDTree(vertexPoints)
+        closestDistances, closestIndices = pointTree.query(intersectingVertexPoints)
+
+        capVertexIndices = tuple(map(lambda index: int(index) + 1, closestIndices))
+        pymxs.runtime.polyOp.capHolesByVert(splitNode, capVertexIndices)
+
+        otherVertexPoints = tuple(iterVertices(otherSplitNode))
+        otherPointTree = spatial.cKDTree(otherVertexPoints)
+        otherClosestDistances, otherClosestIndices = otherPointTree.query(intersectingVertexPoints)
+
+        otherCapVertexIndices = tuple(map(lambda index: int(index) + 1, otherClosestIndices))
+        pymxs.runtime.polyOp.capHolesByVert(otherSplitNode, otherCapVertexIndices)
+
+    else:
+
+        log.warning(f'Unable to cap holes without scipy installed!')
+
+    return True, splitNode, otherSplitNode
