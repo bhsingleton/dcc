@@ -53,7 +53,7 @@ def copyProperties(copyFrom, copyTo):
     :rtype: None
     """
 
-    for (key, value) in iterStaticProperties(copyFrom):
+    for (key, value) in iterStaticProperties(copyFrom, skipNonValues=True, skipDefaultValues=True):
 
         pymxs.runtime.setProperty(copyTo, key, value, applyUIScalling=False)
 
