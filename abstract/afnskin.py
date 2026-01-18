@@ -478,7 +478,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
         :rtype: Dict[int, str]
         """
 
-        return {influenceId: influence.absoluteName() for (influenceId, influence) in self.influences().items()}
+        return {influenceId: influence.name() for (influenceId, influence) in self.influences().items()}
 
     @abstractmethod
     def numInfluences(self):
@@ -600,15 +600,15 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
 
         # Iterate through influences
         #
-        otherInfluences = otherSkin.influences()
+        otherInfluences = {influenceObject.name(): influenceId for (influenceId, influenceObject) in otherSkin.influences().items()}
         influenceMap = {}
 
         for influenceId in influenceIds:
 
             # Try and find a match for the influence name
             #
-            influence = influences[influenceId]
-            remappedId = otherInfluences.index(influence.object())
+            influenceName = influences[influenceId].name()
+            remappedId = otherInfluences.get(influenceName, None)
 
             if remappedId is not None:
 
@@ -616,7 +616,7 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
 
             else:
 
-                raise KeyError('Unable to find a matching ID for %s influence!' % influence.name())
+                raise KeyError('Unable to find a matching ID for %s influence!' % influenceName)
 
         # Return influence map
         #
