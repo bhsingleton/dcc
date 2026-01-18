@@ -1,11 +1,12 @@
 import os
 
-from . import fbxbase, fbxskeleton, fbxmesh, fbxcamera, fbxscript, fbxserializer, FbxExportStatus
+from . import fbxbase, fbxskeleton, fbxmesh, fbxcamera, fbxcustomscript, fbxserializer, FbxExportStatus
 from ..interop import fbxfile
 from ... import fnscene, fnfbx
 from ...ui import qdirectoryedit
 from ...perforce import p4utils
 from ...python import stringutils
+from ...collections import notifylist
 
 import logging
 logging.basicConfig()
@@ -33,7 +34,7 @@ class FbxExportSet(fbxbase.FbxBase):
     )
 
     __exporting__ = None
-    __status__ = FbxExportStatus.Pending
+    __status__ = FbxExportStatus.NONE
 
     def __init__(self, *args, **kwargs):
         """
@@ -57,7 +58,12 @@ class FbxExportSet(fbxbase.FbxBase):
         self._camera = fbxcamera.FbxCamera()
         self._skeleton = fbxskeleton.FbxSkeleton()
         self._mesh = fbxmesh.FbxMesh()
-        self._customScripts = []
+        self._customScripts = notifylist.NotifyList()
+
+        # Setup notifies
+        #
+        self._customScripts.addCallback('itemAdded', self.customScriptAdded)
+        self._customScripts.addCallback('itemRemoved', self.customScriptRemoved)
     # endregion
 
     # region Properties
@@ -230,7 +236,7 @@ class FbxExportSet(fbxbase.FbxBase):
         """
         Getter method that returns the custom scripts for this export set.
 
-        :rtype: List[fbxscript.FbxScript]
+        :rtype: List[fbxcustomscript.FbxCustomScript]
         """
 
         return self._customScripts
@@ -240,11 +246,35 @@ class FbxExportSet(fbxbase.FbxBase):
         """
         Setter method that updates the custom scripts for this export set.
 
-        :type customScripts: List[fbxscript.FbxScript]
+        :type customScripts: List[fbxcustomscript.FbxCustomScript]
         :rtype: None
         """
 
-        self._customScripts = customScripts
+        self._customScripts.clear()
+        self._customScripts.extend(customScripts)
+    # endregion
+
+    # region Callbacks
+    def customScriptAdded(self, index, customScript):
+        """
+        Adds a reference of this asset to the supplied export set.
+
+        :type index: int
+        :type customScript: fbxcustomscript.FbxCustomScript
+        :rtype: None
+        """
+
+        customScript._parent = self.weakReference()
+
+    def customScriptRemoved(self, customScript):
+        """
+        Removes the reference of this asset from the supplied export set.
+
+        :type customScript: fbxcustomscript.FbxCustomScript
+        :rtype: None
+        """
+
+        customScript._parent = self.nullWeakReference
     # endregion
 
     # region Methods
@@ -278,7 +308,7 @@ class FbxExportSet(fbxbase.FbxBase):
         #
         if self.asset is None:
 
-            return ''
+            return os.getcwd()
 
         # Check if absolute path is required
         #
@@ -313,11 +343,17 @@ class FbxExportSet(fbxbase.FbxBase):
         #
         fileName = '{name}.fbx'.format(name=self.name)
         path = os.path.join(self.directory, fileName)
-        cwd = self.cwd(absolute=True)
 
-        if not self.scene.isNullOrEmpty(cwd) and self.scene.isPathRelative(path):
+        if self.scene.isPathVariable(path):
 
-            return os.path.realpath(os.path.join(cwd, path))
+            return os.path.expandvars(path)
+        
+        elif self.scene.isPathRelative(path):
+
+            cwd = self.cwd(absolute=True)
+            fullPath = os.path.realpath(os.path.join(cwd, path))
+
+            return fullPath
 
         else:
 
@@ -407,13 +443,13 @@ class FbxExportSet(fbxbase.FbxBase):
 
         # Update export status
         #
-        self.updateExportStatus(FbxExportStatus.Pre, self)
+        self.updateExportStatus(FbxExportStatus.PRE_EXPORT, self)
 
         # Execute pre-scripts
         #
         for customScript in self.customScripts:
 
-            customScript.preExport()
+            customScript.preExport(self)
 
     def builtinExport(self, namespace='', **kwargs):
         """
@@ -481,6 +517,10 @@ class FbxExportSet(fbxbase.FbxBase):
         :rtype: str
         """
 
+        # Update export status
+        #
+        self.updateExportStatus(FbxExportStatus.EXPORTING, self)
+
         # Check if legacy serializer should be used
         #
         exportPath = None
@@ -513,22 +553,22 @@ class FbxExportSet(fbxbase.FbxBase):
 
         # Update export status
         #
-        self.updateExportStatus(FbxExportStatus.Post, self)
+        self.updateExportStatus(FbxExportStatus.POST_EXPORT, self)
 
         # Execute post-scripts
         #
         for customScript in self.customScripts:
 
-            customScript.postExport()
+            customScript.postExport(self)
 
-        # Clear export status
+        # Reset export status
         #
-        self.updateExportStatus(FbxExportStatus.Pending, None)
+        self.resetExportStatus()
 
     @classmethod
     def getExportStatus(cls):
         """
-        Returns the export set that is currently exporting.
+        Returns the current export status and set.
 
         :rtype: Tuple[FbxExportStatus, FbxExportSet]
         """
@@ -538,7 +578,7 @@ class FbxExportSet(fbxbase.FbxBase):
     @classmethod
     def updateExportStatus(cls, status, exportSet):
         """
-        Returns the export set that is currently exporting.
+        Updates the current export status.
 
         :type status: FbxExportStatus
         :type exportSet: Union[FbxExportSet, None]
@@ -546,4 +586,16 @@ class FbxExportSet(fbxbase.FbxBase):
         """
 
         cls.__status__, cls.__exporting__ = status, exportSet
+
+    @classmethod
+    def resetExportStatus(cls):
+        """
+        Resets the current export status.
+
+        :type status: FbxExportStatus
+        :type exportSet: Union[FbxExportSet, None]
+        :rtype: None
+        """
+
+        cls.__status__, cls.__exporting__ = FbxExportStatus.NONE, None
     # endregion
