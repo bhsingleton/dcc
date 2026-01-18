@@ -69,11 +69,11 @@ def ensureKeyed(node):
 
             subController = controllerutils.getActiveController(subController)
 
-        # Check if sub-controller is non-default
+        # Check if sub-controller has been keyed
         #
         numKeys = subController.keys.count
 
-        if numKeys == 0 and isNonDefault(subController):
+        if numKeys == 0:
 
             log.info('Keying "%s" object!' % pymxs.runtime.exprForMaxObject(subController))
             pymxs.runtime.addNewKey(subController, insertAt)
@@ -88,9 +88,12 @@ def ensureKeyed(node):
         #
         for subAnim in controllerutils.iterSubAnims(definition, skipNullControllers=True):
 
+            # Check if sub-controller has been keyed
+            #
             subController = subAnim.controller
+            numKeys = subController.keys.count
 
-            if isNonDefault(subController):
+            if numKeys == 0:
 
                 log.info('Keying "%s" object!' % pymxs.runtime.exprForMaxObject(subController))
                 pymxs.runtime.addNewKey(subController, insertAt)
