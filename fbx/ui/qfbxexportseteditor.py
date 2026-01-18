@@ -815,27 +815,40 @@ class QFbxExportSetEditor(qsingletonwindow.QSingletonWindow):
         :rtype: None
         """
 
-        # Prompt user for save path
+        # Evaluate keyboard modifiers
         #
-        currentDirectory = os.path.expandvars(self.asset.directory)
+        modifiers = QtWidgets.QApplication.keyboardModifiers()
 
-        directory = QtWidgets.QFileDialog.getExistingDirectory(
-            parent=self,
-            caption='Select Asset Directory',
-            dir=currentDirectory,
-            options=QtWidgets.QFileDialog.ShowDirsOnly
-        )
+        if modifiers == QtCore.Qt.ShiftModifier:
 
-        # Check if path is valid
-        #
-        if not stringutils.isNullOrEmpty(directory):
-
-            directory = self.scene.makePathVariable(directory, '$P4ROOT')
+            # Copy current scene directory
+            #
+            directory = self.scene.makePathVariable(self.scene.currentDirectory(), '$P4ROOT')
             self.assetDirectoryLineEdit.setText(directory)
 
         else:
 
-            log.info('Operation aborted...')
+            # Prompt user for save path
+            #
+            currentDirectory = os.path.expandvars(self.asset.directory)
+
+            directory = QtWidgets.QFileDialog.getExistingDirectory(
+                parent=self,
+                caption='Select Asset Directory',
+                dir=currentDirectory,
+                options=QtWidgets.QFileDialog.ShowDirsOnly
+            )
+
+            # Check if path is valid
+            #
+            if not stringutils.isNullOrEmpty(directory):
+
+                directory = self.scene.makePathVariable(directory, '$P4ROOT')
+                self.assetDirectoryLineEdit.setText(directory)
+
+            else:
+
+                log.info('Operation aborted...')
 
     @QtCore.Slot(int)
     def on_fileTypeComboBox_currentIndexChanged(self, index):
