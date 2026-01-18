@@ -160,7 +160,7 @@ def isPathRelative(path):
 
     # Check for empty strings
     #
-    if stringutils.isNullOrEmpty(path):
+    if stringutils.isNullOrEmpty(path) or isPathVariable(path):
 
         return False
 
@@ -209,7 +209,7 @@ def isPathVariable(path):
     :rtype: bool
     """
 
-    return path.startswith('$') or (path.startswith('%') and path.endswith('%'))
+    return path.startswith('$') or path.startswith('%')
 
 
 def makePathRelativeTo(path, directory, force=False):
