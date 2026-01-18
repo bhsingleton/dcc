@@ -1,7 +1,7 @@
 from . import fbxbase, fbxio, fbxasset, fbxexportrange
 from ... import fnreference
-from ...collections import notifylist
 from ...python import stringutils
+from ...collections import notifylist
 
 import logging
 logging.basicConfig()
@@ -9,10 +9,10 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-class FbxSequencer(fbxbase.FbxBase):
+class FbxReferencedAsset(fbxbase.FbxBase):
     """
-    Overload of `FbxBase` that interfaces with FBX export-range data.
-    Sequencers rely on reference GUIDs in order to associate the sequencer with an asset.
+    Overload of `FbxBase` that interfaces with referenced assets.
+    Fbx export-ranges rely on reference GUIDs in order to associate them with an export-set from a referenced asset.
     """
 
     # region Dunderscores
@@ -22,14 +22,14 @@ class FbxSequencer(fbxbase.FbxBase):
         """
         Private method called after a new instance has been created.
 
-        :key guid: str
-        :key exportRanges: List[fbxexportranges.FbxExportRanges]
+        :type guid: str
+        :type exportRanges: List[fbxexportranges.FbxExportRanges]
         :rtype: None
         """
 
         # Call parent method
         #
-        super(FbxSequencer, self).__init__(*args, **kwargs)
+        super(FbxReferencedAsset, self).__init__(*args, **kwargs)
 
         # Declare private variables
         #
@@ -53,7 +53,7 @@ class FbxSequencer(fbxbase.FbxBase):
 
         # Call parent method
         #
-        super(FbxSequencer, self).__post_init__(*args, **kwargs)
+        super(FbxReferencedAsset, self).__post_init__(*args, **kwargs)
 
         # Invalidate sequencer
         #
@@ -147,7 +147,7 @@ class FbxSequencer(fbxbase.FbxBase):
         :rtype: None
         """
 
-        exportRange._sequencer = self.weakReference()
+        exportRange._referencedAsset = self.weakReference()
         exportRange.refresh()
 
     def exportRangeRemoved(self, exportRange):
@@ -158,7 +158,7 @@ class FbxSequencer(fbxbase.FbxBase):
         :rtype: None
         """
 
-        exportRange._sequencer = self.nullWeakReference
+        exportRange._referencedAsset = self.nullWeakReference
         exportRange.refresh()
     # endregion
 
@@ -235,7 +235,7 @@ class FbxSequencer(fbxbase.FbxBase):
 
         # Update associated asset
         #
-        asset = self.manager.loadReferencedAsset(self.reference)
+        asset = self.manager.loadAssetFromReference(self.reference)
 
         if asset is not None:
 

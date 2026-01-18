@@ -1,11 +1,12 @@
 import os
 
 from enum import Enum, IntEnum
-from . import fbxbase, fbxscript, fbxserializer
+from . import fbxbase, fbxcustomscript, fbxserializer, FbxExportStatus
 from ... import fnfbx, fnscene
-from ...python import stringutils
 from ...ui import qdirectoryedit, qtimespinbox
+from ...python import stringutils
 from ...perforce import p4utils
+from ...collections import notifylist
 
 import logging
 logging.basicConfig()
@@ -22,16 +23,20 @@ class FbxExportRange(fbxbase.FbxBase):
     __slots__ = (
         '_scene',
         '_fbx',
-        '_sequencer',
+        '_referencedAsset',
         '_directory',
         '_startFrame',
         '_endFrame',
         '_step',
         '_useTimeline',
         '_moveToOrigin',
+        '_exportGroupId',
         '_exportSetId',
         '_customScripts'
     )
+
+    __exporting__ = None
+    __status__ = FbxExportStatus.NONE
 
     def __init__(self, *args, **kwargs):
         """
@@ -48,15 +53,21 @@ class FbxExportRange(fbxbase.FbxBase):
         #
         self._scene = fnscene.FnScene()
         self._fbx = fnfbx.FnFbx()
-        self._sequencer = self.nullWeakReference
+        self._referencedAsset = self.nullWeakReference
         self._directory = ''
         self._startFrame = 0
         self._endFrame = 1
         self._step = 1
         self._useTimeline = True
         self._moveToOrigin = False
+        self._exportGroupId = 0
         self._exportSetId = 0
-        self._customScripts = []
+        self._customScripts = notifylist.NotifyList()
+
+        # Setup notifies
+        #
+        self._customScripts.addCallback('itemAdded', self.customScriptAdded)
+        self._customScripts.addCallback('itemRemoved', self.customScriptRemoved)
     # endregion
 
     # region Properties
@@ -81,14 +92,14 @@ class FbxExportRange(fbxbase.FbxBase):
         return self._fbx
 
     @property
-    def sequencer(self):
+    def referencedAsset(self):
         """
-        Getter method that returns the associated sequencer.
+        Getter method that returns the associated referenced asset.
 
-        :rtype: fbxsequencer.FbxSequencer
+        :rtype: fbxreferencedasset.FbxReferencedAsset
         """
 
-        return self._sequencer()
+        return self._referencedAsset()
 
     @property
     def directory(self):
@@ -236,6 +247,27 @@ class FbxExportRange(fbxbase.FbxBase):
         self._moveToOrigin = moveToOrigin
 
     @property
+    def exportGroupId(self):
+        """
+        Getter method that returns the export group ID.
+
+        :rtype: int
+        """
+
+        return self._exportGroupId
+
+    @exportGroupId.setter
+    def exportGroupId(self, exportGroupId):
+        """
+        Setter method that updates the export group ID.
+
+        :type exportGroupId: int
+        :rtype: None
+        """
+
+        self._exportGroupId = exportGroupId
+
+    @property
     def exportSetId(self):
         """
         Getter method that returns the export set ID.
@@ -261,7 +293,7 @@ class FbxExportRange(fbxbase.FbxBase):
         """
         Getter method that returns the custom scripts.
 
-        :rtype: List[fbxscript.FbxScript]
+        :rtype: List[fbxcustomscript.FbxCustomScript]
         """
 
         return self._customScripts
@@ -271,11 +303,35 @@ class FbxExportRange(fbxbase.FbxBase):
         """
         Setter method that updates the custom scripts.
 
-        :type customScripts: List[fbxscript.FbxScript]
+        :type customScripts: List[fbxcustomscript.FbxCustomScript]
         :rtype: None
         """
 
-        self._customScripts = customScripts
+        self._customScripts.clear()
+        self._customScripts.extend(customScripts)
+    # endregion
+
+    # region Callbacks
+    def customScriptAdded(self, index, customScript):
+        """
+        Adds a reference of this asset to the supplied export set.
+
+        :type index: int
+        :type customScript: fbxcustomscript.FbxCustomScript
+        :rtype: None
+        """
+
+        customScript._parent = self.weakReference()
+
+    def customScriptRemoved(self, customScript):
+        """
+        Removes the reference of this asset from the supplied export set.
+
+        :type customScript: fbxcustomscript.FbxCustomScript
+        :rtype: None
+        """
+
+        customScript._parent = self.nullWeakReference
     # endregion
 
     # region Methods
@@ -336,9 +392,9 @@ class FbxExportRange(fbxbase.FbxBase):
         :rtype: fbxasset.FbxAsset
         """
 
-        if self.sequencer is not None:
+        if self.referencedAsset is not None:
 
-            return self.sequencer.asset
+            return self.referencedAsset.asset
 
         else:
 
@@ -436,7 +492,7 @@ class FbxExportRange(fbxbase.FbxBase):
         #
         asset = self.asset()
         exportSet = self.exportSet()
-        namespace = self.sequencer.namespace()
+        namespace = self.referencedAsset.namespace()
 
         exportSet.select(animationOnly=True, namespace=namespace)
         exportSet.preExport()
@@ -486,7 +542,7 @@ class FbxExportRange(fbxbase.FbxBase):
 
         # Serialize this export range
         #
-        namespace = self.sequencer.namespace()
+        namespace = self.referencedAsset.namespace()
         serializer = fbxserializer.FbxSerializer(namespace=namespace)
         asAscii = bool(self.asset().fileType)
 
@@ -508,10 +564,8 @@ class FbxExportRange(fbxbase.FbxBase):
             return False
 
         # Check which serializer to use
-        # Don't forget to ensure all child references are loaded before serializing!
         #
         asset = self.asset()
-        self.sequencer.reference.ensureLoaded()
 
         if asset.useBuiltinSerializer:
 

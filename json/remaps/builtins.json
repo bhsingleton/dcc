@@ -17,9 +17,9 @@
   },
   {
     "name": "FbxSequencer",
-    "nameChange": "",
+    "nameChange": "FbxReferencedAsset",
     "path": "dcc.fbx.libs.fbxsequencer",
-    "pathChange": "",
+    "pathChange": "dcc.fbx.libs.fbxreferencedasset",
     "properties": {
       "sequences": "exportRanges"
     }

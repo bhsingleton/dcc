@@ -1,7 +1,7 @@
 import math
 import os
 
-from ..libs import fbxio, fbxsequencer, fbxexportrange
+from ..libs import fbxio, fbxreferencedasset, fbxexportrange
 from ... import fnscene, fnreference, fnnotify
 from ...generators.consecutivepairs import consecutivePairs
 from ...python import stringutils
@@ -38,8 +38,8 @@ class QFbxExportRangeEditor(qsingletonwindow.QSingletonWindow):
         # Define private variables
         #
         self._manager = fbxio.FbxIO()
-        self._sequencers = []
-        self._currentSequencer = None
+        self._referencedAssets = []
+        self._selectedReferencedAsset = None
         self._scene = fnscene.FnScene()
         self._notifies = fnnotify.FnNotify()
 
@@ -70,29 +70,29 @@ class QFbxExportRangeEditor(qsingletonwindow.QSingletonWindow):
         self.mainToolBar.setToolButtonStyle(QtCore.Qt.ToolButtonIconOnly)
         self.mainToolBar.setFloatable(True)
 
-        self.newSequencerAction = QtWidgets.QAction(QtGui.QIcon(':/dcc/icons/new_file.svg'), '', parent=self.mainToolBar)
-        self.newSequencerAction.setObjectName('newSequencerAction')
-        self.newSequencerAction.setToolTip('Creates a new sequencer.')
-        self.newSequencerAction.triggered.connect(self.on_newSequencerAction_triggered)
+        self.newReferencedAssetAction = QtWidgets.QAction(QtGui.QIcon(':/dcc/icons/new_file.svg'), '', parent=self.mainToolBar)
+        self.newReferencedAssetAction.setObjectName('newSequencerAction')
+        self.newReferencedAssetAction.setToolTip('Creates a new referenced asset.')
+        self.newReferencedAssetAction.triggered.connect(self.on_newReferencedAssetAction_triggered)
 
-        self.saveSequencerAction = QtWidgets.QAction(QtGui.QIcon(':/dcc/icons/save_file.svg'), '', parent=self.mainToolBar)
-        self.saveSequencerAction.setObjectName('saveSequencerAction')
-        self.saveSequencerAction.setToolTip('Saves any changes made to the active sequencer.')
-        self.saveSequencerAction.triggered.connect(self.on_saveSequencerAction_triggered)
+        self.saveReferencedAssetAction = QtWidgets.QAction(QtGui.QIcon(':/dcc/icons/save_file.svg'), '', parent=self.mainToolBar)
+        self.saveReferencedAssetAction.setObjectName('saveSequencerAction')
+        self.saveReferencedAssetAction.setToolTip('Saves any changes made to the active referenced asset.')
+        self.saveReferencedAssetAction.triggered.connect(self.on_saveReferencedAssetAction_triggered)
 
         self.importRangesAction = QtWidgets.QAction(QtGui.QIcon(':/dcc/icons/import_file.svg'), '', parent=self.mainToolBar)
         self.importRangesAction.setObjectName('importRangesAction')
-        self.importRangesAction.setToolTip('Import ranges into the selected sequencer.')
+        self.importRangesAction.setToolTip('Import ranges into the selected referenced asset.')
         self.importRangesAction.triggered.connect(self.on_importRangesAction_triggered)
 
         self.exportRangesAction = QtWidgets.QAction(QtGui.QIcon(':/dcc/icons/export_file.svg'), '', parent=self.mainToolBar)
         self.exportRangesAction.setObjectName('exportRangesAction')
-        self.exportRangesAction.setToolTip('Export ranges from the selected sequencer.')
+        self.exportRangesAction.setToolTip('Export ranges from the selected referenced asset.')
         self.exportRangesAction.triggered.connect(self.on_exportRangesAction_triggered)
 
         self.addExportRangeAction = QtWidgets.QAction(QtGui.QIcon(':/dcc/icons/add.svg'), '', parent=self.mainToolBar)
         self.addExportRangeAction.setObjectName('addExportRangeAction')
-        self.addExportRangeAction.setToolTip('Adds an export range to the selected sequencer.')
+        self.addExportRangeAction.setToolTip('Adds an export range to the selected referenced asset.')
         self.addExportRangeAction.triggered.connect(self.on_addExportRangeAction_triggered)
 
         self.removeExportRangeAction = QtWidgets.QAction(QtGui.QIcon(':/dcc/icons/remove.svg'), '', parent=self.mainToolBar)
@@ -115,8 +115,8 @@ class QFbxExportRangeEditor(qsingletonwindow.QSingletonWindow):
         self.updateTimeRangeAction.setToolTip('LMB adopts timerange. Shift + LMB copies timerange.')
         self.updateTimeRangeAction.triggered.connect(self.on_updateTimeRangeAction_triggered)
 
-        self.mainToolBar.addAction(self.newSequencerAction)
-        self.mainToolBar.addAction(self.saveSequencerAction)
+        self.mainToolBar.addAction(self.newReferencedAssetAction)
+        self.mainToolBar.addAction(self.saveReferencedAssetAction)
         self.mainToolBar.addAction(self.importRangesAction)
         self.mainToolBar.addAction(self.exportRangesAction)
         self.mainToolBar.addSeparator()
@@ -141,75 +141,75 @@ class QFbxExportRangeEditor(qsingletonwindow.QSingletonWindow):
 
         self.setCentralWidget(centralWidget)
 
-        # Initialize sequencer rollout
+        # Initialize referenced asset rollout
         #
-        self.sequencerLayout = QtWidgets.QVBoxLayout()
-        self.sequencerLayout.setObjectName('sequencerLayout')
+        self.referencedAssetLayout = QtWidgets.QVBoxLayout()
+        self.referencedAssetLayout.setObjectName('referencedAssetLayout')
 
-        self.sequencerRollout = qrollout.QRollout('Sequencers')
-        self.sequencerRollout.setObjectName('sequencerRollout')
-        self.sequencerRollout.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding))
-        self.sequencerRollout.setExpanded(True)
-        self.sequencerRollout.setLayout(self.sequencerLayout)
-        self.sequencerRollout.expandedChanged.connect(self.on_sequencerRollout_expandedChanged)
+        self.referencedAssetRollout = qrollout.QRollout('Referenced Assets')
+        self.referencedAssetRollout.setObjectName('referencedAssetRollout')
+        self.referencedAssetRollout.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding))
+        self.referencedAssetRollout.setExpanded(True)
+        self.referencedAssetRollout.setLayout(self.referencedAssetLayout)
+        self.referencedAssetRollout.expandedChanged.connect(self.on_referencedAssetRollout_expandedChanged)
 
-        self.sequencerComboBox = QtWidgets.QComboBox()
-        self.sequencerComboBox.setObjectName('sequencerComboBox')
-        self.sequencerComboBox.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed))
-        self.sequencerComboBox.setFixedHeight(24)
-        self.sequencerComboBox.setFocusPolicy(QtCore.Qt.NoFocus)
-        self.sequencerComboBox.currentIndexChanged.connect(self.on_sequencerComboBox_currentIndexChanged)
+        self.referencedAssetComboBox = QtWidgets.QComboBox()
+        self.referencedAssetComboBox.setObjectName('referencedAssetComboBox')
+        self.referencedAssetComboBox.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed))
+        self.referencedAssetComboBox.setFixedHeight(24)
+        self.referencedAssetComboBox.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.referencedAssetComboBox.currentIndexChanged.connect(self.on_referencedAssetComboBox_currentIndexChanged)
 
-        self.deleteSequencerPushButton = QtWidgets.QPushButton(QtGui.QIcon(':/dcc/icons/delete.svg'), '')
-        self.deleteSequencerPushButton.setObjectName('deleteSequencerPushButton')
-        self.deleteSequencerPushButton.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed))
-        self.deleteSequencerPushButton.setFixedSize(QtCore.QSize(24, 24))
-        self.deleteSequencerPushButton.setFocusPolicy(QtCore.Qt.NoFocus)
-        self.deleteSequencerPushButton.clicked.connect(self.on_deleteSequencerPushButton_clicked)
+        self.deleteReferencedAssetPushButton = QtWidgets.QPushButton(QtGui.QIcon(':/dcc/icons/delete.svg'), '')
+        self.deleteReferencedAssetPushButton.setObjectName('deleteSequencerPushButton')
+        self.deleteReferencedAssetPushButton.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed))
+        self.deleteReferencedAssetPushButton.setFixedSize(QtCore.QSize(24, 24))
+        self.deleteReferencedAssetPushButton.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.deleteReferencedAssetPushButton.clicked.connect(self.on_deleteReferencedAssetPushButton_clicked)
 
-        self.sequencerOptionsLayout = QtWidgets.QHBoxLayout()
-        self.sequencerOptionsLayout.setObjectName('sequencerOptionsLayout')
-        self.sequencerOptionsLayout.setContentsMargins(0, 0, 0, 0)
-        self.sequencerOptionsLayout.addWidget(self.sequencerComboBox)
-        self.sequencerOptionsLayout.addWidget(self.deleteSequencerPushButton)
+        self.referencedAssetOptionsLayout = QtWidgets.QHBoxLayout()
+        self.referencedAssetOptionsLayout.setObjectName('referencedAssetOptionsLayout')
+        self.referencedAssetOptionsLayout.setContentsMargins(0, 0, 0, 0)
+        self.referencedAssetOptionsLayout.addWidget(self.referencedAssetComboBox)
+        self.referencedAssetOptionsLayout.addWidget(self.deleteReferencedAssetPushButton)
 
-        self.sequencerTreeView = QtWidgets.QTreeView()
-        self.sequencerTreeView.setObjectName('sequencerTreeView')
-        self.sequencerTreeView.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding))
-        self.sequencerTreeView.setFocusPolicy(QtCore.Qt.ClickFocus)
-        self.sequencerTreeView.setStyleSheet('QTreeView::item { height: 24px; }')
-        self.sequencerTreeView.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
-        self.sequencerTreeView.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-        self.sequencerTreeView.setEditTriggers(QtWidgets.QAbstractItemView.DoubleClicked | QtWidgets.QAbstractItemView.EditKeyPressed)
-        self.sequencerTreeView.setDropIndicatorShown(True)
-        self.sequencerTreeView.setDragEnabled(True)
-        self.sequencerTreeView.setDragDropOverwriteMode(False)
-        self.sequencerTreeView.setDragDropMode(QtWidgets.QAbstractItemView.InternalMove)
-        self.sequencerTreeView.setDefaultDropAction(QtCore.Qt.MoveAction)
-        self.sequencerTreeView.setAlternatingRowColors(True)
-        self.sequencerTreeView.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
-        self.sequencerTreeView.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
-        self.sequencerTreeView.setUniformRowHeights(True)
-        self.sequencerTreeView.setAnimated(True)
-        self.sequencerTreeView.setExpandsOnDoubleClick(False)
-        self.sequencerTreeView.clicked.connect(self.on_sequencerTreeView_clicked)
+        self.referencedAssetTreeView = QtWidgets.QTreeView()
+        self.referencedAssetTreeView.setObjectName('referencedAssetTreeView')
+        self.referencedAssetTreeView.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding))
+        self.referencedAssetTreeView.setFocusPolicy(QtCore.Qt.ClickFocus)
+        self.referencedAssetTreeView.setStyleSheet('QTreeView::item { height: 24px; }')
+        self.referencedAssetTreeView.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
+        self.referencedAssetTreeView.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        self.referencedAssetTreeView.setEditTriggers(QtWidgets.QAbstractItemView.DoubleClicked | QtWidgets.QAbstractItemView.EditKeyPressed)
+        self.referencedAssetTreeView.setDropIndicatorShown(True)
+        self.referencedAssetTreeView.setDragEnabled(True)
+        self.referencedAssetTreeView.setDragDropOverwriteMode(False)
+        self.referencedAssetTreeView.setDragDropMode(QtWidgets.QAbstractItemView.InternalMove)
+        self.referencedAssetTreeView.setDefaultDropAction(QtCore.Qt.MoveAction)
+        self.referencedAssetTreeView.setAlternatingRowColors(True)
+        self.referencedAssetTreeView.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
+        self.referencedAssetTreeView.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
+        self.referencedAssetTreeView.setUniformRowHeights(True)
+        self.referencedAssetTreeView.setAnimated(True)
+        self.referencedAssetTreeView.setExpandsOnDoubleClick(False)
+        self.referencedAssetTreeView.clicked.connect(self.on_referencedAssetTreeView_clicked)
 
-        self.sequencerTreeHeader = self.sequencerTreeView.header()
-        self.sequencerTreeHeader.setDefaultSectionSize(200)
-        self.sequencerTreeHeader.setMinimumSectionSize(100)
-        self.sequencerTreeHeader.setStretchLastSection(True)
-        self.sequencerTreeHeader.setVisible(True)
+        self.referencedAssetTreeHeader = self.referencedAssetTreeView.header()
+        self.referencedAssetTreeHeader.setDefaultSectionSize(200)
+        self.referencedAssetTreeHeader.setMinimumSectionSize(100)
+        self.referencedAssetTreeHeader.setStretchLastSection(True)
+        self.referencedAssetTreeHeader.setVisible(True)
 
-        self.sequencerItemModel = qpsonitemmodel.QPSONItemModel(parent=self.sequencerTreeView)
-        self.sequencerItemModel.setObjectName('sequencerItemModel')
-        self.sequencerItemModel.invisibleRootProperty = 'exportRanges'
+        self.referencedAssetItemModel = qpsonitemmodel.QPSONItemModel(parent=self.referencedAssetTreeView)
+        self.referencedAssetItemModel.setObjectName('referencedAssetItemModel')
+        self.referencedAssetItemModel.invisibleRootProperty = 'exportRanges'
 
-        self.sequencerTreeView.setModel(self.sequencerItemModel)
+        self.referencedAssetTreeView.setModel(self.referencedAssetItemModel)
 
-        self.sequencerItemDelegate = qpsonstyleditemdelegate.QPSONStyledItemDelegate(parent=self.sequencerTreeView)
-        self.sequencerItemDelegate.setObjectName('sequencerItemDelegate')
+        self.referencedAssetItemDelegate = qpsonstyleditemdelegate.QPSONStyledItemDelegate(parent=self.referencedAssetTreeView)
+        self.referencedAssetItemDelegate.setObjectName('referencedAssetItemDelegate')
 
-        self.sequencerTreeView.setItemDelegate(self.sequencerItemDelegate)
+        self.referencedAssetTreeView.setItemDelegate(self.referencedAssetItemDelegate)
 
         self.exportLabel = QtWidgets.QLabel('Export:')
         self.exportLabel.setObjectName('exportLabel')
@@ -264,13 +264,13 @@ class QFbxExportRangeEditor(qsingletonwindow.QSingletonWindow):
         self.exportButtonsLayout.addWidget(self.exportPushButton)
         self.exportButtonsLayout.addWidget(self.exportAllPushButton)
 
-        self.sequencerLayout.addLayout(self.sequencerOptionsLayout)
-        self.sequencerLayout.addWidget(self.sequencerTreeView)
-        self.sequencerLayout.addLayout(self.exportDividerLayout)
-        self.sequencerLayout.addLayout(self.exportPathLayout)
-        self.sequencerLayout.addLayout(self.exportButtonsLayout)
+        self.referencedAssetLayout.addLayout(self.referencedAssetOptionsLayout)
+        self.referencedAssetLayout.addWidget(self.referencedAssetTreeView)
+        self.referencedAssetLayout.addLayout(self.exportDividerLayout)
+        self.referencedAssetLayout.addLayout(self.exportPathLayout)
+        self.referencedAssetLayout.addLayout(self.exportButtonsLayout)
 
-        centralLayout.addWidget(self.sequencerRollout)
+        centralLayout.addWidget(self.referencedAssetRollout)
 
         # Initialize batch rollout
         #
@@ -390,7 +390,7 @@ class QFbxExportRangeEditor(qsingletonwindow.QSingletonWindow):
     @property
     def manager(self):
         """
-        Getter method that returns the fbx sequencer manager.
+        Getter method that returns the fbx IO interface.
 
         :rtype: fbxio.FbxIO
         """
@@ -408,24 +408,24 @@ class QFbxExportRangeEditor(qsingletonwindow.QSingletonWindow):
         return self._scene
 
     @property
-    def sequencers(self):
+    def referencedAssets(self):
         """
-        Getter method that returns the active fbx sequencers.
+        Getter method that returns the active FBX referenced assets.
 
-        :rtype: List[fbxsequencer.FbxSequencer]
+        :rtype: List[referencedasset.ReferencedAsset]
         """
 
-        return self._sequencers
+        return self._referencedAssets
 
     @property
-    def currentSequencer(self):
+    def selectedReferencedAsset(self):
         """
-        Getter method that returns the current fbx sequencer.
+        Getter method that returns the current FBX referenced assets.
 
-        :rtype: fbxsequencer.FbxSequencer
+        :rtype: referencedasset.ReferencedAsset
         """
 
-        return self._currentSequencer
+        return self._selectedReferencedAsset
 
     @property
     def checkout(self):
@@ -459,10 +459,10 @@ class QFbxExportRangeEditor(qsingletonwindow.QSingletonWindow):
         :rtype: None
         """
 
-        self.sequencers.clear()
-        self.sequencers.extend([sequencer for sequencer in self.manager.loadSequencers() if sequencer.isValid()])
+        self.referencedAssets.clear()
+        self.referencedAssets.extend([referencedAsset for referencedAsset in self.manager.loadReferencedAssets() if referencedAsset.isValid()])
 
-        self.invalidateSequencers()
+        self.invalidateReferencedAssets()
     # endregion
 
     # region Methods
@@ -481,7 +481,7 @@ class QFbxExportRangeEditor(qsingletonwindow.QSingletonWindow):
 
             self._notifies.addPostFileOpenNotify(self.sceneChanged)
 
-        # Invalidate sequencers
+        # Invalidate user interface
         #
         self.sceneChanged()
 
@@ -541,7 +541,7 @@ class QFbxExportRangeEditor(qsingletonwindow.QSingletonWindow):
 
         if not self.scene.isReadOnly():
 
-            self.manager.saveSequencers(self.sequencers)
+            self.manager.saveReferencedAssets(self.referencedAssets)
             self.scene.save()
 
         else:
@@ -567,30 +567,43 @@ class QFbxExportRangeEditor(qsingletonwindow.QSingletonWindow):
         :rtype: List[int]
         """
 
-        return [self.sequencerItemModel.topLevelIndex(index).row() for index in self.sequencerTreeView.selectedIndexes() if index.column() == 0]
+        return [self.referencedAssetItemModel.topLevelIndex(index).row() for index in self.referencedAssetTreeView.selectedIndexes() if index.column() == 0]
 
-    def invalidateSequencers(self):
+    def invalidateReferencedAssets(self):
         """
-        Invalidates the sequencers displayed inside the combo box.
+        Invalidates the referenced asset combo box items.
         
         :rtype: None
         """
 
-        # Cache current index
+        # Cache combo-box selection
         #
-        index = self.sequencerComboBox.currentIndex()
+        index = self.referencedAssetComboBox.currentIndex()
 
         # Re-populate combo box
         #
-        items = [f'{sequencer.reference.associatedNamespace()}:{sequencer.reference.filename()}' for sequencer in self.sequencers]
+        items = [f'{referencedAsset.reference.associatedNamespace()}:{referencedAsset.reference.filename()}' for referencedAsset in self.referencedAssets]
         numItems = len(items)
 
-        self.sequencerComboBox.clear()
-        self.sequencerComboBox.addItems(items)
+        with qsignalblocker.QSignalBlocker(self.referencedAssetComboBox):
 
+            self.referencedAssetComboBox.clear()
+            self.referencedAssetComboBox.addItems(items)
+            self.referencedAssetComboBox.setCurrentIndex(-1)
+
+        # Recreate combo-box selection
+        #
         if 0 <= index < numItems:
 
-            self.sequencerComboBox.setCurrentIndex(index)
+            self.referencedAssetComboBox.setCurrentIndex(index)
+
+        elif numItems > 0:
+
+            self.referencedAssetComboBox.setCurrentIndex(0)
+
+        else:
+
+            pass
 
     def invalidateExportRanges(self):
         """
@@ -599,8 +612,8 @@ class QFbxExportRangeEditor(qsingletonwindow.QSingletonWindow):
         :rtype: None
         """
 
-        self.sequencerItemModel.invisibleRootItem = self.currentSequencer
-        self.sequencerTreeView.expandToDepth(1)
+        self.referencedAssetItemModel.invisibleRootItem = self.selectedReferencedAsset
+        self.referencedAssetTreeView.expandToDepth(1)
 
     def invalidateExportPath(self):
         """
@@ -615,18 +628,17 @@ class QFbxExportRangeEditor(qsingletonwindow.QSingletonWindow):
         if numSelectedRows:
 
             selectedRow = selectedRows[0]
-            exportPath = self.currentSequencer.exportRanges[selectedRow].exportPath()
+            exportPath = self.selectedReferencedAsset.exportRanges[selectedRow].exportPath()
 
             self.exportPathLineEdit.setText(exportPath)
     # endregion
 
     # region Slots
-    @QtCore.Slot(bool)
-    def on_newSequencerAction_triggered(self, checked=False):
+    @QtCore.Slot()
+    def on_newReferencedAssetAction_triggered(self):
         """
-        Slot method for the `newSequencerAction` widget's `triggered` signal.
+        Slot method for the `newReferencedAssetAction` widget's `triggered` signal.
 
-        :type checked: bool
         :rtype: None
         """
 
@@ -637,27 +649,27 @@ class QFbxExportRangeEditor(qsingletonwindow.QSingletonWindow):
 
         if numReferences == 0:
 
-            QtWidgets.QMessageBox.information(self, 'Create Sequencer', 'Scene contains no references!')
+            QtWidgets.QMessageBox.information(self, 'Create Referenced Asset', 'Scene contains no references!')
             return
 
-        # Collect potential sequencers
+        # Collect unused referenced assets
         #
         topLevelItems = [f'{reference.associatedNamespace()}:{reference.filename()}' for reference in references]
-        currentItems = [self.sequencerComboBox.itemText(i) for i in range(self.sequencerComboBox.count())]
+        currentItems = [self.referencedAssetComboBox.itemText(i) for i in range(self.referencedAssetComboBox.count())]
 
         filteredItems = [item for item in topLevelItems if item not in currentItems]
         numFilteredItems = len(filteredItems)
 
         if numFilteredItems == 0:
 
-            QtWidgets.QMessageBox.information(self, 'Create Sequencer', 'Scene contains no more references!')
+            QtWidgets.QMessageBox.information(self, 'Create Referenced Asset', 'Scene contains no more references!')
             return
 
         # Prompt user for referenced asset
         #
         item, okay = QtWidgets.QInputDialog.getItem(
             self,
-            'Create Sequencer',
+            'Create Referenced Asset',
             'Select a Referenced Asset:',
             filteredItems,
             editable=False
@@ -665,43 +677,46 @@ class QFbxExportRangeEditor(qsingletonwindow.QSingletonWindow):
 
         if okay:
 
+            # Create new referenced asset
+            #
             index = topLevelItems.index(item)
             guid = references[index].guid()
             exportRange = self.defaultExportRange()
 
-            sequencer = fbxsequencer.FbxSequencer(guid=guid, exportRanges=[exportRange])
-            self.sequencers.append(sequencer)
+            referencedAsset = fbxreferencedasset.FbxReferencedAsset(guid=guid, exportRanges=[exportRange])
+            self.referencedAssets.append(referencedAsset)
 
-            self.invalidateSequencers()
+            self.invalidateReferencedAssets()
 
-            lastIndex = len(self.sequencers) - 1
-            self.sequencerComboBox.setCurrentIndex(lastIndex)
+            # Update combo-box selection
+            #
+            lastIndex = len(self.referencedAssets) - 1
+            self.referencedAssetComboBox.setCurrentIndex(lastIndex)
 
         else:
 
             log.info('Operation aborted...')
 
-    @QtCore.Slot(bool)
-    def on_deleteSequencerPushButton_clicked(self, checked=False):
+    @QtCore.Slot()
+    def on_deleteReferencedAssetPushButton_clicked(self):
         """
-        Slot method for the `deleteSequencerAction` widget's `triggered` signal.
+        Slot method for the `deleteReferencedAssetPushButton` widget's `triggered` signal.
 
-        :type checked: bool
         :rtype: None
         """
 
         # Redundancy check
         #
-        if len(self.sequencers) == 0:
+        if len(self.referencedAssets) == 0:
 
             return
 
-        # Confirm user wants to delete sequencer
+        # Confirm user wants to delete this referenced asset
         #
         response = QtWidgets.QMessageBox.warning(
             self,
             'Delete Sequencer',
-            'Are you sure you want to delete this sequencer and all of its export ranges?',
+            'Are you sure you want to delete this referenced asset and all of its export ranges?',
             QtWidgets.QMessageBox.Ok | QtWidgets.QMessageBox.Cancel
         )
 
@@ -710,39 +725,37 @@ class QFbxExportRangeEditor(qsingletonwindow.QSingletonWindow):
             log.info('Operation aborted...')
             return
 
-        # Remove selected sequencer
+        # Remove selected referenced asset
         #
-        index = self.sequencerComboBox.currentIndex()
-        del self.sequencers[index]
+        index = self.referencedAssetComboBox.currentIndex()
+        del self.referencedAssets[index]
 
         # Invalidate export-ranges
         #
-        self.invalidateSequencers()
+        self.invalidateReferencedAssets()
 
-    @QtCore.Slot(bool)
-    def on_saveSequencerAction_triggered(self, checked=False):
+    @QtCore.Slot()
+    def on_saveReferencedAssetAction_triggered(self):
         """
-        Slot method for the `saveSequencerAction` widget's `triggered` signal.
+        Slot method for the `saveReferencedAssetAction` widget's `triggered` signal.
 
-        :type checked: bool
         :rtype: None
         """
 
         self.save()
 
-    @QtCore.Slot(bool)
-    def on_addExportRangeAction_triggered(self, checked=False):
+    @QtCore.Slot()
+    def on_addExportRangeAction_triggered(self):
         """
         Slot method for the `addExportRangeAction` widget's `triggered` signal.
 
-        :type checked: bool
         :rtype: None
         """
 
         exportRange = self.defaultExportRange()
-        self.sequencerItemModel.appendRow(exportRange)
+        self.referencedAssetItemModel.appendRow(exportRange)
 
-    @QtCore.Slot(bool)
+    @QtCore.Slot()
     def on_removeExportRangeAction_triggered(self, checked=False):
         """
         Slot method for the `removeExportRangeAction` widget's `triggered` signal.
@@ -754,7 +767,7 @@ class QFbxExportRangeEditor(qsingletonwindow.QSingletonWindow):
         # Check if there are any rows remaining
         # We want to make sure there's always at least one export range remaining!
         #
-        rowCount = self.sequencerItemModel.rowCount()
+        rowCount = self.referencedAssetItemModel.rowCount()
 
         if not (rowCount > 1):
 
@@ -767,7 +780,7 @@ class QFbxExportRangeEditor(qsingletonwindow.QSingletonWindow):
         for (start, end) in reversed(tuple(consecutivePairs(selectedRows))):
 
             numRows = (end - start) + 1
-            self.sequencerItemModel.removeRows(start, numRows)
+            self.referencedAssetItemModel.removeRows(start, numRows)
 
     @QtCore.Slot(bool)
     def on_importRangesAction_triggered(self, checked=False):
@@ -791,7 +804,7 @@ class QFbxExportRangeEditor(qsingletonwindow.QSingletonWindow):
         #
         if not stringutils.isNullOrEmpty(importPath):
 
-            self.currentSequencer.exportRanges = jsonutils.load(importPath)
+            self.selectedReferencedAsset.exportRanges = jsonutils.load(importPath)
             self.invalidateExportRanges()
 
         else:
@@ -820,7 +833,7 @@ class QFbxExportRangeEditor(qsingletonwindow.QSingletonWindow):
         #
         if not stringutils.isNullOrEmpty(exportPath):
 
-            jsonutils.dump(exportPath, self.currentSequencer.exportRanges, indent=4)
+            jsonutils.dump(exportPath, self.selectedReferencedAsset.exportRanges, indent=4)
 
         else:
 
@@ -852,12 +865,12 @@ class QFbxExportRangeEditor(qsingletonwindow.QSingletonWindow):
 
             for row in selectedRows:
 
-                self.currentSequencer.exportRanges[row].startFrame = self.scene.getStartTime()
+                self.selectedReferencedAsset.exportRanges[row].startFrame = self.scene.getStartTime()
 
         else:
 
             row = selectedRows[0]
-            self.scene.setStartTime(self.currentSequencer.exportRanges[row].startFrame)
+            self.scene.setStartTime(self.selectedReferencedAsset.exportRanges[row].startFrame)
 
     @QtCore.Slot(bool)
     def on_updateEndTimeAction_triggered(self, checked=False):
@@ -885,12 +898,12 @@ class QFbxExportRangeEditor(qsingletonwindow.QSingletonWindow):
 
             for row in selectedRows:
 
-                self.currentSequencer.exportRanges[row].endFrame = self.scene.getEndTime()
+                self.selectedReferencedAsset.exportRanges[row].endFrame = self.scene.getEndTime()
 
         else:
 
             row = selectedRows[0]
-            self.scene.setEndTime(self.currentSequencer.exportRanges[row].endFrame)
+            self.scene.setEndTime(self.selectedReferencedAsset.exportRanges[row].endFrame)
 
     @QtCore.Slot(bool)
     def on_updateTimeRangeAction_triggered(self, checked=False):
@@ -918,19 +931,19 @@ class QFbxExportRangeEditor(qsingletonwindow.QSingletonWindow):
 
             for row in selectedRows:
 
-                self.currentSequencer.exportRanges[row].startFrame = self.scene.getStartTime()
-                self.currentSequencer.exportRanges[row].endFrame = self.scene.getEndTime()
+                self.selectedReferencedAsset.exportRanges[row].startFrame = self.scene.getStartTime()
+                self.selectedReferencedAsset.exportRanges[row].endFrame = self.scene.getEndTime()
 
         else:
 
             row = selectedRows[0]
-            self.scene.setStartTime(self.currentSequencer.exportRanges[row].startFrame)
-            self.scene.setEndTime(self.currentSequencer.exportRanges[row].endFrame)
+            self.scene.setStartTime(self.selectedReferencedAsset.exportRanges[row].startFrame)
+            self.scene.setEndTime(self.selectedReferencedAsset.exportRanges[row].endFrame)
 
     @QtCore.Slot(bool)
-    def on_sequencerRollout_expandedChanged(self, expanded):
+    def on_referencedAssetRollout_expandedChanged(self, expanded):
         """
-        Slot method for the `sequencerRollout` widget's `expanded` signal.
+        Slot method for the `referencedAssetRollout` widget's `expanded` signal.
 
         :type expanded: bool
         :rtype: None
@@ -941,34 +954,34 @@ class QFbxExportRangeEditor(qsingletonwindow.QSingletonWindow):
             self.batchRollout.setExpanded(not expanded)
 
     @QtCore.Slot(int)
-    def on_sequencerComboBox_currentIndexChanged(self, index):
+    def on_referencedAssetComboBox_currentIndexChanged(self, index):
         """
-        Slot method for the `sequencerComboBox` widget's `currentIndexChanged` signal.
+        Slot method for the `referencedAssetComboBox` widget's `currentIndexChanged` signal.
 
         :type index: int
         :rtype: None
         """
 
-        # Update current sequencer
+        # Update current referenced asset
         #
-        numSequencers = len(self.sequencers)
+        numSequencers = len(self.referencedAssets)
 
         if 0 <= index < numSequencers:
 
-            self._currentSequencer = self.sequencers[index]
+            self._selectedReferencedAsset = self.referencedAssets[index]
 
         else:
 
-            self._currentSequencer = None
+            self._selectedReferencedAsset = None
 
-        # Invalidate sequences
+        # Invalidate export-ranges
         #
         self.invalidateExportRanges()
 
     @QtCore.Slot(QtCore.QModelIndex)
-    def on_sequencerTreeView_clicked(self, index):
+    def on_referencedAssetTreeView_clicked(self, index):
         """
-        Slot method for the `sequencerTreeView` widget's `clicked` signal.
+        Slot method for the `referencedAssetTreeView` widget's `clicked` signal.
 
         :type index: QtCore.QModelIndex
         :rtype: None
@@ -984,11 +997,11 @@ class QFbxExportRangeEditor(qsingletonwindow.QSingletonWindow):
         :rtype: None
         """
 
-        # Check if sequencer exists
+        # Evaluated selected referenced asset
         #
-        if self.currentSequencer is None:
+        if self.selectedReferencedAsset is None:
 
-            QtWidgets.QMessageBox.warning(self, 'Export Ranges', 'No sequencer available to export from!')
+            QtWidgets.QMessageBox.warning(self, 'Export Ranges', 'No referenced asset selected to export from!')
             return
 
         # Export selected range
@@ -997,7 +1010,7 @@ class QFbxExportRangeEditor(qsingletonwindow.QSingletonWindow):
 
         for row in self.getSelectedRows():
 
-            self.currentSequencer.exportRanges[row].export(checkout=self.checkout)
+            self.selectedReferencedAsset.exportRanges[row].export(checkout=self.checkout)
 
     @QtCore.Slot()
     def on_exportAllPushButton_clicked(self):
@@ -1009,16 +1022,16 @@ class QFbxExportRangeEditor(qsingletonwindow.QSingletonWindow):
 
         # Check if sequencer exists
         #
-        if self.currentSequencer is None:
+        if self.selectedReferencedAsset is None:
 
-            QtWidgets.QMessageBox.warning(self, 'Export Ranges', 'No sequencer available to export from!')
+            QtWidgets.QMessageBox.warning(self, 'Export Ranges', 'No referenced asset selected to export from!')
             return
 
         # Export all ranges
         #
         self.save()
 
-        for exportRange in self.currentSequencer.exportRanges:
+        for exportRange in self.selectedReferencedAsset.exportRanges:
 
             exportRange.export(checkout=self.checkout)
 
@@ -1031,9 +1044,9 @@ class QFbxExportRangeEditor(qsingletonwindow.QSingletonWindow):
         :rtype: None
         """
 
-        with qsignalblocker.QSignalBlocker(self.sequencerRollout):
+        with qsignalblocker.QSignalBlocker(self.referencedAssetRollout):
 
-            self.sequencerRollout.setExpanded(not expanded)
+            self.referencedAssetRollout.setExpanded(not expanded)
 
     @QtCore.Slot()
     def on_addFilesPushButton_clicked(self):
@@ -1165,8 +1178,8 @@ class QFbxExportRangeEditor(qsingletonwindow.QSingletonWindow):
 
                 continue
 
-            # Export sequences
+            # Export ranges from referenced assets
             #
-            self.manager.exportSequencers(directory=directory, checkout=checkout)
+            self.manager.exportAnimation(directory=directory, checkout=checkout)
             self.batchProgressBar.setValue(progress)
     # endregion
