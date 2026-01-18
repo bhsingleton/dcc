@@ -1,10 +1,12 @@
 """
 This module is designed to explicitly work alongside the `Edit_Normals` modifier rather than the `PolyOp` interface!
 As far as I'm aware this is the only way to access face-vertex normal information from poly mesh objects via maxscript.
+Otherwise, you have to rely on the tri-mesh object which is triangulated...
 """
 import pymxs
 
 from . import modifierutils, meshutils, arrayutils
+from ..decorators import modifypaneloverride
 from ...python import stringutils
 from ...dataclasses.vector import Vector
 from ...generators.inclusiverange import inclusiveRange
@@ -15,51 +17,18 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-def hasEditNormalsModifier(mesh):
+def findEditNormalsModifier(mesh):
     """
-    Evaluates if the supplied mesh has an edit normals modifier.
+    Returns the edit normals modifier from the supplied mesh.
 
     :type mesh: pymxs.MXSWrapperBase
-    :rtype: bool
+    :rtype: Union[pymxs.runtime.Edit_Normals, None]
     """
 
-    return modifierutils.hasModifier(mesh, pymxs.runtime.Edit_Normals)
+    return modifierutils.getModifierByClass(mesh, pymxs.runtime.Edit_Normals)
 
 
-def findEditNormalsModifier(mesh, create=False):
-    """
-    Returns the edit normals modifier for the supplied mesh.
-    By enabling create the function will create the modifier in case it doesn't exist!
-
-    :type mesh: pymxs.MXSWrapperBase
-    :rtype: pymxs.runtime.Edit_Normals
-    """
-
-    modifiers = modifierutils.getModifierByClass(mesh, pymxs.runtime.Edit_Normals, all=True)
-    numModifiers = len(modifiers)
-
-    if numModifiers == 0:
-
-        if create:
-
-            modifier = pymxs.runtime.Edit_Normals()
-            pymxs.runtime.addModifier(mesh, modifier, before=1)
-
-            return modifier
-
-        else:
-
-            return None
-
-    elif numModifiers == 1:
-
-        return modifiers[0]
-
-    else:
-
-        return TypeError(f'findEditNormalsModifier() expects 1 edit normals modifier ({numModifiers} found)!')
-
-
+@modifypaneloverride.ModifyPanelOverride(objectLevel=0, create=pymxs.runtime.Edit_Normals, deleteLater=True)
 def hasExplicitNormals(mesh):
     """
     Evaluates if the supplied mesh has explicit normals.
@@ -69,7 +38,7 @@ def hasExplicitNormals(mesh):
     :rtype: bool
     """
 
-    modifier = findEditNormalsModifier(mesh, create=True)
+    modifier = findEditNormalsModifier(mesh)
 
     numNormals = modifier.getNumNormals(node=mesh)
     isExplicit = all(modifier.getNormalExplicit(i, node=mesh) for i in inclusiveRange(1, numNormals, 1))
@@ -77,6 +46,7 @@ def hasExplicitNormals(mesh):
     return isExplicit
 
 
+@modifypaneloverride.ModifyPanelOverride(objectLevel=0, create=pymxs.runtime.Edit_Normals, deleteLater=True)
 def iterFaceVertexNormalIndices(mesh, indices=None):
     """
     Returns a generator that yields face-vertex normal indices from the specified face indices.
@@ -94,7 +64,7 @@ def iterFaceVertexNormalIndices(mesh, indices=None):
 
     # Iterate through face indices
     #
-    modifier = findEditNormalsModifier(mesh, create=True)
+    modifier = findEditNormalsModifier(mesh)
 
     for index in indices:
 
@@ -104,6 +74,7 @@ def iterFaceVertexNormalIndices(mesh, indices=None):
         yield normalIndices
 
 
+@modifypaneloverride.ModifyPanelOverride(objectLevel=0, create=pymxs.runtime.Edit_Normals, deleteLater=True)
 def iterFaceVertexNormals(mesh, indices=None):
     """
     Returns a generator that yields face-vertex normals from the specified face indices.
@@ -121,7 +92,7 @@ def iterFaceVertexNormals(mesh, indices=None):
 
     # Iterate through face indices
     #
-    modifier = findEditNormalsModifier(mesh, create=True)
+    modifier = findEditNormalsModifier(mesh)
 
     for normalIndices in iterFaceVertexNormalIndices(mesh, indices=indices):
 
@@ -136,6 +107,7 @@ def iterFaceVertexNormals(mesh, indices=None):
         yield normals
 
 
+@modifypaneloverride.ModifyPanelOverride(objectLevel=0, create=pymxs.runtime.Edit_Normals, deleteLater=True)
 def requiresExplicitNormals(mesh):
     """
     Evaluates if the supplied mesh requires explicit normals.
@@ -156,7 +128,7 @@ def requiresExplicitNormals(mesh):
 
     # Iterate through vertex indices
     #
-    modifier = findEditNormalsModifier(mesh, create=True)
+    modifier = findEditNormalsModifier(mesh)
 
     faceVertexIndices = list(meshutils.iterFaceVertexIndices(mesh))
     faceVertexNormalIndices = list(iterFaceVertexNormalIndices(mesh))
@@ -217,6 +189,7 @@ def requiresExplicitNormals(mesh):
     return requires, vertexNormals
 
 
+@modifypaneloverride.ModifyPanelOverride(objectLevel=0, create=pymxs.runtime.Edit_Normals, deleteLater=True)
 def resetExplicitNormals(mesh, tolerance=0.15):
     """
     Attempts to safely remove any explicit normals from the supplied mesh.
@@ -246,7 +219,7 @@ def resetExplicitNormals(mesh, tolerance=0.15):
 
     # Unify face-vertex normals
     #
-    modifier = findEditNormalsModifier(mesh, create=True)
+    modifier = findEditNormalsModifier(mesh)
 
     selection = arrayutils.convertToBitArray(list(inclusiveRange(1, modifier.getNumNormals(node=mesh), 1)))
     modifier.setSelection(selection, node=mesh)
