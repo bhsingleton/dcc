@@ -17,8 +17,8 @@ class ModifyPanelOverride(commandpaneloverride.CommandPanelOverride):
 
     # region Dunderscores
     __slots__ = (
-        '_currentNode',
-        '_currentModifier',
+        '_node',
+        '_modifier',
         '_objectLevel',
         '_subObjectLevel',
         '_create',
@@ -30,16 +30,20 @@ class ModifyPanelOverride(commandpaneloverride.CommandPanelOverride):
         """
         Private method called after a new instance has been created.
 
-        :type revert: bool
+        :param objectLevel: Indicates the argument index for the object to make current.
         :type objectLevel: int
+        :param subObjectLevel: Indicates the sub-object level to make current.
         :type subObjectLevel: int
+        :param create: Indicates if a new modifier should be created and made current.
         :type create: Union[pymxs.runtime.MAXClass, None]
+        :param before: The position in the stack where the modifier will be inserted.
         :type before: Union[int, None]
+        :param deleteLater: Indicates if the modifier should be deleted upon exit.
         :type deleteLater: bool
         :rtype: None
         """
 
-        # Override command panel mode
+        # Override command-panel mode
         #
         kwargs['mode'] = 'modify'
 
@@ -47,15 +51,57 @@ class ModifyPanelOverride(commandpaneloverride.CommandPanelOverride):
         #
         super(ModifyPanelOverride, self).__init__(*args, **kwargs)
 
-        # Declare public variables
+        # Declare private variables
         #
-        self._currentNode = None
-        self._currentModifier = None
+        self._node = None
+        self._modifier = None
         self._objectLevel = kwargs.get('objectLevel', None)
         self._subObjectLevel = kwargs.get('subObjectLevel', None)
         self._create = kwargs.get('create', None)
         self._before = kwargs.get('before', None)
         self._deleteLater = kwargs.get('deleteLater', False)
+
+        # Evaluate supplied arguments
+        #
+        numArgs = len(args)
+
+        if numArgs == 1:
+
+            # Evaluate argument
+            #
+            obj = args[0]
+            isValidNode = nodeutils.isValidNode(obj)
+            isValidModifier = nodeutils.isValidBaseObject(obj) or modifierutils.isValidModifier(obj)
+
+            if isValidNode:
+
+                self._node = obj
+                self._modifier = modifierutils.getLastModifier(self._node)
+
+            elif isValidModifier:
+
+                self._modifier = obj
+                self._node = modifierutils.getNodeFromModifier(self._modifier)
+
+            else:
+
+                pass
+
+        elif numArgs == 2:
+
+            # Evaluate arguments
+            #
+            node, name = args
+            isValidNode = nodeutils.isValidNode(node)
+            isValidName = pymxs.runtime.isKindOf(name, pymxs.runtime.Name)
+
+            if isValidNode and isValidName:
+
+                self._node = node
+
+        else:
+
+            pass
 
     def __enter__(self, *args, **kwargs):
         """
@@ -68,7 +114,7 @@ class ModifyPanelOverride(commandpaneloverride.CommandPanelOverride):
         #
         super(ModifyPanelOverride, self).__enter__(*args, **kwargs)
 
-        # Check if modifier should be selected
+        # Check if an object-level was specified
         #
         if isinstance(self.objectLevel, integer_types):
 
@@ -78,34 +124,63 @@ class ModifyPanelOverride(commandpaneloverride.CommandPanelOverride):
 
             if not (0 <= self.objectLevel < numArgs):
 
-                raise TypeError('__enter__() selection index is out of range!')
+                raise TypeError('__enter__() object level is out of range!')
 
             # Evaluate argument type
             #
-            arg = args[self.objectLevel]
+            obj = args[self.objectLevel]
 
-            isValidNode = nodeutils.isValidNode(arg)
-            isValidModifier = modifierutils.isValidModifier(arg)
+            isValidNode = nodeutils.isValidNode(obj)
+            isValidModifier = nodeutils.isValidBaseObject(obj) or modifierutils.isValidModifier(obj)
 
             if isValidNode:
 
-                self._currentNode = arg
-                self._currentModifier = nodeutils.baseObject(self._currentNode)
+                self._node = obj
+                self._modifier = nodeutils.baseObject(self._node)
 
             elif isValidModifier:
 
-                self._currentModifier = arg
-                self._currentNode = wrapperutils.getAssociatedNode(self._currentModifier)
+                self._modifier = obj
+                self._node = wrapperutils.getAssociatedNode(self._modifier)
 
             else:
 
-                raise TypeError('__enter__() expects a valid node or modifier!')
+                pass
 
-            # Update current modifier
+        # Check if a modifier should be created
+        #
+        if modifierutils.acceptsModifier(self._node, self.create):
+
+            # Check if modifier already exists
             #
-            self.setCurrentObject(self._currentNode, self._currentModifier)
+            modifiers = modifierutils.getModifierByClass(self._node, self.create, all=True)
+            hasModifier = len(modifiers) > 0
 
-        # Check if the sub-object level should be changed
+            if hasModifier:
+
+                self._modifier = modifiers[0]
+
+            else:
+
+                self._modifier = self.create()
+                kwargs = {'before': self.before} if isinstance(self.before, integer_types) else {}
+
+                pymxs.runtime.addModifier(self._node, self._modifier, **kwargs)
+
+        # Update current object
+        #
+        isValidNode = nodeutils.isValidNode(self._node)
+        isValidModifier = nodeutils.isValidBaseObject(self._modifier) or modifierutils.isValidModifier(self._modifier)
+
+        if isValidNode and isValidModifier:
+
+            self.setCurrentObject(self._node, self._modifier)
+
+        else:
+
+            raise TypeError('__enter__() expects a valid node or modifier!')
+
+        # Check if the sub-object level requires changing
         #
         subObjectEnabled = pymxs.runtime.isSubSelEnabled()
 
@@ -121,30 +196,6 @@ class ModifyPanelOverride(commandpaneloverride.CommandPanelOverride):
             #
             log.debug(f'Overriding sub-object level: {self.subObjectLevel}')
             pymxs.runtime.subObjectLevel = self.subObjectLevel
-
-        # Check if a modifier should be created
-        #
-        if modifierutils.acceptsModifier(self._currentNode, self.create):
-
-            # Check if modifier already exists
-            #
-            modifiers = modifierutils.getModifierByClass(self._currentNode, self.create)
-            hasModifier = len(modifiers) > 0
-
-            if hasModifier:
-
-                modifier = modifiers[0]
-
-            else:
-
-                modifier = self.create()
-                kwargs = {'before': self.before} if isinstance(self.before, integer_types) else {}
-
-                pymxs.runtime.addModifier(self._currentNode, modifier, **kwargs)
-
-            # Update current object
-            #
-            self.setCurrentObject(self._currentNode, modifier)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """
@@ -162,14 +213,14 @@ class ModifyPanelOverride(commandpaneloverride.CommandPanelOverride):
 
         # Check if any modifiers require deleting
         #
-        if wrapperutils.isClass(self.create) and self.deleteLater:
+        if (wrapperutils.isClass(self.create) and self.deleteLater) and self.depth == 0:
 
-            pymxs.runtime.deleteModifier(self._currentNode, self._currentModifier)
+            pymxs.runtime.deleteModifier(self._node, self._modifier)
 
         # Cleanup pymxs references
         #
-        self._currentNode = None
-        self._currentModifier = None
+        self._node = None
+        self._modifier = None
     # endregion
 
     # region Properties
