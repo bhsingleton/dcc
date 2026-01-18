@@ -8,7 +8,7 @@ log.setLevel(logging.INFO)
 
 class FbxSkeleton(fbxobjectset.FbxObjectSet):
     """
-    Overload of FbxBase used to store skeleton properties.
+    Overload of `FbxBase` used to store skeleton properties.
     """
 
     # region Dunderscores

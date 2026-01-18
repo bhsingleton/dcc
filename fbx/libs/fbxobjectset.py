@@ -11,7 +11,7 @@ log.setLevel(logging.INFO)
 
 class FbxObjectSetType(IntEnum):
     """
-    Overload of `IntEnum` that lists the types supported by object sets.
+    Enum class of all the supported object sets.
     """
 
     Nodes = 0

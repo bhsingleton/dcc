@@ -8,7 +8,7 @@ log.setLevel(logging.INFO)
 
 class FbxMesh(fbxobjectset.FbxObjectSet):
     """
-    Overload of FbxBase used to store mesh properties.
+    Overload of `FbxBase` used to store mesh properties.
     """
 
     # region Dunderscores

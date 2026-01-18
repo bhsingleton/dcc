@@ -10,7 +10,7 @@ log.setLevel(logging.INFO)
 
 class FbxAsset(fbxbase.FbxBase):
     """
-    Overload of FbxBase that stores export information related to an asset.
+    Overload of `FbxBase` that stores export information related to an asset.
     """
 
     # region Dunderscores
@@ -20,6 +20,7 @@ class FbxAsset(fbxbase.FbxBase):
         '_frameRate',
         '_fileType',
         '_fileVersion',
+        '_exportGroups',
         '_exportSets',
         '_useBuiltinSerializer'
     )

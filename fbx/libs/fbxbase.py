@@ -12,9 +12,7 @@ log.setLevel(logging.INFO)
 
 class FbxBase(with_metaclass(ABCMeta, psonobject.PSONObject)):
     """
-    Overload of PSONObject that acts as a base class for all fbx data objects.
-    The dunderscore function set constructors are exposed for DCCs that require custom bindings.
-    Especially, for instance, 3ds Max where XRef hasn't worked for over 20 years.
+    Overload of `PSONObject` that acts as a base class for all fbx data objects.
     """
 
     # region Dunderscores
