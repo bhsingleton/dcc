@@ -47,6 +47,36 @@ class SearchEngine(object):
 
         return self.__history__[client]
 
+    def filterBranches(self, client, filePath):
+        """
+        Returns a list of filtered branches that could be used to find the specified file.
+
+        :type client: clientutils.ClientSpec
+        :type filePath: str
+        :rtype: List[clientutils.Branch]
+        """
+
+        # Check if client has a stream
+        #
+        if client.hasStream():
+
+            return client.view
+
+        # Iterate through client view
+        #
+        segments = os.path.normpath(filePath).split(os.path.sep)
+
+        found = [branch for branch in client.view if branch.depotPath.lstrip('/') in segments]
+        numFound = len(found)
+
+        if numFound > 0:
+
+            return found
+
+        else:
+
+            return client.view
+
     def findFile(self, filePath, client=None):
         """
         Finds the given file using the supplied client.
@@ -68,7 +98,9 @@ class SearchEngine(object):
         filePath = os.path.normpath(filePath)
         segments = filePath.split(os.path.sep)
 
-        for branch in client.view:
+        branches = self.filterBranches(client, filePath)
+
+        for branch in branches:
 
             # Concatenate client path and search client for file
             # Make sure to leave out the parent directory in case the file has been moved!
@@ -212,7 +244,7 @@ def findFile(filePath, client=None):
     :rtype: List[dict]
     """
 
-    return __searchengine__.findFile(filePath, client=client)
+    return __search_engine__.findFile(filePath, client=client)
 
 
 def clearHistory():
@@ -223,7 +255,7 @@ def clearHistory():
     :rtype: None
     """
 
-    __searchengine__.clearHistory()
+    __search_engine__.clearHistory()
 
 
-__searchengine__ = SearchEngine()
+__search_engine__ = SearchEngine()
