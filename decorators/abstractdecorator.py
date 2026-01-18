@@ -34,7 +34,7 @@ class AbstractDecorator(with_metaclass(ABCMeta, object)):
     """
 
     # region Dunderscores
-    __slots__ = ('_instance', '_owner', '_func')
+    __slots__ = ('_instance', '_owner', '_func', '_depth')
     __null_function__ = null
 
     def __init__(self, *args, **kwargs):
@@ -53,6 +53,7 @@ class AbstractDecorator(with_metaclass(ABCMeta, object)):
         self._instance = None
         self._owner = None
         self._func = None
+        self._depth = 0
 
         # Inspect supplied arguments
         #
@@ -113,7 +114,7 @@ class AbstractDecorator(with_metaclass(ABCMeta, object)):
         :rtype: None
         """
 
-        pass
+        self._depth += 1
 
     @abstractmethod
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -126,7 +127,7 @@ class AbstractDecorator(with_metaclass(ABCMeta, object)):
         :rtype: None
         """
 
-        pass
+        self._depth -= 1
     # endregion
 
     # region Properties
@@ -170,6 +171,16 @@ class AbstractDecorator(with_metaclass(ABCMeta, object)):
         else:
 
             return self._func
+
+    @property
+    def depth(self):
+        """
+        Getter method that returns the number of decorators being called.
+
+        :rtype: int
+        """
+
+        return self._depth
     # endregion
 
     # region Methods
