@@ -1,6 +1,6 @@
 import pymxs
 
-from ..libs import controllerutils, transformutils, meshutils
+from ..libs import controllerutils, propertyutils, transformutils, meshutils
 from ..decorators import modifypaneloverride
 from ...python import stringutils
 from ...math import floatmath
@@ -191,6 +191,14 @@ def setVertexWeights(skin, vertexWeights):
     :rtype: None
     """
 
+    # Check if force update is required
+    #
+    requiresRefresh = pymxs.runtime.skinOps.getNumberVertices(skin) == 0
+
+    if requiresRefresh:
+
+        refreshSkin(skin)
+
     # Define undo chunk
     #
     with pymxs.undo(True, 'Apply Weights'):
@@ -202,15 +210,15 @@ def setVertexWeights(skin, vertexWeights):
 
         # Iterate and replace vertex weights
         #
-        for (vertexIndex, weights) in vertexWeights.items():
+        for (vertexIndex, influenceWeights) in vertexWeights.items():
 
-            weights = {key: value for (key, value) in weights.items() if not floatmath.isClose(0.0, value)}
+            influenceWeights = {key: value for (key, value) in influenceWeights.items() if not floatmath.isClose(0.0, value)}
 
             pymxs.runtime.skinOps.replaceVertexWeights(
                 skin,
                 vertexIndex,
-                list(weights.keys()),
-                list(weights.values())
+                list(influenceWeights.keys()),
+                list(influenceWeights.values())
             )
 
     # Force complete redraw
@@ -220,16 +228,17 @@ def setVertexWeights(skin, vertexWeights):
 
 
 @modifypaneloverride.ModifyPanelOverride(objectLevel=0)
-def addInfluence(skin, influence):
+def addInfluence(skin, influence, forceUpdate=False):
     """
     Adds an influence to the specified skin.
 
     :type skin: pymxs.MXSWrapperBase
     :type influence: pymxs.MXSWrapperBase
+    :type forceUpdate: bool
     :rtype: None
     """
 
-    pymxs.runtime.skinOps.addBone(skin, influence, 0)
+    pymxs.runtime.skinOps.addBone(skin, influence, int(forceUpdate))
 
 
 @modifypaneloverride.ModifyPanelOverride(objectLevel=0)
@@ -381,3 +390,131 @@ def showColors(skin):
     skin.showHiddenVertices = False
     skin.crossSectionsAlwaysOnTop = True
     skin.envelopeAlwaysOnTop = True
+
+
+@modifypaneloverride.ModifyPanelOverride(objectLevel=0)
+def refreshSkin(skin):
+    """
+    Forces the associated node's modifier stack to update.
+    This function helps circumvent the bug where the skin modifier will report zero vertices during heavy batch operations!
+
+    :type skin: pymxs.MXSWrapperBase
+    :rtype: None
+    """
+
+    node = pymxs.runtime.refs.dependentNodes(skin, firstOnly=True)
+
+    if node is not None:
+
+        pymxs.runtime.classOf(node)
+
+
+@modifypaneloverride.ModifyPanelOverride(objectLevel=0)
+def copySkin(sourceSkin, targetMesh, influences=None):
+    """
+    Copies the skin modifier from the source mesh to the target mesh.
+    If the vertex counts are identical then the weights will be transferred in order!
+
+    :type sourceSkin: pymxs.runtime.Skin
+    :type targetMesh: pymxs.runtime.Node
+    :param influences: An additional list of influences to add to the new skin modifier.
+    :type influences: Union[List[pymxs.runtime.Node], None]
+    :return: The new skin modifier along with a copy of the source influences and remap binder.
+    :rtype: Tuple[pymxs.runtime.Skin, Dict[int, pymxs.runtime.Node], Dict[int, int]]
+    """
+
+    # Copy source influences and append any extra influences
+    #
+    sourceInfluences = dict(iterInfluences(sourceSkin))
+
+    if not stringutils.isNullOrEmpty(influences):
+
+        reversedSourceInfluences = {influence.name: influenceId for (influenceId, influence) in sourceInfluences.items()}
+        missingInfluences = [influence for influence in influences if reversedSourceInfluences.get(influence.name, None) is None]
+        nextAvailableId = max(sourceInfluences.keys()) + 1
+
+        for (influenceId, influence) in enumerate(missingInfluences, start=nextAvailableId):
+
+            sourceInfluences[influenceId] = influence
+
+    # Copy source weights if the vertex counts match
+    #
+    sourceVertexWeights = {}
+
+    sourceCount = pymxs.runtime.skinOps.getNumberVertices(sourceSkin)
+    targetCount = meshutils.vertexCount(targetMesh)
+
+    if sourceCount == targetCount:
+
+        sourceVertexWeights = dict(iterVertexWeights(sourceSkin))
+
+    # Add skin modifier to target mesh
+    #
+    targetSkin = pymxs.runtime.Skin()
+    pymxs.runtime.addModifier(targetMesh, targetSkin)
+
+    refreshSkin(targetSkin)
+
+    # Copy properties and add influences
+    #
+    propertyutils.copyProperties(sourceSkin, targetSkin)
+    sourceInfluenceMap = {}
+
+    for (physicalId, (influenceId, influence)) in enumerate(sourceInfluences.items(), start=1):
+
+        addInfluence(targetSkin, influence)
+        sourceInfluenceMap[influenceId] = physicalId
+
+    # Check if vertex weights can be copied
+    #
+    if sourceCount == targetCount:
+
+        targetVertexWeights = {vertexIndex: {sourceInfluenceMap[influenceId]: influenceWeight for (influenceId, influenceWeight) in influenceWeights.items()} for (vertexIndex, influenceWeights) in sourceVertexWeights.items()}
+        setVertexWeights(targetSkin, targetVertexWeights)
+
+    return targetSkin, sourceInfluences, sourceInfluenceMap
+
+
+@modifypaneloverride.ModifyPanelOverride(objectLevel=0)
+def reallocateInfluenceWeights(skin, sourceInfluences, targetInfluence, vertexIndices=None):
+    """
+    Reallocates any influences from the source list to the target influence.
+
+    :type skin: pymxs.MXSWrapperBase
+    :type sourceInfluences: List[int]
+    :type targetInfluence: int
+    :type vertexIndices: Union[List[int], None]
+    :rtype: Dict[int, Dict[int, float]]
+    """
+
+    # Iterate through vertex weights
+    #
+    vertexWeights = dict(iterVertexWeights(skin, vertexIndices=vertexIndices))
+    sourceInfluenceMap = dict.fromkeys(sourceInfluences, True)
+
+    reallocatedWeights = {}
+
+    for (vertexIndex, influenceWeights) in vertexWeights.items():
+
+        # Iterate through influence weights
+        #
+        pendingWeights = dict(influenceWeights)
+
+        for (influenceId, influenceWeight) in influenceWeights.items():
+
+            # Check if influence is in source list
+            #
+            hasSourceInfluence = sourceInfluenceMap.get(influenceId, False)
+
+            if hasSourceInfluence:
+
+                pendingWeights[targetInfluence] = pendingWeights.get(targetInfluence, 0.0) + influenceWeight
+                del pendingWeights[influenceId]
+
+        reallocatedWeights[vertexIndex] = pendingWeights
+
+    # Update vertex weights
+    #
+    setVertexWeights(skin, reallocatedWeights)
+
+    return reallocatedWeights
