@@ -346,6 +346,8 @@ def addInfluence(skinCluster, influence, index=None):
     matrixList = mc.getAttr(f'{influenceName}.worldInverseMatrix[{instanceNumber}]')
     mc.setAttr(f'{skinClusterName}.bindPreMatrix[{index}]', matrixList, type='matrix')
 
+    return index
+
 
 @undo.Undo(name='Remove Influence')
 def removeInfluence(skinCluster, influenceId):
