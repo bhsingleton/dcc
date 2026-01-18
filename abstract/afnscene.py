@@ -742,23 +742,40 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
         pass
 
     @abstractmethod
-    def execute(self, string, asPython=True):
+    def execute(self, string):
         """
-        Executes the supplied string.
-        Be sure to specify if the string is in python or the native embedded language.
+        Executes the supplied string using the embedded language.
 
         :type string: str
-        :type asPython: bool
-        :rtype: None
+        :rtype: bool
         """
 
         pass
+
+    def executePython(self, string):
+        """
+        Executes the supplied string using python.
+
+        :type string: str
+        :rtype: bool
+        """
+
+        try:
+
+            exec(string, globals())
+            return True
+
+        except Exception as exception:
+
+            log.warning(exception)
+            return False
 
     def executeFile(self, filePath):
         """
         Executes the supplied script file.
 
-        :rtype: None
+        :type filePath: str
+        :rtype: bool
         """
 
         # Check if file exists
@@ -766,7 +783,7 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
         if not os.path.exists(filePath):
 
             log.warning('Cannot locate file: %s' % filePath)
-            return
+            return False
 
         # Evaluate file extension
         #
@@ -779,13 +796,17 @@ class AFnScene(with_metaclass(ABCMeta, afnbase.AFnBase)):
         #
         if asPython:
 
-            importutils.executeFile(filePath)
+            return importutils.executeFile(filePath)
 
         else:
 
+            script = ''
+
             with open(filePath, 'r') as file:
 
-                self.execute(file.read(), asPython=asPython)
+                script = file.read()
+
+            return self.execute(script)
 
     @abstractmethod
     def iterNodes(self):

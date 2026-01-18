@@ -275,10 +275,16 @@ def executeFile(filePath, __locals__=None, __globals__=None):
     :type filePath: str
     :type __locals__: Union[dict, None]
     :type __globals__: Union[dict, None]
-    :rtype: None
+    :rtype: bool
     """
 
-    # Update globals with main and file
+    # Check if file path exists
+    #
+    if not os.path.isfile(filePath):
+
+        return False
+
+    # Update globals with `main` and `file` keywords
     #
     if __globals__ is None:
 
@@ -296,6 +302,8 @@ def executeFile(filePath, __locals__=None, __globals__=None):
     with open(filePath, 'rb') as file:
 
         exec(compile(file.read(), filePath, 'exec'), __globals__, __locals__)
+
+    return True
 
 
 def iterPaths(paths):

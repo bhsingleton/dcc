@@ -351,23 +351,23 @@ class FnScene(afnscene.AFnScene):
 
         sceneutils.markClean()
 
-    def execute(self, string, asPython=True):
+    def execute(self, string):
         """
         Executes the supplied string.
-        Be sure to specify if the string is in python or the native embedded language.
 
         :type string: str
-        :type asPython: bool
         :rtype: None
         """
 
-        if asPython:
-
-            exec(string, globals())
-
-        else:
+        try:
 
             mc.eval(string)
+            return True
+
+        except Exception as exception:
+
+            log.warning(exception)
+            return False
 
     def iterNodes(self):
         """
