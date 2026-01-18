@@ -31,7 +31,7 @@ class FbxExportStatus(IntEnum):
     Enum class of all the possible export states.
     """
 
-    Pending = 0
-    Pre = 1
-    Post = 2
-    Complete = 2
+    NONE = 0
+    PRE_EXPORT = 1
+    EXPORTING = 3
+    POST_EXPORT = 4
