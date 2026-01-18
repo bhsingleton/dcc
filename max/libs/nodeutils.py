@@ -53,7 +53,11 @@ def isValidBaseObject(obj):
     :rtype: bool
     """
 
-    return pymxs.runtime.isKindOf(obj, pymxs.runtime.Node) and not pymxs.runtime.isKindOf(obj, pymxs.runtime.SubAnim)
+    isNode = isValidNode(obj)
+    isBaseObject = pymxs.runtime.isKindOf(obj, pymxs.runtime.Node)
+    isSubAnim = pymxs.runtime.isKindOf(obj, pymxs.runtime.SubAnim)
+
+    return (not isNode and isBaseObject) and not isSubAnim
 
 
 def isValidScene(obj):
@@ -250,7 +254,7 @@ def iterParents(node, includeSelf=False):
     while parent is not None:
 
         yield parent
-        parent = getParent(node)
+        parent = getParent(parent)
 
 
 def getParents(node, includeSelf=False):
