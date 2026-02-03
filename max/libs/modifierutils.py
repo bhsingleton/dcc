@@ -197,19 +197,40 @@ def ensureModifier(nodes, modifierClass, filter=pymxs.runtime.Node, defaults={},
         pymxs.runtime.addModifier(node, modifier, before=before)
 
 
-def deleteModifiersByClass(nodes, modifierClass):
+def deleteModifiersByClass(node, modifierClass):
     """
     Deletes any modifiers derived from the specified class from the supplied nodes.
 
-    :type nodes: List[pymxs.MXSWrapperBase]
-    :type modifierClass: pymxs.MAXClass
+    :type node: Union[pymxs.runtime.Node, List[pymxs.runtime.Node]]
+    :type modifierClass: pymxs.runtime.MAXClass
     :rtype: None
     """
+
+    nodes = [node] if wrapperutils.isWrapper(node) else node
 
     for node in nodes:
 
         modifiers = getModifierByClass(node, modifierClass, all=True)
 
         for modifier in reversed(modifiers):
+
+            pymxs.runtime.deleteModifier(node, modifier)
+
+
+def clearModifiers(node):
+    """
+    Removes all modifiers from the supplied node.
+
+    :type node: Union[pymxs.runtime.Node, List[pymxs.runtime.Node]]
+    :rtype: None
+    """
+
+    nodes = [node] if wrapperutils.isWrapper(node) else node
+
+    for node in nodes:
+
+        modifiers = tuple(node.modifiers)
+
+        for modifier in modifiers:
 
             pymxs.runtime.deleteModifier(node, modifier)
