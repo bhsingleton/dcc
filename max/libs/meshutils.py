@@ -214,7 +214,9 @@ def getSelectedVertices(mesh):
 
     else:
 
-        bitArray = pymxs.runtime.getVertSelection(mesh)
+        node = pymxs.runtime.refs.dependentNodes(mesh, firstOnly=True)
+        bitArray = pymxs.runtime.getVertSelection(node)
+
         return list(arrayutils.iterBitArray(bitArray))
 
 
@@ -234,7 +236,9 @@ def getSelectedEdges(mesh):
 
     else:
 
-        bitArray = pymxs.runtime.getEdgeSelection(mesh)
+        node = pymxs.runtime.refs.dependentNodes(mesh, firstOnly=True)
+        bitArray = pymxs.runtime.getEdgeSelection(node)
+
         return list(arrayutils.iterBitArray(bitArray))
 
 
@@ -254,7 +258,9 @@ def getSelectedFaces(mesh):
 
     else:
 
-        bitArray = pymxs.runtime.getFaceSelection(mesh)
+        node = pymxs.runtime.refs.dependentNodes(mesh, firstOnly=True)
+        bitArray = pymxs.runtime.getFaceSelection(node)
+
         return list(arrayutils.iterBitArray(bitArray))
 
 
