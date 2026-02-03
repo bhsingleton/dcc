@@ -459,13 +459,10 @@ class FbxExportSet(fbxbase.FbxBase):
         :rtype: str
         """
 
-        # Select nodes and execute pre-scripts
+        # Export FBX from selection
         #
         self.select(namespace=namespace)
-        self.preExport()
 
-        # Export fbx using selection
-        #
         self.fbx.setMeshExportParams(
             version=self.asset.fileVersion,
             asAscii=bool(self.asset.fileType),
@@ -488,10 +485,9 @@ class FbxExportSet(fbxbase.FbxBase):
             log.warning(f'Unable to export FBX: {exportPath}')
             return ''
 
-        # Execute post-scripts
+        # Edit exported file
         #
         self.editExportFile(exportPath, **kwargs)
-        self.postExport()
 
         return exportPath
 
@@ -517,12 +513,13 @@ class FbxExportSet(fbxbase.FbxBase):
         :rtype: str
         """
 
-        # Update export status
+        # Execute pre-export scripts
+        #
+        self.preExport()
+
+        # Evaluate which serializer to use
         #
         self.updateExportStatus(FbxExportStatus.EXPORTING, self)
-
-        # Check if legacy serializer should be used
-        #
         exportPath = None
 
         if self.asset.useBuiltinSerializer:
@@ -532,6 +529,10 @@ class FbxExportSet(fbxbase.FbxBase):
         else:
 
             exportPath = self.customExport(namespace=namespace, **kwargs)
+
+        # Execute post-export scripts
+        #
+        self.postExport()
 
         # Check if file requires checking-out
         #
