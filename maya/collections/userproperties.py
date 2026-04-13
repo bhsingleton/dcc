@@ -382,4 +382,13 @@ class UserProperties(collections_abc.MutableMapping):
 
             fullPathName = self.fullPathName()
             mc.setAttr(f'{fullPathName}.notes', self.__buffer__, type='string')
+
+    def save(self):
+        """
+        Calls the `pushBuffer` method to update the `notes` attribute.
+
+        :rtype: None
+        """
+
+        return self.pushBuffer()
     # endregion
