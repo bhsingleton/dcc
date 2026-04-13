@@ -689,7 +689,7 @@ def getActiveController(controller):
     Returns the active sub-controller from the supplied list controller.
 
     :type controller: pymxs.MXSWrapperBase
-    :rtype: pymxs.MXSWrapperBase
+    :rtype: Union[pymxs.MXSWrapperBase, None]
     """
 
     # Evaluate controller type
@@ -700,6 +700,10 @@ def getActiveController(controller):
         subAnim = pymxs.runtime.getSubAnim(controller, active)
 
         return subAnim.controller
+
+    elif isValidController(controller):
+
+        return controller
 
     else:
 
