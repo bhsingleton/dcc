@@ -341,3 +341,69 @@ def descendants(node,  includeSelf=False):
     """
 
     return list(iterDescendants(node, includeSelf=includeSelf))
+
+
+def iterSiblings(*nodes):
+    """
+    Returns a generator that yields siblings from the supplied nodes.
+
+    :type nodes: Union[pymxs.MXSWrapperBase, List[pymxs.MXSWrapperBase]]
+    :rtype: Iterator[pymxs.MXSWrapperBase]
+    """
+
+    # Iterate through nodes
+    #
+    for node in nodes:
+
+        # Check if node is valid
+        #
+        if not isValidNode(node):
+
+            continue
+
+        # Evaluate parent
+        #
+        parent = getParent(node)
+        isTopLevelNode = not isValidNode(parent)
+
+        siblings = tuple(iterTopLevelNodes()) if isTopLevelNode else tuple(iterChildren(parent))
+
+        for sibling in siblings:
+
+            if sibling != node:
+
+                yield sibling
+
+            else:
+
+                continue
+
+
+def siblings(*nodes):
+    """
+    Returns a list of siblings from the supplied nodes.
+
+    :type nodes: Union[pymxs.MXSWrapperBase, List[pymxs.MXSWrapperBase]]
+    :rtype: List[pymxs.MXSWrapperBase]
+    """
+
+    return list(iterSiblings(*nodes))
+
+
+def tryGetUserProperty(node, name, default=None):
+    """
+    Returns the value associated the requested user property.
+
+    :type node: pymxs.MXSWrapperBase
+    :type name: str
+    :type default: Any
+    :rtype: Any
+    """
+
+    if pymxs.runtime.doesUserPropExist(node, name):
+
+        return pymxs.runtime.getUserProp(node, name)
+
+    else:
+
+        return default
