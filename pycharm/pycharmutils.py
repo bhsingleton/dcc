@@ -105,7 +105,7 @@ def startDebugger(*args, **kwargs):
         import pydevd
 
         pydevd.stoptrace()
-        pydevd.settrace('localhost', port=__port__, stdoutToServer=True, stderrToServer=True, suspend=False)
+        pydevd.settrace('localhost', port=__port__, stdout_to_server=True, stderr_to_server=True, suspend=False)
 
     except ImportError:
 
