@@ -1,13 +1,12 @@
-"""
-
-"""
 import os
 
 from enum import IntEnum
+from collections.abc import Sequence, Mapping
 from . import fbxbase, FbxExportStatus
 from ... import fnscene
 from ...ui import qfileedit
-from ...python import importutils
+from ...json import jsonutils
+from ...python import importutils, stringutils
 
 import logging
 logging.basicConfig()
@@ -35,7 +34,9 @@ class FbxCustomScript(fbxbase.FbxBase):
         '_scene',
         '_filePath',
         '_script',
-        '_language'
+        '_language',
+        '_args',
+        '_kwargs'
     )
 
     def __init__(self, *args, **kwargs):
@@ -54,6 +55,8 @@ class FbxCustomScript(fbxbase.FbxBase):
         self._filePath = ''
         self._script = ''
         self._language = Language.PYTHON
+        self._args = ''
+        self._kwargs = ''
     # endregion
 
     # region Properties
@@ -139,6 +142,48 @@ class FbxCustomScript(fbxbase.FbxBase):
         """
 
         self._language = Language(language)
+
+    @property
+    def args(self):
+        """
+        Getter method that returns the arguments.
+
+        :rtype: str
+        """
+
+        return self._args
+
+    @args.setter
+    def args(self, args):
+        """
+        Setter method that updates the arguments.
+
+        :type args: str
+        :rtype: None
+        """
+
+        self._args = args
+
+    @property
+    def kwargs(self):
+        """
+        Getter method that returns the keyword arguments.
+
+        :rtype: str
+        """
+
+        return self._kwargs
+
+    @kwargs.setter
+    def kwargs(self, kwargs):
+        """
+        Setter method that updates the keyword arguments.
+
+        :type kwargs: str
+        :rtype: None
+        """
+
+        self._kwargs = kwargs
     # endregion
 
     # region Methods
@@ -168,6 +213,39 @@ class FbxCustomScript(fbxbase.FbxBase):
         """
 
         return os.path.exists(self.filePath)
+
+    def parseArguments(self):
+        """
+        Parses the arguments and keyword argument strings.
+
+        :rtype: Tuple[tuple, dict]
+        """
+
+        # Evaluate arguments
+        #
+        args = ()
+
+        if not stringutils.isNullOrEmpty(self.args):
+
+            args = jsonutils.loads(self.args, default=())
+
+        # Evaluate keyword arguments
+        #
+        kwargs = {}
+
+        if not stringutils.isNullOrEmpty(self.kwargs):
+
+            kwargs = jsonutils.loads(self.kwargs, default={})
+
+        # Evaluate argument types
+        #
+        if isinstance(args, Sequence) and isinstance(kwargs, Mapping):
+
+            return args, kwargs
+
+        else:
+
+            return (), {}
 
     def executeModule(self, name, status):
         """
@@ -212,15 +290,16 @@ class FbxCustomScript(fbxbase.FbxBase):
         # Evaluate export status
         #
         wrapper = cls(self.parent)
+        args, kwargs = self.parseArguments()
 
         if status == FbxExportStatus.PRE_EXPORT:
 
-            wrapper.preExport()
+            wrapper.preExport(*args, **kwargs)
             return True
 
         elif status == FbxExportStatus.POST_EXPORT:
 
-            wrapper.postExport()
+            wrapper.postExport(*args, **kwargs)
             return True
 
         else:

@@ -65,7 +65,7 @@ class FbxExportWrapper(object, metaclass=ABCMeta):
         return isinstance(self.exporter, fbxexportrange.FbxExportRange)
 
     @abstractmethod
-    def preExport(self):
+    def preExport(self, *args, **kwargs):
         """
         Pre-export wrapper.
 
@@ -75,7 +75,7 @@ class FbxExportWrapper(object, metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def postExport(self):
+    def postExport(self, *args, **kwargs):
         """
         Post-export wrapper.
 
