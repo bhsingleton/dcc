@@ -1123,13 +1123,17 @@ def isArray(value):
     return hasattr(value, '__getitem__') and hasattr(value, '__len__')
 
 
-def isClose(value, otherValue, tolerance=1e-3):
+def isClose(value, otherValue, **kwargs):
     """
     Evaluates if the two values are close.
 
     :type value: Union[int, float, pymxs.MXSWrapperBase]
     :type otherValue: Union[int, float, pymxs.MXSWrapperBase]
     :type tolerance: float
+    :type row1Tolerance: float
+    :type row2Tolerance: float
+    :type row3Tolerance: float
+    :type row4Tolerance: float
     :rtype: bool
     """
 
@@ -1141,6 +1145,8 @@ def isClose(value, otherValue, tolerance=1e-3):
 
     # Evaluate value type
     #
+    tolerance = kwargs.get('tolerance', 1e-3)
+
     if isinstance(value, (int, float)):
 
         return abs(value - otherValue) <= tolerance
@@ -1165,12 +1171,17 @@ def isClose(value, otherValue, tolerance=1e-3):
 
     elif wrapperutils.isKindOf(value, pymxs.runtime.Matrix3):
 
+        row1Tolerance = kwargs.get('row1Tolerance', tolerance)
+        row2Tolerance = kwargs.get('row2Tolerance', tolerance)
+        row3Tolerance = kwargs.get('row3Tolerance', tolerance)
+        row4Tolerance = kwargs.get('row4Tolerance', tolerance)
+
         return all(
             [
-                isClose(value.row1, otherValue.row1, tolerance=tolerance),
-                isClose(value.row2, otherValue.row2, tolerance=tolerance),
-                isClose(value.row3, otherValue.row3, tolerance=tolerance),
-                isClose(value.row4, otherValue.row4, tolerance=tolerance)
+                isClose(value.row1, otherValue.row1, tolerance=row1Tolerance),
+                isClose(value.row2, otherValue.row2, tolerance=row2Tolerance),
+                isClose(value.row3, otherValue.row3, tolerance=row3Tolerance),
+                isClose(value.row4, otherValue.row4, tolerance=row4Tolerance)
             ]
         )
 
