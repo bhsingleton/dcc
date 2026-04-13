@@ -1,6 +1,7 @@
 import pymxs
 import inspect
 
+from ...python import stringutils
 from ...generators.inclusiverange import inclusiveRange
 
 import logging
@@ -273,6 +274,7 @@ def iterDependents(obj, ignore=None):
     # Iterate through dependents
     #
     dependents = pymxs.runtime.refs.dependents(obj)
+    ignore = [] if stringutils.isNullOrEmpty(ignore) else ignore
 
     for dependent in dependents:
 
