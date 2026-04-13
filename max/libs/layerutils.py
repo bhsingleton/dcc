@@ -32,6 +32,17 @@ def isValidLayer(layer):
     return wrapperutils.isKindOf(layer, (pymxs.runtime.Base_Layer, pymxs.runtime.MixinInterface))
 
 
+def doesLayerExist(name):
+    """
+    Evaluates if a layer with the supplied name exists.
+
+    :type name: str
+    :rtype: bool
+    """
+
+    return pymxs.runtime.LayerManager.getLayerFromName(name) is not None
+
+
 def resetCurrentLayer():
     """
     Resets the current layer back to the default layer.
