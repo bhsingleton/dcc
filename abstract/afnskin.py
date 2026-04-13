@@ -1197,6 +1197,30 @@ class AFnSkin(with_metaclass(ABCMeta, afnnode.AFnNode)):
 
         self.applyVertexWeights(updates)
 
+    def rigidVertices(self, vertexIndices):
+        """
+        Averages the vertex elements derived from supplied vertex indices.
+
+        :type vertexIndices: List[int]
+        :rtype: None
+        """
+
+        mesh = fnmesh.FnMesh(self.intermediateObject())
+        elements = mesh.getElements(*vertexIndices, componentType=mesh.ComponentType.Vertex)
+
+        updates = {}
+
+        for element in elements:
+            
+            vertexWeights = self.vertexWeights(*element)
+            average = skinmath.averageWeights(*list(vertexWeights.values()), maintainMaxInfluences=True)
+
+            for vertexIndex in element:
+
+                updates[vertexIndex] = average
+
+        return self.applyVertexWeights(updates)
+
     def inverseDistanceWeights(self, vertexWeights, distances, power=2.0):
         """
         Averages supplied vertex weights based on the inverse distance.
